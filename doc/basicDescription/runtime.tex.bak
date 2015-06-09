@@ -1,0 +1,95 @@
+\section{Runtime System Overview}
+
+
+Briefly, the runtime system we will build is going to execute dataflow
+application with dependency among stages, which are exported to the system
+through a simple API. The overall execution model is based on a bag of tasks,
+where tasks instantiations of a given stage of the application dataflow --- the
+pair input data and stage processing functions. To guarantee correct ordering
+in the execution of such tasks, the runtime system will used the tasks
+dependency information given as input by the user to assert that a tasks is not
+dispatched for execution before all dependencies have been solved. 
+
+
+
+
+
+%\subsection{Overview}
+
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[width=0.47\textwidth]{images/appDataflow}
+\caption{Sample Application Dataflow.}
+\label{fig:sampleDataflow}
+\end{center}
+\end{figure}
+
+Further, communication among the pipeline stages, or tasks, are performed
+through a distributed file system, meaning that data is read and written to
+files between stages. Figure~\ref{fig:sampleDataflow} presents a schema of the
+multiple levels used to represent a dataflow in this model. In the first level,
+Abstract Dataflow, we simply have the logical stages of the applications,
+describing their connections. In the second level, there is the instantiation
+of the dataflow, where the logical computing stages are associated to different
+input data, and dependencies among instantiation of stages (Tasks) are
+described. For instance, in the left side, there is an instantiation of the
+dataflow with an independent replication of the entire dataflow for each input
+data.  In the right side, however, there is a more complex interaction in the
+dataflow as each input data is computed in parallel in through multiple
+instantitaions of first stage, but the following stages on the dataflow
+pipeline will use results computed from the previous intantiations of A. On the
+bottom level of the same figure, we show that each logical stage of the
+application may again be another pipeline, with depencies among sub-stages and
+with implementation for multiple devies, eg. CPU or/and GPU. The allowing an
+stage to be described as a pipeline with multiple tasks has to be with the need
+of exporting operations with different performance to the local scheduler
+(described latter but similar to IPDPS), and that we want the application to output
+each small intermediary computation to the file system.
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[width=0.47\textwidth]{images/executionModel}
+\caption{Overview of the system architecutre, and task mapping.}
+\label{fig:execModel}
+\end{center}
+\end{figure}
+
+Figure~\ref{fig:execModel} than shows the runtime system design, with the
+interaction among its components. In this system, the \emph{Manager} is the
+process responsible for handling dependecies among different instantiations of
+the dataflow stages (Tasks) (middle level of Figure~\ref{fig:sampleDataflow}),
+and to dispath those tasks for execution with the \emph{Workers}. The
+\emph{Workers} will communicate with the \emph{Manager} to request tasks to
+compute, retrieve those tasks and executed them. Each task will read data from
+a file system and may spawn a pipeline of sub-tasks that is locally scheduled
+by each \emph{Worker}.  When all sub-tasks of a given task are computed, the
+\emph{Worker} informs the \emph{Manager}, which may assign another task for
+execution. In practice, a single worker may execute multiple Stages, even
+concurrently, and both sets of workers presented in Figure~\ref{fig:execModel}
+are not necessarily disjoint. 
+
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[width=0.47\textwidth]{images/worker-environment}
+\caption{Workers Environment: the workers is a multi-thread process that may
+take advantage of all processing elements in a node to execute the
+applications' tasks. Thus, usually, only a single worker is assigned per node,
+what provides the computing thread with the ability of sharing the memory adress and,
+consequently, elimintas typical need intra-node data replication.}
+\label{fig:workerEnv}
+\end{center}
+\end{figure}
+
+The environment of each Worker, shown in Figure~\ref{fig:workerEnv}, is limilar
+to what we proposed for IPDPS, with addition of a few features. As discussed,
+tasks dependencies have been added, as well as a communication layer module
+will be accoplated to exchange information with the \emph{Manager} and locally
+orchastrate the execution.
+
+
+%\subsection{Example Application}
+
+
+

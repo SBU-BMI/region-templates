@@ -1,0 +1,42 @@
+\section{Learning to Schedule}
+
+In our work, we have so far asked the programmer to provides us with
+information about the expected performance (speedup) of tasks when executed in
+the GPU.  The idea here is to start working towards an automatition of the
+process learning the performance of application (stages of the application),
+and use this information to automatically schedule the application in CPU-GPU
+environments.
+
+A few works have started addressing this problem on the context of modeling and
+estimation of GPU application's performance, most of them using history based
+strategy based on application
+profiling~\cite{Augonnet:2009:ACP:1884795.1884805,gregg10contention,5645393,Jimenez:2008:PRC:1505816.1505822,Kicherer:2011:CFM:1944862.1944883}.
+Most of these works, however, fail miserably to provide a generic approach, and
+are very simplistic though they already show that doing such a profiling based
+performance estimation is promissing. A related interesting work for
+multicores CPUs only is~\cite{LUO:2009:INRIA-00436034:1}, where the authors
+take advantage of profile history to estimage the set of optimizations that
+would result into the best performance for an application. In my understanding,
+we could leverage some of their propositions in our work. Moreover, there is
+also some work on performance modeling~\cite{1138092,1498789} which states that
+computing relative performance among devices (different processors or disks,
+etc) is easier than trying to estimate execution times. This is good news once
+our scheduling policies are based on speedups. Another good news is that the
+accuracy of the speedup estimates is not critical as long as the order of tasks
+is not affected, as we stated for IPDPS. Also, a estimation that separates
+tasks with small and large speedups should be enough to achieve good
+performance.
+
+
+To accomplish this task we will need the following components.
+
+\begin{itemize}
+	\item Knowledge Database: to store performance data collected;
+
+	\item Performance fitting algorithms: to estimate performance from the history data stored at the Knowledge database;
+
+	\item Automated task grouping: is one of the features that could be derived from this knowledge.
+\end{itemize}
+
+
+

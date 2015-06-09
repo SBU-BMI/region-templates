@@ -1,0 +1,49 @@
+DataSpaces IB ver. 1.03beta
+Usage:
+make lib : 	create lib files
+make test: 	create executables put and get test
+		use qsub jobfiles/jobxx to run the test on sith
+		remember to run make restart to remove conf. files after each run
+		DataSpaces IB will run on 1024 cores (clients) with 8-16 staging servers
+		I suggest to try a smaller test first to see how it goes.
+
+Make test will create 3 executables: dataspaces_sever, test_get and test_put
+The configuration of the "space" and be found in dataspaces.conf.
+This  file should  be  editted  according to  the
+specific  requirements for  DataSpaces  depend on how your applications.  The
+configuration parameters are:
+  ndim : number of  dimensions for the application data domain
+  dimx : size of x dimension
+  dimy : size of y dimension
+  dimz : size of z  dimension
+  max_versions :  the maximum  number of versions  (in iteration-based
+                  simulations) of a data object stored in DataSpaces
+  max_reader   :  the  maximum  number  of   concurrent  data  reading
+                  applications in the workflow
+
+For test_put and test_get, you should not have to change anything.
+
+Depend on which queuing system you have, you can create your own job script.
+The exampe job script is for mpirun.
+
+The DataSpaces server executable has three command line options:
+
+  --server, -s    number of server instance/staging nodes
+  --cnodes, -c    number of compute nodes
+  --conf, -f      path to the configuration file
+
+
+The test application executables  "test_put" and "test_get" requires 8
+arguments as arg1-arg8:
+
+  arg1 : number of total application processes
+  arg2 : number of processes in x direction (of the process layout)
+  arg3 : number of processes in y direction (of the process layout)
+  arg4 : number of processes in z direction (of the process layout)
+  arg5 : block size per process in x direction (of the app data domain)
+  arg6 : block size per process in y direction (of the app data domain)
+  arg7 : block size per process in z direction (of the app data domain)
+  arg8 : number of iterations
+
+
+

@@ -1,0 +1,29 @@
+dnl
+dnl Copyright(C) Ciprian Docan
+dnl
+AC_INIT(sender.c)
+dnl AC_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE(sender,0.0.1)
+dnl AM_CONFIG_HEADER(config.h)
+
+dnl Set compiler for catamount target
+dnl CC=qk-gcc
+CFLAGS="-Wall -g -DDEBUG_LEVEL=5 -DORNL"
+
+dnl Test command line parameters ...
+AC_ARG_ENABLE(catamount, [  --enable-catamount      compile the sources for catamount OS, default=no], CC=qk-gcc, CC=gcc)
+
+ARFLAGS="-rc"
+AC_SUBST(ARFLAGS)
+
+dnl Check for programs ... 
+AC_PROG_CC
+AC_PROG_RANLIB
+AC_PATH_PROG(AR,ar)
+
+dnl Check function existance in std libs ...
+dnl AC_CHECK_FUNC(pthread_create, echo yes, AC_MSG_ERROR(no pthreads!))
+# AC_CHECK_LIB(pthreads,pthread_create,,AC_MSG_ERROR(no pthreads!))
+
+dnl Output the Makefile ... 
+AC_OUTPUT(Makefile)

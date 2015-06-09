@@ -1,0 +1,37 @@
+#!/bin/sh
+#PBS -N dataSpaces
+#PBS -j oe
+#PBS -A UT-NTNL0111
+
+### Unused PBS options ###
+## If left commented, must be specified when the job is submitted:
+## 'qsub -l walltime=hh:mm:ss,nodes=12:ppn=4'
+##
+#PBS -l walltime=00:20:00
+#PBS -l nodes=4:ppn=1:gpus=3
+
+IMG_ROOT=/lustre/medusa/gteodor/dspace-images/TCGA-02-0001-01Z-00-DX1.svs-tile/TCGA-02-0001-01Z-00-DX1.svs-0000045056-0000032768.tiff
+
+IMG_ROOT=/lustre/medusa/gteodor/dspace-images/TCGA-02-0001-01Z-00-DX1.svs-tile
+IMG_ROOT=/lustre/medusa/gteodor/out/pbm-big
+IMG_ROOT=/lustre/medusa/gteodor/out/pbm
+#IMG_ROOT=/lustre/medusa/gteodor/out/compressed
+
+cd $PBS_O_WORKDIR
+date;
+hostname;
+echo "4 node, 4 servers, and 8 clients - pbm entire dataset"
+
+rm -f conf srv.lck
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/lustre/medusa/gteodor/opencv/OpenCV-2.3.1-build/lib/
+
+mpirun -n 4 ./dataspaces_server -s 4 -c 8 &
+sleep 5
+
+mpirun -n 8 ./test_put_images_2D 8 ${IMG_ROOT} & 
+
+
+wait
+
+killall -9 dataspaces_server
+date

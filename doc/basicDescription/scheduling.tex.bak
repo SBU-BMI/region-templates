@@ -1,0 +1,56 @@
+\section{Runtime Scheduling}
+
+In addition to building the runtime system infra-structure described in last
+section, it will be necessary to provide a hierarchical scheduling to assign
+task from the \emph{Manager} to the \emph{Workers}, called Manager Level
+Scheduling, as well as internally to each \emph{Worker} --- Worker Level Scheduling. 
+
+\subsection{Manager Level Scheduling}
+
+The main objective is to assign tasks to \emph{Workers} in order to optimize
+the performance of the overall system. There are two major aspects that should
+be considered:~(i)~Load imbalance among \emph{Workers}, and a demand-driven
+task assignemnt among Workers and Manager should be enough for solving this
+problem; (ii)~A smarter choice of which task to assign for a Worker could also
+potentially improve the performance. For instance, if a Worker already has a
+number of tasks with low speedup, it would be better to sent a task with high
+speedup for that Worker, which will be able to make better local scheduling
+decisions. This tends to be better than traditional FCFS schedulings, as we
+observed in the PRIORITY compared to FCFS.  Below is the list of features that
+should be added to the Manager scheduler.
+
+\begin{itemize}
+	\item Demand-driven tasks assignment;
+
+	\item Multi-task assignment to overlap communication/computation;
+
+	\item Performance Aware task choice;
+\end{itemize}
+
+\subsection{Worker Level Scheduling}
+
+The Worker level scheduler is more aligned with what we already proposed for 
+the IPDPS paper, with addition of dependency among tasks, and potentially new
+scheduling techniques that take into accoung the number of depencies when
+choosing a task to executed. The sumary of features is:
+
+\begin{itemize}
+	\item Support to dependency among sub-tasks;
+
+	\item Scheduling policies similar to those described in~\cite{Teodoro-IPDPS2012};
+
+	\item May include number of tasks dependencies into the scheduling decision;
+
+\end{itemize}
+
+
+\subsection{Analytical Performance Model}
+
+\begin{itemize}
+
+	\item Set of tools to analytically estimate applications' performance.
+We already have a draft that we intended to use with the HPDC, before it turn
+into Morphological Reconstruction;
+
+\end{itemize}
+

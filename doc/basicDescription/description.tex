@@ -1,0 +1,107 @@
+\documentclass{sig-alternate}
+
+\usepackage{epsfig}
+\usepackage{graphicx}
+%\usepackage{fancybox}
+\usepackage{amssymb}
+%\usepackage{stmaryrd}
+%\usepackage{a4wide}
+%\usepackage{subfigure}
+%\usepackage[noend]{algorithmic}
+%\usepackage{algorithm}
+%\usepackage{listings}
+%\usepackage{moreverb}
+%\usepackage{boxedminipage}
+%\usepackage{algorithm2e}
+%\def\floatpagefraction{0.99}
+%\linespread{0.99}
+%\usepackage{multirow}
+%\usepackage{subtable}
+%\usepackage{rotating}
+\usepackage{subfigure}
+
+%\usepackage[noend]{algcompatible}
+
+\begin{document}
+%
+% --- Author Metadata here ---
+\conferenceinfo{XXX 2012}{City}
+\CopyrightYear{2012} % Allows default copyright year (20XX) to be over-ridden - IF NEED BE.
+%\crdata{0-12345-67-8/90/01}  % Allows default copyright data (0-89791-88-6/97/05) to be over-ridden - IF NEED BE.
+% --- End of Author Metadata ---
+
+\title{X?Name?X: Efficient Execution of Hierarchical Pipelines on Heterogeneous Platforms}
+\sloppy
+
+%\numberofauthors{1} %  in this sample file, there are a *total*
+%% of EIGHT authors. SIX appear on the 'first-page' (for formatting
+%% reasons) and the remaining two appear in the \additionalauthors section.
+%%
+%\author{
+%\alignauthor
+%George Teodoro, Tony Pan, Tahsin M. Kurc, Lee Cooper, Jun Kong, and Joel H. Saltz\\
+%\affaddr{Center for Comprehensive Informatics}\\
+%\affaddr{Emory University}\\
+%\affaddr{Atlanta, GA 30322}\\
+%\email{\{george.teodoro,tony.pan,tkurc,lee.cooper,jun.kong,jhsaltz\}@emory.edu}
+%}
+\maketitle
+\begin{abstract}
+%
+abstract.
+%
+\end{abstract}
+
+\section{Motivation/Objective}
+
+The successful introduction of accelerators as general purpose processors is
+changing current High Performance Computing (HPC) systems, which are nowadays
+being deployed as heterogeneous CPU-GPU equipped platforms. Taking advantage of
+those solutions, however, still be a very hard programming task, mainly due to
+the lack of high level programming languages, and runtime frameworks to
+abstract the complex interactions among applications and heterogeneous systems.
+While some work has been done in order to execute simple kernel applications
+using CPUs and GPUs cooperatively, including MapReduce computations for shared
+memory machines~\cite{mars,merge,qilin09luk}, the execution of more complex
+real world pipelined applications (e.g. with dependency among stages) in
+distributed environments still a challenging open problem. The goal of this
+work is to propose and implement runtime support to make easier/viable the
+deployment of real complex applications on distributed environments. To
+accomplish this tasks we will automate/hide from the user most of the complex
+tasks regarding interactions of the application with the executing platform,
+and provide a set of non-trivial optimizations/scheduling mechanisms.
+
+\input{runtime}
+
+\input{scheduling}
+
+\input{learning}
+
+\input{related}
+
+%\end{document}  % This is where a 'short' article might terminate
+
+%ACKNOWLEDGMENTS are optional
+%\section{Acknowledgments}
+%This section is optional; it is a location for you
+%to acknowledge grants, funding, editing assistance and
+%what have you.  In the present case, for example, the
+%authors would like to thank Gerald Murray of ACM for
+%his help in codifying this \textit{Author's Guide}
+%and the \textbf{.cls} and \textbf{.tex} files that it describes.
+
+%
+% The following two commands are all you need in the
+% initial runs of your .tex file to
+% produce the bibliography for the citations in your paper.
+\bibliographystyle{abbrv}
+\bibliography{george}  % sigproc.bib is the name of the Bibliography in this case
+% You must have a proper ".bib" file
+%  and remember to run:
+% latex bibtex latex latex
+% to resolve all references
+%
+
+%\balancecolumns % GM June 2007
+% That's all folks!
+\end{document}

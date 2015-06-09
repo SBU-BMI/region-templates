@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<CacheConfig>
+  <_><type>LOCAL</type>
+    <device>RAM</device>
+    <capacity>100</capacity>
+    <path></path>
+    <level>1</level></_>
+  <_><type>GLOBAL</type>
+    <device>HDD</device>
+    <capacity>15000</capacity>
+    <path>/home/george/temp/</path>
+    <level>2</level></_></CacheConfig>
+</opencv_storage>
