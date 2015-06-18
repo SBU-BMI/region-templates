@@ -49,6 +49,7 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 					std::cout << "ERROR: lock file: "<< lockFile << std::endl;
 					return false;
 				}
+				fclose(pFile);
 
 			}
 			cv::FileStorage fs2(inputFile, cv::FileStorage::READ);
@@ -86,6 +87,7 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 						std::cout << "ERROR:::: could not read lock file:"<< lockFile << std::endl;
 						return false;
 					}
+					fclose(pFile);
 				}
 				// It is stored as an image
 				chunkData = cv::imread(inputFile, -1);
@@ -152,6 +154,7 @@ bool DataRegionFactory::writeDDR2DFS(DenseDataRegion2D* dataRegion, std::string 
 			if(pFile == NULL){
 				std::cout << "ERROR:::: could not write lock file" << std::endl;
 			}
+			fclose(pFile);
 
 		}else{
 			if(dataRegion->getOutputExtension() == DataRegion::XML){
@@ -178,6 +181,7 @@ bool DataRegionFactory::writeDDR2DFS(DenseDataRegion2D* dataRegion, std::string 
 				if(pFile == NULL){
 					std::cout << "ERROR:::: could not write lock file" << std::endl;
 				}
+				fclose(pFile);
 			}else{
 				std::cout << "UNKNOW file extension: "<< dataRegion->getOutputExtension() << std::endl;
 			}
