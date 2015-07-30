@@ -193,7 +193,9 @@ void Manager::sendComponentInfoToWorker(int worker_id, PipelineComponentBase *pc
 			}
 		}
 	}
+#ifdef DEBUG
 	std::cout << "Done send comp" << std::endl;
+#endif
 	delete[] buff;
 }
 
@@ -300,7 +302,9 @@ void Manager::manager_process()
 					// calculate size of area in which components data is stored, its used to move to extra_data (RT) area
 					for(int i = 0; i < number_components_completed; i++){
 						// size of data of each component.
+#ifdef DEBUG
 						std::cout << "CompResultDataSize: " << ((int*)(msg+extracted_size_bytes))[1] << std::endl;
+#endif
 
 						extracted_size_bytes += 2 * sizeof(int) + ((int*)(msg+extracted_size_bytes))[1] * sizeof(char);
 					}
@@ -308,7 +312,9 @@ void Manager::manager_process()
 
 					// components with extra data
 					int number_components_extra_data = ((int*) (msg+extracted_size_bytes))[0]; //tasks_data[number_components_completed+1];
+#ifdef DEBUG	
 					std::cout << "Manager: #componets w/ extra data: "<< number_components_extra_data << " extracted bytes: "<< extracted_size_bytes<<std::endl;
+#endif
 					extracted_size_bytes += sizeof(int);
 
 					//int extracted_size_bytes = sizeof(char) + sizeof(int) + number_components_completed * sizeof(int) + sizeof(int);
@@ -386,7 +392,9 @@ void Manager::manager_process()
 
 								long dataReuseSize = 0;
 								int compIdReuse = -1;
+#ifdef DEBUG
 								std::cout << "WorkerId: "<<worker_id<<" "<<compPtrAux->getId() << " dependencies:";
+#endif
 								while(depCompIt != dependentComponents.end()){
 									PipelineComponentBase *compReleased = ((PipelineComponentBase*)(*depCompIt));
 									long compDataReuse = compReleased->getAmountOfDataReuse(worker_id);
@@ -397,8 +405,9 @@ void Manager::manager_process()
 										dataReuseSize = compDataReuse;
 										compIdReuse = compReleased->getId();
 									}
-
+#ifdef DEBUG
 									std::cout << " taskId: " << compReleased->getId() << " dataReused: "<< compReleased->getAmountOfDataReuse(worker_id);
+#endif
 									depCompIt++;
 								}
 
@@ -407,8 +416,9 @@ void Manager::manager_process()
 								// execution w/ that given worker.
 								if(dataReuseSize > 0 && compIdReuse != -1)
 									this->compToSchedDataAwareSchedule[worker_id].push_back(compIdReuse);
-
+#ifdef DEBUG
 								std::cout << std::endl;
+#endif
 							}
 							this->resolveDependencies(compPtrAux);
 

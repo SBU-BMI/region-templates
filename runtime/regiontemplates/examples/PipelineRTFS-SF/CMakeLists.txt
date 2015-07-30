@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(HelloWorldRTFS)
+project(PipelineRTFS-SF)
 
 find_package( OpenCV REQUIRED )
 
@@ -11,27 +11,18 @@ include_directories(${RegionTemplate_SOURCE_DIR})
 include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
 
 # nscale dirs
-#stampede
-#set(nscalesrcdir /work/02542/gteodoro/nscale/src/)
-#set(nscalebuilddir /work/02542/gteodoro/nscale/build)
-#desktop
-set(nscalesrcdir /home/george/nscale/src/)
-set(nscalebuilddir /home/george/nscale/build/)
-#notebook
-#set(nscalesrcdir /home/george/workspace/nscale-normalization/src/)
-#set(nscalebuilddir /home/george/workspace/nscale-normalization/build/)
-#laico
-#set(nscalesrcdir /home/gteodoro/nscale/src/)
-#set(nscalebuilddir /home/gteodoro/nscale/build/)
+find_path( NSCALE_SRC_DIR REQUIRED )
+find_path( NSCALE_BUILD_DIR REQUIRED )
+set(nscalesrcdir ${NSCALE_SRC_DIR})
+set(nscalebuilddir ${NSCALE_BUILD_DIR})
 
-#/home/george/workspace/nscale-normalization/
 #includes
 include_directories(${nscalesrcdir}/segment)
 include_directories(${nscalesrcdir}/segment/cuda)
 include_directories(${nscalesrcdir}/common)
 include_directories(${nscalesrcdir}/features)
 
-
+file(COPY ${PipelineRTFS-SF_SOURCE_DIR}/rtconf.xml DESTINATION ${PipelineRTFS-SF_BINARY_DIR}/)
 # Make sure the compiler can find the library in runtime system directory
 link_directories(${Runtime_SOURCE_DIR})
 # nscale lib dir
@@ -54,11 +45,8 @@ target_link_libraries(${libname} regiontemplates)
 target_link_libraries("${libname}" segment featuresAll ${OpenCV_LIBS})
         
 # Create executable to be built from the files listed
-add_executable(HelloWorldRTFS HelloWorld.cpp)
+add_executable(PipelineRTFS-SF PipelineManager.cpp)
 
 # Link the executable to the runtime system library
-target_link_libraries(HelloWorldRTFS runtimesystem "${libname}")
-target_link_libraries(HelloWorldRTFS regiontemplates)
-
-# nscale libs
-#target_link_libraries(HelloWorldRT segment featuresAll ${OpenCV_LIBS})
+target_link_libraries(PipelineRTFS-SF runtimesystem "${libname}")
+target_link_libraries(PipelineRTFS-SF regiontemplates)

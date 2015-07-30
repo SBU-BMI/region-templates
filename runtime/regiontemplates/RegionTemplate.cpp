@@ -469,9 +469,9 @@ bool RegionTemplate::deleteDataRegion(std::string drName, std::string drId,
 
 					//pthread_mutex_lock(&auxCache->globalLock);
 					if(auxCache != NULL){
-						//#ifdef DEBUG
+						#ifdef DEBUG
 						std::cout << "auxCache->deleteDr: " << this->getName() << ":"<< this->getId() << ":"<< retValue->getName() << ":"<<  retValue->getId() << ":"<<  retValue->getTimestamp() << ":"<<  retValue->getVersion() << ":"<<  true << ":"<<  auxCache->getWorkerId() << ":"<<  retValue->getWorkerId() << std::endl;
-						//#endif
+						#endif
 
 						auxCache->deleteDR(this->getName(), this->getId(), retValue->getName(), retValue->getId(), retValue->getTimestamp(), retValue->getVersion());
 

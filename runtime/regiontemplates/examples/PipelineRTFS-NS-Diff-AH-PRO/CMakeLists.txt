@@ -11,12 +11,15 @@ include_directories(${RegionTemplate_SOURCE_DIR})
 include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
 
 # nscale dirs
+find_path( NSCALE_DIR REQUIRED )
+set(nscalesrcdir ${NSCALE_DIR}/src/)
+set(nscalebuilddir ${NSCALE_DIR}/build/)
 #stampede
 #set(nscalesrcdir /work/02542/gteodoro/nscale/src/)
 #set(nscalebuilddir /work/02542/gteodoro/nscale/build)
 #desktop
-set(nscalesrcdir /home/george/nscale/src/)
-set(nscalebuilddir /home/george/nscale/build/)
+#set(nscalesrcdir /home/george/nscale/src/)
+#set(nscalebuilddir /home/george/nscale/build/)
 #notebook
 #set(nscalesrcdir /home/george/workspace/nscale-normalization/src/)
 #set(nscalebuilddir /home/george/workspace/nscale-normalization/build/)

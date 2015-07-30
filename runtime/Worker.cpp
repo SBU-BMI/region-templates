@@ -281,7 +281,10 @@ void Worker::workerProcess()
 			{
 
 				PipelineComponentBase *pc = this->receiveComponentInfoFromManager();
+#ifdef DEBUG
 				std::cout << "maxActive: " << this->getMaxActiveComponentInstances() << " activeComps: "<< this->getActiveComponentInstances() <<" #resTasks:"<< std::endl;
+#endif
+
 				if(pc != NULL){
 					// One more component instance was received and is being dispatched for execution
 					this->incrementActiveComponentInstances();
@@ -428,7 +431,9 @@ void Worker::notifyComponentsCompleted()
 		for(; itListCompCore != this->computedComponents.end(); itListCompCore++){
 			// space to store id + resultSize + result
 			message_size += sizeof(int) + sizeof(int) + ((int*)(*itListCompCore))[1] * sizeof(char); // result size is stored after the component id in the buffer.
+#ifdef DEBUG
 			std::cout << "Worker: calculating result data size. ::: "<< ((int*)(*itListCompCore))[1] << " message size:: "<< message_size << std::endl;
+#endif
 		}
 
 
@@ -440,7 +445,9 @@ void Worker::notifyComponentsCompleted()
 		for(; itListComp != this->computedComponentsDataSize.end(); itListComp++){
 			// space to store size of data (int) + space to store data itself
 			message_size += sizeof(int) + *itListComp;
+#ifdef DEBUG
 			std::cout << "Worker: extra data size: "<< *itListComp << std::endl;
+#endif
 		}
 
 #ifdef DEBUG
@@ -472,7 +479,9 @@ void Worker::notifyComponentsCompleted()
 		for(int i = 0; i < number_components; i++){
 			char *data = this->computedComponents.front();
 			int bufferSize = sizeof(int) + sizeof(int) + ((int*)data)[1] * sizeof(char);
+#ifdef DEBUG
 			std::cout << "Worker: resultDataSize: " << ((int*)data)[1] <<std::endl;
+#endif
 			// Pack ith component
 			memcpy(msg+packed_data_size, data, bufferSize);
 			packed_data_size += bufferSize;
@@ -487,7 +496,9 @@ void Worker::notifyComponentsCompleted()
 
 		// Store number of components with extra data
 		((int*)(msg+packed_data_size))[0] = this->computedComponentsDataSize.size();
+#ifdef DEBUG
 		std::cout << "Worker: components w/ extra data: "<< this->computedComponentsData.size() << " packed_data_size: "<< packed_data_size<< std::endl;
+#endif
 		packed_data_size += sizeof(int);
 
 		int numComponentDataElements = computedComponentsDataSize.size();
@@ -509,10 +520,11 @@ void Worker::notifyComponentsCompleted()
 			this->computedComponentsData.pop_front();
 
 		}
+#ifdef DEBUG
 		std::cout << "Packed data: "<< packed_data_size << "messageSize: "<< message_size<< std::endl;
 		std::cout << "number of components: " << ((int*)(msg+sizeof(char)))[0] << std::endl;
 		std::cout  << "Worker: completed ID: " << ((int*)(msg+sizeof(char)))[1] << std::endl;
-
+#endif
 		// Release list lock
 		pthread_mutex_unlock(&this->computedComponentsLock);
 

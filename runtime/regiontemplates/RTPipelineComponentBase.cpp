@@ -16,7 +16,9 @@ RTPipelineComponentBase::~RTPipelineComponentBase() {
 	// Delete associated region templates: this is wrong. Other components also access
 	// the same region templates
 	if(this->getLocation() == PipelineComponentBase::WORKER_SIDE){
+#ifdef DEBUG
 		std::cout << "~RTPipelineComponentBase: nRegionTemplates: " << this->regionTemplates.size() << std::endl;
+#endif
 		std::map<std::string, RegionTemplate*>::iterator rtIt =  this->regionTemplates.begin();
 		for(; rtIt != this->regionTemplates.end(); rtIt++){
 			RegionTemplate *rt = rtIt->second;
@@ -270,8 +272,9 @@ int RTPipelineComponentBase::instantiateRegionTemplates() {
 	}
 
 	long long endStage = Util::ClockGetTime();
+#ifdef DEBUG
 	std::cout << "\t\treadingRTTime: "<< endStage-initStage << std::endl;
-
+#endif
 	return 0;
 }
 
@@ -301,7 +304,9 @@ void RTPipelineComponentBase::updateRegionTemplateInfo(RegionTemplate* rt) {
 #endif
 
 	if(curRt != NULL){
+#ifdef DEBUG
 		std::cout << "NUMDR: " << rt->getNumDataRegions() << std::endl;
+#endif
 		for(int i = 0; i < rt->getNumDataRegions(); i++){
 
 			DataRegion* dr = rt->getDataRegion(i);
@@ -376,8 +381,9 @@ void RTPipelineComponentBase::addInputOutputDataRegion(
 }
 
 int RTPipelineComponentBase::stageRegionTemplates() {
+#ifdef DEBUG
 	std::cout << "Number of output data regions" << this->output_data_regions.size() << std::endl;
-
+#endif
 	long long initStage = Util::ClockGetTime();
 
 	// Check if the region templates need to be staged. if any data region is null, it is not staged.
@@ -401,7 +407,9 @@ int RTPipelineComponentBase::stageRegionTemplates() {
 
 			// if we have found regions with that name
 			if(it != rt->templateRegions.end()){
+#ifdef DEBUG
 				std::cout << "CallBack: #drs "<< rt->templateRegions.size()<<std::endl;
+#endif
 				// Walk through all data regions with given name and stage them
 				std::list<DataRegion*>::iterator listIt = (*it).second.begin();
 				for(; listIt != (*it).second.end(); listIt++){
@@ -413,7 +421,9 @@ int RTPipelineComponentBase::stageRegionTemplates() {
 					//pthread_mutex_lock(&auxCache->globalLock);
 					if(auxCache != NULL && dr->isModified()){
 						rt->getCache()->insertDR(rt->getName(), rt->getId(), dr, true);
+#ifdef DEBUG
 						std::cout << "Stage data region into cache: "<< rtName << ":" << drName << " timestamp: "<< dr->getTimestamp() << " version:"<< dr->getVersion()<<" id: "<< dr->getId() <<std::endl;
+#endif
 					}
 
 					//pthread_mutex_unlock(&auxCache->globalLock);
@@ -426,8 +436,9 @@ int RTPipelineComponentBase::stageRegionTemplates() {
 		}
 	}
 	long long endStage = Util::ClockGetTime();
+#ifdef DEBUG
 	std::cout << "\t\tstagingRTTime: "<< endStage-initStage << std::endl;
-
+#endif
 	return 0;
 }
 

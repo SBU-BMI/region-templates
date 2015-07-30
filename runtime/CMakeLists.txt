@@ -47,7 +47,7 @@ set( libname runtimesystem )
 # if build same applications is set, than build them: currently just one
 add_subdirectory("ResourceManager")
 
-set(USE_REGION_TEMPLATES OFF CACHE BOOL "Include compilation of the Region Templates framework")
+set(USE_REGION_TEMPLATES ON CACHE BOOL "Include compilation of the Region Templates framework")
 
 if(USE_REGION_TEMPLATES)
 	# add region template compiling flag

@@ -20,7 +20,6 @@ Segmentation::~Segmentation() {
 
 int Segmentation::run()
 {
-
 	// Print name and id of the component instance
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
@@ -53,29 +52,6 @@ int Segmentation::run()
 	}else{
 		std::cout << __FILE__ << ":" << __LINE__ <<" RT == NULL" << std::endl;
 	}
-
-
-//	this->stageRegionTemplates();
-
-/*	// Retrieve an argument value, and transform it to integer
-	b = 1; //atoi (((ArgumentString*)this->getArgument(0))->getArgValue().c_str());
-
-	// Create internal pipeline
-	// Fist tasks without dependencies
-	TaskSum* tA = new TaskSum(&aOut, &b, &c, "A.1");
-
-	// Second task depending on tA
-	TaskSum* tB = new TaskSum(&bOut, &aOut, &k1, "A.2");
-	tB->addDependency(tA);
-
-	// Third depends on tB
-	TaskSum* tC = new TaskSum(&cOut, &bOut, &k2, "A.3");
-	tC->addDependency(tB);
-
-	// Dispatch tasks for execution with Resource Manager.
-	this->executeTask(tA);
-	this->executeTask(tB);
-	this->executeTask(tC);*/
 
 	return 0;
 }

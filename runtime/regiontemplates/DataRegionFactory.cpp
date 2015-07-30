@@ -46,9 +46,12 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 				lockFile.append(".loc");
 				FILE *pFile = fopen(lockFile.c_str(), "r");
 				if(pFile == NULL){
+#ifdef DEBUG
 					std::cout << "ERROR: lock file: "<< lockFile << std::endl;
+#endif
 					return false;
 				}
+
 				fclose(pFile);
 
 			}
@@ -56,9 +59,15 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 			if(fs2.isOpened()){
 				fs2["mat"] >> chunkData;
 				fs2.release();
+
+#ifdef DEBUG
 				std::cout << "LOADING XML input data: " << inputFile << " dataRegion: "<< dataRegion->getName() << " chunk.rows: "<< chunkData.rows<< " chunk.cols: "<< chunkData.cols<<std::endl;
+#endif
 			}else{
+
+#ifdef DEBUG
 				std::cout << "Failed to read Data region. Failed to open FILE: " << inputFile << std::endl;
+#endif
 			}
 		}else{
 			if(dataRegion->getOutputExtension() == DataRegion::PBM){
@@ -84,16 +93,23 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 					lockFile.append(".loc");
 					FILE *pFile = fopen(lockFile.c_str(), "r");
 					if(pFile == NULL){
+
+#ifdef DEBUG
 						std::cout << "ERROR:::: could not read lock file:"<< lockFile << std::endl;
+#endif
 						return false;
 					}
 					fclose(pFile);
 				}
+
 				// It is stored as an image
 				chunkData = cv::imread(inputFile, -1);
 				//chunkData = cv::imread(dataRegion->getId(), -1);
 				if(chunkData.empty()){
+
+#ifdef DEBUG
 					std::cout << "Failed to read image:" << inputFile << std::endl;
+#endif
 
 				}else{
 					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
@@ -110,7 +126,10 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 			// read the data file
 			cv::Mat data = cv::imread(data_pair.second, -1);
 			if(data.empty()){
+
+#ifdef DEBUG
 				std::cout << "Failed to read image:" << dataRegion->getId() << std::endl;
+#endif
 				return false;
 			}else{
 				// if it was successfully, insert data into the data region vector chunked data
@@ -127,7 +146,10 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 bool DataRegionFactory::writeDDR2DFS(DenseDataRegion2D* dataRegion, std::string path, bool ssd) {
 	bool retVal = true;
 //	if(dataRegion->getData().rows != 0 && dataRegion->getData().cols !=0){
+
+#ifdef DEBUG
 		std::cout << "DataRegion: "<< dataRegion->getName() << " extension: "<< dataRegion->getOutputExtension() << std::endl;
+#endif
 		if(dataRegion->getOutputExtension() == DataRegion::PBM){
 			std::string outputFile;
 			if(!path.empty())outputFile.append(path);
@@ -143,19 +165,25 @@ bool DataRegionFactory::writeDDR2DFS(DenseDataRegion2D* dataRegion, std::string 
 			}else{
 				outputFile.append(".tiff");
 			}
+
+#ifdef DEBUG
 			std::cout << "rows: "<< dataRegion->getData().rows << " cols: "<< dataRegion->getData().cols <<std::endl;
+#endif
 			if(dataRegion->getData().rows > 0 && dataRegion->getData().cols > 0){
 				retVal = cv::imwrite(outputFile, dataRegion->getData());
 			}
-			 std::cout<< "DFS: "<< outputFile<< std::endl;
+
+
 			// create lock.
 			outputFile.append(".loc");
 			FILE *pFile = fopen(outputFile.c_str(), "w");
 			if(pFile == NULL){
+#ifdef DEBUG
 				std::cout << "ERROR:::: could not write lock file" << std::endl;
+#endif
 			}
-			fclose(pFile);
 
+			fclose(pFile);
 		}else{
 			if(dataRegion->getOutputExtension() == DataRegion::XML){
 				std::string outputFile;
@@ -179,8 +207,11 @@ bool DataRegionFactory::writeDDR2DFS(DenseDataRegion2D* dataRegion, std::string 
 				outputFile.append(".loc");
 				FILE *pFile = fopen(outputFile.c_str(), "w");
 				if(pFile == NULL){
+#ifdef DEBUG
 					std::cout << "ERROR:::: could not write lock file" << std::endl;
+#endif
 				}
+
 				fclose(pFile);
 			}else{
 				std::cout << "UNKNOW file extension: "<< dataRegion->getOutputExtension() << std::endl;
@@ -281,16 +312,12 @@ bool DataRegionFactory::stageDataRegion(DataRegion* dr) {
 
 	switch(dr->getType()){
 		case RegionTemplateType::DENSE_REGION_2D:
-			std::cout << dr->getName() << " outpuType: " <<dr->getOutputType() << std::endl; 
 			switch(dr->getOutputType()){
 				case DataSourceType::FILE_SYSTEM:
-					std::cout << "write to FS " << std::endl;
 					writeDDR2DFS(dr2D);
 					break;
 				case DataSourceType::DATA_SPACES:
-					std::cout << "write to DS " << std::endl;
 					writeDDR2DATASPACES(dr2D);
-//					std::cout << "Data Spaces data source not implemented yet" << std::endl;
 					break;
 				default:
 					std::cout << "Unknown data source type:" << dr->getOutputType() << std::endl;

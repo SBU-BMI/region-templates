@@ -68,10 +68,10 @@ void Cache::parseConfFile(std::string confFile) {
 		// mapping of level to cache component
 		std::map<int, CacheComponent*> parserAux;
 
-		std::cout << "rtConf opened" << std::endl;
+		std::cout << "Cache infra configuration:" << std::endl;
 		cv::FileNode cacheConf = fs["CacheConfig"];
 
-		std::cout << "nodeSize: "<< cacheConf.size() << std::endl;
+//		std::cout << "nodeSize: "<< cacheConf.size() << std::endl;
 		cv::FileNodeIterator it = cacheConf.begin(), itEnd = cacheConf.end();
 		int idx = 0;
 		for(; it != itEnd; it++){
@@ -194,8 +194,9 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 //	std::cout << "Insert: level:"<<i<< " "<<dataRegion->getName()<< " "<< dataRegion->getId() << " size:"<<
 //			dataRegion->getDataSize()<< " version: "<< dataRegion->getVersion() <<" empty? "<< dataRegion->empty()<< " capacity:"<<this->cacheLayers[i]->getCapacity()<<" used: "<<
 //			this->cacheLayers[i]->getCapacityUsed()<<std::endl;
-
+#ifdef DEBUG
 	std::cout <<"FirstGlobal: "<< this->getFirstGlobalCacheLevel() << std::endl;
+#endif
 	if(this->cacheLayers[i]->getType() == Cache::GLOBAL){
 		this->cacheLayers[i]->unlock();
 
@@ -206,14 +207,18 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 		//i++;
 
 		while(i < this->getFirstGlobalCacheLevel()){
+#ifdef DEBUG
 			std::cout << "InsertLevel: "<< i<< std::endl;
+#endif
 			this->cacheLayers[i]->insertDR(rtName, rtId, dataRegion, copyData);
 			i++;
 		}
 
 		// write through: write to a global storage as well. If it's cache on read, then data is already on global
 		if(!isCacheOnRead){
+#ifdef DEBUG			
 			std::cout << "InsertLevel: "<< i<< std::endl;
+#endif
 			this->cacheLayers[this->getFirstGlobalCacheLevel()]->insertDR(rtName, rtId, dataRegion, copyData);
 		}
 	}
@@ -360,9 +365,9 @@ DataRegion* Cache::getDR(std::string rtName, std::string rtId,
 					// time elapsed in read operation
 					this->inputReadTime += Util::ClockGetTime() - init;
 					this->inputMiss++;
-
+#ifdef DEBUG
 					std::cout << "inputMiss:" << this->inputMiss << " read time: " << this->inputReadTime << std::endl;
-
+#endif
 					pthread_mutex_unlock(&this->cacheInstLock);
 
 				}
