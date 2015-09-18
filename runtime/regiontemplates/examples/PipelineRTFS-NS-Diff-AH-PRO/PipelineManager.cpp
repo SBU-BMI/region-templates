@@ -104,10 +104,13 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 
 	std::vector<ArgumentBase*> targetMeanOptions;
 
-	// add normalization parameters.
-	ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.451225340366));
-	targetMeanAux->addArgValue(ArgumentFloat(-0.0219714958221));
-	targetMeanAux->addArgValue(ArgumentFloat(0.0335194170475));
+	ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.632356));
+	targetMeanAux->addArgValue(ArgumentFloat(-0.0516004));
+	targetMeanAux->addArgValue(ArgumentFloat(0.0376543));
+// add normalization parameters.
+//	ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.451225340366));
+//	targetMeanAux->addArgValue(ArgumentFloat(-0.0219714958221));
+//	targetMeanAux->addArgValue(ArgumentFloat(0.0335194170475));
 	targetMeanOptions.push_back(targetMeanAux);
 
 	/*ArgumentFloatArray *targetMeanAux2 = new ArgumentFloatArray(ArgumentFloat(-0.376));
@@ -231,12 +234,14 @@ int main (int argc, char **argv){
 	 {*/
 
 
-	 if (	harmony_int(hdesc[0], "blue", 210, 240, 5) != 0
-			|| harmony_int(hdesc[0], "green", 220, 240, 40) != 0
-			|| harmony_int(hdesc[0], "red", 220, 240, 40) != 0
+	 if (	
+//harmony_int(hdesc[0], "blue", 210, 240, 5) != 0
+//			|| harmony_int(hdesc[0], "green", 220, 240, 40) != 0
+//			|| harmony_int(hdesc[0], "red", 220, 240, 40) != 0
+			 harmony_int(hdesc[0], "G1", 40, 90, 5) != 0
+//			|| harmony_int(hdesc[0], "G2", 5, 90, 1) != 0
 			|| harmony_real(hdesc[0], "T1", 2.5, 7.5, 0.5) != 0
-			|| harmony_int(hdesc[0], "G1", 60, 90, 1) != 0
-	//		|| harmony_int(hdesc[0], "minSize", 10, 30, 5) != 0
+			|| harmony_int(hdesc[0], "minSize", 5, 30, 5) != 0
 			|| harmony_int(hdesc[0], "maxSize", 900, 1500, 50) != 0
 			|| harmony_int(hdesc[0], "fillHoles", 4, 8, 4) != 0
 			|| harmony_int(hdesc[0], "recon", 4, 8, 4) != 0
@@ -255,11 +260,9 @@ int main (int argc, char **argv){
 	 char numbuf[12];
 	 snprintf(numbuf, sizeof(numbuf), "%d", numClients);
 
+     	harmony_setcfg(hdesc[0], "CLIENT_COUNT", numbuf);
 
-
-     harmony_setcfg(hdesc[0], "CLIENT_COUNT", numbuf);
-
-	 printf("Starting Harmony...\n");
+	printf("Starting Harmony...\n");
 	 if (harmony_launch(hdesc[0], NULL, 0) != 0) {
 		 fprintf(stderr, "Could not launch tuning session: %s. E.g. export HARMONY_HOME=$HOME/region-templates/runtime/build/regiontemplates/external-src/activeharmony-4.5/\n",
 				 harmony_error_string(hdesc[0]));
@@ -292,11 +295,12 @@ int main (int argc, char **argv){
 	 for(int i = 0; i < numClients; i++){
 		 /* Bind the session variables to local variables. */
 		 if (	harmony_bind_int(hdesc[i], "G1", &G1[i]) != 0
-				 || harmony_bind_int(hdesc[i], "blue", &blue[i]) != 0
-				 || harmony_bind_int(hdesc[i], "green", &green[i]) != 0
-				 || harmony_bind_int(hdesc[i], "red", &red[i]) != 0
+//				 || harmony_bind_int(hdesc[i], "blue", &blue[i]) != 0
+//				 || harmony_bind_int(hdesc[i], "green", &green[i]) != 0
+//				 || harmony_bind_int(hdesc[i], "red", &red[i]) != 0
+//				 || harmony_bind_int(hdesc[i], "G2", &G2[i]) != 0
 				 || harmony_bind_real(hdesc[i], "T1", &T1[i]) != 0
-				 //	|| harmony_bind_int(hdesc[i], "minSize", &minSize[i) != 0
+				 || harmony_bind_int(hdesc[i], "minSize", &minSize[i]) != 0
 				 || harmony_bind_int(hdesc[i], "maxSize", &maxSize[i]) != 0
 				 || harmony_bind_int(hdesc[i], "fillHoles", &fillHolesElement[i]) != 0
 				 || harmony_bind_int(hdesc[i], "recon", &morphElement[i]) != 0
@@ -433,8 +437,10 @@ int main (int argc, char **argv){
 					seg->addArgument(new ArgumentInt(minSize[j]));
 					seg->addArgument(new ArgumentInt(maxSize[j]));
 					seg->addArgument(new ArgumentInt(minSizePl[j]));
-					seg->addArgument(new ArgumentInt(minSizeSeg));
-					seg->addArgument(new ArgumentInt(maxSizeSeg));
+					seg->addArgument(new ArgumentInt(minSize[j]));
+					seg->addArgument(new ArgumentInt(maxSize[j]));
+//					seg->addArgument(new ArgumentInt(minSizeSeg));
+//					seg->addArgument(new ArgumentInt(maxSizeSeg));
 					seg->addArgument(new ArgumentInt(fillHolesElement[j]));
 					seg->addArgument(new ArgumentInt(morphElement[j]));
 					seg->addArgument(new ArgumentInt(watershedElement[j]));

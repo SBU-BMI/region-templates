@@ -7,7 +7,8 @@ add_subdirectory("PipelineRTFS-SF")
 #Difference analysis basic pipelines
 #add_subdirectory("PipelineRTFS-NS-Diff")
 #add_subdirectory("PipelineRTFS-NS-Diff-AH")
-#add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
+add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
+add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
 
 #add_subdirectory("PipelineRTFS-NSF-Diff")
 #add_subdirectory("HelloWorldRT")

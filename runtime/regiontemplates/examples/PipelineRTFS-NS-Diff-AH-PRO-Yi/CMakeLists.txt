@@ -1,7 +1,13 @@
 cmake_minimum_required(VERSION 2.6)
-project(PipelineRTFS-NS-Diff-AH-PRO)
+project(PipelineRTFS-NS-Diff-AH-PRO-Yi)
 
 find_package( OpenCV REQUIRED )
+
+
+find_package (ITK)
+if (ITK_FOUND)
+   include(${ITK_USE_FILE})
+endif(ITK_FOUND)
 
 # Make sure the compiler can find the includes of the runtime system 
 include_directories(${Runtime_SOURCE_DIR})
@@ -11,17 +17,13 @@ include_directories(${RegionTemplate_SOURCE_DIR})
 include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
 
 # nscale dirs
-find_path( NSCALE_SRC_DIR REQUIRED )
-find_path( NSCALE_BUILD_DIR REQUIRED )
-set(nscalesrcdir ${NSCALE_SRC_DIR})
-set(nscalebuilddir ${NSCALE_BUILD_DIR})
+find_path( YI_SRC_DIR REQUIRED )
+find_path( YI_BUILD_DIR REQUIRED )
+set(yisrcdir ${YI_SRC_DIR})
+set(yibuilddir ${YI_BUILD_DIR})
 
 #includes
-include_directories(${nscalesrcdir}/segment)
-include_directories(${nscalesrcdir}/segment/cuda)
-include_directories(${nscalesrcdir}/common)
-include_directories(${nscalesrcdir}/features)
-include_directories(${nscalesrcdir}/normalization)
+include_directories(${yisrcdir}/)
 
 
 if(USE_ACTIVE_HARMONY)
@@ -32,12 +34,14 @@ endif(USE_ACTIVE_HARMONY)
 link_directories(${Runtime_SOURCE_DIR})
 # nscale lib dir
 #link_directories(/Users/george/Documents/emory/nscale-sc13/nscale/lib)
-link_directories(${nscalebuilddir}/lib)
+
+link_directories(${yibuilddir}/)
+
 # Create library with components implementation
-set(libname componentnsdiffahpro)
+set(libname componentnsdiffahproyi)
 
 # Source files used by the Runtime System
-set( libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp TaskDiffMask.cpp)
+set( libcomponentssrcs Segmentation.cpp DiffMaskComp.cpp TaskSegmentation.cpp TaskDiffMask.cpp)
 
 # Add rule to generate the Runtime System, as a shared library (.so)
 add_library("${libname}" SHARED ${libcomponentssrcs})
@@ -46,15 +50,17 @@ add_library("${libname}" SHARED ${libcomponentssrcs})
 target_link_libraries("${libname}" runtimesystem)
 target_link_libraries(${libname} regiontemplates)
 
-# nscale libs
-target_link_libraries("${libname}" segment normalization featuresAll ${OpenCV_LIBS})
+target_link_libraries(${libname} ${YI_BUILD_DIR}/liblocalLibraries.a)
+
+
+target_link_libraries("${libname}" ${OpenCV_LIBS} ${ITK_LIBRARIES})
         
 # Create executable to be built from the files listed
-add_executable(PipelineRTFS-NS-Diff-AH-PRO PipelineManager.cpp)
+add_executable(PipelineRTFS-NS-Diff-AH-PRO-Yi PipelineManager.cpp)
 if(USE_ACTIVE_HARMONY)
-	target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
+	target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO-Yi ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
 endif(USE_ACTIVE_HARMONY)
 
 # Link the executable to the runtime system library
-target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO runtimesystem "${libname}")
-target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO regiontemplates)
+target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO-Yi runtimesystem "${libname}")
+target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO-Yi regiontemplates)

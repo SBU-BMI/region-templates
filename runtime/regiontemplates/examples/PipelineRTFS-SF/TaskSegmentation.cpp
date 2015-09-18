@@ -13,8 +13,6 @@ bool TaskSegmentation::run(int procType, int tid) {
 	cv::Mat inputImage = this->bgr->getData();
 	cv::Mat outMask;
 
-//	std::cout << "Start Task Segmentation. inputImage.rows: "<< inputImage.rows << std::endl;
-//	std::cout << "\t\t inputImageAddr: " << &inputImage << std::endl;
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	int segmentationExecCode = ::nscale::HistologicalEntities::segmentNuclei(inputImage, outMask);
