@@ -15,7 +15,7 @@ private:
 	DenseDataRegion2D* dr1;
 	DenseDataRegion2D* dr2;
 
-	// | #diffPixels | #foreGroundPixelReferenceImage |
+	// | #diffPixels | #foreGroundPixelReferenceImage | sum foreground | common pixels 
 	int *diffPixels;
 
 public:

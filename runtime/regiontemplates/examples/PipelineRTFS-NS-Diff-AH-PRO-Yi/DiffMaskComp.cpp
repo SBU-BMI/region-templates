@@ -4,7 +4,6 @@
 #include "TaskDiffMask.h"
 
 DiffMaskComp::DiffMaskComp() {
-//	diffPercentage = 0.0;
 	this->setComponentName("DiffMaskComp");
 	this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::INPUT);
 }
@@ -19,10 +18,9 @@ int DiffMaskComp::run()
 
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	int *diffPixels = (int*) malloc(2 * sizeof(int));
-	diffPixels[0] = 0;
-	diffPixels[1] = 0;
-	this->setResultData((char*)diffPixels, 2* sizeof(float));
+	int *diffPixels = (int*) malloc(4 * sizeof(int));
+	diffPixels[0] = diffPixels[1] = diffPixels[2] = diffPixels[3] = 0;
+	this->setResultData((char*)diffPixels, 4* sizeof(float));
 
 	if(inputRt != NULL){
 

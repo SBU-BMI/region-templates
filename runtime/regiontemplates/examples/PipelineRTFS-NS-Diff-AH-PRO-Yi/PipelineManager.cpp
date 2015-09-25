@@ -148,17 +148,14 @@ int main (int argc, char **argv){
 
 
 	 if (	
-//harmony_int(hdesc[0], "blue", 210, 240, 5) != 0
-//			|| harmony_int(hdesc[0], "green", 220, 240, 40) != 0
-//			|| harmony_int(hdesc[0], "red", 220, 240, 40) != 0
-			 harmony_int(hdesc[0], "G1", 40, 90, 5) != 0
-//			|| harmony_int(hdesc[0], "G2", 5, 90, 1) != 0
-			|| harmony_real(hdesc[0], "T1", 2.5, 7.5, 0.5) != 0
-			|| harmony_int(hdesc[0], "minSize", 5, 30, 5) != 0
-			|| harmony_int(hdesc[0], "maxSize", 900, 1500, 50) != 0
-			|| harmony_int(hdesc[0], "fillHoles", 4, 8, 4) != 0
-			|| harmony_int(hdesc[0], "recon", 4, 8, 4) != 0
-			|| harmony_int(hdesc[0], "watershed", 4, 8, 4) != 0
+			harmony_real(hdesc[0], "otsuRatio", 0.1, 2.5, 0.1) != 0
+			|| harmony_real(hdesc[0], "curvatureWeight", 0.0, 1.0, 0.05) != 0
+			|| harmony_real(hdesc[0], "sizeThld", 1, 20, 1) != 0
+			|| harmony_real(hdesc[0], "sizeUpperThld", 50, 400, 5) != 0
+/*harmony_real(hdesc[0], "otsuRatio", 0.5, 1.5, 0.1) != 0
+			|| harmony_real(hdesc[0], "curvatureWeight", 0.0, 1.0, 0.05) != 0
+			|| harmony_real(hdesc[0], "sizeThld", 1, 15, 1) != 0
+			|| harmony_real(hdesc[0], "sizeUpperThld", 100, 240, 5) != 0*/
 			)
 	 {
 		 fprintf(stderr, "Failed to define tuning session\n");
@@ -166,6 +163,7 @@ int main (int argc, char **argv){
 	 }
 
 	 harmony_strategy(hdesc[0], "pro.so");
+//	 harmony_strategy(hdesc[0], "nm.so");
 	 if(initPercent.size()>0 ){
 		 harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
 		 std::cout << "AH configuration: "<< AHpolicy << " INIT_PERCENT: "<< initPercent << std::endl;
@@ -183,18 +181,19 @@ int main (int argc, char **argv){
 		 return -1;
 	 }
 
-	 long blue[numClients], green[numClients];
+	 double otsuRatio[numClients], curvatureWeight[numClients], sizeThld[numClients], sizeUpperThld[numClients];
 
 	 for(int i = 0; i < numClients; i++){
-		 blue[i] = 220;
-		 green[i] = 220;
+		otsuRatio[i] = curvatureWeight[i] = sizeThld[i] = sizeUpperThld[i] = 0.0;
 	 }
 
 	 for(int i = 0; i < numClients; i++){
 		 /* Bind the session variables to local variables. */
-		 if (harmony_bind_int(hdesc[i], "blue", &blue[i]) != 0
-		     || harmony_bind_int(hdesc[i], "green", &green[i]) != 0){
-			
+		 if (harmony_bind_real(hdesc[i], "otsuRatio", &otsuRatio[i]) != 0
+		     || harmony_bind_real(hdesc[i], "curvatureWeight", &curvatureWeight[i]) != 0
+		     || harmony_bind_real(hdesc[i], "sizeThld", &sizeThld[i]) != 0
+		     || harmony_bind_real(hdesc[i], "sizeUpperThld", &sizeUpperThld[i]) != 0)
+		{
 			 fprintf(stderr, "Failed to register variable\n");
 			 harmony_fini(hdesc[i]);
 			 return -1;
@@ -211,11 +210,9 @@ int main (int argc, char **argv){
 			 return -1;
 		 }
 	 }
-
 	// END AH SETUP //
 
-	 double perf[numClients];
-
+	double perf[numClients];
 	int versionSeg = 0;
 	bool executedAlready[numClients];
 
@@ -237,18 +234,18 @@ int main (int argc, char **argv){
 				harmony_fini(hdesc[i]);
 				return -1;
 			}
-//
-//			std::ostringstream oss;
-//			oss << blue[i] << "-" << green[i] << "-"<<red[i] << "-"<< T1[i] <<"-"<< G1[i] << "-"<<minSize[i]<< "-"<<maxSize[i]<<"-"<<fillHolesElement[i]<<"-"<<morphElement[i]<<"-"<<watershedElement[i];
-//			// if not found in performance database
-//			if(perfDataBase.find(oss.str()) != perfDataBase.end()){
-//				perf[i] = perfDataBase.find(oss.str())->second;
-//				std::cout << "Parameters already tested: "<< oss.str() << " perf: "<< perf<< std::endl;
-//
-//				executedAlready[i] = true;
-//			}else{
-//				executedAlready[i] = false;
-//			}
+
+			std::ostringstream oss;
+			oss <<otsuRatio[i] << "-" << curvatureWeight[i] << "-" << sizeThld[i] << "-"<<sizeUpperThld[i];
+
+			// if not found in performance database
+			if(perfDataBase.find(oss.str()) != perfDataBase.end()){
+				perf[i] = perfDataBase.find(oss.str())->second;
+				std::cout << "Parameters already tested: "<< oss.str() << " perf: "<< perf[i]<< std::endl;
+				executedAlready[i] = true;
+			}else{
+				executedAlready[i] = false;
+			}
 
 		}
 
@@ -261,7 +258,7 @@ int main (int argc, char **argv){
 
 			for(int j = 0; j < numClients; j++){
 
-//				if(executedAlready[j] == false){
+				if(executedAlready[j] == false){
 					// Creating segmentation component
 					Segmentation *seg = new Segmentation();
 
@@ -269,7 +266,11 @@ int main (int argc, char **argv){
 					seg->addArgument(new ArgumentInt(versionSeg));
 
 					// add remaining (application specific) parameters from the argSegInstance
-					seg->addArgument(new ArgumentInt(blue[j]));
+					seg->addArgument(new ArgumentFloat(otsuRatio[j]));
+					seg->addArgument(new ArgumentFloat(curvatureWeight[j]));
+					seg->addArgument(new ArgumentFloat(sizeThld[j]));
+					seg->addArgument(new ArgumentFloat(sizeUpperThld[j]));
+
 
 					// and region template instance that it is suppose to process
 					seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
@@ -294,7 +295,7 @@ int main (int argc, char **argv){
 					segCount++;
 					versionSeg++;
 
-			//	}
+				}
 			}
 
 		}
@@ -302,8 +303,10 @@ int main (int argc, char **argv){
 		sysEnv.startupExecution();
 
 		for(int j = 0; j < numClients; j++){
-			int diffPixels = 0;
-			int foregroundPixels = 0;
+			int diffPixels = 0; // diff among reference and computed
+			int foregroundPixels = 0; // in the reference image
+			int sumForeground = 0; // sum of foreground area of both images
+			int sumCommon = 0; // sum of common (agreement) area in both images
 
 			if(executedAlready[j] ==  false){
 				for(int i = 0; i < diffComponentIds[j].size(); i++){
@@ -313,6 +316,8 @@ int main (int argc, char **argv){
 						std::cout << "size: " << ((int*)resultData)[0] << " diffPixels: "<< ((int*)resultData)[1]<< " refPixels: "<< ((int*)resultData)[2]<< std::endl;
 						diffPixels+= ((int*)resultData)[1];
 						foregroundPixels += ((int*)resultData)[2];
+						sumForeground += ((int*)resultData)[3];
+						sumCommon += ((int*)resultData)[4];
 					}else{
 						std::cout << "NULL" << std::endl;
 					}
@@ -320,18 +325,15 @@ int main (int argc, char **argv){
 				}
 				diffComponentIds[j].clear();
 
-
-//				std::cout << "END: LoopIdx: "<< loop-numClients << " blue: "<< blue[j] << " green: "<<green[j] << " red: "<< red[j] <<
-//						" T1: "<< T1[j] << " T2: "<< T2[j] << " G1: "<< G1[j] << " G2: "<< G2[j] << " minSize: "<< minSize[j] <<
-//						" maxSize: " << maxSize[j] << " minSizePl: "<< minSizePl[j] << " minSizeSeg: "<< minSizeSeg <<
-//						" maxSizeSeg: "<< maxSizeSeg << " fillHolesElement: "<< fillHolesElement[j] << " morphElement: " << morphElement[j] <<
-//						" watershedElement: " << watershedElement[j] << " total diff: "<< diffPixels << " foreground: "<< foregroundPixels<< " perf: " << (double)diffPixels/(double)foregroundPixels<< std::endl;
 				perf[j] = (double)diffPixels/(double)foregroundPixels;
 
-//				std::ostringstream oss;
-//				oss << blue[j] << "-" << green[j] << "-"<<red[j] << "-"<< T1[j] <<"-"<< G1[j] << "-"<<minSize[j]<< "-"<<maxSize[j]<<"-"<<fillHolesElement[j]<<"-"<<morphElement[j]<<"-"<<watershedElement[j];
+				std::ostringstream oss;
+				oss <<otsuRatio[j] << "-" << curvatureWeight[j] << "-" << sizeThld[j] << "-"<<sizeUpperThld[j];
 
-//				perfDataBase[oss.str()] = perf[j];
+				perfDataBase[oss.str()] = perf[j];
+
+				std::cout << "END: LoopIdx: "<< loop-numClients+1 << " otsuRatio: " << otsuRatio[j] << " curvatureWeight: " << curvatureWeight[j] 
+				<< " sizeThld: " << sizeThld[j] << " sizeUpperThld: " << sizeUpperThld[j] << " perf:" << perf[j] << " DICE: "<< ((double)2*sumCommon)/sumForeground<< " diffPixels: "<< diffPixels<< std::endl;
 				loop++;
 			}
 

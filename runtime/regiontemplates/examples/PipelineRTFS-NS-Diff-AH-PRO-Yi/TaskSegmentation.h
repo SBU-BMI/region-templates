@@ -21,10 +21,11 @@ private:
 	DenseDataRegion2D* bgr;
 	DenseDataRegion2D* mask;
 
-	unsigned char blue;
+	float otsuRatio, curvatureWeight, sizeThld, sizeUpperThld;
+
 
 public:
-	TaskSegmentation(DenseDataRegion2D* bgr, DenseDataRegion2D* mask, unsigned char blue);
+	TaskSegmentation(DenseDataRegion2D* bgr, DenseDataRegion2D* mask, float otsuRatio, float curvatureWeight, float sizeThld, float sizeUpperThld);
 
 	virtual ~TaskSegmentation();
 

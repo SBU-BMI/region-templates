@@ -1,10 +1,12 @@
 #include "TaskSegmentation.h"
 
-TaskSegmentation::TaskSegmentation(DenseDataRegion2D* bgr, DenseDataRegion2D* mask, unsigned char blue) {
+TaskSegmentation::TaskSegmentation(DenseDataRegion2D* bgr, DenseDataRegion2D* mask, float otsuRatio, float curvatureWeight, float sizeThld, float sizeUpperThld) {
 	this->bgr = bgr;
 	this->mask = mask;
-
-	this->blue = blue;
+	this->otsuRatio = otsuRatio;
+	this->curvatureWeight = curvatureWeight;
+	this->sizeThld = sizeThld;
+	this->sizeUpperThld = sizeUpperThld;
 }
 
 TaskSegmentation::~TaskSegmentation() {
@@ -19,10 +21,8 @@ bool TaskSegmentation::run(int procType, int tid) {
 
 
 //	cv::Mat seg = processTile(thisTile, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, mpp);
-//	std::cout << "TaskSegmentation: " << (int)blue << ":"<< (int)green << ":"<< (int)red << ":"<< T1<< ":"<< T2<< ":"<< (int)G1<< ":"<< minSize<< ":"<< maxSize<< ":"<< (int)G2<< ":"<< minSizePl<< ":"<< minSizeSeg<< ":"<< maxSizeSeg << ":" << fillHolesConnectivity << ":" << reconConnectivity << ":" << watershedConnectivity << std::endl;
 	if(inputImage.rows > 0)
-		outMask = processTile(inputImage, 1.0, 0.8, 3, 200, 0.25);
-//		int segmentationExecCode = ::nscale::HistologicalEntities::segmentNuclei(inputImage, outMask, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity);
+		outMask = processTile(inputImage, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, 0.25);
 	else
 		std::cout <<"Segmentation: input data NULL"<< std::endl;
 	this->mask->setData(outMask);

@@ -26,7 +26,10 @@ int Segmentation::run()
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
 	int parameterSegId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
-	unsigned char blue = (unsigned char)((ArgumentInt*)this->getArgument(1))->getArgValue();
+	float otsuRatio = (float)((ArgumentFloat*)this->getArgument(1))->getArgValue();
+ 	float curvatureWeight = (unsigned char)((ArgumentFloat*)this->getArgument(2))->getArgValue();
+	float sizeThld = (unsigned char)((ArgumentFloat*)this->getArgument(3))->getArgValue();
+	float sizeUpperThld = (unsigned char)((ArgumentFloat*)this->getArgument(4))->getArgValue();
 	
 	if(inputRt != NULL){
 		DenseDataRegion2D *bgr = NULL;
@@ -50,7 +53,7 @@ int Segmentation::run()
 
 
 			// Create processing task
-			TaskSegmentation * segTask = new TaskSegmentation(bgr, mask, blue);
+			TaskSegmentation * segTask = new TaskSegmentation(bgr, mask, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld );
 
 			this->executeTask(segTask);
 
