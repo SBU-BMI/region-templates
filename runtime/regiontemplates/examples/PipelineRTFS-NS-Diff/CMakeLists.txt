@@ -11,10 +11,11 @@ include_directories(${RegionTemplate_SOURCE_DIR})
 include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
 
 # nscale dirs
-# nscale dirs
-find_path( NSCALE_DIR REQUIRED )
-set(nscalesrcdir ${NSCALE_DIR}/src/)
-set(nscalebuilddir ${NSCALE_DIR}/build/)
+find_path(NSCALE_SRC_DIR REQUIRED)
+find_path(NSCALE_BUILD_DIR REQUIRED)
+set(nscalesrcdir ${NSCALE_SRC_DIR})
+set(nscalebuilddir ${NSCALE_BUILD_DIR})
+
 #stampede
 #set(nscalesrcdir /work/02542/gteodoro/nscale/src/)
 #set(nscalebuilddir /work/02542/gteodoro/nscale/build)

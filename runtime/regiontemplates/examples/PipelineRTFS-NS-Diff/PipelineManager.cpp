@@ -110,14 +110,14 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 
 	// Blue channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(220, 240, 40);
+	segmentation.addRangeArguments(200, 240, 40);
 
 	// Green channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(2220, 240, 50);
+	segmentation.addRangeArguments(200, 240, 50);
 	// Red channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(220, 240, 50);
+	segmentation.addRangeArguments(200, 240, 50);
 
 	// T1, T2  Red blood cell detection thresholds
 	segmentation.addArgument(new ArgumentFloat(5.0));// T1
