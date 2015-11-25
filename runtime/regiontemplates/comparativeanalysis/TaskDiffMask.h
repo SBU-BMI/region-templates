@@ -11,19 +11,19 @@
 #include "Util.h"
 
 class TaskDiffMask: public Task {
-private:
+protected:
 	DenseDataRegion2D* dr1;
 	DenseDataRegion2D* dr2;
-
-	// | #diffPixels | #foreGroundPixelReferenceImage |
-	int *diffPixels;
+    int *diff;
 
 public:
-	TaskDiffMask(DenseDataRegion2D* dr1, DenseDataRegion2D* dr2, int *diffPercentage);
-
 	virtual ~TaskDiffMask();
 
-	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+//    void setDr1(DenseDataRegion2D *dr1);
+//    void setDr2(DenseDataRegion2D *dr2);
+//    void setDiff(int *diff);
+    virtual bool run(int procType = ExecEngineConstants::CPU, int tid = 0) = 0;
+
 };
 
 #endif /* TASK_DIFF_MASK_H_ */

@@ -241,7 +241,9 @@ int main (int argc, char **argv){
 				seg->addDependency(norm->getId());
 
 				std::cout<< "Creating DiffMask" << std::endl;
+                //TODO change here
 				diff = new DiffMaskComp();
+                //diff->setTask(new PixelCompare());
 
 				// version of the data region that will be read. It is created during the segmentation.
 				diff->addArgument(new ArgumentInt(versionSeg));

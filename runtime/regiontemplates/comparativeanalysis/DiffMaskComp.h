@@ -2,20 +2,22 @@
 #ifndef DIFF_MASK_COMP_H_
 #define DIFF_MASK_COMP_H_
 
-#include "TaskDiffMask.h"
 #include "RTPipelineComponentBase.h"
-
+#include "pixelcompare/PixelCompare.h"
+//#include "../examples/PipelineRTFS-NS-Diff-AH/TaskDiffMask.h"
 
 class DiffMaskComp : public RTPipelineComponentBase {
 private:
-	// Percentage of difference found in the mask
+// Percentage of difference found in the mask
 //	float diffPercentage;
+
+    //TaskDiffMask* task;
 
 public:
 	DiffMaskComp();
 	virtual ~DiffMaskComp();
-
 	int run();
+    //void setTask(TaskDiffMask* task);
 
 };
 
