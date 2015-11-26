@@ -14,7 +14,7 @@ class TaskDiffMask: public Task {
 protected:
 	DenseDataRegion2D* dr1;
 	DenseDataRegion2D* dr2;
-    int *diff;
+    float *diff;
 
 public:
 	virtual ~TaskDiffMask();

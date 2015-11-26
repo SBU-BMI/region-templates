@@ -36,9 +36,39 @@ set(libname componentnsdiff)
 # Source files used by the Runtime System
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp
         ../../comparativeanalysis/DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp
-        ../../comparativeanalysis/TaskDiffMask.cpp ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
+        ../../comparativeanalysis/TaskDiffMask.cpp ../../comparativeanalysis/pixelcompare/PixelCompare.cpp
+        ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp )
 
 #set( libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp ../../comparativeanalysis/DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp ../PipelineRTFS-NS-Diff-AH/TaskDiffMask.cpp)
+
+#Hadoopgis Dependencies
+#option (Hadoopgis "Use Hadoopgis as Comparisson Tool" OFF)
+#if(Hadoopgis)
+set(HADOOPGIS_SCRIPTS_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}) #the script path is the same as the executables path
+set(WRITE_ENABLED_TEMP_PATH /tmp/ CACHE PATH "Path to a temp directory with write permission")
+set(HADOOPGIS_BUILD_DIR CACHE PATH "Hadoopgis Build Directory")
+
+
+if(NOT IS_DIRECTORY ${WRITE_ENABLED_TEMP_PATH})
+    message(SEND_ERROR "Temp folder: ${WRITE_ENABLED_TEMP_PATH} IS NOT A VALID DIRECTORY")
+endif()
+
+if(NOT IS_DIRECTORY ${HADOOPGIS_BUILD_DIR})
+    message(SEND_ERROR "HADOOPGIS_BUILD_DIR:${HADOOPGIS_BUILD_DIR} IS NOT A VALID DIRECTORY")
+endif()
+
+if((NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/resque) OR (NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/map_obj_to_tile) OR (NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/mbb_normalizer))
+    message(SEND_ERROR "HADOOPGIS_BUILD_DIR:${HADOOPGIS_BUILD_DIR} The directory that you inserted is not a valid build directory.")
+endif()
+#Replace Macro inside program
+add_definitions(-DHADOOPGIS_SCRIPTS_DIRECTORY=${HADOOPGIS_SCRIPTS_OUTPUT_DIR} )
+add_definitions(-DWRITE_ENABLED_TEMPORARY_PATH=${WRITE_ENABLED_TEMP_PATH} )
+add_definitions(-DHADOOPGIS_BUILD_DIRECTORY=${HADOOPGIS_BUILD_DIR} )
+#endif(Hadoopgis)
+
+#Copy the hadoopgis scripts to the executable build folder everytime the program is compiled.
+add_custom_target(copyScripts COMMAND ${CMAKE_COMMAND} -E copy_directory ${RegionTemplate_SOURCE_DIR}/comparativeanalysis/hadoopgis/scripts/ ${HADOOPGIS_SCRIPTS_OUTPUT_DIR})
+#End of  Hadoopgis Dependencies
 
 # Add rule to generate the Runtime System, as a shared library (.so)
 add_library("${libname}" SHARED ${libcomponentssrcs})
@@ -52,6 +82,7 @@ target_link_libraries("${libname}" segment normalization featuresAll ${OpenCV_LI
         
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-NS-Diff PipelineManager.cpp)
+add_dependencies(PipelineRTFS-NS-Diff copyScripts)
 
 # Link the executable to the runtime system library
 target_link_libraries(PipelineRTFS-NS-Diff runtimesystem "${libname}")

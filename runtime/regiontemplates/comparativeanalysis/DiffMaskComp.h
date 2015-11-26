@@ -3,7 +3,6 @@
 #define DIFF_MASK_COMP_H_
 
 #include "RTPipelineComponentBase.h"
-#include "pixelcompare/PixelCompare.h"
 //#include "../examples/PipelineRTFS-NS-Diff-AH/TaskDiffMask.h"
 
 class DiffMaskComp : public RTPipelineComponentBase {

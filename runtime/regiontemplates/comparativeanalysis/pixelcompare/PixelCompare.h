@@ -10,7 +10,7 @@
 
 class PixelCompare : public TaskDiffMask {
 public:
-    PixelCompare(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, int *diffPixels);
+    PixelCompare(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels);
 
     bool run(int procType = ExecEngineConstants::CPU, int tid = 0);
 

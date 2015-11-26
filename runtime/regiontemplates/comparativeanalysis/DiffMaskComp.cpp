@@ -1,4 +1,5 @@
-//#include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
+#include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
 #include "DiffMaskComp.h"
 
 DiffMaskComp::DiffMaskComp() {
@@ -18,7 +19,7 @@ int DiffMaskComp::run()
 
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	int *diffPixels = (int*) malloc(2 * sizeof(int));
+    float *diffPixels = (float *) malloc(2 * sizeof(float));
 	diffPixels[0] = 0;
 	diffPixels[1] = 0;
     //(data,data size)
