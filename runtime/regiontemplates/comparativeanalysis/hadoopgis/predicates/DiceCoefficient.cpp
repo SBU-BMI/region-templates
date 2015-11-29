@@ -28,7 +28,7 @@ void DiceCoefficient::parseOutput(std::string myMaskPath) {
     }
 
     if (remove(myMaskPath.c_str()) != 0)
-        perror("Comparative Analysis - HadoopGIS: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
+        perror("Comparative Analysis - HadoopGIS - Dice: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
 
     float compId = diff[0];
     this->diff[0] = totalArea;

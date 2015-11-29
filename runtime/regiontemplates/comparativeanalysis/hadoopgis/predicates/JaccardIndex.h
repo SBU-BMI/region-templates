@@ -15,13 +15,9 @@ protected:
                     std::string referenceMaskFileName);
 
 public:
-    JaccardIndex() {
-        this->scriptName = "JaccardIndex.sh";
-    }
+    JaccardIndex(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels);
 
-    double parseOutput(std::string pathToMaskOutputtedByTheScript);
-
-    const int getFitnessType() { return HIGH_IS_GOOD_TYPE; };
+    void parseOutput(std::string pathToMaskOutputtedByTheScript);
 
 };
 

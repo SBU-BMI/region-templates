@@ -1,5 +1,7 @@
 #include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/JaccardIndex.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/MaskIntersection.h>
 #include "DiffMaskComp.h"
 
 DiffMaskComp::DiffMaskComp() {
@@ -36,7 +38,7 @@ int DiffMaskComp::run()
 			// gambiarra
 			diffPixels[0] =  this->getId();
             cout << "------------------------------------------------- Calling Diff Mask:" << endl;
-            TaskDiffMask *tDiffMask = new PixelCompare(computed_mask, reference_mask, diffPixels);
+            TaskDiffMask *tDiffMask = new MaskIntersection(computed_mask, reference_mask, diffPixels);
             this->executeTask(tDiffMask);
 			// Create processing task
 //            if(task != NULL){

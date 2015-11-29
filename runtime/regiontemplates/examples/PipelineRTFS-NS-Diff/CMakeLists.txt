@@ -37,7 +37,8 @@ set(libname componentnsdiff)
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp
         ../../comparativeanalysis/DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp
         ../../comparativeanalysis/TaskDiffMask.cpp ../../comparativeanalysis/pixelcompare/PixelCompare.cpp
-        ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp )
+        ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
+        ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp)
 
 #set( libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp ../../comparativeanalysis/DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp ../PipelineRTFS-NS-Diff-AH/TaskDiffMask.cpp)
 
@@ -70,6 +71,9 @@ add_definitions(-DHADOOPGIS_BUILD_DIRECTORY=${HADOOPGIS_BUILD_DIR} )
 add_custom_target(copyScripts COMMAND ${CMAKE_COMMAND} -E copy_directory ${RegionTemplate_SOURCE_DIR}/comparativeanalysis/hadoopgis/scripts/ ${HADOOPGIS_SCRIPTS_OUTPUT_DIR})
 #End of  Hadoopgis Dependencies
 
+#Copy the cache-conf.xml file located in the example folder to the build folder everytime the program is compiled.
+add_custom_target(copyCacheConf COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
+
 # Add rule to generate the Runtime System, as a shared library (.so)
 add_library("${libname}" SHARED ${libcomponentssrcs})
 
@@ -83,6 +87,7 @@ target_link_libraries("${libname}" segment normalization featuresAll ${OpenCV_LI
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-NS-Diff PipelineManager.cpp)
 add_dependencies(PipelineRTFS-NS-Diff copyScripts)
+add_dependencies(PipelineRTFS-NS-Diff copyCacheConf)
 
 # Link the executable to the runtime system library
 target_link_libraries(PipelineRTFS-NS-Diff runtimesystem "${libname}")

@@ -15,13 +15,10 @@ protected:
                     std::string referenceMaskFileName);
 
 public:
-    MaskIntersection() {
-        scriptName = "MaskIntersection.sh";
-    }
+    MaskIntersection(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels);
 
-    double parseOutput(std::string pathToMaskOutputtedByTheScript);
+    void parseOutput(std::string pathToMaskOutputtedByTheScript);
 
-    const int getFitnessType() { return HIGH_IS_GOOD_TYPE; };
 };
 
 

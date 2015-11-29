@@ -144,6 +144,6 @@ void Hadoopgis::executeScript(std::string pathToScript, std::string scriptName, 
     command.append(referenceMaskFileName);
     //cout << command.c_str();
     //Execute script
-    system(command.c_str());
+    int returnOfSystemCall = system(command.c_str());
 
 }
