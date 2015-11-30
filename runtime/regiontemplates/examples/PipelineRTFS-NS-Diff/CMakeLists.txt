@@ -35,12 +35,14 @@ set(libname componentnsdiff)
 
 # Source files used by the Runtime System
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp
-        ../../comparativeanalysis/DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp
-        ../../comparativeanalysis/TaskDiffMask.cpp ../../comparativeanalysis/pixelcompare/PixelCompare.cpp
-        ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
-        ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp)
+        TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp)
 
-#set( libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp ../../comparativeanalysis/DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp ../PipelineRTFS-NS-Diff-AH/TaskDiffMask.cpp)
+
+set(libcomparativeanalysis ../../comparativeanalysis/DiffMaskComp.cpp ../../comparativeanalysis/TaskDiffMask.cpp
+        ../../comparativeanalysis/pixelcompare/PixelCompare.cpp ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp
+        ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
+        ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp
+        ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp)
 
 #Hadoopgis Dependencies
 #option (Hadoopgis "Use Hadoopgis as Comparisson Tool" OFF)
@@ -75,7 +77,7 @@ add_custom_target(copyScripts COMMAND ${CMAKE_COMMAND} -E copy_directory ${Regio
 add_custom_target(copyCacheConf COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
 
 # Add rule to generate the Runtime System, as a shared library (.so)
-add_library("${libname}" SHARED ${libcomponentssrcs})
+add_library("${libname}" SHARED ${libcomponentssrcs} ${libcomparativeanalysis})
 
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)

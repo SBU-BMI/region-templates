@@ -38,7 +38,7 @@ int DiffMaskComp::run()
 			// gambiarra
 			diffPixels[0] =  this->getId();
             cout << "------------------------------------------------- Calling Diff Mask:" << endl;
-            TaskDiffMask *tDiffMask = new MaskIntersection(computed_mask, reference_mask, diffPixels);
+            TaskDiffMask *tDiffMask = new PixelCompare(computed_mask, reference_mask, diffPixels);
             this->executeTask(tDiffMask);
 			// Create processing task
 //            if(task != NULL){
