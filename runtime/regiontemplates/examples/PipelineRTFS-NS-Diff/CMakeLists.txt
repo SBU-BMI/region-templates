@@ -35,11 +35,11 @@ set(libname componentnsdiff)
 
 # Source files used by the Runtime System
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp
-        TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp)
+        TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp DiffMaskComp.cpp)
 
 #Hadoopgis Dependencies
 if (USE_HADOOPGIS)
-    set(libcomparativeanalysis ../../comparativeanalysis/DiffMaskComp.cpp ../../comparativeanalysis/TaskDiffMask.cpp
+    set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp
             ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
             ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp
@@ -70,7 +70,7 @@ if (USE_HADOOPGIS)
     add_custom_target(copyScripts COMMAND ${CMAKE_COMMAND} -E copy_directory ${RegionTemplate_SOURCE_DIR}/comparativeanalysis/hadoopgis/scripts/ ${HADOOPGIS_SCRIPTS_OUTPUT_DIR})
 
 else ()
-    set(libcomparativeanalysis ../../comparativeanalysis/DiffMaskComp.cpp ../../comparativeanalysis/TaskDiffMask.cpp
+    set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
 endif ()
 
