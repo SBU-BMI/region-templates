@@ -15,19 +15,6 @@ find_path(NSCALE_SRC_DIR REQUIRED)
 find_path(NSCALE_BUILD_DIR REQUIRED)
 set(nscalesrcdir ${NSCALE_SRC_DIR})
 set(nscalebuilddir ${NSCALE_BUILD_DIR})
-#stampede
-#set(nscalesrcdir /work/02542/gteodoro/nscale/src/)
-#set(nscalebuilddir /work/02542/gteodoro/nscale/build)
-#desktop
-#set(nscalesrcdir /home/george/nscale/src/)
-#set(nscalebuilddir /home/george/nscale/build/)
-#notebook
-#set(nscalesrcdir /home/george/workspace/nscale-normalization/src/)
-#set(nscalebuilddir /home/george/workspace/nscale-normalization/build/)
-#laico
-#set(nscalesrcdir /home/gteodoro/nscale/src/)
-#set(nscalebuilddir /home/gteodoro/nscale/build/)
-
 
 #includes
 include_directories(${nscalesrcdir}/segment)
