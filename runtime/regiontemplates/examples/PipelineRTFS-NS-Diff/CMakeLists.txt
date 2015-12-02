@@ -72,7 +72,7 @@ if (USE_HADOOPGIS)
 else ()
     set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
-endif ()
+endif () #End of  Hadoopgis Dependencies
 
 
 #Copy the cache-conf.xml file located in the example folder to the build folder everytime the program is compiled.
@@ -81,7 +81,7 @@ add_custom_target(copyCacheConf COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT
 # Add rule to generate the Runtime System, as a shared library (.so)
 add_library("${libname}" SHARED ${libcomponentssrcs} ${libcomparativeanalysis})
 
-if (USE_HADOOPGIS)
+if (USE_HADOOPGIS) #Hadoopgis Dependencies
     add_dependencies("${libname}" copyScripts)
 endif () #End of  Hadoopgis Dependencies
 

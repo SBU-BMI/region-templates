@@ -13,8 +13,9 @@ if (USE_YI)
 #add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
 endif ()
 endif ()
-
 #add_subdirectory("PipelineRTFS-NSF-Diff")
-#add_subdirectory("HelloWorldRT")
+
+
+add_subdirectory("HelloWorldRT")
 #add_subdirectory("RTPipelineBundle")
 #add_subdirectory("FireDetection")
