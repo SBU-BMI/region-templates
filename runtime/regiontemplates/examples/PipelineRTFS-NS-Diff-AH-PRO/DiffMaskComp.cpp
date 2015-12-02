@@ -1,7 +1,8 @@
-
-
+#include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/JaccardIndex.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/MaskIntersection.h>
 #include "DiffMaskComp.h"
-#include "TaskDiffMask.h"
 
 DiffMaskComp::DiffMaskComp() {
 //	diffPercentage = 0.0;
@@ -19,7 +20,7 @@ int DiffMaskComp::run()
 
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	int *diffPixels = (int*) malloc(2 * sizeof(int));
+	float *diffPixels = (float *) malloc(2 * sizeof(float));
 	diffPixels[0] = 0;
 	diffPixels[1] = 0;
 	this->setResultData((char*)diffPixels, 2* sizeof(float));
@@ -35,7 +36,7 @@ int DiffMaskComp::run()
 			// gambiarra
 			diffPixels[0] =  this->getId();
 			// Create processing task
-			TaskDiffMask *tDiffMask = new TaskDiffMask(computed_mask, reference_mask, diffPixels);
+			TaskDiffMask *tDiffMask = new PixelCompare(computed_mask, reference_mask, diffPixels);
 
 			this->executeTask(tDiffMask);
 		}else{

@@ -477,17 +477,19 @@ int main (int argc, char **argv){
 		sysEnv.startupExecution();
 
 		for(int j = 0; j < numClients; j++){
-			int diffPixels = 0;
-			int foregroundPixels = 0;
+            float diff = 0;
+            float secondaryMetric = 0;
 
 			if(executedAlready[j] ==  false){
 				for(int i = 0; i < diffComponentIds[j].size(); i++){
 					char * resultData = sysEnv.getComponentResultData(diffComponentIds[j][i]);
 					std::cout << "Diff Id: "<< diffComponentIds[j][i] << " resultData: ";
 					if(resultData != NULL){
-						std::cout << "size: " << ((int*)resultData)[0] << " diffPixels: "<< ((int*)resultData)[1]<< " refPixels: "<< ((int*)resultData)[2]<< std::endl;
-						diffPixels+= ((int*)resultData)[1];
-						foregroundPixels += ((int*)resultData)[2];
+                        std::cout << "size: " << ((int *) resultData)[0] << " diffPixels: " <<
+                        ((float *) resultData)[1] <<
+                        " refPixels: " << ((float *) resultData)[2] << std::endl;
+                        diff += ((float *) resultData)[1];
+                        secondaryMetric += ((float *) resultData)[2];
 					}else{
 						std::cout << "NULL" << std::endl;
 					}
@@ -496,12 +498,13 @@ int main (int argc, char **argv){
 				diffComponentIds[j].clear();
 
 
-				std::cout << "END: LoopIdx: "<< loop-numClients << " blue: "<< blue[j] << " green: "<<green[j] << " red: "<< red[j] <<
-						" T1: "<< T1[j] << " T2: "<< T2[j] << " G1: "<< G1[j] << " G2: "<< G2[j] << " minSize: "<< minSize[j] <<
-						" maxSize: " << maxSize[j] << " minSizePl: "<< minSizePl[j] << " minSizeSeg: "<< minSizeSeg <<
-						" maxSizeSeg: "<< maxSizeSeg << " fillHolesElement: "<< fillHolesElement[j] << " morphElement: " << morphElement[j] <<
-						" watershedElement: " << watershedElement[j] << " total diff: "<< diffPixels << " foreground: "<< foregroundPixels<< " perf: " << (double)diffPixels/(double)foregroundPixels<< std::endl;
-				perf[j] = (double)diffPixels/(double)foregroundPixels;
+                std::cout << "END: LoopIdx: " << loop-numClients << " blue: " << blue[j] << " green: " << green[j] << " red: " << red[j] <<
+                " T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " << minSize[j] <<
+                " maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg <<
+                " maxSizeSeg: " << maxSizeSeg << " fillHolesElement: " << fillHolesElement[j] << " morphElement: " << morphElement[j] <<
+                " watershedElement: " << watershedElement[j] << " total diff: " << diff << " secondaryMetric: " <<
+                secondaryMetric << " perf: " << (double) diff / (double) secondaryMetric << std::endl;
+                perf[j] = (double) diff / (double) secondaryMetric;
 
 				std::ostringstream oss;
 				oss << blue[j] << "-" << green[j] << "-"<<red[j] << "-"<< T1[j] <<"-"<< G1[j] << "-"<<minSize[j]<< "-"<<maxSize[j]<<"-"<<fillHolesElement[j]<<"-"<<morphElement[j]<<"-"<<watershedElement[j];
