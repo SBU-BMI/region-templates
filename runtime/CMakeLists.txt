@@ -61,8 +61,6 @@ if(USE_REGION_TEMPLATES)
 	endif(USE_DATA_SPACES)
 
 	set(USE_ACTIVE_HARMONY OFF CACHE BOOL "Include compilation of Active Harmony")
-	set(USE_HADOOPGIS OFF CACHE BOOL "Include HadoopGIS support")
-	set(USE_YI OFF CACHE BOOL "Include Yi support")
 	
 	# data spaces library locations
 	link_directories(${RegionTemplate_SOURCE_DIR}/external-src/dataspaces-ib-1.03beta/)
