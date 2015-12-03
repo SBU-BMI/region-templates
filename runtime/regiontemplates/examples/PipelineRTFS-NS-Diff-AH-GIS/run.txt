@@ -1,0 +1,13 @@
+1) Export the following AH variables before the RT manager execution:
+
+export HARMONY_S_HOST=localhost
+export HARMONY_S_PORT=1979
+
+2) Run the AH manager:
+
+cd regiontemplates/external-src/activeharmony-4.5/bin
+./hserver
+
+3) Run the application
+
+mpirun -n <App> -i <inputFolder>
