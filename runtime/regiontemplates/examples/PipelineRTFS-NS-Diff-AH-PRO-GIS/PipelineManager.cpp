@@ -503,14 +503,15 @@ int main(int argc, char **argv) {
 
                 perf[j] = (double) 1 / diff;
                 std::cout << "END: LoopIdx: " << loop - numClients << " blue: " << blue[j] << " green: " << green[j] <<
-                " red: " << red[j] <<
-                " T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
-                minSize[j] <<
-                " maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg <<
-                " maxSizeSeg: " << maxSizeSeg << " fillHolesElement: " << fillHolesElement[j] << " morphElement: " <<
-                morphElement[j] <<
-                " watershedElement: " << watershedElement[j] << " total diff: " << diff << " secondaryMetric: " <<
-                secondaryMetric << " perf: " << perf[j] << std::endl;
+                                                 " red: " << red[j] <<
+                                                 " T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
+                                                 minSize[j] <<
+                                                 " maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg <<
+                                                 " maxSizeSeg: " << maxSizeSeg << " fillHolesElement: " << fillHolesElement[j] << " morphElement: " <<
+                                                 morphElement[j] <<
+                                                 " watershedElement: " << watershedElement[j] <<
+                                                 " total hadoopgis diff: " << diff << " secondaryMetric: " <<
+                                                 secondaryMetric << " perf: " << perf[j] << std::endl;
 
 
                 std::ostringstream oss;
