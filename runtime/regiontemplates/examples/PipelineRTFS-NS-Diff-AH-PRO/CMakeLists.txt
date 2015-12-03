@@ -23,6 +23,7 @@ include_directories(${nscalesrcdir}/common)
 include_directories(${nscalesrcdir}/features)
 include_directories(${nscalesrcdir}/normalization)
 
+file(COPY ${PipelineRTFS-NS-Diff-AH-PRO_SOURCE_DIR}/rtconf.xml DESTINATION ${PipelineRTFS-NS-Diff-AH-PRO_BINARY_DIR}/)
 
 if(USE_ACTIVE_HARMONY)
 	include_directories(${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/include/)
