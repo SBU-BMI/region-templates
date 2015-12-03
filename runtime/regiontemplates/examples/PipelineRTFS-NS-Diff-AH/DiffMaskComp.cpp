@@ -1,7 +1,4 @@
 #include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
-#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
-#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/JaccardIndex.h>
-#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/MaskIntersection.h>
 #include "DiffMaskComp.h"
 
 
