@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<opencv_storage>
+    <CacheConfig>
+        <_>
+            <type>GLOBAL</type>
+            <device>HDD</device>
+            <capacity>1000000</capacity>
+            <path>/tmp/</path>
+            <level>1</level>
+            <policy>FIFO</policy>
+        </_>
+    </CacheConfig>
+</opencv_storage>

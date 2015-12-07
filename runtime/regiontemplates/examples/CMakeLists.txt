@@ -16,6 +16,7 @@ if (RT_TUNING_NSCALE_EXAMPLE)
         add_subdirectory("PipelineRTFS-NS-Diff-GIS")
         add_subdirectory("PipelineRTFS-NS-Diff-AH-GIS")
         add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS")
+        add_subdirectory("PipelineRTFS-NS-KNN")
     endif (USE_HADOOPGIS)
 endif (RT_TUNING_NSCALE_EXAMPLE)
 
