@@ -24,22 +24,19 @@ void KnnUnbounded::parseOutput(std::string myMaskPath) {
 
     result = new KnnResult();
     //Get the polygons and the polygons distance.
-    do {
+    while (std::getline(infile, line)) {
+        stringstream ss(line);
         long polygonId;
         double dist;
-        infile >> polygonId;
+        ss >> polygonId;
         result->polygonsRelationships[0].push_back(polygonId);
-        infile >> polygonId;
+        ss >> polygonId;
         result->polygonsRelationships[1].push_back(polygonId);
-        infile >> dist;
+        ss >> dist;
+        totalArea += dist;
         result->distance.push_back(dist);
         numberOfPolygonsIntersections++;
-    } while (std::getline(infile, line));
-    //Don't remove this - the while above inserts a last line that should be disconsidered.
-    result->polygonsRelationships[0].pop_back();
-    result->polygonsRelationships[1].pop_back();
-    result->distance.pop_back();
-    //
+    }
 
     //Storing the original query polygons in the result object
     result->listOfPolygons[0] = this->listOfPolygons[0];
@@ -59,9 +56,10 @@ void KnnUnbounded::parseOutput(std::string myMaskPath) {
     float compId = diff[0];
     this->diff[0] = totalArea;
     this->diff[1] = numberOfPolygonsIntersections;
-//    std::cout << "CompId: " << compId << " Dice Coefficient: " << this->diff[0] <<
-//    " Number of Polygons Intersections: " << this->diff[1] <<
-//    std::endl;
+    std::cout << "Comparative Analysis - HadoopGIS - KNN: CompId: " << compId <<
+    " Sum of Distances Between Polygons: " << this->diff[0] <<
+    " Number of Polygons Relations: " << this->diff[1] <<
+    std::endl;
 
 
 }
@@ -72,7 +70,6 @@ KnnResult *KnnUnbounded::getKnnResult() {
 
 void  KnnUnbounded::callScript(std::string pathToScript, std::string pathToHadoopgisBuild, std::string maskFileName,
                                std::string referenceMaskFileName) {
-    std::cout << "ALI!!!!!!!!!!!!!!!!!!!!!" << endl << endl << endl;
     KnnUnbounded::executeScript(pathToScript, this->scriptName, pathToHadoopgisBuild, maskFileName,
                                 referenceMaskFileName);
 
@@ -81,7 +78,6 @@ void  KnnUnbounded::callScript(std::string pathToScript, std::string pathToHadoo
 void KnnUnbounded::executeScript(std::string pathToScript, std::string scriptName, std::string pathToHgisBuild,
                                  std::string maskFileName,
                                  std::string referenceMaskFileName) {
-    std::cout << "AQUI!!!!!!!!!!!!!!!!!!!!!" << endl << endl << endl;
     // Call the script passing the polygons as arguments
     // Sends 5 params:  1 - path to hadoopgis,
     //                  2 - path to tempfolder(write-permission)

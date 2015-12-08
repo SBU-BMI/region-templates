@@ -25,10 +25,6 @@ referenceMask="$tempPath$referenceMaskFileName"
 #HADOOPGIS_LIB_PATH=/usr/local/lib
 
 #echo "$hadoopgisPath$hgcfg"
-
-mkdir -p tmpData
-
-
 #echo -e "Extracting MBBs"
 
 # Change to predicate of your choice

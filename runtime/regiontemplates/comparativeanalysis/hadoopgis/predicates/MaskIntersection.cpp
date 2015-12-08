@@ -21,11 +21,12 @@ void MaskIntersection::parseOutput(std::string myMaskPath) {
     float totalArea = 0;
     int numberOfPolygonsIntersections = 0;
     //Get the total area of the intersection
-    do {
-        infile >> area;
+    while (std::getline(infile, line)) {
+        stringstream ss(line);
+        ss >> area;
         totalArea += area;
         numberOfPolygonsIntersections++;
-    } while (std::getline(infile, line));
+    }
 
     if (remove(myMaskPath.c_str()) != 0)
         perror("Comparative Analysis - HadoopGIS - MaskIntersection: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
@@ -33,7 +34,8 @@ void MaskIntersection::parseOutput(std::string myMaskPath) {
     float compId = diff[0];
     this->diff[0] = totalArea;
     this->diff[1] = numberOfPolygonsIntersections;
-    std::cout << "CompId: " << compId << " MaskIntersection: " << this->diff[0] <<
+    std::cout << "Comparative Analysis - HadoopGIS - Jaccard: CompId: " << compId << " MaskIntersection: " <<
+    this->diff[0] <<
     " Number of Polygons Intersections: " << this->diff[1] <<
     std::endl;
 }
