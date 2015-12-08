@@ -6,10 +6,12 @@
 #define RUNTIME_KNNUNBOUNDED_H
 
 #include "../Hadoopgis.h"
+#include "KnnResult.h"
 
 class KnnUnbounded : public Hadoopgis {
 protected:
     string scriptName;
+    KnnResult *result;
     long k;
 
     void callScript(std::string pathToScript, std::string pathToHadoopgisBuild, std::string maskFileName,
@@ -23,6 +25,8 @@ public:
     KnnUnbounded(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels, long k);
 
     void parseOutput(std::string pathToMaskOutputtedByTheScript);
+
+    KnnResult *getKnnResult();
 
 };
 

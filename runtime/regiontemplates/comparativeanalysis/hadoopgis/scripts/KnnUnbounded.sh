@@ -143,6 +143,6 @@ rm ${mask}denormpartition.idx
 rm ${mask}outputmapper1
 rm ${mask}outputmapper2
 rm ${mask}inputreducer
-rm ${mask}outputreducer
-rm ${mask}inputmapperboundary
+#rm ${mask}outputreducer
+#rm ${mask}inputmapperboundary
 #REMOVE THE CREATED FILES!!!

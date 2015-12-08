@@ -22,28 +22,34 @@ void KnnUnbounded::parseOutput(std::string myMaskPath) {
     float totalArea = 0;
     int numberOfPolygonsIntersections = 0;
 
-    vector<long> knn[2];
-    vector<double> distance;
-
+    result = new KnnResult();
     //Get the polygons and the polygons distance.
-    while (std::getline(infile, line)) {
+    do {
         long polygonId;
         double dist;
         infile >> polygonId;
-        knn[0].push_back(polygonId);
+        result->polygonsRelationships[0].push_back(polygonId);
         infile >> polygonId;
-        knn[1].push_back(polygonId);
+        result->polygonsRelationships[1].push_back(polygonId);
         infile >> dist;
-        distance.push_back(dist);
+        result->distance.push_back(dist);
         numberOfPolygonsIntersections++;
-    }
+    } while (std::getline(infile, line));
     //Don't remove this - the while above inserts a last line that should be disconsidered.
-    knn[0].pop_back();
-    knn[1].pop_back();
-    distance.pop_back();
+    result->polygonsRelationships[0].pop_back();
+    result->polygonsRelationships[1].pop_back();
+    result->distance.pop_back();
     //
-    for (int i = 0; i < knn[0].size(); ++i) {
-        std::cout << knn[0].at(i) << "\t" << knn[1].at(i) << "\t" << distance.at(i) << endl;
+
+    //Storing the original query polygons in the result object
+    result->listOfPolygons[0] = this->listOfPolygons[0];
+    result->listOfPolygons[1] = this->listOfPolygons[1];
+
+
+    //Printing the result of KNN
+    for (int i = 0; i < result->polygonsRelationships[0].size(); ++i) {
+        std::cout << result->polygonsRelationships[0].at(i) << "\t" << result->polygonsRelationships[1].at(i) << "\t" <<
+        result->distance.at(i) << endl;
 
     }
 //    if (remove(myMaskPath.c_str()) != 0)
@@ -57,6 +63,10 @@ void KnnUnbounded::parseOutput(std::string myMaskPath) {
 //    std::endl;
 
 
+}
+
+KnnResult *KnnUnbounded::getKnnResult() {
+    return result;
 }
 
 void  KnnUnbounded::callScript(std::string pathToScript, std::string pathToHadoopgisBuild, std::string maskFileName,

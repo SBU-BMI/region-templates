@@ -36,7 +36,7 @@ int DiffMaskComp::run() {
             // gambiarra
             diffPixels[0] = this->getId();
             cout << "------------------------------------------------- Calling Diff Mask:" << endl;
-            TaskDiffMask *tDiffMask = new KnnUnbounded(computed_mask, reference_mask, diffPixels, 10);
+            TaskDiffMask *tDiffMask = new KnnUnbounded(computed_mask, reference_mask, diffPixels, 3);
             this->executeTask(tDiffMask);
 
         } else {

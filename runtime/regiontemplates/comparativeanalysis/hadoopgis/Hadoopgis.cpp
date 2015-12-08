@@ -5,7 +5,7 @@
 #include "Hadoopgis.h"
 
 
-void Hadoopgis::getPolygonsFromMask(const cv::Mat &img, std::ofstream &ss) {
+void Hadoopgis::getPolygonsFromMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons) {
 
 
     //Extract the polygons from the image. (Non-convex polygons can be returned)
@@ -14,29 +14,34 @@ void Hadoopgis::getPolygonsFromMask(const cv::Mat &img, std::ofstream &ss) {
     cv::findContours(contourOutput, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
 
     /// Find the convex hull object for each contour
-    vector<vector<cv::Point> > hull(contours.size());
-    for (int i = 0; i < contours.size(); i++) { convexHull(cv::Mat(contours[i]), hull[i], false); }
+    listOfPolygons = new vector<vector<cv::Point> >(contours.size());
+    vector<vector<cv::Point> > *hull = listOfPolygons;
+    //vector<vector<cv::Point> > hull(contours.size());
+    for (int i = 0; i < contours.size(); i++) { convexHull(cv::Mat(contours[i]), (*hull)[i], false); }
+
+}
+
+void Hadoopgis::convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point> > *hull, std::ofstream &ss) {
 
     //Output the polygons to a format that Hadoopgis can read
     //Each cell corresponds to a line in the format:
     //CELL ID   POLYGON((Point1,Point2,...,PointN))
-    for (int i = 0; i < hull.size(); i++) {
+    for (int i = 0; i < (*hull).size(); i++) {
         //Sort the points of the polygon
         //sort(hull[i].begin(), hull[i].end(), compare_points);
         ss << i + 1 << "\t" << "POLYGON((";
-        for (int j = 0; j < hull[i].size(); j++) // run until j < contours[i].size();
+        for (int j = 0; j < (*hull)[i].size(); j++) // run until j < contours[i].size();
         {
             if (j > 0)ss << ",";
-            ss << hull[i][j].x << " " << hull[i][j].y; //do whatever
+            ss << (*hull)[i][j].x << " " << (*hull)[i][j].y; //do whatever
         }
         //close the polygon with the first vertex.
-        ss << "," << hull[i][0].x << " " << hull[i][0].y << "))";
+        ss << "," << (*hull)[i][0].x << " " << (*hull)[i][0].y << "))";
 //        for (int k = 1; k <=15 ; ++k) {
 //            ss << "\t" << k%9;
 //        }
         ss << endl;
     }
-
 }
 
 bool Hadoopgis::compare_points(const cv::Point &e1, const cv::Point &e2) {
@@ -78,8 +83,10 @@ bool Hadoopgis::run(int procType, int tid) {
     string referenceMaskPath = tempPath + referenceMaskFileName;
     myMaskFile.open(myMaskPath.c_str());
     referenceMaskFile.open(referenceMaskPath.c_str());
-    getPolygonsFromMask(image1, myMaskFile);
-    getPolygonsFromMask(image2, referenceMaskFile);
+    getPolygonsFromMask(image1, this->listOfPolygons[0]);
+    getPolygonsFromMask(image2, this->listOfPolygons[1]);
+    convertPolygonToHadoopgisInput(this->listOfPolygons[0], myMaskFile);
+    convertPolygonToHadoopgisInput(this->listOfPolygons[1], referenceMaskFile);
     myMaskFile.close();
     referenceMaskFile.close();
 

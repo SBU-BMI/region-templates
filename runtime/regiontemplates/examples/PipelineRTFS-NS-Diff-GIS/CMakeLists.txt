@@ -46,7 +46,7 @@ if (USE_HADOOPGIS)
             ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp)
     set(HADOOPGIS_SCRIPTS_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}) #the script path is the same as the executables path
     set(WRITE_ENABLED_TEMP_PATH /tmp/ CACHE PATH "Path to a temp directory with write permission")
-    set(HADOOPGIS_BUILD_DIR CACHE PATH "Hadoopgis Build Directory")
+    #set(HADOOPGIS_BUILD_DIR CACHE PATH "Hadoopgis Build Directory")
 
 
     if (NOT IS_DIRECTORY ${WRITE_ENABLED_TEMP_PATH})
