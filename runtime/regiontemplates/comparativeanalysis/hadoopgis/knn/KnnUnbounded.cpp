@@ -52,8 +52,9 @@ void KnnUnbounded::parseOutput(std::string myMaskPath) {
         result->distance.at(i) << endl;
 
     }
-//    if (remove(myMaskPath.c_str()) != 0)
-//        perror("Comparative Analysis - HadoopGIS - KNN: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
+
+    if (remove(myMaskPath.c_str()) != 0)
+        perror("Comparative Analysis - HadoopGIS - KNN: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
 
     float compId = diff[0];
     this->diff[0] = totalArea;

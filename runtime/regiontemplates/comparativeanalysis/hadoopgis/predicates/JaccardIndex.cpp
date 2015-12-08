@@ -21,11 +21,11 @@ void JaccardIndex::parseOutput(std::string myMaskPath) {
     float totalArea = 0;
     int numberOfPolygonsIntersections = 0;
     //Get the total area of the intersection
-    while (std::getline(infile, line)) {
+    do {
         infile >> area;
         totalArea += area;
         numberOfPolygonsIntersections++;
-    }
+    } while (std::getline(infile, line));
 
     if (remove(myMaskPath.c_str()) != 0)
         perror("Comparative Analysis - HadoopGIS - Jaccard: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
