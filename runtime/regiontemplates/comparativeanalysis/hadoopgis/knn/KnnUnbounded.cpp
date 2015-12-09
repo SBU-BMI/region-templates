@@ -4,11 +4,26 @@
 
 #include "KnnUnbounded.h"
 
-KnnUnbounded::KnnUnbounded(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels, long k) {
+KnnUnbounded::KnnUnbounded(std::vector<std::vector<cv::Point> > *list1, std::vector<std::vector<cv::Point> > *list2,
+                           float *id, long k) {
+    this->dr1 = NULL;
+    this->dr2 = NULL;
+    //List of Polygons 1
+    this->listOfPolygons[0] = list1;
+    //List of Polygons 2
+    this->listOfPolygons[1] = list2;
+    this->k = k;
+    this->diff = id;
+    this->scriptName = "KnnUnbounded.sh";
+}
+
+KnnUnbounded::KnnUnbounded(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *id, long k) {
     this->dr1 = dr1;
     this->dr2 = dr2;
-    this->diff = diffPixels;
+    getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
+    getPolygonsFromMask(this->dr2->getData(), this->listOfPolygons[1]);
     this->k = k;
+    this->diff = id;
     this->scriptName = "KnnUnbounded.sh";
 }
 
@@ -44,8 +59,10 @@ void KnnUnbounded::parseOutput(std::string myMaskPath) {
 
 
     //Printing the result of KNN
+    std::cout << "Polygon ID (from list 1)\tPolygon ID (from list 2)\tDistance Between Them" << endl;
     for (int i = 0; i < result->polygonsRelationships[0].size(); ++i) {
-        std::cout << result->polygonsRelationships[0].at(i) << "\t" << result->polygonsRelationships[1].at(i) << "\t" <<
+        std::cout << result->polygonsRelationships[0].at(i) << "\t\t\t\t" << result->polygonsRelationships[1].at(i) <<
+        "\t\t\t\t" <<
         result->distance.at(i) << endl;
 
     }
@@ -64,9 +81,9 @@ void KnnUnbounded::parseOutput(std::string myMaskPath) {
 
 }
 
-KnnResult *KnnUnbounded::getKnnResult() {
-    return result;
-}
+//KnnResult *KnnUnbounded::getKnnResult() {
+//    return result;
+//}
 
 void  KnnUnbounded::callScript(std::string pathToScript, std::string pathToHadoopgisBuild, std::string maskFileName,
                                std::string referenceMaskFileName) {

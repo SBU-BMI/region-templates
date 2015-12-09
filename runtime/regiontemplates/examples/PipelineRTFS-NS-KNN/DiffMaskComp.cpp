@@ -35,8 +35,15 @@ int DiffMaskComp::run() {
         if (computed_mask != NULL && reference_mask != NULL) {
             // gambiarra
             diffPixels[0] = this->getId();
-            cout << "------------------------------------------------- Calling Diff Mask:" << endl;
-            TaskDiffMask *tDiffMask = new KnnUnbounded(computed_mask, reference_mask, diffPixels, 3);
+            cout << "------------------------------------------------- Calling Task:" << endl;
+
+            std::vector<std::vector<cv::Point> > *list1;
+            std::vector<std::vector<cv::Point> > *list2;
+            Hadoopgis::getPolygonsFromMask(computed_mask->getData(), list1);
+            Hadoopgis::getPolygonsFromMask(reference_mask->getData(), list2);
+            TaskDiffMask *tDiffMask = new KnnUnbounded(list1, list2, diffPixels, 3);
+
+            //TaskDiffMask *tDiffMask = new KnnUnbounded(computed_mask, reference_mask, diffPixels, 3);
             this->executeTask(tDiffMask);
 
         } else {

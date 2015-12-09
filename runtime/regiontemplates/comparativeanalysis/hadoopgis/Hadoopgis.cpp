@@ -54,8 +54,8 @@ bool Hadoopgis::run(int procType, int tid) {
 
     uint64_t t1 = Util::ClockGetTimeProfile();
     double compId = diff[0];
-    cv::Mat image1 = this->dr1->getData();
-    cv::Mat image2 = this->dr2->getData();
+//    cv::Mat image1 = this->dr1->getData();
+//    cv::Mat image2 = this->dr2->getData();
     //Local unique ID - This ID is what distinguishes a temp file of a thread/process from the temp file of another thread/process
     //TODO: ADD A SUFFIX TO THE ID TO PERMIT SIMULTANEOUS RUNS OF HadoopGIS
     std::stringstream myId;
@@ -83,8 +83,8 @@ bool Hadoopgis::run(int procType, int tid) {
     string referenceMaskPath = tempPath + referenceMaskFileName;
     myMaskFile.open(myMaskPath.c_str());
     referenceMaskFile.open(referenceMaskPath.c_str());
-    getPolygonsFromMask(image1, this->listOfPolygons[0]);
-    getPolygonsFromMask(image2, this->listOfPolygons[1]);
+//    getPolygonsFromMask(image1, this->listOfPolygons[0]);
+//    getPolygonsFromMask(image2, this->listOfPolygons[1]);
     convertPolygonToHadoopgisInput(this->listOfPolygons[0], myMaskFile);
     convertPolygonToHadoopgisInput(this->listOfPolygons[1], referenceMaskFile);
     myMaskFile.close();

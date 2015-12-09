@@ -6,7 +6,8 @@
 
 MaskIntersection::MaskIntersection(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels) {
     this->dr1 = dr1;
-    this->dr2 = dr2;
+    getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
+    getPolygonsFromMask(this->dr2->getData(), this->listOfPolygons[1]);
     this->diff = diffPixels;
     this->scriptName = "MaskIntersection.sh";
 }
@@ -36,7 +37,7 @@ void MaskIntersection::parseOutput(std::string myMaskPath) {
     this->diff[1] = numberOfPolygonsIntersections;
     std::cout << "Comparative Analysis - HadoopGIS - Jaccard: CompId: " << compId << " MaskIntersection: " <<
     this->diff[0] <<
-    " Number of Polygons Intersections: " << this->diff[1] <<
+    " Number of Polygon Intersections: " << this->diff[1] <<
     std::endl;
 }
 

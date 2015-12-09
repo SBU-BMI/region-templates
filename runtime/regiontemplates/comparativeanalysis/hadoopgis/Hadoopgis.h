@@ -38,7 +38,7 @@ protected:
     void convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point> > *hull, std::ofstream &ss);
 
 public:
-    void getPolygonsFromMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons);
+    static void getPolygonsFromMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons);
 
     bool run(int procType = ExecEngineConstants::CPU, int tid = 0);
 };
