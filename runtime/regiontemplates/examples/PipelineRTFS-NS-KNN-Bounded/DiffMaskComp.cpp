@@ -1,5 +1,5 @@
 #include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
-#include <regiontemplates/comparativeanalysis/hadoopgis/knn/KnnUnbounded.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/knn/KnnBounded.h>
 #include "DiffMaskComp.h"
 
 DiffMaskComp::DiffMaskComp() {
@@ -14,7 +14,8 @@ DiffMaskComp::~DiffMaskComp() {
 }
 
 int DiffMaskComp::run() {
-    int parameterSegId = ((ArgumentInt *) this->getArgument(0))->getArgValue();
+    int parameterSegId = ((ArgumentInt * )
+    this->getArgument(0))->getArgValue();
 
     RegionTemplate *inputRt = this->getRegionTemplateInstance("tile");
 
@@ -37,12 +38,12 @@ int DiffMaskComp::run() {
             diffPixels[0] = this->getId();
             cout << "------------------------------------------------- Calling Task:" << endl;
 
-            std::vector<std::vector<cv::Point> > *list1;
-            std::vector<std::vector<cv::Point> > *list2;
+            std::vector <std::vector<cv::Point>> *list1;
+            std::vector <std::vector<cv::Point>> *list2;
             Hadoopgis::getPolygonsFromMask(computed_mask->getData(), list1);
             Hadoopgis::getPolygonsFromMask(reference_mask->getData(), list2);
-            //cout << "Size of List 1" << list1->size() << endl;
-            TaskDiffMask *tDiffMask = new KnnUnbounded(list1, list2, diffPixels, 3);
+            float boundary = 10;
+            TaskDiffMask *tDiffMask = new KnnBounded(list1, list2, diffPixels, 3, boundary);
 
             //TaskDiffMask *tDiffMask = new KnnUnbounded(computed_mask, reference_mask, diffPixels, 3);
             this->executeTask(tDiffMask);

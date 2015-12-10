@@ -36,7 +36,7 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder) {
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
     // Search for input files in folder path
     FileUtils fileUtils(".mask.png");
-    std::vector<std::string> fileList;
+    std::vector <std::string> fileList;
     fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
     RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
     rtCollection->setName("inputimage");
@@ -94,7 +94,7 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
 
 void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation) {
 
-    std::vector<ArgumentBase *> targetMeanOptions;
+    std::vector < ArgumentBase * > targetMeanOptions;
 
     // add normalization parameters.
     ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.451225340366));
@@ -172,7 +172,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation) 
 int main(int argc, char **argv) {
     // Folder when input data images are stored
     std::string inputFolderPath;
-    std::vector<RegionTemplate *> inputRegionTemplates;
+    std::vector < RegionTemplate * > inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
     std::vector<int> diffComponentIds;
     std::map<std::string, double> perfDataBase;
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
     SysEnv sysEnv;
 
     // Tell the system which libraries should be used
-    sysEnv.startupSystem(argc, argv, "libcomponentnsknn.so");
+    sysEnv.startupSystem(argc, argv, "libcomponentnsknnbounded.so");
 
     // Create region templates description without instantiating data
     rtCollection = RTFromFiles(inputFolderPath);
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
         parSetSegmentation.resetIterator();
 
         // walk through parameter set and instantiate the computation pipeline for each parameter combination
-        std::vector<ArgumentBase *> argSetInstanceNorm = parSetNormalization.getNextArgumentSetInstance();
+        std::vector < ArgumentBase * > argSetInstanceNorm = parSetNormalization.getNextArgumentSetInstance();
 
         // while it has not finished w/ all parameter combinations
         while ((argSetInstanceNorm).size() != 0) {
@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
             norm->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
             sysEnv.executeComponent(norm);
 
-            std::vector<ArgumentBase *> argSetInstanceSegmentation = parSetSegmentation.getNextArgumentSetInstance();
+            std::vector < ArgumentBase * > argSetInstanceSegmentation = parSetSegmentation.getNextArgumentSetInstance();
 
             while ((argSetInstanceSegmentation).size() != 0) {
 
