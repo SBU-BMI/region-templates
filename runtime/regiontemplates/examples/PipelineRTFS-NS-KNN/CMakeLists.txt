@@ -44,8 +44,7 @@ if (USE_HADOOPGIS)
             ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
             ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp
             ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp
-            ../../comparativeanalysis/hadoopgis/knn/KnnUnbounded.cpp
-            ../../comparativeanalysis/hadoopgis/knn/KnnResult.cpp)
+            ../../comparativeanalysis/hadoopgis/knn/KnnUnbounded.cpp)
     set(HADOOPGIS_SCRIPTS_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}) #the script path is the same as the executables path
     set(WRITE_ENABLED_TEMP_PATH /tmp/ CACHE PATH "Path to a temp directory with write permission")
     #set(HADOOPGIS_BUILD_DIR CACHE PATH "Hadoopgis Build Directory")
