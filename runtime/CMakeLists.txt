@@ -63,7 +63,7 @@ if(USE_REGION_TEMPLATES)
 	set(USE_ACTIVE_HARMONY OFF CACHE BOOL "Include compilation of Activer Harmony")
 
 
-	set(USE_DAKOTA ON CACHE BOOL "Include compilation of Dakota Toolkit")
+	set(USE_DAKOTA OFF CACHE BOOL "Include compilation of Dakota Toolkit")
 	
 	# data spaces library locations
 	link_directories(${RegionTemplate_SOURCE_DIR}/external-src/dataspaces-ib-1.03beta/)

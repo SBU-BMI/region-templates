@@ -25,7 +25,7 @@ protected:
 public:
     KnnBounded(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *id, long k, float boundary);
 
-    KnnBounded(std::vector <std::vector<cv::Point>> *list1, std::vector <std::vector<cv::Point>> *list2, float *id,
+    KnnBounded(std::vector<std::vector<cv::Point> > *list1, std::vector<std::vector<cv::Point> > *list2, float *id,
                long k, float boundary);
 
     void parseOutput(std::string pathToMaskOutputtedByTheScript);

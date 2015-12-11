@@ -4,7 +4,7 @@
 
 #include "KnnBounded.h"
 
-KnnBounded::KnnBounded(std::vector <std::vector<cv::Point>> *list1, std::vector <std::vector<cv::Point>> *list2,
+KnnBounded::KnnBounded(std::vector<std::vector<cv::Point> > *list1, std::vector<std::vector<cv::Point> > *list2,
                        float *id, long k, float boundary) {
     this->dr1 = NULL;
     this->dr2 = NULL;
