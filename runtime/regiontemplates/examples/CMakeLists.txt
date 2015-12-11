@@ -10,24 +10,49 @@ option(USE_HADOOPGIS "Compile HadoopGIS examples (Requires Hadoopgis)" OFF)
 
 if (RT_TUNING_NSCALE_EXAMPLE)
     add_subdirectory("PipelineRTFS-NS-Diff")
-    add_subdirectory("PipelineRTFS-NS-Diff-AH")
-    add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
+    if (USE_ACTIVE_HARMONY)
+        add_subdirectory("PipelineRTFS-NS-Diff-AH")
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
+    endif (USE_ACTIVE_HARMONY)
     if (USE_HADOOPGIS)
         find_path(HADOOPGIS_BUILD_DIR REQUIRED)
+        set(HADOOPGIS_SCRIPTS_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}) #the script path is the same as the executables path
+        set(WRITE_ENABLED_TEMP_PATH /tmp/ CACHE PATH "Path to a temp directory with write permission")
+        #set(HADOOPGIS_BUILD_DIR CACHE PATH "Hadoopgis Build Directory")
+
+
+        if (NOT IS_DIRECTORY ${WRITE_ENABLED_TEMP_PATH})
+            message(SEND_ERROR "Temp folder: ${WRITE_ENABLED_TEMP_PATH} IS NOT A VALID DIRECTORY")
+        endif ()
+
+        if (NOT IS_DIRECTORY ${HADOOPGIS_BUILD_DIR})
+            message(SEND_ERROR "HADOOPGIS_BUILD_DIR:${HADOOPGIS_BUILD_DIR} IS NOT A VALID DIRECTORY")
+        endif ()
+
+        if ((NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/resque) OR (NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/map_obj_to_tile) OR (NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/mbb_normalizer))
+            message(SEND_ERROR "HADOOPGIS_BUILD_DIR:${HADOOPGIS_BUILD_DIR} The directory that you inserted is not a valid build directory.")
+        endif ()
+
         add_subdirectory("PipelineRTFS-NS-Diff-GIS")
-        add_subdirectory("PipelineRTFS-NS-Diff-AH-GIS")
-        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS")
         add_subdirectory("PipelineRTFS-NS-KNN")
         add_subdirectory("PipelineRTFS-NS-KNN-Bounded")
+        if (USE_ACTIVE_HARMONY)
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-GIS")
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS")
+        endif (USE_ACTIVE_HARMONY)
+
     endif (USE_HADOOPGIS)
 endif (RT_TUNING_NSCALE_EXAMPLE)
 
 option(RT_TUNING_YI_EXAMPLE "Enable compilation of Yi's examples with tuning" OFF)
 
 if (RT_TUNING_YI_EXAMPLE)
-    #add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
+    add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
 endif (RT_TUNING_YI_EXAMPLE)
 
+if (USE_DAKOTA)
+    add_subdirectory("PipelineRTFS-NS-ParStudy")
+endif (USE_DAKOTA)
 
 add_subdirectory("HelloWorldRT")
 #add_subdirectory("PipelineRTFS-NSF-Diff")

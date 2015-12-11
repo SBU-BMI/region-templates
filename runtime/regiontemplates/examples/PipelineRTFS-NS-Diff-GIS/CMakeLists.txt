@@ -38,28 +38,12 @@ set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.c
         TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp DiffMaskComp.cpp)
 
 #Hadoopgis Dependencies
-if (USE_HADOOPGIS)
     set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp
             ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
             ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp
             ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp)
-    set(HADOOPGIS_SCRIPTS_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}) #the script path is the same as the executables path
-    set(WRITE_ENABLED_TEMP_PATH /tmp/ CACHE PATH "Path to a temp directory with write permission")
-    #set(HADOOPGIS_BUILD_DIR CACHE PATH "Hadoopgis Build Directory")
 
-
-    if (NOT IS_DIRECTORY ${WRITE_ENABLED_TEMP_PATH})
-        message(SEND_ERROR "Temp folder: ${WRITE_ENABLED_TEMP_PATH} IS NOT A VALID DIRECTORY")
-    endif ()
-
-    if (NOT IS_DIRECTORY ${HADOOPGIS_BUILD_DIR})
-        message(SEND_ERROR "HADOOPGIS_BUILD_DIR:${HADOOPGIS_BUILD_DIR} IS NOT A VALID DIRECTORY")
-    endif ()
-
-    if ((NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/resque) OR (NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/map_obj_to_tile) OR (NOT EXISTS ${HADOOPGIS_BUILD_DIR}/bin/mbb_normalizer))
-        message(SEND_ERROR "HADOOPGIS_BUILD_DIR:${HADOOPGIS_BUILD_DIR} The directory that you inserted is not a valid build directory.")
-    endif ()
     #Replace Macro inside program
     add_definitions(-DHADOOPGIS_SCRIPTS_DIRECTORY=${HADOOPGIS_SCRIPTS_OUTPUT_DIR})
     add_definitions(-DWRITE_ENABLED_TEMPORARY_PATH=${WRITE_ENABLED_TEMP_PATH})
@@ -69,11 +53,6 @@ if (USE_HADOOPGIS)
     #Copy the hadoopgis scripts to the executable build folder everytime the program is compiled.
     add_custom_target(copyScripts-Diff-GIS COMMAND ${CMAKE_COMMAND} -E copy_directory ${RegionTemplate_SOURCE_DIR}/comparativeanalysis/hadoopgis/scripts/ ${HADOOPGIS_SCRIPTS_OUTPUT_DIR})
 
-else ()
-    set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
-            ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
-endif () #End of  Hadoopgis Dependencies
-
 
 #Copy the cache-conf.xml file located in the example folder to the build folder everytime the program is compiled.
 add_custom_target(copyCacheConf-Diff-GIS COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
@@ -81,9 +60,8 @@ add_custom_target(copyCacheConf-Diff-GIS COMMAND ${CMAKE_COMMAND} -E copy ${CMAK
 # Add rule to generate the Runtime System, as a shared library (.so)
 add_library("${libname}" SHARED ${libcomponentssrcs} ${libcomparativeanalysis})
 
-if (USE_HADOOPGIS) #Hadoopgis Dependencies
-    add_dependencies("${libname}" copyScripts-Diff-GIS)
-endif () #End of  Hadoopgis Dependencies
+
+add_dependencies("${libname}" copyScripts-Diff-GIS) #Hadoopgis dependency
 
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
