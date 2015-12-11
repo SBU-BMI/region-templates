@@ -1,27 +1,35 @@
 cmake_minimum_required(VERSION 2.6)
 project(ExamplesRT)
 
-add_subdirectory("PipelineRTFS-SF")
+#add_subdirectory("PipelineRTFS-SF")
 #add_subdirectory("PipelineRTFS-NSF")
 
+#Difference analysis basic pipelines
+option(RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
+option(USE_HADOOPGIS "Compile HadoopGIS examples (Requires Hadoopgis)" OFF)
 
-option (RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
+if (RT_TUNING_NSCALE_EXAMPLE)
+    add_subdirectory("PipelineRTFS-NS-Diff")
+    add_subdirectory("PipelineRTFS-NS-Diff-AH")
+    add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
+    if (USE_HADOOPGIS)
+        find_path(HADOOPGIS_BUILD_DIR REQUIRED)
+        add_subdirectory("PipelineRTFS-NS-Diff-GIS")
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-GIS")
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS")
+        add_subdirectory("PipelineRTFS-NS-KNN")
+        add_subdirectory("PipelineRTFS-NS-KNN-Bounded")
+    endif (USE_HADOOPGIS)
+endif (RT_TUNING_NSCALE_EXAMPLE)
 
-if(RT_TUNING_NSCALE_EXAMPLE)
-	#Difference analysis basic pipelines
-	#add_subdirectory("PipelineRTFS-NS-Diff")
-	#add_subdirectory("PipelineRTFS-NS-Diff-AH")
-	add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
-endif(RT_TUNING_NSCALE_EXAMPLE)
+option(RT_TUNING_YI_EXAMPLE "Enable compilation of Yi's examples with tuning" OFF)
+
+if (RT_TUNING_YI_EXAMPLE)
+    #add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
+endif (RT_TUNING_YI_EXAMPLE)
 
 
-option (RT_TUNING_YI_EXAMPLE "Enable compilation of Yi's examples with tuning" OFF)
-
-if(RT_TUNING_YI_EXAMPLE)
-	add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
-endif(RT_TUNING_YI_EXAMPLE)
-
+add_subdirectory("HelloWorldRT")
 #add_subdirectory("PipelineRTFS-NSF-Diff")
-#add_subdirectory("HelloWorldRT")
 #add_subdirectory("RTPipelineBundle")
 #add_subdirectory("FireDetection")

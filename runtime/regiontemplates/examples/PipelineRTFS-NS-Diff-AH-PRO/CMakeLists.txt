@@ -9,6 +9,7 @@ include_directories(${Runtime_SOURCE_DIR}/ResourceManager)
 include_directories(${Runtime_SOURCE_DIR}/util)
 include_directories(${RegionTemplate_SOURCE_DIR})
 include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
+include_directories(${RegionTemplate_SOURCE_DIR}/comparativeanalysis)
 
 # nscale dirs
 find_path( NSCALE_SRC_DIR REQUIRED )
@@ -38,10 +39,19 @@ link_directories(${nscalebuilddir}/lib)
 set(libname componentnsdiffahpro)
 
 # Source files used by the Runtime System
-set( libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp DiffMaskComp.cpp TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp TaskDiffMask.cpp)
+set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp DiffMaskComp.cpp
+        TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp)
+
+
+set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
+            ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
+
+
+#Copy the cache-conf.xml file located in the example folder to the build folder everytime the program is compiled.
+add_custom_target(copyCacheConfToPipelineRTFS-NS-Diff-AH-PRO COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
 
 # Add rule to generate the Runtime System, as a shared library (.so)
-add_library("${libname}" SHARED ${libcomponentssrcs})
+add_library("${libname}" SHARED ${libcomponentssrcs} ${libcomparativeanalysis})
 
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
@@ -55,6 +65,7 @@ add_executable(PipelineRTFS-NS-Diff-AH-PRO PipelineManager.cpp)
 if(USE_ACTIVE_HARMONY)
 	target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
 endif(USE_ACTIVE_HARMONY)
+add_dependencies(PipelineRTFS-NS-Diff-AH-PRO copyCacheConfToPipelineRTFS-NS-Diff-AH-PRO)
 
 # Link the executable to the runtime system library
 target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO runtimesystem "${libname}")

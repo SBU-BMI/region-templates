@@ -413,27 +413,30 @@ int main (int argc, char **argv){
 			// End Creating Dependency Graph
 			sysEnv.startupExecution();
 
-			int diffPixels = 0;
-			int foregroundPixels = 0;
+            float diff = 0;
+            float secondaryMetric = 0;
 			for(int i = 0; i < diffComponentIds.size(); i++){
 				char * resultData = sysEnv.getComponentResultData(diffComponentIds[i]);
 				std::cout << "Diff Id: "<< diffComponentIds[i] << " resultData: ";
 				if(resultData != NULL){
-					std::cout << "size: " << ((int*)resultData)[0] << " diffPixels: "<< ((int*)resultData)[1]<< " refPixels: "<< ((int*)resultData)[2]<< std::endl;
-					diffPixels+= ((int*)resultData)[1];
-					foregroundPixels += ((int*)resultData)[2];
+                    std::cout << "size: " << ((int *) resultData)[0] << " diffPixels: " << ((float *) resultData)[1] <<
+                    " refPixels: " << ((float *) resultData)[2] << std::endl;
+                    diff += ((float *) resultData)[1];
+                    secondaryMetric += ((float *) resultData)[2];
 				}else{
 					std::cout << "NULL" << std::endl;
 				}
 				sysEnv.eraseResultData(diffComponentIds[i]);
 			}
 			diffComponentIds.clear();
-			std::cout << "END: LoopIdx: "<< loop << " blue: "<< blue << " green: "<<green << " red: "<< red <<
-					" T1: "<< T1 << " T2: "<< T2 << " G1: "<< G1 << " G2: "<< G2 << " minSize: "<< minSize <<
-					" maxSize: " << maxSize << " minSizePl: "<< minSizePl << " minSizeSeg: "<< minSizeSeg <<
-					" maxSizeSeg: "<< maxSizeSeg << " fillHolesElement: "<< fillHolesElement << " morphElement: " << mophElement <<
-					" watershedElement: " << watershedElement << " total diff: "<< diffPixels << " foreground: "<< foregroundPixels<< " perf: " << (double)diffPixels/(double)foregroundPixels<< std::endl;
-			perf = (double)diffPixels/(double)foregroundPixels;
+            std::cout << "END: LoopIdx: " << loop << " blue: " << blue << " green: " << green << " red: " << red <<
+            " T1: " << T1 << " T2: " << T2 << " G1: " << G1 << " G2: " << G2 << " minSize: " << minSize <<
+            " maxSize: " << maxSize << " minSizePl: " << minSizePl << " minSizeSeg: " << minSizeSeg <<
+            " maxSizeSeg: " << maxSizeSeg << " fillHolesElement: " << fillHolesElement << " morphElement: " <<
+            mophElement <<
+            " watershedElement: " << watershedElement << " total diff: " << diff << " secondaryMetric: " <<
+            secondaryMetric << " perf: " << (double) diff / (double) secondaryMetric << std::endl;
+            perf = (double) diff / (double) secondaryMetric;
 			std::cout << "Perf: " << perf << std::endl;
 			perfDataBase[oss.str()] = perf;
 		}else{

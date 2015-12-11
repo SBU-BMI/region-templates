@@ -13,14 +13,20 @@ include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
 # nscale dirs
 #/lustre/medusa/gteodor/nscale/build
 
+find_path(NSCALE_SRC_DIR REQUIRED)
+find_path(NSCALE_BUILD_DIR REQUIRED)
+set(nscalesrcdir ${NSCALE_SRC_DIR})
+set(nscalebuilddir ${NSCALE_BUILD_DIR})
+
 #include_directories(/Users/george/Documents/emory/nscale-sc13/nscale/src/segment)
 #include_directories(/Users/george/Documents/emory/nscale-sc13/nscale/src/segment/cuda)
 #include_directories(/Users/george/Documents/emory/nscale-sc13/nscale/src/common)
 #include_directories(/Users/george/Documents/emory/nscale-sc13/nscale/src/features)
-include_directories(/lustre/medusa/gteodor/nscale/src/segment)
-include_directories(/lustre/medusa/gteodor/nscale/src/segment/cuda)
-include_directories(/lustre/medusa/gteodor/nscale/src/common)
-include_directories(/lustre/medusa/gteodor/nscale/src/features)
+include_directories(${nscalesrcdir}/segment)
+include_directories(${nscalesrcdir}/segment/cuda)
+include_directories(${nscalesrcdir}/common)
+include_directories(${nscalesrcdir}/features)
+include_directories(${nscalesrcdir}/normalization)
 
 
 
@@ -28,7 +34,7 @@ include_directories(/lustre/medusa/gteodor/nscale/src/features)
 link_directories(${Runtime_SOURCE_DIR})
 # nscale lib dir
 #link_directories(/Users/george/Documents/emory/nscale-sc13/nscale/lib)
-link_directories(/lustre/medusa/gteodor/nscale/build/lib)
+link_directories(${NSCALE_BUILD_DIR}/lib)
 # Create library with components implementation
 set(libname componentsrt)
 

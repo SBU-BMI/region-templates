@@ -110,14 +110,14 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 
 	// Blue channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(220, 240, 40);
+	segmentation.addRangeArguments(200, 240, 50);
 
 	// Green channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(2220, 240, 50);
+	segmentation.addRangeArguments(200, 240, 50);
 	// Red channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(220, 240, 50);
+	segmentation.addRangeArguments(200, 240, 50);
 
 	// T1, T2  Red blood cell detection thresholds
 	segmentation.addArgument(new ArgumentFloat(5.0));// T1
@@ -241,7 +241,9 @@ int main (int argc, char **argv){
 				seg->addDependency(norm->getId());
 
 				std::cout<< "Creating DiffMask" << std::endl;
+                //TODO change here
 				diff = new DiffMaskComp();
+                //diff->setTask(new PixelCompare());
 
 				// version of the data region that will be read. It is created during the segmentation.
 				diff->addArgument(new ArgumentInt(versionSeg));
@@ -270,20 +272,21 @@ int main (int argc, char **argv){
 	// End Creating Dependency Graph
 	sysEnv.startupExecution();
 
-	int diffPixels = 0;
-	int foregroundPixels = 0;
+    float diff = 0;
+    float secondaryMetric = 0;
 	for(int i = 0; i < diffComponentIds.size(); i++){
-		char * resultData = sysEnv.getComponentResultData(diffComponentIds[i]);
-		std::cout << "Diff Id: "<< diffComponentIds[i] << " resultData: ";
+        char *resultData = sysEnv.getComponentResultData(diffComponentIds[i]);
+        std::cout << "Diff Id: " << diffComponentIds[i] << " resultData -  ";
 		if(resultData != NULL){
-			std::cout << "size: " << ((int*)resultData)[0] << " diffPixels: "<< ((int*)resultData)[1]<< " refPixels: "<< ((int*)resultData)[2]<< std::endl;
-			diffPixels+= ((int*)resultData)[1];
-			foregroundPixels += ((int*)resultData)[2];
+            std::cout << "size: " << ((int *) resultData)[0] << " Diff: " << ((float *) resultData)[1] <<
+            " Secondary Metric: " << ((float *) resultData)[2] << std::endl;
+            diff += ((float *) resultData)[1];
+            secondaryMetric += ((float *) resultData)[2];
 		}else{
 			std::cout << "NULL" << std::endl;
 		}
 	}
-	std::cout << "Total diff: "<< diffPixels << " total foreground: "<< foregroundPixels<< std::endl;
+    std::cout << "Total diff: " << diff << " Secondary Metric: " << secondaryMetric << std::endl;
 
 	// Finalize all processes running and end execution
 	sysEnv.finalizeSystem();

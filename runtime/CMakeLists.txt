@@ -62,7 +62,7 @@ if(USE_REGION_TEMPLATES)
 	
 	set(USE_ACTIVE_HARMONY OFF CACHE BOOL "Include compilation of Activer Harmony")
 
-	
+
 	set(USE_DAKOTA ON CACHE BOOL "Include compilation of Dakota Toolkit")
 	
 	# data spaces library locations
@@ -97,7 +97,7 @@ endif(USE_ACTIVE_HARMONY)
 
 if(USE_DAKOTA)
 	execute_process(
-	COMMAND ${CMAKE_COMMAND} -E tar xzf ${RegionTemplate_SOURCE_DIR}/external-src/dakota-6.3-public.src.tar_0.gz 
+	COMMAND ${CMAKE_COMMAND} -E tar xzf ${RegionTemplate_SOURCE_DIR}/external-src/dakota-6.3-public.src.tar_0.gz
 	WORKING_DIRECTORY ${RegionTemplate_SOURCE_DIR}/external-src/
 	)
 #	add_custom_target(
