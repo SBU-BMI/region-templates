@@ -111,7 +111,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation) 
 
     // Blue channel
     //segmentation.addArgument(new ArgumentInt(220));
-    segmentation.addRangeArguments(200, 240, 40);
+    segmentation.addRangeArguments(200, 240, 50);
 
     // Green channel
     //segmentation.addArgument(new ArgumentInt(220));

@@ -1,5 +1,6 @@
 #include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/knn/KnnBounded.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
 #include "DiffMaskComp.h"
 
 DiffMaskComp::DiffMaskComp() {
@@ -45,8 +46,12 @@ int DiffMaskComp::run() {
             float boundary = 10;
             TaskDiffMask *tDiffMask = new KnnBounded(list1, list2, diffPixels, 3, boundary);
 
+//            TaskDiffMask *t2 = new DiceCoefficient();
+//            t2->addDependency(tDiffMask);
+
             //TaskDiffMask *tDiffMask = new KnnUnbounded(computed_mask, reference_mask, diffPixels, 3);
             this->executeTask(tDiffMask);
+            //this->executeTask(t2);
 
         } else {
             std::cout << "DiffMaskComp: did not find data regions: " << std::endl;
