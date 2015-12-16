@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+
+
 #include "FileUtils.h"
 #include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
@@ -13,7 +15,11 @@
 #include "FeatureExtraction.h"
 #include "DiffMaskComp.h"
 #include "ParameterSet.h"
-
+#include <fstream>
+#include <iomanip>
+#include <map>
+#include <stdlib.h>
+#include <vector>
 
 namespace patch{
 	template < typename T > std::string to_string(const T& n)
@@ -23,13 +29,16 @@ namespace patch{
 		return stm.str();
 	}
 }
-void parseInputArguments(int argc, char**argv, std::string &inputFolder){
+void parseInputArguments(int argc, char**argv, std::string &inputFolder, std::string &parametersFile){
 	// Used for parameters parsing
 	for(int i = 0; i < argc-1; i++){
 		if(argv[i][0] == '-' && argv[i][1] == 'i'){
 			inputFolder = argv[i+1];
 		}
-	}
+		if(argv[i][0] == '-' && argv[i][1] == 'a'){
+			parametersFile = argv[i+1];
+		}
+}
 }
 
 
@@ -91,7 +100,39 @@ RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 
 	return rtCollection;
 }
-void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
+void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, std::string parametersFile){
+
+	string line;
+	map<std::string, vector<float> > parameters;
+	ifstream myfile (parametersFile.c_str());
+	if (myfile.is_open())
+	{
+		while ( getline (myfile,line) )
+		{
+			std::string name;
+			vector<float> param(3);
+			std::istringstream iss(line);
+			iss >> name;
+			for(int i = 0; i < 3; i++)
+				iss >> param[i];
+			parameters.insert(make_pair(name, param));
+		}
+		myfile.close();
+	}else{
+		cout << "Unable to open file"; 
+		exit(1);
+	}
+
+//	if(parameters.find("blue") != parameters.end())
+//		std::cout << parameters["blue"] << std::endl;
+//
+//	if(parameters.find("bluee") != parameters.end())
+//		std::cout << parameters["bluee"] << std::endl;
+//	else	std::cout << "Not found" << std::endl;
+
+
+
+
 
 	std::vector<ArgumentBase*> targetMeanOptions;
 
@@ -108,20 +149,31 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 
 	normalization.addArguments(targetMeanOptions);
 
+	assert(parameters.find("blue") != parameters.end());
+	assert(parameters.find("green") != parameters.end());
+	assert(parameters.find("red") != parameters.end());
+	assert(parameters.find("T1") != parameters.end());
+	assert(parameters.find("T2") != parameters.end());
+
 	// Blue channel
-	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(220, 240, 40);
+//	segmentation.addArgument(new ArgumentInt(220));
+	segmentation.addRangeArguments(parameters["blue"][0], parameters["blue"][1], parameters["blue"][2]);
 
 	// Green channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(2220, 240, 50);
+	//segmentation.addRangeArguments(220, 240, 50);
+	segmentation.addRangeArguments(parameters["green"][0], parameters["green"][1], parameters["green"][2]);
+
 	// Red channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(220, 240, 50);
+	//segmentation.addRangeArguments(220, 240, 50);
+	segmentation.addRangeArguments(parameters["red"][0], parameters["red"][1], parameters["red"][2]);
 
 	// T1, T2  Red blood cell detection thresholds
-	segmentation.addArgument(new ArgumentFloat(5.0));// T1
-	segmentation.addArgument(new ArgumentFloat(4.0));// T2
+	//segmentation.addArgument(new ArgumentFloat(5.0));// T1
+	segmentation.addArgument(new ArgumentFloat(parameters["T1"][0]));// T1
+	//segmentation.addArgument(new ArgumentFloat(4.0));// T2
+	segmentation.addArgument(new ArgumentFloat(parameters["T2"][0]));// T2
 	/*std::vector<ArgumentBase*> T1, T2;
 	for(float i = 2.0; i <= 5; i+=0.5){
 		T1.push_back(new ArgumentFloat(i+0.5));
@@ -170,26 +222,26 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 
 int main (int argc, char **argv){
 	// Folder when input data images are stored
-	std::string inputFolderPath;
+	std::string inputFolderPath, parametersFile;
 	std::vector<RegionTemplate *> inputRegionTemplates;
 	RegionTemplateCollection *rtCollection;
 	std::vector<int> diffComponentIds;
 	std::map<std::string, double> perfDataBase;
 
 
-	parseInputArguments(argc, argv, inputFolderPath);
+	parseInputArguments(argc, argv, inputFolderPath, parametersFile);
 
 	// Handler to the distributed execution system environment
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdiff.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdiffstudy.so");
 
 	// Create region templates description without instantiating data
 	rtCollection = RTFromFiles(inputFolderPath);
 
 	ParameterSet parSetNormalization, parSetSegmentation;
-	buildParameterSet(parSetNormalization, parSetSegmentation);
+	buildParameterSet(parSetNormalization, parSetSegmentation, parametersFile);
 
 	int segCount = 0;
 	// Build application dependency graph
@@ -284,6 +336,11 @@ int main (int argc, char **argv){
 		}
 	}
 	std::cout << "Total diff: "<< diffPixels << " total foreground: "<< foregroundPixels<< std::endl;
+	ofstream outfile ("results.out");
+	if (outfile.is_open())
+		outfile << diffPixels<< std::endl;
+
+	outfile.close();
 
 	// Finalize all processes running and end execution
 	sysEnv.finalizeSystem();

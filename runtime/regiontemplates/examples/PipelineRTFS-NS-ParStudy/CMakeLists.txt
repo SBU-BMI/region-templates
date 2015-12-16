@@ -11,9 +11,10 @@ include_directories(${RegionTemplate_SOURCE_DIR})
 include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
 
 # nscale dirs
-find_path( NSCALE_DIR REQUIRED )
-set(nscalesrcdir ${NSCALE_DIR}/src/)
-set(nscalebuilddir ${NSCALE_DIR}/build/)
+find_path( NSCALE_SRC_DIR REQUIRED )
+find_path( NSCALE_BUILD_DIR REQUIRED )
+set(nscalesrcdir ${NSCALE_SRC_DIR})
+set(nscalebuilddir ${NSCALE_BUILD_DIR})
 
 #includes
 include_directories(${nscalesrcdir}/segment)
@@ -23,6 +24,8 @@ include_directories(${nscalesrcdir}/features)
 include_directories(${nscalesrcdir}/normalization)
 
 file(COPY ${PipelineRTFS-NS-Diff-ParStudy_SOURCE_DIR}/rtconf.xml DESTINATION ${PipelineRTFS-NS-Diff-ParStudy_BINARY_DIR}/)
+file(COPY ${PipelineRTFS-NS-Diff-ParStudy_SOURCE_DIR}/simulator_script DESTINATION ${PipelineRTFS-NS-Diff-ParStudy_BINARY_DIR}/)
+file(COPY ${PipelineRTFS-NS-Diff-ParStudy_SOURCE_DIR}/dakota_nscale.in DESTINATION ${PipelineRTFS-NS-Diff-ParStudy_BINARY_DIR}/)
 
 # Make sure the compiler can find the library in runtime system directory
 link_directories(${Runtime_SOURCE_DIR})
