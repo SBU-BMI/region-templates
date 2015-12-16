@@ -331,12 +331,15 @@ int main (int argc, char **argv){
 
 	 double perf[numClients];//=100000;
 
+    int max_number_of_iterations = 100;
+    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
+    float mindiff = 0;
 
 	int versionNorm = 0, versionSeg = 0;
 	bool executedAlready[numClients];
 
 	/* main loop */
-	for (int loop = 0; !harmony_converged(hdesc[0]) && loop <= 100 && perf > 0;) {
+    for (int loop = 0; !harmony_converged(hdesc[0]) && loop < max_number_of_iterations;) {
 
 		for(int i = 0; i < numClients; i++){
 			perf[i] = INF;
@@ -381,11 +384,7 @@ int main (int argc, char **argv){
 		ParameterSet parSetNormalization, parSetSegmentation;
 		buildParameterSet(parSetNormalization, parSetSegmentation);
 
-		//std::cout << "BEGIN: LoopIdx: "<< loop-numClients+i << " blue: "<< blue[i] << " green: "<<green[i] << " red: "<< red[i] <<
-		//				" T1: "<< T1[i] << " T2: "<< T2[i] << " G1: "<< G1[i] << " G2: "<< G2[i] << " minSize: "<< minSize[i] <<
-		//				" maxSize: " << maxSize[i] << " minSizePl: "<< minSizePl << " minSizeSeg: "<< minSizeSeg <<
-		//				" maxSizeSeg: "<< maxSizeSeg << " fillHolesElement: "<< fillHolesElement[i] << " morphElement: " << morphElement[i] <<
-		//				" watershedElement: " << watershedElement[i] << std::endl;
+
 
 		int segCount = 0;
 		// Build application dependency graph
@@ -415,6 +414,15 @@ int main (int argc, char **argv){
 			for(int j = 0; j < numClients; j++){
 
 				if(executedAlready[j] == false){
+                    std::cout << "BEGIN: LoopIdx: " << loop << " blue: " << blue[j] << " green: " << green[j] <<
+                    " red: " << red[j] <<
+                    " T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
+                    minSize[j] <<
+                    " maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg[j] <<
+                    " maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] <<
+                    " morphElement: " << morphElement[j] <<
+                    " watershedElement: " << watershedElement[j] << std::endl;
+
 					Segmentation *seg = new Segmentation();
 
 					// version of the data region red. Each parameter instance in norm creates a output w/ different version
@@ -508,6 +516,9 @@ int main (int argc, char **argv){
 				" total diff: " << diff << " secondaryMetric: " <<
 				secondaryMetric << " perf: " << perf[j] << std::endl;
 
+                totaldiffs[loop] = diff;
+                (mindiff > diff) ? mindiff = diff : mindiff;
+
 				std::ostringstream oss;
 				oss << blue[j] << "-" << green[j] << "-" << red[j] << "-" << T1[j] << "-" << T2[j] << "-" << G1[j] <<
 				"-" << minSize[j] << "-" << maxSize[j] <<
@@ -531,8 +542,20 @@ int main (int argc, char **argv){
 
 
 	if(harmony_converged(hdesc[0])){
-		std::cout << "Optimization loop has converged!!!!" << std::endl;
+        std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << mindiff << std::endl;
 	}
+    else {
+        std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
+
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << mindiff << std::endl;
+    }
 	// Finalize all processes running and end execution
 	sysEnv.finalizeSystem();
 

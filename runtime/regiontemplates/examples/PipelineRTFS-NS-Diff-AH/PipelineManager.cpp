@@ -294,11 +294,14 @@ int main (int argc, char **argv){
 
 
 
-	 double perf=1000;
+    double perf = 1000;
+    int max_number_of_iterations = 100;
+    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
+    float mindiff = 0;
 
 	int versionNorm = 0, versionSeg = 0;
 	/* main loop */
-    for (int loop = 0; !harmony_converged(hdesc) && loop <= 100 && perf > 0; ++loop) {
+    for (int loop = 0; !harmony_converged(hdesc) && loop < max_number_of_iterations; ++loop) {
 
 		int hresult;
 		do{
@@ -323,11 +326,11 @@ int main (int argc, char **argv){
 			ParameterSet parSetNormalization, parSetSegmentation;
 			buildParameterSet(parSetNormalization, parSetSegmentation);
 
-			std::cout << "BEGIN: LoopIdx: "<< loop << " blue: "<< blue << " green: "<<green << " red: "<< red <<
-					" T1: "<< T1 << " T2: "<< T2 << " G1: "<< G1 << " G2: "<< G2 << " minSize: "<< minSize <<
-					" maxSize: " << maxSize << " minSizePl: "<< minSizePl << " minSizeSeg: "<< minSizeSeg <<
-					" maxSizeSeg: "<< maxSizeSeg << " fillHolesElement: "<< fillHolesElement << " morphElement: " << mophElement <<
-					" watershedElement: " << watershedElement << std::endl;
+            std::cout << "BEGIN: LoopIdx: " << loop << " blue: " << blue << " green: " << green << " red: " << red <<
+            " T1: " << T1 << " T2: " << T2 << " G1: " << G1 << " G2: " << G2 << " minSize: " << minSize <<
+            " maxSize: " << maxSize << " minSizePl: " << minSizePl << " minSizeSeg: " << minSizeSeg <<
+            " maxSizeSeg: " << maxSizeSeg << " fillHolesElement: " << fillHolesElement << " morphElement: " <<
+            mophElement << " watershedElement: " << watershedElement << std::endl;
 
 			int segCount = 0;
 			// Build application dependency graph
@@ -431,6 +434,10 @@ int main (int argc, char **argv){
 			}
 			diffComponentIds.clear();
             perf = (double) diff;
+
+            totaldiffs[loop] = diff;
+            (mindiff > diff) ? mindiff = diff : mindiff;
+
             std::cout << "END: LoopIdx: " << loop << " blue: " << blue << " green: " << green << " red: " << red <<
             " T1: " << T1 << " T2: " << T2 << " G1: " << G1 << " G2: " << G2 << " minSize: " << minSize <<
             " maxSize: " << maxSize << " minSizePl: " << minSizePl << " minSizeSeg: " << minSizeSeg <<
@@ -458,8 +465,23 @@ int main (int argc, char **argv){
 	}
 
 	if(harmony_converged(hdesc)){
-		std::cout << "Optimization loop has converged!!!!" << std::endl;
+        std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
+
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << mindiff << std::endl;
 	}
+    else {
+        std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
+
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << mindiff << std::endl;
+    }
+
+
 
 	// Finalize all processes running and end execution
 	sysEnv.finalizeSystem();

@@ -293,10 +293,13 @@ int main(int argc, char **argv) {
     // END AH SETUP //
 
     double perf = 1000;
+    int max_number_of_iterations = 100;
+    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
+    float maxdiff = 0;
 
     int versionNorm = 0, versionSeg = 0;
     /* main loop */
-    for (int loop = 1; !harmony_converged(hdesc) && loop <= 100 && perf > 0; ++loop) {
+    for (int loop = 0; !harmony_converged(hdesc) && loop < max_number_of_iterations; ++loop) {
 
         int hresult;
         //busy waiting
@@ -325,8 +328,7 @@ int main(int argc, char **argv) {
             " T1: " << T1 << " T2: " << T2 << " G1: " << G1 << " G2: " << G2 << " minSize: " << minSize <<
             " maxSize: " << maxSize << " minSizePl: " << minSizePl << " minSizeSeg: " << minSizeSeg <<
             " maxSizeSeg: " << maxSizeSeg << " fillHolesElement: " << fillHolesElement << " morphElement: " <<
-            mophElement <<
-            " watershedElement: " << watershedElement << std::endl;
+            mophElement << " watershedElement: " << watershedElement << std::endl;
 
             int segCount = 0;
             // Build application dependency graph
@@ -440,6 +442,9 @@ int main(int argc, char **argv) {
             " watershedElement: " << watershedElement << " total hadoopgis diff: " << diff << " secondaryMetric: " <<
             secondaryMetric << " perf: " << perf << std::endl;
 
+            totaldiffs[loop] = diff;
+            (maxdiff < diff) ? maxdiff = diff : maxdiff;
+
             std::cout << "Perf: " << perf << std::endl;
             perfDataBase[oss.str()] = perf;
         } else {
@@ -460,6 +465,19 @@ int main(int argc, char **argv) {
 
     if (harmony_converged(hdesc)) {
         std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
+
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << maxdiff << std::endl;
+    }
+    else {
+        std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
+
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << maxdiff << std::endl;
     }
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
