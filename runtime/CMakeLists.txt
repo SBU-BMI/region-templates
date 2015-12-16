@@ -63,7 +63,7 @@ if(USE_REGION_TEMPLATES)
 	set(USE_ACTIVE_HARMONY OFF CACHE BOOL "Include compilation of Activer Harmony")
 
 
-	set(USE_DAKOTA OFF CACHE BOOL "Include compilation of Dakota Toolkit")
+#	set(USE_DAKOTA OFF CACHE BOOL "Include compilation of Dakota Toolkit")
 	
 	# data spaces library locations
 	link_directories(${RegionTemplate_SOURCE_DIR}/external-src/dataspaces-ib-1.03beta/)
@@ -95,17 +95,17 @@ if(USE_ACTIVE_HARMONY)
 	add_dependencies("${libname}" active_harmony_lib)
 endif(USE_ACTIVE_HARMONY)
 
-if(USE_DAKOTA)
-	execute_process(
-	COMMAND ${CMAKE_COMMAND} -E tar xzf ${RegionTemplate_SOURCE_DIR}/external-src/dakota-6.3-public.src.tar_0.gz
-	WORKING_DIRECTORY ${RegionTemplate_SOURCE_DIR}/external-src/
-	)
+#if(USE_DAKOTA)
+#	execute_process(
+#	COMMAND ${CMAKE_COMMAND} -E tar xzf ${RegionTemplate_SOURCE_DIR}/external-src/dakota-6.3-public.src.tar_0.gz
+#	WORKING_DIRECTORY ${RegionTemplate_SOURCE_DIR}/external-src/
+#	)
 #	add_custom_target(
 #	active_harmony_lib
 #	COMMAND make install PREFIX=${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/
 #	WORKING_DIRECTORY ${RegionTemplate_SOURCE_DIR}/external-src/activeharmony-4.5/)
 #	add_dependencies("${libname}" active_harmony_lib)
-endif(USE_DAKOTA)
+#endif(USE_DAKOTA)
 
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}" -DPROFILE) 
 target_link_libraries("${libname}" ${MPI_LIBRARIES} execengine)

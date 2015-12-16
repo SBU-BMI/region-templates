@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(ExamplesRT)
 
-#add_subdirectory("PipelineRTFS-SF")
+add_subdirectory("PipelineRTFS-SF")
 #add_subdirectory("PipelineRTFS-NSF")
 
 #Difference analysis basic pipelines
@@ -50,11 +50,14 @@ if (RT_TUNING_YI_EXAMPLE)
     add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
 endif (RT_TUNING_YI_EXAMPLE)
 
-if (USE_DAKOTA)
-    add_subdirectory("PipelineRTFS-NS-ParStudy")
-endif (USE_DAKOTA)
+option (RT_PARAMETER_STUDY_NSCALE_EXAMPLE "Enable compilation of NScale example with Parameter Study" OFF)
+
+if(RT_PARAMETER_STUDY_NSCALE_EXAMPLE)
+	add_subdirectory("PipelineRTFS-NS-ParStudy")
+endif(RT_PARAMETER_STUDY_NSCALE_EXAMPLE)
 
 add_subdirectory("HelloWorldRT")
 #add_subdirectory("PipelineRTFS-NSF-Diff")
+#add_subdirectory("HelloWorldRT")
 #add_subdirectory("RTPipelineBundle")
 #add_subdirectory("FireDetection")
