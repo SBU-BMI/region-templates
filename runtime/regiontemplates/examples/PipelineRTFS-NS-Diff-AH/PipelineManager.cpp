@@ -117,7 +117,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 
 	// Blue channel
 	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(200, 240, 40);
+    segmentation.addRangeArguments(200, 240, 50);
 
 	// Green channel
 	//segmentation.addArgument(new ArgumentInt(220));
@@ -214,26 +214,23 @@ int main (int argc, char **argv){
 		 return -1;
 	 }
 
-/*	 FIRST expeirment configuration
- * 		if (	harmony_int(hdesc, "blue", 210, 240, 5) != 0
-			|| harmony_int(hdesc, "green", 220, 240, 40) != 0
-			|| harmony_int(hdesc, "red", 220, 240, 40) != 0
-			|| harmony_real(hdesc, "T1", 2.5, 7.5, 0.5) != 0
-			|| harmony_int(hdesc, "G1", 60, 90, 1) != 0)
-	 {*/
 
-
-	 if (	harmony_int(hdesc, "blue", 210, 240, 5) != 0
-			|| harmony_int(hdesc, "green", 220, 240, 40) != 0
-			|| harmony_int(hdesc, "red", 220, 240, 40) != 0
-			|| harmony_real(hdesc, "T1", 2.5, 7.5, 0.5) != 0
-			|| harmony_int(hdesc, "G1", 60, 90, 1) != 0
-	//		|| harmony_int(hdesc, "minSize", 10, 30, 5) != 0
-			|| harmony_int(hdesc, "maxSize", 900, 1500, 50) != 0
-			|| harmony_int(hdesc, "fillHoles", 4, 8, 4) != 0
-			|| harmony_int(hdesc, "recon", 4, 8, 4) != 0
-			|| harmony_int(hdesc, "watershed", 4, 8, 4) != 0
-			)
+    if (harmony_int(hdesc, "blue", 210, 240, 10) != 0
+        || harmony_int(hdesc, "green", 210, 240, 10) != 0
+        || harmony_int(hdesc, "red", 210, 240, 10) != 0
+        || harmony_real(hdesc, "T1", 2.5, 7.5, 0.5) != 0
+        || harmony_real(hdesc, "T2", 2.5, 7.5, 0.5) != 0
+        || harmony_int(hdesc, "G1", 5, 80, 5) != 0
+        || harmony_int(hdesc, "minSize", 2, 40, 2) != 0
+        || harmony_int(hdesc, "maxSize", 900, 1500, 50) != 0
+        || harmony_int(hdesc, "G2", 2, 40, 2) != 0
+        || harmony_int(hdesc, "minSizePl", 5, 80, 5) != 0
+        || harmony_int(hdesc, "minSizeSeg", 2, 40, 2) != 0
+        || harmony_int(hdesc, "maxSizeSeg", 900, 1500, 50) != 0
+        || harmony_int(hdesc, "fillHoles", 4, 8, 4) != 0
+        || harmony_int(hdesc, "recon", 4, 8, 4) != 0
+        || harmony_int(hdesc, "watershed", 4, 8, 4) != 0
+            )
 	 {
 		 //|| harmony_int(hdesc, "G1", 60, 90, 1) != 0)
 		 fprintf(stderr, "Failed to define tuning session\n");
@@ -254,24 +251,31 @@ int main (int argc, char **argv){
 		 return -1;
 	 }
 
-	 long blue, green=220, red=220;
-	 double T1, T2;
-	 long G1, G2;
-	 long minSize=11, maxSize=1000, fillHolesElement=4, mophElement=8, watershedElement=8;;
+    long blue, green = 220, red = 220;
+    double T1, T2;
+    long G1, G2;
+    long minSize = 11, maxSize = 1000, fillHolesElement = 4, mophElement = 8, watershedElement = 8;
+    long minSizePl;
+    long minSizeSeg = 21, maxSizeSeg = 1000;
 
 
 	 /* Bind the session variables to local variables. */
-	 if (	harmony_bind_int(hdesc, "G1", &G1) != 0
-			|| harmony_bind_int(hdesc, "blue", &blue) != 0
-			|| harmony_bind_int(hdesc, "green", &green) != 0
-			|| harmony_bind_int(hdesc, "red", &red) != 0
-			|| harmony_bind_real(hdesc, "T1", &T1) != 0
-		//	|| harmony_bind_int(hdesc, "minSize", &minSize) != 0
-			|| harmony_bind_int(hdesc, "maxSize", &maxSize) != 0
-			|| harmony_bind_int(hdesc, "fillHoles", &fillHolesElement) != 0
-			|| harmony_bind_int(hdesc, "recon", &mophElement) != 0
-			|| harmony_bind_int(hdesc, "watershed", &watershedElement) != 0
-	 )
+    if (harmony_bind_int(hdesc, "blue", &blue) != 0
+        || harmony_bind_int(hdesc, "green", &green) != 0
+        || harmony_bind_int(hdesc, "red", &red) != 0
+        || harmony_bind_real(hdesc, "T1", &T1) != 0
+        || harmony_bind_real(hdesc, "T2", &T2) != 0
+        || harmony_bind_int(hdesc, "G1", &G1) != 0
+        || harmony_bind_int(hdesc, "minSize", &minSize) != 0
+        || harmony_bind_int(hdesc, "maxSize", &maxSize) != 0
+        || harmony_bind_int(hdesc, "G2", &G2) != 0
+        || harmony_bind_int(hdesc, "minSizePl", &minSizePl) != 0
+        || harmony_bind_int(hdesc, "minSizeSeg", &minSizeSeg) != 0
+        || harmony_bind_int(hdesc, "maxSizeSeg", &maxSizeSeg) != 0
+        || harmony_bind_int(hdesc, "fillHoles", &fillHolesElement) != 0
+        || harmony_bind_int(hdesc, "recon", &mophElement) != 0
+        || harmony_bind_int(hdesc, "watershed", &watershedElement) != 0
+            )
 	 {
 		 fprintf(stderr, "Failed to register variable\n");
 		 harmony_fini(hdesc);
@@ -292,12 +296,9 @@ int main (int argc, char **argv){
 
 	 double perf=1000;
 
-	int minSizePl=minSize+5, minSizeSeg=21, maxSizeSeg=1000;
-	///int fillHolesElement=4, mophElement=8, watershedElement=8;
-
 	int versionNorm = 0, versionSeg = 0;
 	/* main loop */
-	for (int loop = 0; !harmony_converged(hdesc) && loop <= 35 && perf>0; ++loop) {
+    for (int loop = 0; !harmony_converged(hdesc) && loop <= 100 && perf > 0; ++loop) {
 
 		int hresult;
 		do{
@@ -312,12 +313,12 @@ int main (int argc, char **argv){
 			harmony_fini(hdesc);
 			return -1;
 		}
-		T2 = T1 - 1.0;
-		//G2 = G1 - 5;
-		G2 = G1 - 35;
 
 		std::ostringstream oss;
-		oss << blue << "-" << green << "-"<<red << "-"<< T1 <<"-"<< G1 << "-"<<minSize<< "-"<<maxSize<<"-"<<fillHolesElement<<"-"<<mophElement<<"-"<<watershedElement;
+        oss << blue << "-" << green << "-" << red << "-" << T1 << "-" << T2 << "-" << G1 << "-" << minSize << "-" <<
+        maxSize <<
+        "-" << G2 << "-" << minSizePl << "-" << minSizeSeg << "-" << maxSizeSeg << "-" << fillHolesElement << "-" <<
+        mophElement << "-" << watershedElement;
 		if(perfDataBase.find(oss.str()) == perfDataBase.end()){
 			ParameterSet parSetNormalization, parSetSegmentation;
 			buildParameterSet(parSetNormalization, parSetSegmentation);
@@ -429,14 +430,15 @@ int main (int argc, char **argv){
 				sysEnv.eraseResultData(diffComponentIds[i]);
 			}
 			diffComponentIds.clear();
+            perf = (double) diff;
             std::cout << "END: LoopIdx: " << loop << " blue: " << blue << " green: " << green << " red: " << red <<
             " T1: " << T1 << " T2: " << T2 << " G1: " << G1 << " G2: " << G2 << " minSize: " << minSize <<
             " maxSize: " << maxSize << " minSizePl: " << minSizePl << " minSizeSeg: " << minSizeSeg <<
             " maxSizeSeg: " << maxSizeSeg << " fillHolesElement: " << fillHolesElement << " morphElement: " <<
             mophElement <<
             " watershedElement: " << watershedElement << " total diff: " << diff << " secondaryMetric: " <<
-            secondaryMetric << " perf: " << (double) diff / (double) secondaryMetric << std::endl;
-            perf = (double) diff / (double) secondaryMetric;
+            secondaryMetric << " perf: " << perf << std::endl;
+
 			std::cout << "Perf: " << perf << std::endl;
 			perfDataBase[oss.str()] = perf;
 		}else{
@@ -458,102 +460,6 @@ int main (int argc, char **argv){
 	if(harmony_converged(hdesc)){
 		std::cout << "Optimization loop has converged!!!!" << std::endl;
 	}
-/*	ParameterSet parSetNormalization, parSetSegmentation;
-	buildParameterSet(parSetNormalization, parSetSegmentation);
-
-	int segCount = 0;
-	// Build application dependency graph
-	// Instantiate application dependency graph
-	for(int i = 0; i < rtCollection->getNumRTs(); i++){
-
-		int previousSegCompId = 0;
-
-		// each tile computed with a different parameter combination results
-		// into a region template w/ a different version value
-		int versionNorm = 0;
-
-		parSetNormalization.resetIterator();
-		parSetSegmentation.resetIterator();
-
-		// walk through parameter set and instantiate the computation pipeline for each parameter combination
-		std::vector<ArgumentBase*> argSetInstanceNorm = parSetNormalization.getNextArgumentSetInstance();
-
-		// while it has not finished w/ all parameter combinations
-		while((argSetInstanceNorm).size() != 0){
-			int versionSeg = 0;
-
-			DiffMaskComp *diff = NULL;
-			NormalizationComp *norm = new NormalizationComp();
-
-			// normalization parameters
-			norm->addArgument(new ArgumentInt(versionNorm));
-			norm->addArgument(argSetInstanceNorm[0]);
-			norm->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-			sysEnv.executeComponent(norm);
-
-			std::vector<ArgumentBase*> argSetInstanceSegmentation = parSetSegmentation.getNextArgumentSetInstance();
-
-			while((argSetInstanceSegmentation).size() != 0){
-
-				Segmentation *seg = new Segmentation();
-
-				// version of the data region read. Each parameter instance in norm creates a output w/ different version
-				seg->addArgument(new ArgumentInt(versionNorm));
-
-				// version of the data region outputed by the segmentation stage
-				seg->addArgument(new ArgumentInt(versionSeg));
-
-				// add remaining (application specific) parameters from the argSegInstance
-				for(int j = 0; j < 15; j++)
-					seg->addArgument(argSetInstanceSegmentation[j]);
-
-				seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-				seg->addDependency(norm->getId());
-
-				std::cout<< "Creating DiffMask" << std::endl;
-				diff = new DiffMaskComp();
-
-				// version of the data region that will be read. It is created during the segmentation.
-				diff->addArgument(new ArgumentInt(versionSeg));
-
-					// region template name
-				diff->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-				diff->addDependency(previousSegCompId);
-				diff->addDependency(seg->getId());
-				// add to the list of diff component ids.
-				diffComponentIds.push_back(diff->getId());
-
-				sysEnv.executeComponent(seg);
-				sysEnv.executeComponent(diff);
-
-				std::cout << "Manager CompId: " << diff->getId() << " fileName: " << rtCollection->getRT(i)->getDataRegion(0)->getInputFileName() << std::endl;
-				argSetInstanceSegmentation = parSetSegmentation.getNextArgumentSetInstance();
-				segCount++;
-				versionSeg++;
-			}
-			versionNorm++;
-			parSetSegmentation.resetIterator();
-			argSetInstanceNorm = parSetNormalization.getNextArgumentSetInstance();
-		}
-	}
-
-	// End Creating Dependency Graph
-	sysEnv.startupExecution();
-
-	int diffPixels = 0;
-	int foregroundPixels = 0;
-	for(int i = 0; i < diffComponentIds.size(); i++){
-		char * resultData = sysEnv.getComponentResultData(diffComponentIds[i]);
-		std::cout << "Diff Id: "<< diffComponentIds[i] << " resultData: ";
-		if(resultData != NULL){
-			std::cout << "size: " << ((int*)resultData)[0] << " diffPixels: "<< ((int*)resultData)[1]<< " refPixels: "<< ((int*)resultData)[2]<< std::endl;
-			diffPixels+= ((int*)resultData)[1];
-			foregroundPixels += ((int*)resultData)[2];
-		}else{
-			std::cout << "NULL" << std::endl;
-		}
-	}
-	std::cout << "Total diff: "<< diffPixels << " total foreground: "<< foregroundPixels<< std::endl;*/
 
 	// Finalize all processes running and end execution
 	sysEnv.finalizeSystem();
