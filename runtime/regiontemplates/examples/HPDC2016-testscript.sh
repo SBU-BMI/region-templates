@@ -3,7 +3,7 @@
 
 inputPath="$1"
 
-numberOfProcs=8
+numberOfProcs=24
 
 hadoopgisMetric="Dice"
 testOnlyGis="false"
