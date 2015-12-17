@@ -17,7 +17,7 @@ if [ "$inputPath" == "" ]; then
 fi
 
 if [ "$HARMONY_HOME" == "" ]; then
-	echo "You need to export the Active Harmony Home path to your system environment!"
+	echo "You need to export the Active HARMONY_HOME path to your system environment!"
 	exit
 fi
 echo "Starting Tests"
