@@ -3,16 +3,20 @@
 
 inputPath="$1"
 
-numberOfProcs=24
+numberOfProcs=20
 
 hadoopgisMetric="Dice"
 testOnlyGis="false"
 
-mkdir testScriptOutput
-outputPath="testScriptOutput"
+outputPath="$2"
 
 if [ "$inputPath" == "" ]; then
 	echo "You need to specify the masks path as the first argument!"
+	exit
+fi
+
+if [ "$outputPath" == "" ]; then
+	echo "You need to specify the output path as the second argument!"
 	exit
 fi
 
