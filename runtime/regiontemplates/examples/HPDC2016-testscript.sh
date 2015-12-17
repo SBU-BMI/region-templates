@@ -15,6 +15,11 @@ if [ "$inputPath" == "" ]; then
 	echo "You need to specify the masks path as the first argument!"
 	exit
 fi
+
+if [ "$HARMONY_HOME" == "" ]; then
+	echo "You need to export the Active Harmony Home path to your system environment!"
+	exit
+fi
 echo "Starting Tests"
 
 #Copying the cache rtconf.xml file
