@@ -22,6 +22,9 @@
 class Hadoopgis : public TaskDiffMask {
 
 protected:
+    float amountOfPolygons;
+    float totalAreaOfPolygons;
+
     std::vector<std::vector<cv::Point> > *listOfPolygons[2];
 
     virtual void parseOutput(std::string pathToMaskOutputtedByTheScript) = 0;

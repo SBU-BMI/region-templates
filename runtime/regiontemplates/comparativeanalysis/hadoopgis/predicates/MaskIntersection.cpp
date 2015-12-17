@@ -6,6 +6,9 @@
 
 MaskIntersection::MaskIntersection(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels) {
     this->dr1 = dr1;
+    this->dr2 = dr2;
+    amountOfPolygons = 0;
+    totalAreaOfPolygons = 0;
     getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
     getPolygonsFromMask(this->dr2->getData(), this->listOfPolygons[1]);
     this->diff = diffPixels;
@@ -33,7 +36,7 @@ void MaskIntersection::parseOutput(std::string myMaskPath) {
         perror("Comparative Analysis - HadoopGIS - MaskIntersection: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
 
     float compId = diff[0];
-    this->diff[0] = totalArea;
+    this->diff[0] = totalArea / (totalAreaOfPolygons / 2);
     this->diff[1] = numberOfPolygonsIntersections;
     std::cout << "Comparative Analysis - HadoopGIS - Jaccard: CompId: " << compId << " MaskIntersection: " <<
     this->diff[0] <<

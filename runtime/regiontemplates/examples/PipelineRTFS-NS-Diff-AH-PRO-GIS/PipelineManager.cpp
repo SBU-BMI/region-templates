@@ -558,7 +558,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < max_number_of_iterations; ++i) {
             std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
         }
-        std::cout << "\tMinDiff: " << maxdiff << std::endl;
+        std::cout << "\tMaxDiff: " << maxdiff << std::endl;
     }
 
     // Finalize all processes running and end execution

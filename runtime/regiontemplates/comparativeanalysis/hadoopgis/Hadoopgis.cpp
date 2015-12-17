@@ -41,7 +41,9 @@ void Hadoopgis::convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point
 //            ss << "\t" << k%9;
 //        }
         ss << endl;
+        totalAreaOfPolygons += fabs(contourArea(cv::Mat((*hull)[i]))); //Get the sum of the polygon areas.
     }
+    amountOfPolygons += (*hull).size();
 }
 
 bool Hadoopgis::compare_points(const cv::Point &e1, const cv::Point &e2) {
