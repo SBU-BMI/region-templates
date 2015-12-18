@@ -37,7 +37,7 @@ int DiffMaskComp::run() {
             // gambiarra
             diffPixels[0] = this->getId();
             // Create processing task
-            TaskDiffMask *tDiffMask = new DiceCoefficient(computed_mask, reference_mask, diffPixels);
+            TaskDiffMask *tDiffMask = new MaskIntersection(computed_mask, reference_mask, diffPixels);
 
             this->executeTask(tDiffMask);
         } else {

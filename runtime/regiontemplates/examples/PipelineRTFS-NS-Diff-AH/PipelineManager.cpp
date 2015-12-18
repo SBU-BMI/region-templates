@@ -297,7 +297,7 @@ int main (int argc, char **argv){
     double perf = 1000;
     int max_number_of_iterations = 100;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
-    float mindiff = 0;
+    float mindiff = std::numeric_limits<float>::infinity();;
 
 	int versionNorm = 0, versionSeg = 0;
 	/* main loop */
