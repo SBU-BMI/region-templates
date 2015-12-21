@@ -40,7 +40,8 @@ void DiceCoefficient::parseOutput(std::string myMaskPath) {
     this->diff[1] = numberOfPolygonsIntersections;
     std::cout << "Comparative Analysis - HadoopGIS - Dice: CompId: " << compId << " Dice Coefficient: " <<
     this->diff[0] <<
-    " Number of Polygon Intersections: " << this->diff[1] <<
+    " Number of Polygon Intersections: " << this->diff[1] << "Total amount of Polygons:" << amountOfPolygons <<
+    "Total Dice:" << totalArea <<
     std::endl;
 
 

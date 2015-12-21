@@ -40,8 +40,10 @@ void MaskIntersection::parseOutput(std::string myMaskPath) {
     this->diff[1] = numberOfPolygonsIntersections;
     std::cout << "Comparative Analysis - HadoopGIS - Jaccard: CompId: " << compId << " MaskIntersection: " <<
     this->diff[0] <<
-    " Number of Polygon Intersections: " << this->diff[1] <<
+    " Number of Polygon Intersections: " << this->diff[1] << "Total area of Polygons:" << totalAreaOfPolygons <<
+    "Total MaskIntersection:" << totalArea <<
     std::endl;
+
 }
 
 void  MaskIntersection::callScript(std::string pathToScript, std::string pathToHadoopgisBuild, std::string maskFileName,

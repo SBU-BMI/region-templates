@@ -1,6 +1,7 @@
 #! /bin/bash
 
 echo "Installing Dependencies..."
+sudo apt-get install libboost-all-dev
 sh ../dependencies/ubuntu_install_geos.sh
 sh ../dependencies/ubuntu_install_libspatialindex.sh
 echo "Dependencies Instaled"
