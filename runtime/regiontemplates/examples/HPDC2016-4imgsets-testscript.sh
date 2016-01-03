@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run this script in the examples folder: /regiontemplates/examples$ bash HPDC2016-testscript.sh /home/taveira/mestrado/subset
+# Run this script in the examples folder: /regiontemplates/examples$ bash HPDC2016-4imgsets-testscript.sh <imgsets folder>
 
 inputPath="$1"
 
