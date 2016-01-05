@@ -2,10 +2,10 @@
 
 inputPath="$1"
 
-numberOfProcs=20
+numberOfProcs=8
 
-hadoopgisMetric="Jaccard"
-testOnlyGis="false"
+hadoopgisMetric="Dice"
+testOnlyGis="true"
 
 outputPath="$2"
 
@@ -84,7 +84,7 @@ if [ "$testOnlyGis" == "false" ]; then
          done
 fi
 
-echo "Testing PipelineRTFS-NS-Diff-AH-GIS..."
+echo "Testing PipelineRTFS-NS-Diff-AH-GIS-${hadoopgisMetric}..."
 
 IMG_COUNTER=1
          while [  $IMG_COUNTER -lt 16 ]; do
@@ -96,7 +96,7 @@ IMG_COUNTER=1
              cp ${inputPath}/image${IMG_COUNTER}.mask.png ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-image${IMG_COUNTER}.txt
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-${hadoopgisMetric}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*
@@ -107,7 +107,7 @@ IMG_COUNTER=1
              let IMG_COUNTER=IMG_COUNTER+1
          done
 
-echo "Testing PipelineRTFS-NS-Diff-AH-PRO-GIS..."
+echo "Testing PipelineRTFS-NS-Diff-AH-PRO-GIS-${hadoopgisMetric}..."
 
 IMG_COUNTER=1
          while [  $IMG_COUNTER -lt 16 ]; do
@@ -119,7 +119,7 @@ IMG_COUNTER=1
              cp ${inputPath}/image${IMG_COUNTER}.mask.png ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-image${IMG_COUNTER}.txt
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-${hadoopgisMetric}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*

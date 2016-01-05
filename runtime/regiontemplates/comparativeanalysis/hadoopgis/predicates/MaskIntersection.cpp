@@ -38,7 +38,7 @@ void MaskIntersection::parseOutput(std::string myMaskPath) {
     float compId = diff[0];
     this->diff[0] = totalArea / (totalAreaOfPolygons / 2);
     this->diff[1] = numberOfPolygonsIntersections;
-    std::cout << "Comparative Analysis - HadoopGIS - Jaccard: CompId: " << compId << " MaskIntersection: " <<
+    std::cout << "Comparative Analysis - HadoopGIS - MaskIntersection: CompId: " << compId << " MaskIntersection: " <<
     this->diff[0] <<
     " Number of Polygon Intersections: " << this->diff[1] << "Total area of Polygons:" << totalAreaOfPolygons <<
     "Total MaskIntersection:" << totalArea <<
