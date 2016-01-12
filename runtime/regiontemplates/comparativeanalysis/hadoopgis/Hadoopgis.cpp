@@ -21,7 +21,8 @@ void Hadoopgis::getPolygonsFromMask(const cv::Mat &img, std::vector<std::vector<
 
 }
 
-void Hadoopgis::convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point> > *hull, std::ofstream &ss) {
+void Hadoopgis::convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point> > *hull, std::ofstream &ss,
+                                               double &area) {
 
     //Output the polygons to a format that Hadoopgis can read
     //Each cell corresponds to a line in the format:
@@ -41,9 +42,9 @@ void Hadoopgis::convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point
 //            ss << "\t" << k%9;
 //        }
         ss << endl;
-        totalAreaOfPolygons += fabs(contourArea(cv::Mat((*hull)[i]))); //Get the sum of the polygon areas.
+        area += fabs(contourArea(cv::Mat((*hull)[i]))); //Get the sum of the polygon areas.
     }
-    amountOfPolygons += (*hull).size();
+
 }
 
 bool Hadoopgis::compare_points(const cv::Point &e1, const cv::Point &e2) {
@@ -87,8 +88,10 @@ bool Hadoopgis::run(int procType, int tid) {
     referenceMaskFile.open(referenceMaskPath.c_str());
 //    getPolygonsFromMask(image1, this->listOfPolygons[0]);
 //    getPolygonsFromMask(image2, this->listOfPolygons[1]);
-    convertPolygonToHadoopgisInput(this->listOfPolygons[0], myMaskFile);
-    convertPolygonToHadoopgisInput(this->listOfPolygons[1], referenceMaskFile);
+    double area1 = 0;
+    convertPolygonToHadoopgisInput(this->listOfPolygons[0], myMaskFile, area1);
+    double area2 = 0;
+    convertPolygonToHadoopgisInput(this->listOfPolygons[1], referenceMaskFile, area2);
     myMaskFile.close();
     referenceMaskFile.close();
 
@@ -98,7 +101,7 @@ bool Hadoopgis::run(int procType, int tid) {
 
     callScript(pathToScripts, pathToHadoopgisBuild, myMaskFileName, referenceMaskFileName);
 
-    parseOutput(myMaskPath);
+    parseOutput(myMaskPath, area1, area2);
 
     uint64_t t2 = Util::ClockGetTimeProfile();
 

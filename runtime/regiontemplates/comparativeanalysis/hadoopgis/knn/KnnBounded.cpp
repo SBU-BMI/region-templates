@@ -29,7 +29,7 @@ KnnBounded::KnnBounded(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *id
     this->scriptName = "KnnBounded.sh";
 }
 
-void KnnBounded::parseOutput(std::string myMaskPath) {
+void KnnBounded::parseOutput(std::string myMaskPath, double area1, double area2) {
 
 
     myMaskPath.append(outputFileExtension);

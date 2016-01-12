@@ -3,10 +3,10 @@
 
 inputPath="$1"
 
-numberOfProcs=20
+numberOfProcs=8
 
-hadoopgisMetric="Jaccard"
-testOnlyGis="false"
+hadoopgisMetric="Dice"
+testOnlyGis="true"
 
 outputPath="$2"
 
@@ -36,16 +36,16 @@ if [ "$testOnlyGis" == "false" ]; then
     programPath="${program}/${program}"
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-subset-mask1.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-subset-mask1.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-subset-mask2.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-subset-mask2.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-subset-mask3.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-subset-mask3.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-subset-mask4.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-subset-mask4.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
     ELAPSED_TIME=$(($SECONDS - $START_TIME))
@@ -57,16 +57,16 @@ if [ "$testOnlyGis" == "false" ]; then
     programPath="${program}/${program}"
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-subset-mask1.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-subset-mask1.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-subset-mask2.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-subset-mask2.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-subset-mask3.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-subset-mask3.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    #mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-subset-mask4.txt
+    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-subset-mask4.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
     ELAPSED_TIME=$(($SECONDS - $START_TIME))
