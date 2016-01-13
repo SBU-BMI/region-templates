@@ -1,0 +1,55 @@
+#!/bin/sh
+# Sample simulator to Dakota system call script
+# See Advanced Simulation Code Interfaces chapter in Users Manual
+
+# $1 is params.in FROM Dakota
+# $2 is results.out returned to Dakota
+
+# --------------
+# PRE-PROCESSING
+# --------------
+# Incorporate the parameters from DAKOTA into the template, writing ros.in
+place=`pwd`;
+#echo "BEFORE START: "$place
+cat $1
+
+echo "blue 220 220 10" > parametersFile.in
+echo "green 220 220 10" >> parametersFile.in
+echo "red 220 220 10" >> parametersFile.in
+#grep "blue" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' > parametersFile.in
+#grep "green" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+#grep "red" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+echo "T1 5.0 5.0 10" >> parametersFile.in
+#grep "T1" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "T2" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "G1" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "G2" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "minSize" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "maxSize" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "minSizePl" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "minSizeSeg" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "maxSizeSeg" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+#grep "fillHoles" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+echo "fillHoles 4 4 10" >> parametersFile.in
+grep "recon" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "water" $1 |  grep -v "DVV" |  awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+
+
+#echo $1 $2
+# --------
+# ANALYSIS
+# --------
+
+APP_DIR=~/workspace/region-templates/build/regiontemplates/examples/PipelineRTFS-NS-ParStudy
+
+cd $APP_DIR;
+#echo "mpirun -n 2 ./PipelineRTFS-NS-Diff-ParStudy -i ~/Desktop/training_data/test/ -a ${place}/parametersFile.in &> result.out"
+
+mpirun -n 2 ./PipelineRTFS-NS-Diff-ParStudy -i ~/Desktop/training_data/test/ -a ${place}/parametersFile.in 
+cd -
+# ---------------
+# POST-PROCESSING
+# ---------------
+
+mv ${APP_DIR}/results.out .
+
