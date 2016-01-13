@@ -109,15 +109,15 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	normalization.addArguments(targetMeanOptions);
 
 	// Blue channel
-	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(200, 240, 50);
+    segmentation.addArgument(new ArgumentInt(220));
+    //segmentation.addRangeArguments(200, 240, 50);
 
 	// Green channel
-	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(200, 240, 50);
+    segmentation.addArgument(new ArgumentInt(220));
+    //segmentation.addRangeArguments(200, 240, 50);
 	// Red channel
-	//segmentation.addArgument(new ArgumentInt(220));
-	segmentation.addRangeArguments(200, 240, 50);
+    segmentation.addArgument(new ArgumentInt(220));
+    //segmentation.addRangeArguments(200, 240, 50);
 
 	// T1, T2  Red blood cell detection thresholds
 	segmentation.addArgument(new ArgumentFloat(5.0));// T1
@@ -134,7 +134,6 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	// are preliminary areas in the calculation of the nuclei candidate set
 	segmentation.addArgument(new ArgumentInt(80));
 
-	segmentation.addArgument(new ArgumentInt(45));
 	//segmentation.addRangeArguments(45, 70, 40);
 
 
@@ -143,6 +142,8 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	//parSet.addRangeArguments(10, 30, 5);
 	segmentation.addArgument(new ArgumentInt(1000));
 	//parSet.addRangeArguments(900, 1500, 50);
+
+    segmentation.addArgument(new ArgumentInt(45));
 
 	// int minSizePl=30 -> Filter out objects smaller than this value after overlapping objects are separate (watershed+other few operations)
 	segmentation.addArgument(new ArgumentInt(30));

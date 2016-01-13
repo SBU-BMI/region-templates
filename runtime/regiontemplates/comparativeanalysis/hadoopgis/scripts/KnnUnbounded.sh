@@ -118,14 +118,16 @@ sort ${mask}outputmapper1 ${mask}outputmapper2 > ${mask}inputreducer
 PARAMOPTS5="-o 3 "${PARAMOPTS}" -f 1:1,2:1,mindist,1:2,2:2 -c ${mask}denormpartition.idx"
 #PARAMOPTS5="-o 3 "${PARAMOPTS}" -f 1:1,1:2,2:1,2:2,mindist -c ${mask}denormpartition.idx"
 #echo ${PARAMOPTS5}
-${hadoopgisBuildPath}bin/resque ${PARAMOPTS5} < ${mask}inputreducer > ${mask}.output
+${hadoopgisBuildPath}bin/resque ${PARAMOPTS5} < ${mask}inputreducer > ${mask}outputreducer
 #echo "Done with spatial processing"
+
+## If problems appear it might be related to the unix sorting method. Just comment the sorting and the duplicate remover.
 
 # Simulate MapReduce sorting
 #echo "Performing duplicate removal"
-#sort ${mask}outputreducer > ${mask}.output
+sort ${mask}outputreducer > ${mask}inputmapperboundary
 
-#${hadoopgisBuildPath}bin/duplicate_remover uniq < ${mask}inputmapperboundary > ${mask}.output
+${hadoopgisBuildPath}bin/duplicate_remover uniq < ${mask}inputmapperboundary > ${mask}.output
 
 #echo "Removing temp files"
 rm ${mask}
@@ -140,6 +142,6 @@ rm ${mask}denormpartition.idx
 rm ${mask}outputmapper1
 rm ${mask}outputmapper2
 rm ${mask}inputreducer
-#rm ${mask}outputreducer
-#rm ${mask}inputmapperboundary
+rm ${mask}outputreducer
+rm ${mask}inputmapperboundary
 #REMOVE THE CREATED FILES!!!

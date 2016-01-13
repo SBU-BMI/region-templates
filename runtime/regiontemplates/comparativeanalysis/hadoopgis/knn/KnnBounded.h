@@ -28,7 +28,7 @@ public:
     KnnBounded(std::vector<std::vector<cv::Point> > *list1, std::vector<std::vector<cv::Point> > *list2, float *id,
                long k, float boundary);
 
-    void parseOutput(std::string pathToMaskOutputtedByTheScript);
+    void parseOutput(std::string pathToMaskOutputtedByTheScript, double area1, double area2);
 
     //KnnResult *getKnnResult();
 

@@ -17,7 +17,7 @@ protected:
 public:
     DiceCoefficient(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels);
 
-    void parseOutput(std::string pathToMaskOutputtedByTheScript);
+    void parseOutput(std::string pathToMaskOutputtedByTheScript, double area1, double area2);
 
 };
 

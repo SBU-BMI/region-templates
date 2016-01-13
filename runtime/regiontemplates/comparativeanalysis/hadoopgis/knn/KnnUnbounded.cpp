@@ -27,7 +27,7 @@ KnnUnbounded::KnnUnbounded(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float
     this->scriptName = "KnnUnbounded.sh";
 }
 
-void KnnUnbounded::parseOutput(std::string myMaskPath) {
+void KnnUnbounded::parseOutput(std::string myMaskPath, double area1, double area2) {
 
 
     myMaskPath.append(outputFileExtension);

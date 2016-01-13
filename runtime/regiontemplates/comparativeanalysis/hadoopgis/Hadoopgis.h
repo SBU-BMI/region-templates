@@ -22,9 +22,10 @@
 class Hadoopgis : public TaskDiffMask {
 
 protected:
+
     std::vector<std::vector<cv::Point> > *listOfPolygons[2];
 
-    virtual void parseOutput(std::string pathToMaskOutputtedByTheScript) = 0;
+    virtual void parseOutput(std::string pathToMaskOutputtedByTheScript, double area1, double area2) = 0;
 
     virtual void callScript(std::string pathToScript, std::string pathToHadoopgisBuild, std::string maskFileName,
                             std::string referenceMaskFileName) = 0;
@@ -35,7 +36,7 @@ protected:
                                std::string maskFileName,
                                std::string referenceMaskFileName);
 
-    void convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point> > *hull, std::ofstream &ss);
+    void convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point> > *hull, std::ofstream &ss, double &area);
 
 public:
     static void getPolygonsFromMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons);

@@ -7,7 +7,7 @@ builddir=../build/bin
 
 OPTFLAGS	= -O2
 INCFLAGS	= -I $(incbase)
-LIBS		= -lgeos -lspatialindex -lboost_program_options -L $(libbase)
+LIBS		= -lgeos -lspatialindex -lboost_program_options -lboost_log -lboost_thread -lboost_system -lboost_log_setup -L $(libbase) -Wl,-rpath,${libbase}
 
 ifdef DEBUG
     OPTFLAGS += -DDEBUG -g
@@ -20,12 +20,12 @@ ifdef DEBUGTIME
 else
     OPTFLAGS += -DNDEBUGTIME
 endif
- 
-   
+
+
 CC = gcc
 CXX = g++
 
-all: queryproc resque map_obj_to_tile get_space_dimension \
+all:resque map_obj_to_tile get_space_dimension \
 	mbb_normalizer duplicate_remover compute_partition_size \
 	hc bsp fg bos
 
@@ -105,4 +105,3 @@ install:
 
 clean:
 	@rm -f ${builddir}/*
-

@@ -1,6 +1,10 @@
 #! /bin/bash
 
-
+echo "Installing Dependencies..."
+sudo apt-get install libboost-all-dev
+bash ../dependencies/ubuntu_install_geos.sh
+bash ../dependencies/ubuntu_install_libspatialindex.sh
+echo "Dependencies Instaled"
 
 # Configuring lib and include directories
 usage(){
@@ -14,7 +18,7 @@ usage(){
 libpath=""
 incpath=""
 
-while : 
+while :
 do
     case $1 in
         -h | --help | -\?)
@@ -51,9 +55,15 @@ do
     esac
 done
 
+# Create a directory for binary/executables
+mkdir -p "$( dirname "${BASH_SOURCE[0]}")/../build"
+
+
+
 if [ ! "$incpath" ] && [ ! "$libpath"]; then
 	incpath="$( cd "$( dirname "${BASH_SOURCE[0]}")/../built/include" && pwd)"
 	libpath="$( cd "$( dirname "${BASH_SOURCE[0]}")/../built/lib" && pwd)"
+	binpath="$( cd "$( dirname "${BASH_SOURCE[0]}")/../build/bin" && pwd)"
 #  incpath="$( cd "$( dirname "${BASH_SOURCE[0]}/../built/include" )" && pwd )"
 #  libpath="$( cd "$( dirname "${BASH_SOURCE[0]}/../built/lib" )" && pwd )"
 fi
@@ -72,6 +82,7 @@ echo $libpath
 HADOOPGIS_INC_PATH=$incpath
 HADOOPGIS_LIB_PATH=$libpath
 
+export HADOOPGIS_BIN_PATH=$binpath
 export HADOOPGIS_INC_PATH=$incpath
 export HADOOPGIS_LIB_PATH=$libpath
 
@@ -86,11 +97,12 @@ echo "HADOOPGIS_LIB_PATH=${HADOOPGIS_LIB_PATH}" >> ../hadoopgis.cfg
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 cd $SCRIPT_DIR
 
+echo "Installing HadoopGIS in build folder..."
 cd ../src
 make install
 make
 
 # Return to the install directory
-cd ${SCRIPT_DIR} 
+cd ${SCRIPT_DIR}
 
 echo "Done with installation"

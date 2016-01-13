@@ -13,32 +13,44 @@ DiceCoefficient::DiceCoefficient(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2,
     this->scriptName = "DiceCoefficient.sh";
 }
 
-void DiceCoefficient::parseOutput(std::string myMaskPath) {
+void DiceCoefficient::parseOutput(std::string myMaskPath, double a1, double a2) {
 
 
     myMaskPath.append(outputFileExtension);
     std::ifstream infile(myMaskPath.c_str());
     std::string line;
-    float area;
-    float totalArea = 0;
-    int numberOfPolygonsIntersections = 0;
+    float intersectArea;
+    float totalIntersectArea = 0;
+    float area1;
+    float totalArea1 = 0;
+    float area2;
+    float totalArea2 = 0;
+    float unionArea;
+    float totalUnionArea = 0;
     //Get the total area of the intersection
     while (std::getline(infile, line)) {
         stringstream ss(line);
-        ss >> area;
-        totalArea += area;
-        numberOfPolygonsIntersections++;
+        ss >> intersectArea;
+        totalIntersectArea += intersectArea;
+        ss >> area1;
+        totalArea1 += area1;
+        ss >> area2;
+        totalArea2 += area2;
+        ss >> unionArea;
+        totalUnionArea += unionArea;
     }
 
     if (remove(myMaskPath.c_str()) != 0)
         perror("Comparative Analysis - HadoopGIS - Dice: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
 
+    float totalArea = (float) (a1 + a2);
+    float dice = 2 * totalIntersectArea / (totalArea);
     float compId = diff[0];
-    this->diff[0] = totalArea;
-    this->diff[1] = numberOfPolygonsIntersections;
+    this->diff[0] = dice;
+    this->diff[1] = totalArea;
     std::cout << "Comparative Analysis - HadoopGIS - Dice: CompId: " << compId << " Dice Coefficient: " <<
     this->diff[0] <<
-    " Number of Polygon Intersections: " << this->diff[1] <<
+    " Intersect Area: " << totalIntersectArea << " Total sets area:" << this->diff[1] <<
     std::endl;
 
 
