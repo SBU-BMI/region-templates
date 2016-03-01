@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 project(Runtime)
 
 # The version number
-set(ExecEngine_VERSION_MAJOR 1)
-set(ExecEngine_VERSION_MINOR 0)
+set(Runtime_VERSION_MAJOR 1)
+set(Runtime_VERSION_MINOR 0)
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release CACHE STRING

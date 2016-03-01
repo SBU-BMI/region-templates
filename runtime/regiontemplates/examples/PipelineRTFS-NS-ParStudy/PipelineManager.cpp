@@ -51,6 +51,8 @@ RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 	rtCollection->setName("inputimage");
 
 	std::cout << "Input Folder: "<< inputFolderPath <<std::endl;
+	if(fileList.size() > 0)	
+		std::cout << "FILELIST[0]: "<< fileList[0] <<std::endl;
 
 	std::string temp;
 	// Create one region template instance for each input data file
@@ -66,7 +68,7 @@ RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 		ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
 		ddr2d->setIsAppInput(true);
 		ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-		std::string inputFileName = fileUtils.replaceExt(fileList[i], ".mask.png", ".tiff");
+		std::string inputFileName = fileUtils.replaceExt(fileList[i], ".mask.png", ".tif");
 		ddr2d->setInputFileName(inputFileName);
 
 		// Create reference mask data region
@@ -119,7 +121,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, 
 		}
 		myfile.close();
 	}else{
-		cout << "Unable to open file"; 
+		cout << "Unable to open file: " <<parametersFile << std::endl ; 
 		exit(1);
 	}
 
@@ -138,6 +140,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, 
 
 	normalization.addArguments(targetMeanOptions);
 
+	std::cout <<  "BEFORE ASSERT" << std::endl;
 	assert(parameters.find("blue") != parameters.end());
 	assert(parameters.find("green") != parameters.end());
 	assert(parameters.find("red") != parameters.end());
@@ -154,6 +157,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, 
 	assert(parameters.find("recon") != parameters.end());
 	assert(parameters.find("water") != parameters.end());
 
+	std::cout <<  "AFTER ASSERT" << std::endl;
 
 	// Blue channel
 //	segmentation.addArgument(new ArgumentInt(220));
@@ -338,8 +342,8 @@ int main (int argc, char **argv){
 	// End Creating Dependency Graph
 	sysEnv.startupExecution();
 
-	int diffPixels = 0;
-	int foregroundPixels = 0;
+	long long int diffPixels = 0;
+	long long int foregroundPixels = 0;
 	for(int i = 0; i < diffComponentIds.size(); i++){
 		char * resultData = sysEnv.getComponentResultData(diffComponentIds[i]);
 		std::cout << "Diff Id: "<< diffComponentIds[i] << " resultData: ";
