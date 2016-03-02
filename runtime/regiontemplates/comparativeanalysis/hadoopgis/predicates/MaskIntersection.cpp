@@ -10,7 +10,7 @@ MaskIntersection::MaskIntersection(DenseDataRegion2D *dr1, DenseDataRegion2D *dr
     getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
     getPolygonsFromMask(this->dr2->getData(), this->listOfPolygons[1]);
     this->diff = diffPixels;
-    this->scriptName = "MaskIntersection.sh";
+    this->scriptName = "SpatialQuery.sh";
 }
 
 void MaskIntersection::parseOutput(std::string myMaskPath, double a1, double a2) {
@@ -21,24 +21,12 @@ void MaskIntersection::parseOutput(std::string myMaskPath, double a1, double a2)
     std::string line;
     float intersectArea;
     float totalIntersectArea = 0;
-    float area1;
-    float totalArea1 = 0;
-    float area2;
-    float totalArea2 = 0;
-    float unionArea;
-    float totalUnionArea = 0;
 
     //Get the total area of the intersection
     while (std::getline(infile, line)) {
         stringstream ss(line);
         ss >> intersectArea;
         totalIntersectArea += intersectArea;
-        ss >> area1;
-        totalArea1 += area1;
-        ss >> area2;
-        totalArea2 += area2;
-        ss >> unionArea;
-        totalUnionArea += unionArea;
 
 
     }

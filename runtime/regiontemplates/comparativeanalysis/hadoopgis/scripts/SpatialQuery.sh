@@ -114,7 +114,7 @@ sort ${mask}outputmapper1 ${mask}outputmapper2 > ${mask}inputreducer
 #echo "Performing spatial processing"
 # Perform reducer/resque processing
 # Offset is 3 for reducer (join index and legacy field)
-PARAMOPTS5="-o 3 "${PARAMOPTS}" -f intersect,area1,area2,union -c ${mask}denormpartition.idx"
+PARAMOPTS5="-o 3 "${PARAMOPTS}" -f intersect,union -c ${mask}denormpartition.idx"
 #echo ${PARAMOPTS5}
 ${hadoopgisBuildPath}bin/resque ${PARAMOPTS5} < ${mask}inputreducer > ${mask}outputreducer
 #echo "Done with spatial processing"
