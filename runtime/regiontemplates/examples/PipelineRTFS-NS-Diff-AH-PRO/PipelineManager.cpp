@@ -146,15 +146,16 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	// are preliminary areas in the calculation of the nuclei candidate set
 	segmentation.addArgument(new ArgumentInt(80));
 
-	//segmentation.addArgument(new ArgumentInt(45));
-	segmentation.addRangeArguments(70, 70, 40);
-
 
 	// minSize=11, maxSize=1000	-> Thresholds used to filter out preliminary nuclei areas that are not within a given size range  after peak identification
 	segmentation.addArgument(new ArgumentInt(11));
 	//parSet.addRangeArguments(10, 30, 5);
 	segmentation.addArgument(new ArgumentInt(1000));
 	//parSet.addRangeArguments(900, 1500, 50);
+
+	// G2 = 45	-> Thresholds used to identify peak values after reconstruction. Those peaks
+	segmentation.addArgument(new ArgumentInt(45));
+	//segmentation.addRangeArguments(70, 70, 40);
 
 	// int minSizePl=30 -> Filter out objects smaller than this value after overlapping objects are separate (watershed+other few operations)
 	segmentation.addArgument(new ArgumentInt(30));
@@ -241,7 +242,20 @@ int main (int argc, char **argv){
 			|| harmony_int(hdesc[i], "fillHoles", 4, 8, 4) != 0
 			|| harmony_int(hdesc[i], "recon", 4, 8, 4) != 0
 			|| harmony_int(hdesc[i], "watershed", 4, 8, 4) != 0
-				) {
+				)
+//		if (harmony_real(hdesc[i], "T1", 2.5, 7.5, 0.5) != 0
+//			||harmony_real(hdesc[i], "T2", 2.5, 7.5, 0.5) != 0
+//			|| harmony_int(hdesc[i], "G1", 5, 80, 5) != 0
+//			|| harmony_int(hdesc[i], "minSize", 2, 40, 2) != 0
+//			|| harmony_int(hdesc[i], "maxSize", 900, 1500, 50) != 0
+//			|| harmony_int(hdesc[i], "G2", 2, 40, 2) != 0
+//			|| harmony_int(hdesc[i], "minSizePl", 5, 80, 5) != 0
+//			|| harmony_int(hdesc[i], "minSizeSeg", 2, 40, 2) != 0
+//			|| harmony_int(hdesc[i], "maxSizeSeg", 900, 1500, 50) != 0
+//			|| harmony_int(hdesc[i], "recon", 4, 8, 4) != 0
+//			|| harmony_int(hdesc[i], "watershed", 4, 8, 4) != 0
+//				)
+		{
 			fprintf(stderr, "Failed to define tuning session\n");
 			return -1;
 		}
@@ -307,7 +321,20 @@ int main (int argc, char **argv){
 			|| harmony_bind_int(hdesc[i], "fillHoles", &fillHolesElement[i]) != 0
 			|| harmony_bind_int(hdesc[i], "recon", &morphElement[i]) != 0
 			|| harmony_bind_int(hdesc[i], "watershed", &watershedElement[i]) != 0
-				) {
+				)
+//		if (harmony_bind_real(hdesc[i], "T1", &T1[i]) != 0
+//		    || harmony_bind_real(hdesc[i], "T2", &T2[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "G1", &G1[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "minSize", &minSize[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "maxSize", &maxSize[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "G2", &G2[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "minSizePl", &minSizePl[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "minSizeSeg", &minSizeSeg[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "maxSizeSeg", &maxSizeSeg[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "recon", &morphElement[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "watershed", &watershedElement[i]) != 0
+//				)
+		{
 			fprintf(stderr, "Failed to register variable\n");
 			harmony_fini(hdesc[i]);
 			return -1;
