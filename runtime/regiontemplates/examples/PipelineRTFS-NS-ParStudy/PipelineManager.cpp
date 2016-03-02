@@ -51,6 +51,8 @@ RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 	rtCollection->setName("inputimage");
 
 	std::cout << "Input Folder: "<< inputFolderPath <<std::endl;
+	if(fileList.size() > 0)	
+		std::cout << "FILELIST[0]: "<< fileList[0] <<std::endl;
 
 	std::string temp;
 	// Create one region template instance for each input data file
@@ -66,7 +68,7 @@ RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 		ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
 		ddr2d->setIsAppInput(true);
 		ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-		std::string inputFileName = fileUtils.replaceExt(fileList[i], ".mask.png", ".tiff");
+		std::string inputFileName = fileUtils.replaceExt(fileList[i], ".mask.png", ".tif");
 		ddr2d->setInputFileName(inputFileName);
 
 		// Create reference mask data region
@@ -119,20 +121,9 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, 
 		}
 		myfile.close();
 	}else{
-		cout << "Unable to open file"; 
+		cout << "Unable to open file: " <<parametersFile << std::endl ; 
 		exit(1);
 	}
-
-//	if(parameters.find("blue") != parameters.end())
-//		std::cout << parameters["blue"] << std::endl;
-//
-//	if(parameters.find("bluee") != parameters.end())
-//		std::cout << parameters["bluee"] << std::endl;
-//	else	std::cout << "Not found" << std::endl;
-
-
-
-
 
 	std::vector<ArgumentBase*> targetMeanOptions;
 
@@ -149,11 +140,24 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, 
 
 	normalization.addArguments(targetMeanOptions);
 
+	std::cout <<  "BEFORE ASSERT" << std::endl;
 	assert(parameters.find("blue") != parameters.end());
 	assert(parameters.find("green") != parameters.end());
 	assert(parameters.find("red") != parameters.end());
 	assert(parameters.find("T1") != parameters.end());
 	assert(parameters.find("T2") != parameters.end());
+	assert(parameters.find("G1") != parameters.end());
+	assert(parameters.find("G2") != parameters.end());
+	assert(parameters.find("minSize") != parameters.end());
+	assert(parameters.find("maxSize") != parameters.end());
+	assert(parameters.find("minSizePl") != parameters.end());
+	assert(parameters.find("minSizeSeg") != parameters.end());
+	assert(parameters.find("maxSizeSeg") != parameters.end());
+	assert(parameters.find("fillHoles") != parameters.end());
+	assert(parameters.find("recon") != parameters.end());
+	assert(parameters.find("water") != parameters.end());
+
+	std::cout <<  "AFTER ASSERT" << std::endl;
 
 	// Blue channel
 //	segmentation.addArgument(new ArgumentInt(220));
@@ -174,6 +178,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, 
 	segmentation.addArgument(new ArgumentFloat(parameters["T1"][0]));// T1
 	//segmentation.addArgument(new ArgumentFloat(4.0));// T2
 	segmentation.addArgument(new ArgumentFloat(parameters["T2"][0]));// T2
+
 	/*std::vector<ArgumentBase*> T1, T2;
 	for(float i = 2.0; i <= 5; i+=0.5){
 		T1.push_back(new ArgumentFloat(i+0.5));
@@ -184,37 +189,52 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation, 
 
 	// G1 = 80, G2 = 45	-> Thresholds used to identify peak values after reconstruction. Those peaks
 	// are preliminary areas in the calculation of the nuclei candidate set
-	segmentation.addArgument(new ArgumentInt(80));
+	//segmentation.addArgument(new ArgumentInt(80));
+	segmentation.addArgument(new ArgumentInt(parameters["G1"][0]));
 
-	segmentation.addArgument(new ArgumentInt(45));
+	//segmentation.addArgument(new ArgumentInt(45));
+	segmentation.addArgument(new ArgumentInt(parameters["G2"][0]));
 	//segmentation.addRangeArguments(45, 70, 40);
 
 
 	// minSize=11, maxSize=1000	-> Thresholds used to filter out preliminary nuclei areas that are not within a given size range  after peak identification
-	segmentation.addArgument(new ArgumentInt(11));
+	//segmentation.addArgument(new ArgumentInt(11));
+	segmentation.addArgument(new ArgumentInt(parameters["minSize"][0]));
 	//parSet.addRangeArguments(10, 30, 5);
-	segmentation.addArgument(new ArgumentInt(1000));
+	//segmentation.addArgument(new ArgumentInt(1000));
+	segmentation.addArgument(new ArgumentInt(parameters["maxSize"][0]));
 	//parSet.addRangeArguments(900, 1500, 50);
 
 	// int minSizePl=30 -> Filter out objects smaller than this value after overlapping objects are separate (watershed+other few operations)
-	segmentation.addArgument(new ArgumentInt(30));
+	//segmentation.addArgument(new ArgumentInt(30));
+	segmentation.addArgument(new ArgumentInt(parameters["minSizePl"][0]));
 
 	//int minSizeSeg=21, int maxSizeSeg=1000 -> Perform final threshold on object sizes after objects are identified
-	segmentation.addArgument(new ArgumentInt(21));
+	//segmentation.addArgument(new ArgumentInt(21));
+	segmentation.addArgument(new ArgumentInt(parameters["minSizeSeg"][0]));
 	//parSet.addRangeArguments(10, 30, 5);
-	segmentation.addArgument(new ArgumentInt(1000));
+	segmentation.addArgument(new ArgumentInt(parameters["maxSizeSeg"][0]));
+	//segmentation.addArgument(new ArgumentInt(1000));
 	//parSet.addRangeArguments(900, 1500, 50);
 
 	// fill holes element 4-8
-	segmentation.addArgument(new ArgumentInt(4));
+	int fill = (parameters["fillHoles"][0] < 6) ? 4 : 8;
+	segmentation.addArgument(new ArgumentInt(fill));
+	//segmentation.addArgument(new ArgumentInt(4));
 	//parSet.addRangeArguments(4, 8, 4);
 
 	// recon element 4-8
-	segmentation.addArgument(new ArgumentInt(8));
+
+	int recon = (parameters["recon"][0] < 6) ? 4 : 8;
+	segmentation.addArgument(new ArgumentInt(recon));
+	//segmentation.addArgument(new ArgumentInt(8));
 	//parSet.addRangeArguments(4, 8, 4);
 
 	// watershed element 4-8
-	segmentation.addArgument(new ArgumentInt(8));
+
+	int water = (parameters["water"][0] < 6) ? 4 : 8;
+	segmentation.addArgument(new ArgumentInt(water));
+	//segmentation.addArgument(new ArgumentInt(8));
 	//parSet.addRangeArguments(4, 8, 4);
 
 	return;
@@ -322,8 +342,8 @@ int main (int argc, char **argv){
 	// End Creating Dependency Graph
 	sysEnv.startupExecution();
 
-	int diffPixels = 0;
-	int foregroundPixels = 0;
+	long long int diffPixels = 0;
+	long long int foregroundPixels = 0;
 	for(int i = 0; i < diffComponentIds.size(); i++){
 		char * resultData = sysEnv.getComponentResultData(diffComponentIds[i]);
 		std::cout << "Diff Id: "<< diffComponentIds[i] << " resultData: ";

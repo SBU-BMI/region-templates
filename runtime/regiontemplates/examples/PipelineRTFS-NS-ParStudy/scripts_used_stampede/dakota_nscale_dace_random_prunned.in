@@ -1,22 +1,22 @@
 #  DAKOTA INPUT FILE - dakota_nscale_ps_moat.in
 #  This is a sample file for parameter study with the nscale segmentation pipeline
-#  using the PSUADE MOAT method
+#  using DACE LHS method
 
 
 method
-  psuade_moat
-	samples = 96
-	partitions = 20
+  dace random
+	samples = 400
+#	partitions = 20
 	seed = 500 
 
 model
   single
 
 variables
-  continuous_design = 10
-    lower_bounds    	4.5	5.0	2.0	2.0		900.0		5.0		2.0		900.0		4.0	4.0
-    upper_bounds     	7.5	80.0	40.0	40.0		1500.0		80.0		80.0		1500.0		8.0	8.0
-    descriptors       'T2'	'G1'	'G2'	'minSize'	'maxSize'	'minSizePl'	'minSizeSeg'	'maxSizeSeg'	'recon'	'water'
+  continuous_design = 8
+    lower_bounds    2.5		5.0	2.0	2.0		900.0		5.0		2.0		4.0	
+    upper_bounds    7.5		80.0	40.0	40.0		1500.0		80.0		80.0		8.0	
+    descriptors     'T2'	'G1'	'G2'	'minSize'	'maxSize'	'minSizePl'	'minSizeSeg'	'recon'	
 
 interface,
 	fork

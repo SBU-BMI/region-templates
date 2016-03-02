@@ -13,8 +13,18 @@
 //#include "MorphologicOperations.h"
 #include "Util.h"
 //#include "FileUtils.h"
-#include "ProcessTileUtils.h"
+//#include "ProcessTileUtils.h"
 
+//itk
+//#include "itkImage.h"
+//#include "itkRGBPixel.h"
+//#include "itkImageFileWriter.h"
+//#include "itkOtsuThresholdImageFilter.h"
+//#include "itkCastImageFilter.h"
+//#include "itkOpenCVImageBridge.h"
+//
+//
+//#include "utilityTileAnalysis.h"
 
 class TaskSegmentation: public Task {
 private:
