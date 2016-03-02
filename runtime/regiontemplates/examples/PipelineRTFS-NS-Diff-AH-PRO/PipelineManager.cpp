@@ -145,7 +145,9 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	// G1 = 80, G2 = 45	-> Thresholds used to identify peak values after reconstruction. Those peaks
 	// are preliminary areas in the calculation of the nuclei candidate set
 	segmentation.addArgument(new ArgumentInt(80));
-
+// G2 = 45	-> Thresholds used to identify peak values after reconstruction. Those peaks
+	segmentation.addArgument(new ArgumentInt(45));
+	//segmentation.addRangeArguments(70, 70, 40);
 
 	// minSize=11, maxSize=1000	-> Thresholds used to filter out preliminary nuclei areas that are not within a given size range  after peak identification
 	segmentation.addArgument(new ArgumentInt(11));
@@ -153,9 +155,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	segmentation.addArgument(new ArgumentInt(1000));
 	//parSet.addRangeArguments(900, 1500, 50);
 
-	// G2 = 45	-> Thresholds used to identify peak values after reconstruction. Those peaks
-	segmentation.addArgument(new ArgumentInt(45));
-	//segmentation.addRangeArguments(70, 70, 40);
+
 
 	// int minSizePl=30 -> Filter out objects smaller than this value after overlapping objects are separate (watershed+other few operations)
 	segmentation.addArgument(new ArgumentInt(30));
@@ -466,15 +466,11 @@ int main (int argc, char **argv){
 					seg->addArgument(new ArgumentFloat(T2[j]));
 					seg->addArgument(new ArgumentInt(G1[j]));
 					seg->addArgument(new ArgumentInt(G2[j]));
-
-					// not been varied yet
 					seg->addArgument(new ArgumentInt(minSize[j]));
 					seg->addArgument(new ArgumentInt(maxSize[j]));
 					seg->addArgument(new ArgumentInt(minSizePl[j]));
-					seg->addArgument(new ArgumentInt(minSize[j]));
-					seg->addArgument(new ArgumentInt(maxSize[j]));
-//					seg->addArgument(new ArgumentInt(minSizeSeg));
-//					seg->addArgument(new ArgumentInt(maxSizeSeg));
+					seg->addArgument(new ArgumentInt(minSizeSeg[j]));
+					seg->addArgument(new ArgumentInt(maxSizeSeg[j]));
 					seg->addArgument(new ArgumentInt(fillHolesElement[j]));
 					seg->addArgument(new ArgumentInt(morphElement[j]));
 					seg->addArgument(new ArgumentInt(watershedElement[j]));

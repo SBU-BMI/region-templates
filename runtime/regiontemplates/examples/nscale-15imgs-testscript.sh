@@ -5,7 +5,7 @@ inputPath="$1"
 numberOfProcs=8
 
 hadoopgisMetric="Dice"
-testOnlyGis="true"
+testOnlyGis="false"
 
 outputPath="$2"
 
@@ -47,7 +47,7 @@ if [ "$testOnlyGis" == "false" ]; then
              cp ${inputPath}/image${IMG_COUNTER}.mask.png ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-image${IMG_COUNTER}.txt
+             #mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*
@@ -96,7 +96,7 @@ IMG_COUNTER=1
              cp ${inputPath}/image${IMG_COUNTER}.mask.png ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-${hadoopgisMetric}-image${IMG_COUNTER}.txt
+             #mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} > ${outputPath}/${program}-${hadoopgisMetric}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*

@@ -134,7 +134,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	// are preliminary areas in the calculation of the nuclei candidate set
 	segmentation.addArgument(new ArgumentInt(80));
 
-	//segmentation.addRangeArguments(45, 70, 40);
+	segmentation.addRangeArguments(45, 70, 40);
 
 
 	// minSize=11, maxSize=1000	-> Thresholds used to filter out preliminary nuclei areas that are not within a given size range  after peak identification
@@ -143,7 +143,6 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	segmentation.addArgument(new ArgumentInt(1000));
 	//parSet.addRangeArguments(900, 1500, 50);
 
-    segmentation.addArgument(new ArgumentInt(45));
 
 	// int minSizePl=30 -> Filter out objects smaller than this value after overlapping objects are separate (watershed+other few operations)
 	segmentation.addArgument(new ArgumentInt(30));

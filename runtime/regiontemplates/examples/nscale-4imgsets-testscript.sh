@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Run this script in the examples folder: /regiontemplates/examples$ bash HPDC2016-4imgsets-testscript.sh <imgsets folder>
+# Run this script in the examples folder: /regiontemplates/examples$ bash nscale-4imgsets-testscript.sh <imgsets folder>
 
 inputPath="$1"
 
 numberOfProcs=8
 
 hadoopgisMetric="Dice"
-testOnlyGis="true"
+testOnlyGis="false"
 
 outputPath="$2"
 
@@ -36,16 +36,16 @@ if [ "$testOnlyGis" == "false" ]; then
     programPath="${program}/${program}"
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-subset-mask1.txt
+#    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-subset-mask1.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-subset-mask2.txt
+#    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-subset-mask2.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-subset-mask3.txt
+#    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-subset-mask3.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-subset-mask4.txt
+#    mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-subset-mask4.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
     ELAPSED_TIME=$(($SECONDS - $START_TIME))
@@ -79,16 +79,16 @@ program="PipelineRTFS-NS-Diff-AH-GIS"
 programPath="${program}/${program}"
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask1.txt
+#mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask1 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask1.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask2.txt
+#mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask2 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask2.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask3.txt
+#mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask3 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask3.txt
     rm /tmp/BGR-*
     rm /tmp/MASK-*
-mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask4.txt
+#mpirun -n ${numberOfProcs} ${programPath} -i ${inputPath}/subset-mask4 > ${outputPath}/${program}-${hadoopgisMetric}-subset-mask4.txt
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
 echo "Elapsed Time: "${ELAPSED_TIME}" seconds."
 

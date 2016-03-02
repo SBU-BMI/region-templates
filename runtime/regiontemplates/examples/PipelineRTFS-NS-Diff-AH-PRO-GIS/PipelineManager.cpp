@@ -445,8 +445,6 @@ int main(int argc, char **argv) {
                     seg->addArgument(new ArgumentInt(minSize[j]));
                     seg->addArgument(new ArgumentInt(maxSize[j]));
                     seg->addArgument(new ArgumentInt(minSizePl[j]));
-                    seg->addArgument(new ArgumentInt(minSize[j]));
-                    seg->addArgument(new ArgumentInt(maxSize[j]));
                     seg->addArgument(new ArgumentInt(minSizeSeg[j]));
                     seg->addArgument(new ArgumentInt(maxSizeSeg[j]));
                     seg->addArgument(new ArgumentInt(fillHolesElement[j]));

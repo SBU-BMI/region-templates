@@ -143,8 +143,8 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation) 
     // are preliminary areas in the calculation of the nuclei candidate set
     segmentation.addArgument(new ArgumentInt(80));
 
-    //segmentation.addArgument(new ArgumentInt(45));
-    segmentation.addRangeArguments(70, 70, 40);
+    segmentation.addArgument(new ArgumentInt(45));
+    //segmentation.addRangeArguments(70, 70, 40);
 
 
     // minSize=11, maxSize=1000	-> Thresholds used to filter out preliminary nuclei areas that are not within a given size range  after peak identification
@@ -371,8 +371,6 @@ int main(int argc, char **argv) {
                 seg->addArgument(new ArgumentFloat(T2));
                 seg->addArgument(new ArgumentInt(G1));
                 seg->addArgument(new ArgumentInt(G2));
-
-                // not been varied yet
                 seg->addArgument(new ArgumentInt(minSize));
                 seg->addArgument(new ArgumentInt(maxSize));
                 seg->addArgument(new ArgumentInt(minSizePl));

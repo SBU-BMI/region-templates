@@ -54,12 +54,16 @@ target_link_libraries(${libname} ${YI_BUILD_DIR}/liblocalLibraries.a)
 
 
 target_link_libraries("${libname}" ${OpenCV_LIBS} ${ITK_LIBRARIES})
-        
+
+#Copy the cache-conf.xml file located in the example folder to the build folder everytime the program is compiled.
+add_custom_target(copyCacheConfToPipelineRTFS-NS-Diff-AH-PRO-Yi COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
+
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-NS-Diff-AH-PRO-Yi PipelineManager.cpp)
 if(USE_ACTIVE_HARMONY)
 	target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO-Yi ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
 endif(USE_ACTIVE_HARMONY)
+add_dependencies(PipelineRTFS-NS-Diff-AH-PRO-Yi copyCacheConfToPipelineRTFS-NS-Diff-AH-PRO-Yi)
 
 # Link the executable to the runtime system library
 target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO-Yi runtimesystem "${libname}")

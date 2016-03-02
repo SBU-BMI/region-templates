@@ -140,6 +140,9 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	// G1 = 80	-> Thresholds used to identify peak values after reconstruction. Those peaks
 	// are preliminary areas in the calculation of the nuclei candidate set
 	segmentation.addArgument(new ArgumentInt(80));
+// G2 = 45	-> Thresholds used to identify peak values after reconstruction. Those peaks
+	segmentation.addArgument(new ArgumentInt(45));
+	//segmentation.addRangeArguments(70, 70, 40);
 
 
 
@@ -150,9 +153,6 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 	segmentation.addArgument(new ArgumentInt(1000));
 	//parSet.addRangeArguments(900, 1500, 50);
 
-	// G2 = 45	-> Thresholds used to identify peak values after reconstruction. Those peaks
-	segmentation.addArgument(new ArgumentInt(45));
-	//segmentation.addRangeArguments(70, 70, 40);
 
 	// int minSizePl=30 -> Filter out objects smaller than this value after overlapping objects are separate (watershed+other few operations)
 	segmentation.addArgument(new ArgumentInt(30));
