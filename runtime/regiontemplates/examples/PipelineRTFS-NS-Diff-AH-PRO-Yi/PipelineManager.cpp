@@ -104,7 +104,7 @@ int main (int argc, char **argv){
 	int numClients = 1;
 
 	// Folder when input data images are stored
-	std::string inputFolderPath, AHpolicy = "nm.so", initPercent;
+    std::string inputFolderPath, AHpolicy = "pro.so", initPercent;
 	std::vector<RegionTemplate *> inputRegionTemplates;
 	RegionTemplateCollection *rtCollection;
 	std::vector<int> diffComponentIds[numClients];
@@ -137,7 +137,7 @@ int main (int argc, char **argv){
 
 	char name[1024];
 
-	 snprintf(name, sizeof(name), "Pipeline-NS-AH-PRO.%d", getpid());
+    snprintf(name, sizeof(name), "Pipeline-NS-AH-PRO-YI.%d", getpid());
 
 
 	 if (harmony_session_name(hdesc[0], name) != 0) {
@@ -162,7 +162,8 @@ int main (int argc, char **argv){
 		 return -1;
 	 }
 
-	 harmony_strategy(hdesc[0], "pro.so");
+    harmony_strategy(hdesc[0], AHpolicy.c_str());
+    //harmony_strategy(hdesc[0], "pro.so");
 //	 harmony_strategy(hdesc[0], "nm.so");
 	 if(initPercent.size()>0 ){
 		 harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
@@ -213,11 +214,16 @@ int main (int argc, char **argv){
 	// END AH SETUP //
 
 	double perf[numClients];
+
+    int max_number_of_iterations = 35;
+    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
+    float mindiff = std::numeric_limits<float>::infinity();;
+
 	int versionSeg = 0;
 	bool executedAlready[numClients];
 
 	/* main loop */
-	for (int loop = 0; !harmony_converged(hdesc[0]) && loop <= 35 && perf>0; ) {
+    for (int loop = 0; !harmony_converged(hdesc[0]) && loop < max_number_of_iterations;) {
 
 		for(int i = 0; i < numClients; i++){
 			perf[i] = INF;
@@ -259,6 +265,10 @@ int main (int argc, char **argv){
 			for(int j = 0; j < numClients; j++){
 
 				if(executedAlready[j] == false){
+
+                    std::cout << "BEGIN: LoopIdx: " << loop << "[" << otsuRatio[i] << "-" << curvatureWeight[i] <<
+                    "-" << sizeThld[i] << "-" << sizeUpperThld[i] << "]" << std::endl;
+
 					// Creating segmentation component
 					Segmentation *seg = new Segmentation();
 
@@ -303,21 +313,19 @@ int main (int argc, char **argv){
 		sysEnv.startupExecution();
 
 		for(int j = 0; j < numClients; j++){
-			int diffPixels = 0; // diff among reference and computed
-			int foregroundPixels = 0; // in the reference image
-			int sumForeground = 0; // sum of foreground area of both images
-			int sumCommon = 0; // sum of common (agreement) area in both images
+            float diff = 0;
+            float secondaryMetric = 0;
 
 			if(executedAlready[j] ==  false){
 				for(int i = 0; i < diffComponentIds[j].size(); i++){
 					char * resultData = sysEnv.getComponentResultData(diffComponentIds[j][i]);
 					std::cout << "Diff Id: "<< diffComponentIds[j][i] << " resultData: ";
 					if(resultData != NULL){
-						std::cout << "size: " << ((int*)resultData)[0] << " diffPixels: "<< ((int*)resultData)[1]<< " refPixels: "<< ((int*)resultData)[2]<< std::endl;
-						diffPixels+= ((int*)resultData)[1];
-						foregroundPixels += ((int*)resultData)[2];
-						sumForeground += ((int*)resultData)[3];
-						sumCommon += ((int*)resultData)[4];
+                        std::cout << "size: " << ((int *) resultData)[0] << " diffPixels: " <<
+                        ((float *) resultData)[1] <<
+                        " refPixels: " << ((float *) resultData)[2] << std::endl;
+                        diff += ((float *) resultData)[1];
+                        secondaryMetric += ((float *) resultData)[2];
 					}else{
 						std::cout << "NULL" << std::endl;
 					}
@@ -325,15 +333,20 @@ int main (int argc, char **argv){
 				}
 				diffComponentIds[j].clear();
 
-				perf[j] = (double)diffPixels/(double)foregroundPixels;
+                perf[j] = diff; //If using PixelCompare.
+
+                totaldiffs[loop] = diff;
+                (mindiff > diff) ? mindiff = diff : mindiff;
 
 				std::ostringstream oss;
 				oss <<otsuRatio[j] << "-" << curvatureWeight[j] << "-" << sizeThld[j] << "-"<<sizeUpperThld[j];
 
 				perfDataBase[oss.str()] = perf[j];
 
-				std::cout << "END: LoopIdx: "<< loop-numClients+1 << " otsuRatio: " << otsuRatio[j] << " curvatureWeight: " << curvatureWeight[j] 
-				<< " sizeThld: " << sizeThld[j] << " sizeUpperThld: " << sizeUpperThld[j] << " perf:" << perf[j] << " DICE: "<< ((double)2*sumCommon)/sumForeground<< " diffPixels: "<< diffPixels<< std::endl;
+                std::cout << "END: LoopIdx: " << loop-numClients+1 << " otsuRatio: " << otsuRatio[j] << " curvatureWeight: " << curvatureWeight[j]
+                << " sizeThld: " << sizeThld[j] << " sizeUpperThld: " << sizeUpperThld[j] << " total diff: " << diff <<
+                " secondaryMetric: " <<
+                secondaryMetric << " perf: " << perf[j] << std::endl;
 				loop++;
 			}
 
@@ -349,8 +362,20 @@ int main (int argc, char **argv){
 
 
 	if(harmony_converged(hdesc[0])){
-		std::cout << "Optimization loop has converged!!!!" << std::endl;
+        std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << mindiff << std::endl;
 	}
+    else {
+        std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
+
+        for (int i = 0; i < max_number_of_iterations; ++i) {
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+        }
+        std::cout << "\tMinDiff: " << mindiff << std::endl;
+    }
 
 	// Finalize all processes running and end execution
 	sysEnv.finalizeSystem();

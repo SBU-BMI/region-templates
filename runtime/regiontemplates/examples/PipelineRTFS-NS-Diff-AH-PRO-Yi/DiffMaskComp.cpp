@@ -1,7 +1,7 @@
 
 
 #include "DiffMaskComp.h"
-#include "TaskDiffMask.h"
+#include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
 
 DiffMaskComp::DiffMaskComp() {
 	this->setComponentName("DiffMaskComp");
@@ -18,9 +18,10 @@ int DiffMaskComp::run()
 
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	int *diffPixels = (int*) malloc(4 * sizeof(int));
-	diffPixels[0] = diffPixels[1] = diffPixels[2] = diffPixels[3] = 0;
-	this->setResultData((char*)diffPixels, 4* sizeof(float));
+	float *diffPixels = (float *) malloc(2 * sizeof(float));
+	diffPixels[0] = 0;
+	diffPixels[1] = 0;
+	this->setResultData((char *) diffPixels, 2 * sizeof(float));
 
 	if(inputRt != NULL){
 
@@ -33,7 +34,7 @@ int DiffMaskComp::run()
 			// gambiarra
 			diffPixels[0] =  this->getId();
 			// Create processing task
-			TaskDiffMask *tDiffMask = new TaskDiffMask(computed_mask, reference_mask, diffPixels);
+			TaskDiffMask *tDiffMask = new PixelCompare(computed_mask, reference_mask, diffPixels);
 
 			this->executeTask(tDiffMask);
 		}else{

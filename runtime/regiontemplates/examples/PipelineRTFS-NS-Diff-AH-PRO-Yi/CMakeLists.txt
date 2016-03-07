@@ -41,10 +41,15 @@ link_directories(${yibuilddir}/)
 set(libname componentnsdiffahproyi)
 
 # Source files used by the Runtime System
-set( libcomponentssrcs Segmentation.cpp DiffMaskComp.cpp TaskSegmentation.cpp TaskDiffMask.cpp)
+set(libcomponentssrcs Segmentation.cpp DiffMaskComp.cpp TaskSegmentation.cpp)
+
+
+set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
+		../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
+
 
 # Add rule to generate the Runtime System, as a shared library (.so)
-add_library("${libname}" SHARED ${libcomponentssrcs})
+add_library("${libname}" SHARED ${libcomponentssrcs} ${libcomparativeanalysis})
 
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
