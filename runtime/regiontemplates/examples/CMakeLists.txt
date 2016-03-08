@@ -48,6 +48,9 @@ option(RT_TUNING_YI_EXAMPLE "Enable compilation of Yi's examples with tuning" OF
 
 if (RT_TUNING_YI_EXAMPLE)
     add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
+    if (USE_HADOOPGIS)
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi-GIS")
+    endif (USE_HADOOPGIS)
 endif (RT_TUNING_YI_EXAMPLE)
 
 option (RT_PARAMETER_STUDY_NSCALE_EXAMPLE "Enable compilation of NScale example with Parameter Study" OFF)
