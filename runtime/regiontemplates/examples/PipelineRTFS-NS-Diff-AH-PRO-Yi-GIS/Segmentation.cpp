@@ -29,6 +29,9 @@ int Segmentation::run() {
     float curvatureWeight = (unsigned char) ((ArgumentFloat *) this->getArgument(2))->getArgValue();
     float sizeThld = (unsigned char) ((ArgumentFloat *) this->getArgument(3))->getArgValue();
     float sizeUpperThld = (unsigned char) ((ArgumentFloat *) this->getArgument(4))->getArgValue();
+    float mpp = (float) ((ArgumentFloat *) this->getArgument(5))->getArgValue();
+    float mskernel = (float) ((ArgumentFloat *) this->getArgument(6))->getArgValue();
+    int levelSetNumberOfIteration = ((ArgumentInt *) this->getArgument(7))->getArgValue();
 
     if (inputRt != NULL) {
         DenseDataRegion2D *bgr = NULL;
@@ -54,7 +57,7 @@ int Segmentation::run() {
 
             // Create processing task
             TaskSegmentation *segTask = new TaskSegmentation(bgr, mask, otsuRatio, curvatureWeight, sizeThld,
-                                                             sizeUpperThld);
+                                                             sizeUpperThld, mpp, mskernel, levelSetNumberOfIteration);
 
             this->executeTask(segTask);
 

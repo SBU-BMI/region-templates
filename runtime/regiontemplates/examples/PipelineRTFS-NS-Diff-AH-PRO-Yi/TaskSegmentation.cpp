@@ -11,13 +11,18 @@
 
 #include "utilityTileAnalysis.h"
 
-TaskSegmentation::TaskSegmentation(DenseDataRegion2D* bgr, DenseDataRegion2D* mask, float otsuRatio, float curvatureWeight, float sizeThld, float sizeUpperThld) {
+TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, float otsuRatio,
+								   float curvatureWeight, float sizeThld, float sizeUpperThld, float mpp,
+								   float mskernel, int levelSetNumberOfIteration) {
 	this->bgr = bgr;
 	this->mask = mask;
 	this->otsuRatio = otsuRatio;
 	this->curvatureWeight = curvatureWeight;
 	this->sizeThld = sizeThld;
 	this->sizeUpperThld = sizeUpperThld;
+	this->mpp = mpp;
+	this->mskernel = mskernel;
+	this->levelSetNumberOfIteration = levelSetNumberOfIteration;
 }
 
 TaskSegmentation::~TaskSegmentation() {
@@ -33,7 +38,9 @@ bool TaskSegmentation::run(int procType, int tid) {
 
 //	cv::Mat seg = processTile(thisTile, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, mpp);
 	if(inputImage.rows > 0)
-		outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, 0.25, 20.0);
+		outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld,
+																   sizeUpperThld, mpp, mskernel,
+																   levelSetNumberOfIteration);
 //		outMask = processTile(inputImage, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, 0.25);
 	else
 		std::cout <<"Segmentation: input data NULL"<< std::endl;

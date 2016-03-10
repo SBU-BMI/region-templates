@@ -152,10 +152,9 @@ int main(int argc, char **argv) {
             || harmony_real(hdesc[0], "curvatureWeight", 0.0, 1.0, 0.05) != 0
             || harmony_real(hdesc[0], "sizeThld", 1, 20, 1) != 0
             || harmony_real(hdesc[0], "sizeUpperThld", 50, 400, 5) != 0
-/*harmony_real(hdesc[0], "otsuRatio", 0.5, 1.5, 0.1) != 0
-			|| harmony_real(hdesc[0], "curvatureWeight", 0.0, 1.0, 0.05) != 0
-			|| harmony_real(hdesc[0], "sizeThld", 1, 15, 1) != 0
-			|| harmony_real(hdesc[0], "sizeUpperThld", 100, 240, 5) != 0*/
+            || harmony_real(hdesc[0], "mpp", 0.25, 0.25, 0.05) != 0
+            || harmony_real(hdesc[0], "mskernel", 5, 30, 1) != 0
+            || harmony_int(hdesc[0], "levelSetNumberOfIteration", 5, 150, 1) != 0
             ) {
         fprintf(stderr, "Failed to define tuning session\n");
         return -1;
@@ -182,10 +181,12 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    double otsuRatio[numClients], curvatureWeight[numClients], sizeThld[numClients], sizeUpperThld[numClients];
+    double otsuRatio[numClients], curvatureWeight[numClients], sizeThld[numClients], sizeUpperThld[numClients], mpp[numClients], msKernel[numClients];
+    long levelSetNumberOfIteration[numClients];
 
     for (int i = 0; i < numClients; i++) {
-        otsuRatio[i] = curvatureWeight[i] = sizeThld[i] = sizeUpperThld[i] = 0.0;
+        otsuRatio[i] = curvatureWeight[i] = sizeThld[i] = sizeUpperThld[i] = mpp[i] = msKernel[i] = 0.0;
+        levelSetNumberOfIteration[i] = 0;
     }
 
     for (int i = 0; i < numClients; i++) {
@@ -193,13 +194,17 @@ int main(int argc, char **argv) {
         if (harmony_bind_real(hdesc[i], "otsuRatio", &otsuRatio[i]) != 0
             || harmony_bind_real(hdesc[i], "curvatureWeight", &curvatureWeight[i]) != 0
             || harmony_bind_real(hdesc[i], "sizeThld", &sizeThld[i]) != 0
-            || harmony_bind_real(hdesc[i], "sizeUpperThld", &sizeUpperThld[i]) != 0) {
+            || harmony_bind_real(hdesc[i], "sizeUpperThld", &sizeUpperThld[i]) != 0
+            || harmony_bind_real(hdesc[i], "mpp", &mpp[i]) != 0
+            || harmony_bind_real(hdesc[i], "mskernel", &msKernel[i]) != 0
+            || harmony_bind_int(hdesc[i], "levelSetNumberOfIteration", &levelSetNumberOfIteration[i]) != 0) {
             fprintf(stderr, "Failed to register variable\n");
             harmony_fini(hdesc[i]);
             return -1;
         }
         printf("Bind %d successful\n", i);
     }
+
 
     /* Join this client to the tuning session we established above. */
     for (int i = 0; i < numClients; i++) {
@@ -214,9 +219,9 @@ int main(int argc, char **argv) {
 
     double perf[numClients];
 
-    int max_number_of_iterations = 35;
+    int max_number_of_iterations = 100;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
-    float mindiff = std::numeric_limits<float>::infinity();;
+    float maxdiff = 0;
 
     int versionSeg = 0;
     bool executedAlready[numClients];
@@ -241,7 +246,8 @@ int main(int argc, char **argv) {
             }
 
             std::ostringstream oss;
-            oss << otsuRatio[i] << "-" << curvatureWeight[i] << "-" << sizeThld[i] << "-" << sizeUpperThld[i];
+            oss << otsuRatio[i] << "-" << curvatureWeight[i] << "-" << sizeThld[i] << "-" << sizeUpperThld[i] << "-" <<
+            mpp[i] << "-" << msKernel[i] << "-" << levelSetNumberOfIteration[i];
 
             // if not found in performance database
             if (perfDataBase.find(oss.str()) != perfDataBase.end()) {
@@ -266,7 +272,8 @@ int main(int argc, char **argv) {
                 if (executedAlready[j] == false) {
 
                     std::cout << "BEGIN: LoopIdx: " << loop << "[" << otsuRatio[i] << "-" << curvatureWeight[i] <<
-                    "-" << sizeThld[i] << "-" << sizeUpperThld[i] << "]" << std::endl;
+                    "-" << sizeThld[i] << "-" << sizeUpperThld[i] << "-" << mpp[i] << "-" << msKernel[i] << "-" <<
+                    levelSetNumberOfIteration[i] << "]" << std::endl;
 
                     // Creating segmentation component
                     Segmentation *seg = new Segmentation();
@@ -279,6 +286,9 @@ int main(int argc, char **argv) {
                     seg->addArgument(new ArgumentFloat(curvatureWeight[j]));
                     seg->addArgument(new ArgumentFloat(sizeThld[j]));
                     seg->addArgument(new ArgumentFloat(sizeUpperThld[j]));
+                    seg->addArgument(new ArgumentFloat(mpp[j]));
+                    seg->addArgument(new ArgumentFloat(msKernel[j]));
+                    seg->addArgument(new ArgumentInt(levelSetNumberOfIteration[j]));
 
 
                     // and region template instance that it is suppose to process
@@ -338,7 +348,7 @@ int main(int argc, char **argv) {
                 //perf[j] = diff; //If using PixelCompare.
 
                 totaldiffs[loop] = diff;
-                (mindiff > diff) ? mindiff = diff : mindiff;
+                (maxdiff < diff) ? maxdiff = diff : maxdiff;
 
                 std::ostringstream oss;
                 oss << otsuRatio[j] << "-" << curvatureWeight[j] << "-" << sizeThld[j] << "-" << sizeUpperThld[j];
@@ -347,8 +357,9 @@ int main(int argc, char **argv) {
 
                 std::cout << "END: LoopIdx: " << loop - numClients + 1 << " otsuRatio: " << otsuRatio[j] <<
                 " curvatureWeight: " << curvatureWeight[j]
-                << " sizeThld: " << sizeThld[j] << " sizeUpperThld: " << sizeUpperThld[j] << " Hadoop-GIS Metric: " <<
-                diff <<
+                << " sizeThld: " << sizeThld[j] << " sizeUpperThld: " << sizeUpperThld[j] << " mpp: " << mpp[j] <<
+                " msKernel: " << msKernel[j] << " levelSetNumberOfIteration: " << levelSetNumberOfIteration[j] <<
+                " total diff: " << diff <<
                 " secondaryMetric: " <<
                 secondaryMetric << " perf: " << perf[j] << std::endl;
                 loop++;
@@ -369,7 +380,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < max_number_of_iterations; ++i) {
             std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
         }
-        std::cout << "\tMaxDiff: " << mindiff << std::endl;
+        std::cout << "\tMaxDiff: " << maxdiff << std::endl;
     }
     else {
         std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
@@ -377,7 +388,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < max_number_of_iterations; ++i) {
             std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
         }
-        std::cout << "\tMaxDiff: " << mindiff << std::endl;
+        std::cout << "\tMaxDiff: " << maxdiff << std::endl;
     }
 
     // Finalize all processes running and end execution
