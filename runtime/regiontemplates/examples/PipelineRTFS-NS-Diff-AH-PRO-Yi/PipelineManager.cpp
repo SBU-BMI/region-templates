@@ -168,6 +168,8 @@ int main (int argc, char **argv){
 		 harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
 		 std::cout << "AH configuration: "<< AHpolicy << " INIT_PERCENT: "<< initPercent << std::endl;
 	 }
+    std::cout << endl << "-------------------------- AH configuration: " << AHpolicy <<
+    " -------------------------- " << std::endl;
 	 char numbuf[12];
 	 snprintf(numbuf, sizeof(numbuf), "%d", numClients);
 
