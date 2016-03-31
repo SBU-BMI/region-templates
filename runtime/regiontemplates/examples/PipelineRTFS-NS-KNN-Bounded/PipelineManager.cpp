@@ -97,9 +97,9 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation) 
     std::vector < ArgumentBase * > targetMeanOptions;
 
     // add normalization parameters.
-    ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.451225340366));
-    targetMeanAux->addArgValue(ArgumentFloat(-0.0219714958221));
-    targetMeanAux->addArgValue(ArgumentFloat(0.0335194170475));
+    ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.632356));
+    targetMeanAux->addArgValue(ArgumentFloat(-0.0516004));
+    targetMeanAux->addArgValue(ArgumentFloat(0.0376543));
     targetMeanOptions.push_back(targetMeanAux);
 
     /*ArgumentFloatArray *targetMeanAux2 = new ArgumentFloatArray(ArgumentFloat(-0.376));

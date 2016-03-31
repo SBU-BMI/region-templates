@@ -14,7 +14,7 @@ bool TaskNormalization::run(int procType, int tid) {
 	cv::Mat inputImage = this->raw->getData();
 	// target values computed from the reference image
 
-	float targetStd[3] = {0.148816049099, 0.0257016178221, 0.0088480217382};
+	float targetStd[3] = {0.26235, 0.0514831, 0.0114217};
 
 	cv::Mat NormalizedImg;
 	std::cout << "Normalization:: "<< " targetMean: "<< targetMean[0]<<":"<< targetMean[1]<<":"<< targetMean[2]<<std::endl;
