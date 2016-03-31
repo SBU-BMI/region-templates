@@ -59,6 +59,11 @@ if(RT_PARAMETER_STUDY_NSCALE_EXAMPLE)
 	add_subdirectory("PipelineRTFS-NS-ParStudy")
 endif(RT_PARAMETER_STUDY_NSCALE_EXAMPLE)
 
+option (RT_PARAMETER_STUDY_YI_EXAMPLE "Enable compilation of Yi's example with Parameter Study" OFF)
+if(RT_PARAMETER_STUDY_YI_EXAMPLE)                                      
+        add_subdirectory(Pipeline-Yi-ParStudy)                         
+endif(RT_PARAMETER_STUDY_YI_EXAMPLE)   
+
 add_subdirectory("HelloWorldRT")
 #add_subdirectory("PipelineRTFS-NSF-Diff")
 #add_subdirectory("HelloWorldRT")
