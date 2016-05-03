@@ -183,7 +183,7 @@ int main (int argc, char **argv){
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdiff.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// Create region templates description without instantiating data
 	rtCollection = RTFromFiles(inputFolderPath);
