@@ -6,6 +6,7 @@
  */
 
 #include "Argument.h"
+#include <sstream>
 
 ArgumentBase::ArgumentBase(int type) {
 	this->type=type;
@@ -200,6 +201,12 @@ void ArgumentInt::setArgValue(int arg_value) {
 	this->arg_value = arg_value;
 }
 
+std::string ArgumentInt::toString() {
+	std::ostringstream convert;
+	convert << arg_value;
+	return convert.str();
+}
+
 ArgumentFloat::ArgumentFloat() : ArgumentBase(ArgumentBase::FLOAT){
 	this->arg_value = 0.0;
 }
@@ -261,6 +268,12 @@ ArgumentBase* ArgumentFloat::clone() {
 
 void ArgumentFloat::setArgValue(float arg_value) {
 	this->arg_value = arg_value;
+}
+
+std::string ArgumentFloat::toString() {
+	std::ostringstream convert;
+	convert << arg_value;
+	return convert.str();
 }
 
 ArgumentFloatArray::ArgumentFloatArray() : ArgumentBase(ArgumentBase::FLOAT_ARRAY){
@@ -350,4 +363,18 @@ ArgumentBase* ArgumentFloatArray::clone() {
 	retValue->deserialize(buff);
 	delete buff;
 	return retValue;
+}
+
+std::string ArgumentFloatArray::toString() {
+	std::string out;
+
+	if (arg_value.size() == 0)
+		return "";
+
+	out += "[" + arg_value[0].toString();
+	for (int i=1; i<arg_value.size(); i++) {
+		out += ", " + arg_value[i].toString();
+	}
+	out += "]";
+	return out;
 }

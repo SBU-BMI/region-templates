@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(PipelineRTFS-NS-Diff-FGO)
 
+add_definitions( -std=c++11 )
+
 find_package( OpenCV REQUIRED )
 
 # Make sure the compiler can find the includes of the runtime system 
@@ -37,7 +39,7 @@ set(libname componentnsdifffgo)
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp
         TaskNormalization.cpp TaskSegmentationStg1.cpp TaskSegmentationStg2.cpp 
         TaskSegmentationStg3.cpp TaskSegmentationStg4.cpp TaskSegmentationStg5.cpp 
-        TaskSegmentationStg6.cpp TaskFeatures.cpp DiffMaskComp.cpp)
+        TaskSegmentationStg6.cpp TaskFeatures.cpp DiffMaskComp.cpp jsoncpp.cpp)
 
 set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)

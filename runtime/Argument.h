@@ -12,9 +12,12 @@
 #include <iostream>
 #include <string.h>
 #include <vector>
+#include <string>
+
 class ArgumentBase {
 protected:
 	int type;
+	std::string name;
 
 public:
 	ArgumentBase(){};
@@ -29,6 +32,11 @@ public:
 
     int getType() const;
     void setType(int type);
+
+    void setName(std::string name) {this->name = name;};
+    std::string getName(void) const {return name;};
+
+    virtual std::string toString() = 0;
 
 	static const int INPUT = 0;
 	static const int OUTPUT = 0;
@@ -53,6 +61,8 @@ public:
 
 	virtual ArgumentBase* clone();
 
+	std::string toString() {return arg_value;};
+
 	int size();
 	int serialize(char *buff);
 	int deserialize(char *buff);
@@ -68,6 +78,8 @@ public:
 	ArgumentInt(int value);
 	virtual ~ArgumentInt();
 	virtual ArgumentBase* clone();
+
+	std::string toString();
 
 	int size();
 	int serialize(char *buff);
@@ -85,6 +97,8 @@ public:
 	virtual ~ArgumentFloat();
 	virtual ArgumentBase* clone();
 
+	std::string toString();
+
 	int size();
 	int serialize(char *buff);
 	int deserialize(char *buff);
@@ -100,6 +114,8 @@ public:
 	ArgumentFloatArray(ArgumentFloat value);
 	virtual ~ArgumentFloatArray();
 	virtual ArgumentBase* clone();
+
+	std::string toString();
 
 	int size();
 	int serialize(char *buff);

@@ -22,9 +22,6 @@
 #include "TaskSegmentation.h"
 
 class Segmentation : public RTPipelineComponentBase {
-private:
-	cv::Mat inputImage;
-	cv::Mat outLabeledMask;
 
 public:
 	Segmentation();
