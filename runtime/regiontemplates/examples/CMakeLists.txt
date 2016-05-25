@@ -39,6 +39,7 @@ if (RT_TUNING_NSCALE_EXAMPLE)
         if (USE_ACTIVE_HARMONY)
         add_subdirectory("PipelineRTFS-NS-Diff-AH-GIS")
         add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS")
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS-MASKEDGE")
         endif (USE_ACTIVE_HARMONY)
 
     endif (USE_HADOOPGIS)
