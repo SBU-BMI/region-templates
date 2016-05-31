@@ -1,0 +1,54 @@
+/*
+ * $NAME$.h
+ *
+ *  GENERATED CODE
+ *  DO NOT CHANGE IT MANUALLY!!!!!
+ */
+
+#ifndef $NAME$_H_
+#define $NAME$_H_
+
+#include "RTPipelineComponentBase.h"
+#include "Util.h"
+#include "FileUtils.h"
+#include "Task.h"
+#include "DenseDataRegion2D.h"
+
+$INCLUDES$
+
+// PipelineComponent header
+class $NAME$ : public RTPipelineComponentBase {
+
+private:
+	// data region id
+	// IMPORTANT: this need to be set during the creation of this object
+	int dr_id;
+
+public:
+	$NAME$();
+	virtual ~$NAME$();
+
+	void set_dr_id(int id) {dr_id = id;};
+
+	int run();
+};
+
+// Task header
+class Task$NAME$: public Task {
+private:
+
+	// data regions
+$DR_VARS$
+
+	// all other variables
+$COMMON_VARS$
+
+public:
+	Task$NAME$($DR_VARS_NAMES$$COMMON_VARS_NAMES$);
+
+	virtual ~Task$NAME$();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+};
+
+#endif /* $NAME$_H_ */
