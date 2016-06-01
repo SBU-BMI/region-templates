@@ -183,7 +183,7 @@ string generate_source(Json::Value data) {
 				// generate DataRegion input cast - $INPUT_CAST_DR$
 				dataRegionInputCast += "\t\t\t" + dr_name + 
 					" = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(" + 
-					dr_name + "_name, \"\", 0, dr_id));\n";
+					dr_name + "_name, \"\", 0, workflow_id));\n";
 
 				// generate DR cleaning for the destructor - $INPUT_DR_DELETE$
 				dr_delete += "\tif(" + dr_name + "_temp != NULL) delete " + dr_name + "_temp;\n";
@@ -214,7 +214,7 @@ string generate_source(Json::Value data) {
 				// generate DataRegion output cast - $OUTPUT_CAST_DR$
 				dataRegionOutputCast += "\t\t\t" + dr_name + 
 					" = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(" + 
-					dr_name + "_name, \"\", 0, dr_id));\n";
+					dr_name + "_name, \"\", 0, workflow_id));\n";
 
 				// generate cv::Mat variables to hold input DR - $OUTPUT_MAT_DR$
 				output_mat_dr += "\tcv::Mat " + dr_name + " = this->" + 

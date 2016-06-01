@@ -121,6 +121,7 @@ public:
 	int serialize(char *buff);
 	int deserialize(char *buff);
     ArgumentFloat getArgValue(int index);
+    float* getArgValue();
     void addArgValue(ArgumentFloat arg_value);
     int getNumArguments();
 };

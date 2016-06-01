@@ -37,7 +37,7 @@ $OUTPUT_DECL_DR$
 		try{
 $INPUT_CAST_DR$
 $OUTPUT_CAST_DR$
-			std::cout << "$NAME$. paramenterId: "<< dr_id <<std::endl;
+			std::cout << "$NAME$. paramenterId: "<< workflow_id <<std::endl;
 		}catch(...){
 			std::cout <<"ERROR $NAME$ " << std::endl;
 		}

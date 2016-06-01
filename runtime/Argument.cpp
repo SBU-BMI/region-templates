@@ -346,9 +346,16 @@ ArgumentFloat ArgumentFloatArray::getArgValue(int index) {
 	}
 }
 
+float* ArgumentFloatArray::getArgValue() {
+	float* val = new float[this->arg_value.size()];
+	for (int i=0; i<this->arg_value.size(); i++) {
+		val[i] = this->arg_value[i].getArgValue();
+	}
+	return val;
+}
+
 void ArgumentFloatArray::addArgValue(ArgumentFloat arg_value) {
 	this->arg_value.push_back(arg_value);
-
 }
 
 int ArgumentFloatArray::getNumArguments() {
