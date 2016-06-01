@@ -16,7 +16,7 @@
 
 $NAME$::$NAME$() {
 	this->setComponentName("$NAME$");
-	$IO_DR$
+	$OUTPUT_DR_CREATE$
 }
 
 $NAME$::~$NAME$() {}
@@ -28,7 +28,8 @@ int $NAME$::run() {
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
 $PCB_ARGS$
-	
+
+$INPUT_DR_CREATE$
 	if(inputRt != NULL){
 $INPUT_DECL_DR$
 		try{
@@ -46,7 +47,7 @@ $INPUT_CAST_DR$
 			dr_id_c[i] = dr_id_s[i];
 					
 		// Create output data region
-		$OUTPUT_DR$
+		$OUTPUT_DR_ASSIGN$
 
 		std::cout <<  "nDataRegions: after:" << inputRt->getNumDataRegions() << std::endl;
 
@@ -64,12 +65,12 @@ $INPUT_CAST_DR$
 }
 
 // Create the component factory
-PipelineComponentBase* componentFactorySeg() {
+PipelineComponentBase* componentFactory$NAME$() {
 	return new $NAME$();
 }
 
 // register factory with the runtime system
-bool registered = PipelineComponentBase::ComponentFactory::componentRegister("$NAME$", &componentFactorySeg);
+bool registered$NAME$ = PipelineComponentBase::ComponentFactory::componentRegister("$NAME$", &componentFactory$NAME$);
 
 
 /**************************************************************************************/
@@ -98,7 +99,7 @@ $OUTPUT_MAT_DR$
 
 	$CMD$;
 	
-$OUTPUT_DR_ASSIGN$
+$OUTPUT_DR_RETURN$
 
 	uint64_t t2 = Util::ClockGetTimeProfile();
 

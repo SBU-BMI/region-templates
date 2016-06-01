@@ -8,8 +8,8 @@
 #include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
 
-#include "NormalizationComp.h"
-#include "Segmentation.h"
+#include "NormalizationComp.hpp"
+#include "Segmentation.hpp"
 #include "FeatureExtraction.h"
 #include "DiffMaskComp.h"
 #include "ParameterSet.h"

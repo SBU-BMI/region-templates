@@ -37,9 +37,7 @@ set(libname componentnsdifffgo)
 
 # Source files used by the Runtime System
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp
-        TaskNormalization.cpp TaskSegmentationStg1.cpp TaskSegmentationStg2.cpp 
-        TaskSegmentationStg3.cpp TaskSegmentationStg4.cpp TaskSegmentationStg5.cpp 
-        TaskSegmentationStg6.cpp TaskFeatures.cpp DiffMaskComp.cpp jsoncpp.cpp)
+         TaskFeatures.cpp DiffMaskComp.cpp jsoncpp.cpp)
 
 set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
