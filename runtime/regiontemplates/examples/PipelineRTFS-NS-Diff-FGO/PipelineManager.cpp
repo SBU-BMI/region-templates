@@ -25,6 +25,7 @@
 
 using namespace std;
 
+// make two of these
 typedef struct port_t {
 	string name;
 	string pipeline_port;
@@ -33,7 +34,9 @@ typedef struct port_t {
 
 typedef struct task_t {
 	string name;
+	// TODO: input can only be connected to 1 output
 	list<port_t> inputs;
+	// TODO: output can be connected to 1 or more inputs
 	list<port_t> outputs;
 	string command;
 } task_t;
@@ -107,13 +110,25 @@ int main() {
 	//------------------------------------------------------------
 
 	// Handler to the distributed execution system environment
-	//SysEnv sysEnv;
+	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	//sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+
+	// generate each stage and the corresponding output arguments
+	map<string, RTPipelineComponentBase*> stages;
+	// this id will be used later to diferentiate equal workflows with different parameters
+	int workflow_id = 0;
+	for (list<task_t>::iterator i=all_tasks.begin(); i!=all_tasks.end(); i++) {
+		PipelineComponentBase* executable = PipelineComponentBase::ComponentFactory::getComponentFactory(i->name);
+	}
+
+	// link the stages inputs to the correct outputs
+
+
 
 	// get the stage wrapper to be executed
-	//PipelineComponentBase* executable = PipelineComponentBase::ComponentFactory::getComponentFactory(command);
+	PipelineComponentBase* executable = PipelineComponentBase::ComponentFactory::getComponentFactory("NormalizationComp");
 
 	// add all parameters on the received order
 	// TODO: what to do to dependencies?

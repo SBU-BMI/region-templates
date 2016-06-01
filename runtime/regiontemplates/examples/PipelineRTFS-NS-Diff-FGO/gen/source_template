@@ -16,7 +16,6 @@
 
 $NAME$::$NAME$() {
 	this->setComponentName("$NAME$");
-	$OUTPUT_DR_CREATE$
 }
 
 $NAME$::~$NAME$() {}
@@ -30,26 +29,18 @@ int $NAME$::run() {
 $PCB_ARGS$
 
 $INPUT_DR_CREATE$
+$OUTPUT_DR_CREATE$
+
 	if(inputRt != NULL){
 $INPUT_DECL_DR$
+$OUTPUT_DECL_DR$
 		try{
 $INPUT_CAST_DR$
+$OUTPUT_CAST_DR$
 			std::cout << "$NAME$. paramenterId: "<< dr_id <<std::endl;
 		}catch(...){
 			std::cout <<"ERROR $NAME$ " << std::endl;
 		}
-
-		ostringstream conv;
-		conv << dr_id;
-		std::string dr_id_s(conv.str());
-		char* dr_id_c = new char[dr_id_s.length()];
-		for (int i=0; i<dr_id_s.length(); i++)
-			dr_id_c[i] = dr_id_s[i];
-					
-		// Create output data region
-		$OUTPUT_DR_ASSIGN$
-
-		std::cout <<  "nDataRegions: after:" << inputRt->getNumDataRegions() << std::endl;
 
 		// Create processing task
 		Task$NAME$ * task = new Task$NAME$($PCB_TASK_PARAMS$);

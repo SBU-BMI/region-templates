@@ -16,8 +16,6 @@
 
 NormalizationComp::NormalizationComp() {
 	this->setComponentName("NormalizationComp");
-		this->addInputOutputDataRegion("tile", "normalizedImg", RTPipelineComponentBase::OUTPUT);
-
 }
 
 NormalizationComp::~NormalizationComp() {}
@@ -29,6 +27,7 @@ int NormalizationComp::run() {
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
 	std::string inputImage_name;
+	std::string normalizedImg_name;
 	float* targetMean;
 	float* targetStd;
 
@@ -36,6 +35,11 @@ int NormalizationComp::run() {
 	for(int i=0; i<this->getArgumentsSize(); i++){
 		if (this->getArgument(i)->getName().compare("inputImage") == 0) {
 			inputImage_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+			set_cout++;
+		}
+
+		if (this->getArgument(i)->getName().compare("normalizedImg") == 0) {
+			normalizedImg_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
@@ -56,32 +60,23 @@ int NormalizationComp::run() {
 
 	this->addInputOutputDataRegion("tile", inputImage_name, RTPipelineComponentBase::INPUT);
 
+	this->addInputOutputDataRegion("tile", normalizedImg_name, RTPipelineComponentBase::OUTPUT);
+
+
 	if(inputRt != NULL){
 		DenseDataRegion2D *inputImage = NULL;
 
+		DenseDataRegion2D *normalizedImg = NULL;
+
 		try{
 			inputImage = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(inputImage_name, "", 0, dr_id));
+
+			normalizedImg = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalizedImg_name, "", 0, dr_id));
 
 			std::cout << "NormalizationComp. paramenterId: "<< dr_id <<std::endl;
 		}catch(...){
 			std::cout <<"ERROR NormalizationComp " << std::endl;
 		}
-
-		ostringstream conv;
-		conv << dr_id;
-		std::string dr_id_s(conv.str());
-		char* dr_id_c = new char[dr_id_s.length()];
-		for (int i=0; i<dr_id_s.length(); i++)
-			dr_id_c[i] = dr_id_s[i];
-					
-		// Create output data region
-		DenseDataRegion2D *normalizedImg = new DenseDataRegion2D();
-		normalizedImg->setName("normalizedImg");
-		normalizedImg->setId(dr_id_c);
-		normalizedImg->setVersion(0);
-		inputRt->insertDataRegion(normalizedImg);
-
-		std::cout <<  "nDataRegions: after:" << inputRt->getNumDataRegions() << std::endl;
 
 		// Create processing task
 		TaskNormalizationComp * task = new TaskNormalizationComp(inputImage, normalizedImg, targetMean, targetStd);

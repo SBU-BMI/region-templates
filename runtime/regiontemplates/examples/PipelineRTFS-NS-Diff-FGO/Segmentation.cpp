@@ -16,8 +16,6 @@
 
 Segmentation::Segmentation() {
 	this->setComponentName("Segmentation");
-		this->addInputOutputDataRegion("tile", "outMask", RTPipelineComponentBase::OUTPUT);
-
 }
 
 Segmentation::~Segmentation() {}
@@ -29,6 +27,7 @@ int Segmentation::run() {
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
 	std::string inputImage_name;
+	std::string outMask_name;
 	unsigned char blue;
 	unsigned char green;
 	unsigned char red;
@@ -49,6 +48,11 @@ int Segmentation::run() {
 	for(int i=0; i<this->getArgumentsSize(); i++){
 		if (this->getArgument(i)->getName().compare("inputImage") == 0) {
 			inputImage_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+			set_cout++;
+		}
+
+		if (this->getArgument(i)->getName().compare("outMask") == 0) {
+			outMask_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
@@ -134,32 +138,23 @@ int Segmentation::run() {
 
 	this->addInputOutputDataRegion("tile", inputImage_name, RTPipelineComponentBase::INPUT);
 
+	this->addInputOutputDataRegion("tile", outMask_name, RTPipelineComponentBase::OUTPUT);
+
+
 	if(inputRt != NULL){
 		DenseDataRegion2D *inputImage = NULL;
 
+		DenseDataRegion2D *outMask = NULL;
+
 		try{
 			inputImage = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(inputImage_name, "", 0, dr_id));
+
+			outMask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(outMask_name, "", 0, dr_id));
 
 			std::cout << "Segmentation. paramenterId: "<< dr_id <<std::endl;
 		}catch(...){
 			std::cout <<"ERROR Segmentation " << std::endl;
 		}
-
-		ostringstream conv;
-		conv << dr_id;
-		std::string dr_id_s(conv.str());
-		char* dr_id_c = new char[dr_id_s.length()];
-		for (int i=0; i<dr_id_s.length(); i++)
-			dr_id_c[i] = dr_id_s[i];
-					
-		// Create output data region
-		DenseDataRegion2D *outMask = new DenseDataRegion2D();
-		outMask->setName("outMask");
-		outMask->setId(dr_id_c);
-		outMask->setVersion(0);
-		inputRt->insertDataRegion(outMask);
-
-		std::cout <<  "nDataRegions: after:" << inputRt->getNumDataRegions() << std::endl;
 
 		// Create processing task
 		TaskSegmentation * task = new TaskSegmentation(inputImage, outMask, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity);
