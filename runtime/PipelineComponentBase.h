@@ -60,6 +60,9 @@ private:
 	friend class Worker;
 	friend class Manager;
 
+	// merely here for user needs. not used by the system 
+	std::string name;
+
 protected:
 	// is this component at the worker or manager side?
 	int location;
@@ -132,6 +135,9 @@ public:
 	char* getResultData() const;
 
 	void setResultData(char* data, int dataSize);
+
+	std::string getName() {return name;};
+	void setName(std::string name) {this->name = name;};
 
 	// Factory class is used to build "reflection", and instantiate objects of
 	// PipelineComponentBase subclasses that register with it

@@ -28,12 +28,14 @@ int new_uid() {return uid++;};
 // Workflow parsing functions
 void get_inputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_inputs, map<int, list<ArgumentBase*>> &parameters_values);
 void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_outputs);
+void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> base_stages);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
 int get_line(char** line, FILE* f);
 string get_workflow_name(FILE* workflow);
 string get_workflow_field(FILE* workflow, string field);
+list<string> get_workflow_ports(FILE* workflow, string port);
 parsing::port_type_t get_port_type(string s);
 
 
@@ -63,7 +65,8 @@ int main() {
 	get_outputs_from_file(workflow_descriptor, workflow_outputs);
 
 	// get all stages, also setting the uid from this context to Task (i.e Task::setId())
-	// map<int, RTPipelineComponentBase> base_stages = get_stages_from_file(workflow_descriptor);
+	map<int, PipelineComponentBase*> base_stages;
+	get_stages_from_file(workflow_descriptor, base_stages);
 
 	// connect the stages inputs/outputs and, returning the list of arguments used
 	// the stages dependencies are also set here (i.e Task::addDependency())
@@ -333,6 +336,53 @@ void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &w
 	// cout << "port init end: " << line << endl;
 }
 
+// returns by reference the map of stages on an uid 'base_stages'
+void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> base_stages) {
+	// list<task_t> tasks;
+
+	char *line = NULL;
+	size_t len = 0;
+
+	string ps("<processors>");
+	string pse("</processors>");
+
+	string p("<processor>");
+	string pe("</processor>");
+
+	// go to the processors beginning
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ps) == string::npos);
+		// cout << "not processor init begin: " << line << endl;
+	 // cout << "processor init begin: " << line << endl;
+
+	// keep getting single processors until it reaches the end of all processors
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pse) == string::npos) {
+		// consumes the processor beginning
+		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		// cout << "processor begin: " << line << endl;
+
+		// get stage fields
+		string name = get_workflow_name(workflow_descriptor);
+		cout << "name: " << name << endl;
+
+		// get stage command
+		string command = get_workflow_field(workflow_descriptor, "command");
+		cout << "command: " << command << endl;
+
+		PipelineComponentBase* stage = PipelineComponentBase::ComponentFactory::getComponentFactory(command)();
+		stage->setName(name);
+
+		int stg_id = new_uid();
+		// setting task id
+		stage->setId(stg_id);
+		base_stages[stg_id] = stage;
+
+		// consumes the processor ending
+		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
+			// cout << "not processor end: " << line << endl;
+		// cout << "processor end: " << line << endl;
+	}
+}
+
 /***************************************************************/
 /************* Workflow parsing helper functions ***************/
 /***************************************************************/
@@ -386,6 +436,42 @@ string get_workflow_field(FILE* workflow, string field) {
 	}
 
 	return nullptr;
+}
+
+list<string> get_workflow_ports(FILE* workflow, string port) {
+	list<string> ports;
+
+	char *line = NULL;
+	size_t len = 0;
+
+	// initial ports section beginning and end
+	string ip("<" + port + ">");
+	string ipe("</" + port + ">");
+	
+	// ports section beginning and end
+	string p("<port>");
+	string pe("</port>");
+
+	// go to the initial ports beginning
+	while (get_line(&line, workflow) != -1 && string(line).find(ip) == string::npos);
+	// cout << "port init begin: " << line << endl;
+
+	// keep getting ports until it reaches the end of initial ports
+	while (get_line(&line, workflow) != -1 && string(line).find(ipe) == string::npos) {
+		// consumes the port beginning
+		while (string(line).find(p) == string::npos && get_line(&line, workflow) != -1);
+		// cout << "port begin: " << line << endl;
+
+		// finds the name field
+		ports.push_back(get_workflow_name(workflow));
+
+		// consumes the port ending
+		while (get_line(&line, workflow) != -1 && string(line).find(pe) == string::npos);
+			// get_line << "not port end: " << line << endl;
+		// cout << "port end: " << line << endl;
+	}
+	// cout << "port init end: " << line << endl;
+	return ports;
 }
 
 // taken from: http://stackoverflow.com/questions/16388510/evaluate-a-string-with-a-switch-in-c
