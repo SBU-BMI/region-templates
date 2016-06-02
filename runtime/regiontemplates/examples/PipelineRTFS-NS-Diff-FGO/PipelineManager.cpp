@@ -27,6 +27,7 @@ int new_uid() {return uid++;};
 
 // Workflow parsing functions
 void get_inputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_inputs, map<int, list<ArgumentBase*>> &parameters_values);
+void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_outputs);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -58,7 +59,8 @@ int main() {
 	get_inputs_from_file(workflow_descriptor, workflow_inputs, parameters_values);
 
 	// get all workflow outputs
-	// map<int, ArgumentBase> workflow_outputs = get_outputs_from_file(workflow_descriptor);
+	map<int, ArgumentBase*> workflow_outputs;
+	get_outputs_from_file(workflow_descriptor, workflow_outputs);
 
 	// get all stages, also setting the uid from this context to Task (i.e Task::setId())
 	// map<int, RTPipelineComponentBase> base_stages = get_stages_from_file(workflow_descriptor);
@@ -169,7 +171,8 @@ void get_inputs_from_file(FILE* workflow_descriptor,
 			exit(-3);
 		}
 
-		// create the propper Argument object for each type case
+		// create the propper Argument object for each type case also getting
+		// the parameters' values
 		ArgumentBase* inp_arg;
 		list<ArgumentBase*> inp_values;
 		switch (get_port_type(data["type"].asString())) {
@@ -246,7 +249,88 @@ void get_inputs_from_file(FILE* workflow_descriptor,
 			// cout << "not port end: " << line << endl;
 		// cout << "port end: " << line << endl;
 	}
+}
 
+// returns by reference a map of output arguments, mapped by an uid, 'workflow_outputs'
+void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_outputs) {
+
+	char *line = NULL;
+	size_t len = 0;
+
+	// initial ports section beginning and end
+	string ip("<outputPorts>");
+	string ipe("</outputPorts>");
+	
+	// ports section beginning and end
+	string p("<port>");
+	string pe("</port>");
+
+	// go to the initial ports beginning
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ip) == string::npos);
+	// cout << "port init begin: " << line << endl;
+
+	// keep getting ports until it reaches the end of initial ports
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ipe) == string::npos) {
+		// consumes the port beginning
+		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		// cout << "port begin: " << line << endl;
+
+		// finds the name field
+		string name = get_workflow_name(workflow_descriptor);
+		// cout << "name: " << name << endl;
+
+		// finds the description field
+		string description = get_workflow_field(workflow_descriptor, "text");
+		// cout << "description: " << description << endl;
+
+		// parse the description to get the input value(s)
+		Json::Reader reader;
+		bool wellFormed;
+		Json::Value data;
+
+		wellFormed = reader.parse(description, data, false);
+		if(!wellFormed) {
+			cout << "Failed to parse JSON: " << description << endl << reader.getFormattedErrorMessages() << endl;
+			exit(-3);
+		}
+
+		// create the propper Argument object for each type case also getting
+		// the parameters' values
+		ArgumentBase* out_arg;
+		switch (get_port_type(data["type"].asString())) {
+			case parsing::int_t:
+				// create the argument
+				out_arg = new ArgumentInt();
+				// cout << "int output: " << name << endl;		
+				break;
+			case parsing::string_t:
+				// create the argument
+				out_arg = new ArgumentString();
+				// cout << "string output: " << name << endl;		
+				break;
+			case parsing::float_t:
+				// create the argument
+				out_arg = new ArgumentFloat();
+				// cout << "float output: " << name << endl;		
+				break;
+			case parsing::float_array_t:
+				// create the argument
+				out_arg = new ArgumentFloatArray();
+				// cout << "floatarray output: " << name << endl;		
+				break;
+			default:
+				exit(-4);
+		}
+		
+		out_arg->setName(name);
+		workflow_outputs[new_uid()] = out_arg;
+
+		// consumes the port ending
+		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
+			// get_line << "not port end: " << line << endl;
+		// cout << "port end: " << line << endl;
+	}
+	// cout << "port init end: " << line << endl;
 }
 
 /***************************************************************/
