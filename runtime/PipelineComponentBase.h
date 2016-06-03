@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <list>
 
 #include "Argument.h"
 #include "Task.h"
@@ -62,6 +63,12 @@ private:
 
 	// merely here for user needs. not used by the system 
 	std::string name;
+
+	// holds the ids of the arguments before the component is
+	// ready to be executed. used only by FGO at this time
+	// OBS: only used on the workflow construction.
+	std::list<int> input_arguments;
+	std::list<int> output_arguments;
 
 protected:
 	// is this component at the worker or manager side?
@@ -139,6 +146,15 @@ public:
 	std::string getName() {return name;};
 	void setName(std::string name) {this->name = name;};
 
+	void addInput(int i) {input_arguments.push_back(i);};
+	void addOutput(int i) {output_arguments.push_back(i);};
+
+	std::list<int> getInputs() {return input_arguments;};
+	std::list<int> getOutputs() {return output_arguments;};
+
+	void replaceInput(int old_a, int new_a);
+	void replaceOutput(int old_a, int new_a);
+
 	// Factory class is used to build "reflection", and instantiate objects of
 	// PipelineComponentBase subclasses that register with it
     class ComponentFactory{
@@ -166,5 +182,15 @@ public:
     static const int WORKER_SIDE	=	2;
 
 };
+
+inline void PipelineComponentBase::replaceInput(int old_a, int new_a) {
+	input_arguments.remove(old_a);
+	input_arguments.push_back(new_a);
+}
+
+inline void PipelineComponentBase::replaceOutput(int old_a, int new_a) {
+	output_arguments.remove(old_a);
+	output_arguments.push_back(new_a);
+}
 
 #endif /* PIPELINECOMPONENTBASE_H_ */
