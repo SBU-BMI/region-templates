@@ -14,16 +14,22 @@
 using namespace std;
 
 namespace parsing {
-
 enum port_type_t {
 	int_t, string_t, float_t, float_array_t, error
 };
-
 }
 
 // global uid for any local(this file) entity
 int uid=1;
 int new_uid() {return uid++;}
+
+// general xml field structure
+typedef struct {
+	string type;
+	string data;
+} general_field_t;
+
+
 
 
 
@@ -80,9 +86,13 @@ void listprint(list<int> listt) {
 
 
 // Workflow parsing functions
-void get_inputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_inputs, map<int, list<ArgumentBase*>> &parameters_values);
+void get_inputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_inputs, 
+	map<int, list<ArgumentBase*>> &parameters_values);
 void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_outputs);
-void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, map<int, ArgumentBase*> &interstage_arguments);
+void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
+	map<int, ArgumentBase*> &interstage_arguments);
+void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
+	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -91,7 +101,11 @@ string get_workflow_name(FILE* workflow);
 string get_workflow_field(FILE* workflow, string field);
 list<string> get_workflow_input_arguments(FILE* workflow, string entry_type);
 list<ArgumentBase*> get_workflow_output_arguments(FILE* workflow, string entry_type);
-void get_workflow_arguments(FILE* workflow, string entry_type, list<ArgumentBase*> &output_arguments, list<string> &input_arguments, bool is_output);
+void get_workflow_arguments(FILE* workflow, string entry_type, list<ArgumentBase*> &output_arguments, 
+	list<string> &input_arguments, bool is_output);
+vector<general_field_t> get_all_fields(FILE* workflow, string start, string end);
+PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, string name);
+ArgumentBase* find_argument(map<int, ArgumentBase*> arguments, string name);
 ArgumentBase* new_typed_arg_base(string type);
 parsing::port_type_t get_port_type(string s);
 
@@ -154,7 +168,24 @@ int main() {
 		cout << p.first << ":" << p.second->getName() << endl;
 
 	// connect the stages inputs/outputs 
-	// connect_stages_from_file(workflow_descriptor, base_stages);
+	connect_stages_from_file(workflow_descriptor, base_stages, interstage_arguments, workflow_inputs);
+	map<int, ArgumentBase*> all_argument(workflow_inputs);
+	for (pair<int, ArgumentBase*> a : interstage_arguments)
+		all_argument[a.first] = a.second;
+
+	cout << endl << "all_arguments:" << endl;
+	mapprint(all_argument);
+
+	cout << endl << "connected base_stages:" << endl;
+	for (pair<int, PipelineComponentBase*> p : base_stages) {
+		cout << p.first << ":" << p.second->getName() << endl;
+		cout << "\tinputs: " << p.second->getInputs().size() << endl << endl;
+		for (int i : p.second->getInputs())
+			cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
+		cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
+		for (int i : p.second->getOutputs())
+			cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
+	}
 
 	//------------------------------------------------------------
 	// Add create all combinarions of parameters
@@ -321,11 +352,12 @@ void get_inputs_from_file(FILE* workflow_descriptor,
 				exit(-4);
 		}
 
-		// set inp_arg name
+		// set inp_arg name and id
 		inp_arg->setName(name);
+		int arg_id = new_uid();
+		inp_arg->setId(arg_id);
 
 		// add input argument to map
-		int arg_id = new_uid();
 		workflow_inputs[arg_id] = inp_arg;
 
 		// add list of argument values to map
@@ -420,8 +452,8 @@ void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &w
 	// cout << "port init end: " << line << endl;
 }
 
-// returns by reference the map of stages on an uid 'base_stages', and also a map
-// of 
+// returns by reference the map of stages on its uid, 'base_stages', and also a map
+// of all output arguments of all stages on its uid, 'interstage_arguments'.
 void get_stages_from_file(FILE* workflow_descriptor, 
 	map<int, PipelineComponentBase*> &base_stages, 
 	map<int, ArgumentBase*> &interstage_arguments) {
@@ -448,7 +480,7 @@ void get_stages_from_file(FILE* workflow_descriptor,
 
 		// get stage fields
 		string name = get_workflow_name(workflow_descriptor);
-		cout << "name: " << name << endl;
+		// cout << "name: " << name << endl;
 
 		// get stage command
 		string command = get_workflow_field(workflow_descriptor, "command");
@@ -459,10 +491,10 @@ void get_stages_from_file(FILE* workflow_descriptor,
 
 		// get outputs and add them to the map of arguments
 		// list<string> inputs = get_workflow_ports(workflow_descriptor, "inputPorts");
-		cout << "outputs:" << endl;
+		// cout << "outputs:" << endl;
 		list<ArgumentBase*> outputs = get_workflow_output_arguments(workflow_descriptor, "outputs");
 		for(list<ArgumentBase*>::iterator i=outputs.begin(); i!=outputs.end(); i++) {
-			cout << "\t" << (*i)->getId() << ":" << (*i)->getName() << endl;
+			// cout << "\t" << (*i)->getId() << ":" << (*i)->getName() << endl;
 			interstage_arguments[(*i)->getId()] = *i;
 			stage->addOutput((*i)->getId());
 		}
@@ -477,6 +509,73 @@ void get_stages_from_file(FILE* workflow_descriptor,
 		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
 			// cout << "not processor end: " << line << endl;
 		// cout << "processor end: " << line << endl;
+	}
+}
+
+// returns by reference 
+void connect_stages_from_file(FILE* workflow_descriptor, 
+	map<int, PipelineComponentBase*> &base_stages, 
+	map<int, ArgumentBase*> &interstage_arguments,
+	map<int, ArgumentBase*> &input_arguments) {
+
+	char *line = NULL;
+	size_t len = 0;
+
+	string ds("<datalinks>");
+	string dse("</datalinks>");
+
+	string d("<datalink>");
+	string de("</datalink>");
+
+	string sink("<sink type=");
+	string sinke("</sink>");
+
+	string source("<source type=");
+	string sourcee("</source>");
+
+	// go to the datalinks beginning
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ds) == string::npos);
+		// cout << "not datalink init begin" << line << endl;
+	// cout << "datalink init begin" << line << endl;
+
+	// keep getting single datalinks until it reaches the end of all datalinks
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(dse) == string::npos) {
+		// consumes the datalink beginning
+		while (string(line).find(d) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		// cout << "datalink begin" << line << endl;
+
+		// get sink and source fields
+		vector<general_field_t> all_sink_fields = get_all_fields(workflow_descriptor, sink, sinke);
+		vector<general_field_t> all_source_fields = get_all_fields(workflow_descriptor, source, sourcee);
+
+		// verify if it's a task sink instead of a workflow sink
+		if (all_sink_fields.size() != 1) {
+			// get the sink stage
+			PipelineComponentBase* sink_stg = find_stage(base_stages, all_sink_fields[0].data);
+			// cout << "stage " << sink_stg->getId() << ":" << sink_stg->getName() << " sink" << endl;
+
+			ArgumentBase* arg;
+			// check whether the source is from the workflow arguments or another stage
+			if (all_source_fields.size() == 1) {
+				// if source is workflow argument:
+				arg = find_argument(input_arguments, all_source_fields[0].data);
+				// cout << "source from workflow is " << arg->getId() << ":" << arg->getName() << endl;
+			} else {
+				// if the source is another stage
+				arg = find_argument(interstage_arguments, all_source_fields[1].data);
+				// cout << "source from stage " << all_source_fields[0].data << " is " << arg->getId() << ":" << arg->getName() << endl;
+			}
+
+			// add the link to the sink stage
+			sink_stg->addInput(arg->getId());
+		} 
+		// else {
+		// 	cout << "workflow argument sink: " << all_sink_fields[0].data << endl;
+		// }
+
+		// consumes the datalink ending
+		while (string(line).find(de) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		// cout << "datalink end" << line << endl;
 	}
 }
 
@@ -528,7 +627,8 @@ string get_workflow_field(FILE* workflow, string field) {
 		// if got a name match
 		if (match.size() == 1) {
 			// cout << "field match: " << line << endl;
-			return s.substr(s.find("<" + field + ">")+field.length()+2, s.find("</" + field + ">")-s.find("<" + field + ">")-field.length()-2);
+			return s.substr(s.find("<" + field + ">")+field.length()+2, 
+				s.find("</" + field + ">")-s.find("<" + field + ">")-field.length()-2);
 		}
 	}
 
@@ -595,6 +695,54 @@ void get_workflow_arguments(FILE* workflow,
 		// cout << "port end: " << line << endl;
 	}
 	// cout << "port init end: " << line << endl;
+}
+
+vector<general_field_t> get_all_fields(FILE* workflow, string start, string end) {
+	char *line = NULL;
+	size_t len = 0;
+	string type;
+	string field;
+	vector<general_field_t> fields;
+	general_field_t general_field;
+
+	// consumes the beginning
+	while (get_line(&line, workflow) != -1 && string(line).find(start) == string::npos);
+
+	// create general field regex
+	regex r ("<[\\w]+>[\\w ]+<\\/[\\w]+>");
+	
+	// keep fiding fields until the end
+	while (get_line(&line, workflow) != -1 && string(line).find(end) == string::npos) {
+		smatch match;
+		string s(line);
+		regex_search(s, match, r);
+
+		// if got a general field match
+		if (match.size() == 1) {
+			// cout << "general field match: " << line << endl;
+			type = s.substr(s.find("<")+1, s.find(">")-s.find("<")-1);
+			field = s.substr(s.find("<" + type + ">")+type.length()+2, s.find("</" + type + ">")-s.find("<" + type + ">")-type.length()-2);
+			// cout << "type: " << type << ", field: " << field << endl;
+			general_field.type = type;
+			general_field.data = field;
+			fields.push_back(general_field);
+		}
+	}
+	return fields;
+}
+
+PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, string name) {
+	for (pair<int, PipelineComponentBase*> p : stages)
+		if (p.second->getName().compare(name) == 0)
+			return p.second;
+	return NULL;
+}
+
+ArgumentBase* find_argument(map<int, ArgumentBase*> arguments, string name) {
+	for (pair<int, ArgumentBase*> p : arguments)
+		if (p.second->getName().compare(name) == 0)
+			return p.second;
+	return NULL;
 }
 
 // taken from: http://stackoverflow.com/questions/16388510/evaluate-a-string-with-a-switch-in-c
