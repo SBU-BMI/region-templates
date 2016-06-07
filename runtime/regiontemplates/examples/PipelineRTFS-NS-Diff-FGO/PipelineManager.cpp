@@ -29,14 +29,19 @@ typedef struct {
 	string data;
 } general_field_t;
 
-
-
-
-
 void mapprint(map<int, ArgumentBase*> mapp) {
 	for (map<int, ArgumentBase*>::iterator it = mapp.begin(); it != mapp.end(); ++it)
 	// for (map<int, ArgumentBase*>::iterator i=map.begin(); i!=map.end();i++)
 		cout << it->first << ":" << it->second->getName() << endl;
+}
+
+void mapprint(map<int, list<ArgumentBase*>> mapp) {
+	for (pair<int, list<ArgumentBase*>> p : mapp) {
+	// for (map<int, ArgumentBase*>::iterator i=map.begin(); i!=map.end();i++)
+		cout << p.first << ":" << endl;
+		for (ArgumentBase* a : p.second)
+			cout << "\t" << a->getName() << ":" << a->toString() << endl;
+	}
 }
 
 void mapprint(map<int, PipelineComponentBase*> mapp) {
@@ -56,9 +61,9 @@ void listprint(list<int> listt) {
 
 // BUG??? g++4.9 bad???
 //
-// list<int>::iterator beg(list<int> l) {return l.begin();}
-// list<int>::iterator endd(list<int> l) {return l.end();}
-// list<int>::iterator inc(list<int>::iterator &i) {return i++;}
+list<int>::iterator beg(list<int> l) {return l.begin();}
+list<int>::iterator endd(list<int> l) {return l.end();}
+list<int>::iterator inc(list<int>::iterator &i) {return i++;}
 //
 // for (map<int, PipelineComponentBase*>::iterator it = base_stages.begin(); it != base_stages.end(); ++it) {
 // 	cout << "stage: " << it->second->getName() << endl;
@@ -93,6 +98,8 @@ void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentB
 	map<int, ArgumentBase*> &interstage_arguments);
 void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
 	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments);
+list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
+	map<int, ArgumentBase*> workflow_inputs);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -108,6 +115,9 @@ PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, strin
 ArgumentBase* find_argument(map<int, ArgumentBase*> arguments, string name);
 ArgumentBase* new_typed_arg_base(string type);
 parsing::port_type_t get_port_type(string s);
+map<int, ArgumentBase*> cpy_ab_map(map<int, ArgumentBase*> &ref);
+template <class T>
+T map_pop(map<int, T> &m);
 
 
 
@@ -129,7 +139,7 @@ int main() {
 	// get all workflow inputs without their values, returning also the parameters 
 	// values (i.e list<ArgumentBase> values) on another map
 	map<int, ArgumentBase*> workflow_inputs;
-	map<int, list<ArgumentBase*>> parameters_values;
+	map<int, list<ArgumentBase*>> parameters_values; // TODO <--------------------------------------------------------------------------------
 	get_inputs_from_file(workflow_descriptor, workflow_inputs, parameters_values);
 
 	cout << "workflow_inputs:" << endl;
@@ -176,6 +186,31 @@ int main() {
 	cout << endl << "all_arguments:" << endl;
 	mapprint(all_argument);
 
+// buggy buggggy
+/*for (map<int, PipelineComponentBase*>::iterator it = base_stages.begin(); it != base_stages.end(); ++it) {
+	cout << "stage: " << it->second->getName() << endl;
+	for (list<int>::iterator i = it->second->getOutputs().begin(); i != (it->second->getOutputs().end()); ++i) {
+		list<int> l = it->second->getOutputs();
+		// works
+		listprint(l);
+		// also works
+		listprint(it->second->getOutputs());
+		// this works too
+		for (list<int>::iterator i=l.begin(); i!=l.end(); i++)
+			cout << (*i) << endl;
+		// not this
+		for (list<int>::iterator i=it->second->getOutputs().begin(); i!=it->second->getOutputs().end(); i++)
+			cout << (*i) << endl;
+		// nor this
+		for (list<int>::iterator i=beg(it->second->getOutputs()); i!=endd(it->second->getOutputs()); inc(i))
+			cout << (*i) << endl;
+		// this also works
+		for (int i:it->second->getOutputs())
+			cout << i << endl;
+	}
+}*/
+
+
 	cout << endl << "connected base_stages:" << endl;
 	for (pair<int, PipelineComponentBase*> p : base_stages) {
 		cout << p.first << ":" << p.second->getName() << endl;
@@ -191,12 +226,20 @@ int main() {
 	// Add create all combinarions of parameters
 	//------------------------------------------------------------
 
-	// expand parameter combinations returning a list of parameters sets
-	// each set contains exactly one value for every input parameter
-	// list<map<int, ArgumentBase>> expanded_parameters = expand_parameters_combinations(parameters_values);
+	// expand parameter combinations returning a list of parameters sets each set contains 
+	// exactly one value for every input parameter. the agrument objects are ready to be used 
+	// on the workflow execution.
+	list<map<int, ArgumentBase*>> expanded_parameters;
+	expanded_parameters = expand_parameters_combinations(parameters_values, workflow_inputs);
+	int i = 0;
+	for (map<int, ArgumentBase*> parameter_set : expanded_parameters) {
+		cout << "Parameter set " << i++ << endl;
+		for (pair<int, ArgumentBase*> p : parameter_set) {
+			cout << "\t" << p.first << ":" << p.second->getName() << " = " << p.second->toString() << endl;
+		}
+		cout << endl;
+	}
 
-	// generate all inputs copies with the parameters' values
-	// list<map<int, ArgumentBase>> all_inputs = expand_inputs(workflow_inputs, expanded_parameters);
 	
 	// generate outputs, stages and interstage arguments copies with updated uids and correct workflow_id's
 	// list<map<int, ArgumentBase>> all_outputs = expand_outputs(workflow_outputs, expanded_parameters.size());
@@ -512,7 +555,8 @@ void get_stages_from_file(FILE* workflow_descriptor,
 	}
 }
 
-// returns by reference 
+// returns by reference the map of stages to its ids updated. each stage now has
+// the list of input ids
 void connect_stages_from_file(FILE* workflow_descriptor, 
 	map<int, PipelineComponentBase*> &base_stages, 
 	map<int, ArgumentBase*> &interstage_arguments,
@@ -577,6 +621,52 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 		while (string(line).find(de) == string::npos && get_line(&line, workflow_descriptor) != -1);
 		// cout << "datalink end" << line << endl;
 	}
+}
+
+// returns by reference the list of expanded input parameters. 
+list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
+	map<int, ArgumentBase*> workflow_inputs) {
+
+	list<map<int, ArgumentBase*>> output;
+
+	list<ArgumentBase*> values_head = map_pop(parameters_values);
+	ArgumentBase* input_head = map_pop(workflow_inputs);
+
+	// halting condition
+	if (parameters_values.size() == 0) {
+		// cout << "halting on " << input_head->getName() << endl;
+		for (ArgumentBase* a : values_head) {
+			map<int, ArgumentBase*> inputs;
+			ArgumentBase* input = a->clone();
+			input->setName(input_head->getName());
+			input->setId(new_uid());
+			inputs[input->getId()] = input;
+			output.emplace_back(inputs);
+		}
+
+		return output;
+	}
+	
+	// cout << "recurring on " << endl;
+	// mapprint(parameters_values);
+	// cout << endl;
+	list<map<int, ArgumentBase*>> next = expand_parameters_combinations(parameters_values, workflow_inputs);
+	for (ArgumentBase* a : values_head) {
+		// list<map<int, ArgumentBase*>> next_copy = copt(next);
+		ArgumentBase* input_copy = a->clone();
+		input_copy->setName(input_head->getName());
+		input_copy->setId(new_uid());
+
+		for (map<int, ArgumentBase*> p : next) {
+			map<int, ArgumentBase*> updated_arguments = cpy_ab_map(p);
+			updated_arguments[input_copy->getId()] = input_copy;
+			output.emplace_back(updated_arguments);
+		}
+		
+	}
+
+	return output;
+
 }
 
 /***************************************************************/
@@ -778,4 +868,23 @@ parsing::port_type_t get_port_type(string s) {
 		default:
 			return parsing::error;
 	}
+}
+
+map<int, ArgumentBase*> cpy_ab_map(map<int, ArgumentBase*> &ref) {
+	map<int, ArgumentBase*> cpy;
+	for (pair<int, ArgumentBase*> p : ref) {
+		ArgumentBase* ab_cpy = p.second->clone();
+		ab_cpy->setName(p.second->getName());
+		ab_cpy->setId(new_uid());
+		cpy[ab_cpy->getId()] = ab_cpy;
+	}
+	return cpy;
+}
+
+template <class T>
+T map_pop(map<int, T> &m) {
+	typename map<int, T>::iterator i = m.begin();
+	T val = i->second;
+	m.erase(i);
+	return val;
 }
