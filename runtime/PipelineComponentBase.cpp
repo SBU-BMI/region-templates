@@ -20,6 +20,8 @@ PipelineComponentBase::PipelineComponentBase(){
 	this->setLocation(PipelineComponentBase::MANAGER_SIDE);
 	this->resultDataSize = 0;
 	this->resultData = NULL;
+	// this->input_arguments = new std::list<int>();
+	// this->output_arguments = new std::list<int>();
 }
 
 PipelineComponentBase::~PipelineComponentBase() {
@@ -264,6 +266,16 @@ int PipelineComponentBase::deserialize(char *buff)
 //	std::cout << "PipelineComponentBase::deserialize" << std::endl;
 	return deserialized_bytes;
 
+}
+
+PipelineComponentBase* PipelineComponentBase::clone() {
+	PipelineComponentBase* retValue = new PipelineComponentBase();
+	int size = this->size();
+	char *buff = new char[size];
+	this->serialize(buff);
+	retValue->deserialize(buff);
+	delete buff;
+	return retValue;
 }
 
 void PipelineComponentBase::executeTask(Task *task)

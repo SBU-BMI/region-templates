@@ -100,7 +100,10 @@ void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineCompon
 	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments);
 list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
 	map<int, ArgumentBase*> workflow_inputs);
-void expand_outputs(map<int, ArgumentBase*> &workflow_outputs, int copies, list<map<int, ArgumentBase*>> &all_outputs);
+void expand_outputs(map<int, ArgumentBase*> &workflow_outputs, int copies, 
+	list<map<int, ArgumentBase*>> &all_outputs);
+void expand_stages(map<int, PipelineComponentBase*> &base_stages, int copies, 
+	list<map<int, PipelineComponentBase*>> &all_stages);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -140,7 +143,7 @@ int main() {
 	// get all workflow inputs without their values, returning also the parameters 
 	// values (i.e list<ArgumentBase> values) on another map
 	map<int, ArgumentBase*> workflow_inputs;
-	map<int, list<ArgumentBase*>> parameters_values; // TODO <--------------------------------------------------------------------------------
+	map<int, list<ArgumentBase*>> parameters_values;
 	get_inputs_from_file(workflow_descriptor, workflow_inputs, parameters_values);
 
 	cout << "workflow_inputs:" << endl;
@@ -241,7 +244,7 @@ int main() {
 		cout << endl;
 	}
 
-	// generate outputs, stages and interstage arguments copies with updated uids and correct workflow_id's
+	// replicate outputs
 	list<map<int, ArgumentBase*>> all_outputs;
 	expand_outputs(workflow_outputs, expanded_parameters.size(), all_outputs);
 	i = 0;
@@ -254,7 +257,26 @@ int main() {
 	}
 
 	// OBS: the tasks ids should also be updated (i.e Task::setId())
-	// list<map<int, RTPipelineComponentBase>> all_stages = expand_stages(base_stages, expanded_parameters.size());
+	// replicate stages
+	list<map<int, PipelineComponentBase*>> all_stages;
+	expand_stages(base_stages, expanded_parameters.size(), all_stages);
+	i = 0;
+	for (map<int, PipelineComponentBase*> stage_set : all_stages) {
+		cout << "Stage set " << i++ << endl;
+		for (pair<int, PipelineComponentBase*> p : stage_set) {
+			cout << "\t" << p.first << ":" << p.second->getName() << " with inputs:" << endl;
+			for (int inp : p.second->getInputs()) {
+				cout << "\t\t" << inp << ":" << all_argument[inp]->getName() << endl;
+			}
+			cout << "\tand outputs: " << endl;
+			for (int out : p.second->getOutputs()) {
+				cout << "\t\t" << out << ":" << all_argument[out]->getName() << endl;
+			}
+		}
+		cout << endl;
+	}	
+
+	//  and interstage arguments copies with updated uids and correct workflow_id's
 	// list<map<int, ArgumentBase>> all_interstage_arguments = expand_arguments(interstage_arguments, expanded_parameters.size());
 
 	//------------------------------------------------------------
@@ -633,6 +655,10 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 	}
 }
 
+/***************************************************************/
+/**************** Argument expansion functions *****************/
+/***************************************************************/
+
 // returns by value the list of expanded parameters sets. each parameter set
 // an be sent to the workflow to be executed. a parameter set is a map of aguments with
 // a possible value for that argument (parameter). 
@@ -687,6 +713,34 @@ void expand_outputs(map<int, ArgumentBase*> &workflow_outputs, int copies,
 	for (int i=0; i<copies; i++) {
 		map<int, ArgumentBase*> cpy = cpy_ab_map(workflow_outputs);
 		all_outputs.emplace_back(cpy);
+	}
+}
+
+void expand_stages(map<int, PipelineComponentBase*> &base_stages, int copies, 
+	list<map<int, PipelineComponentBase*>> &all_stages) {
+
+	for (int i=0; i<copies; i++) {
+		map<int, PipelineComponentBase*> cpy;
+		for (pair<int, PipelineComponentBase*> pcb : base_stages) {
+			// clone basic info
+			PipelineComponentBase* pcb_cpy = pcb.second->clone();
+			
+			// set name and id
+			pcb_cpy->setName(pcb.second->getName());
+			pcb_cpy->setId(new_uid());
+
+			// copy input list
+			for (int inp : pcb.second->getInputs())
+				pcb_cpy->addInput(inp);
+
+			// copy output list
+			for (int out : pcb.second->getOutputs())
+				pcb_cpy->addOutput(out);
+
+			cpy[pcb_cpy->getId()] = pcb_cpy;
+		}
+
+		all_stages.emplace_back(cpy);
 	}
 }
 
