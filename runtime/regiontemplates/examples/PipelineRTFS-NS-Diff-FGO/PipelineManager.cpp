@@ -100,6 +100,7 @@ void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineCompon
 	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments);
 list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
 	map<int, ArgumentBase*> workflow_inputs);
+void expand_outputs(map<int, ArgumentBase*> &workflow_outputs, int copies, list<map<int, ArgumentBase*>> &all_outputs);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -240,9 +241,18 @@ int main() {
 		cout << endl;
 	}
 
-	
 	// generate outputs, stages and interstage arguments copies with updated uids and correct workflow_id's
-	// list<map<int, ArgumentBase>> all_outputs = expand_outputs(workflow_outputs, expanded_parameters.size());
+	list<map<int, ArgumentBase*>> all_outputs;
+	expand_outputs(workflow_outputs, expanded_parameters.size(), all_outputs);
+	i = 0;
+	for (map<int, ArgumentBase*> parameter_set : all_outputs) {
+		cout << "Output set " << i++ << endl;
+		for (pair<int, ArgumentBase*> p : parameter_set) {
+			cout << "\t" << p.first << ":" << p.second->getName() << endl;
+		}
+		cout << endl;
+	}
+
 	// OBS: the tasks ids should also be updated (i.e Task::setId())
 	// list<map<int, RTPipelineComponentBase>> all_stages = expand_stages(base_stages, expanded_parameters.size());
 	// list<map<int, ArgumentBase>> all_interstage_arguments = expand_arguments(interstage_arguments, expanded_parameters.size());
@@ -623,7 +633,9 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 	}
 }
 
-// returns by reference the list of expanded input parameters. 
+// returns by value the list of expanded parameters sets. each parameter set
+// an be sent to the workflow to be executed. a parameter set is a map of aguments with
+// a possible value for that argument (parameter). 
 list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
 	map<int, ArgumentBase*> workflow_inputs) {
 
@@ -666,7 +678,16 @@ list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<Argum
 	}
 
 	return output;
+}
 
+// returns by reference a list of copied outputs.
+void expand_outputs(map<int, ArgumentBase*> &workflow_outputs, int copies, 
+	list<map<int, ArgumentBase*>> &all_outputs) {
+
+	for (int i=0; i<copies; i++) {
+		map<int, ArgumentBase*> cpy = cpy_ab_map(workflow_outputs);
+		all_outputs.emplace_back(cpy);
+	}
 }
 
 /***************************************************************/
