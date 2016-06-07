@@ -8,8 +8,11 @@
 
 #include "json/json.h"
 
+#include "SysEnv.h"
 #include "Argument.h"
+#include "PipelineComponentBase.h"
 #include "RTPipelineComponentBase.h"
+#include "RegionTemplateCollection.h"
 
 using namespace std;
 
@@ -97,13 +100,20 @@ void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &w
 void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
 	map<int, ArgumentBase*> &interstage_arguments);
 void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
-	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments);
+	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments,
+	map<int, list<int>> &deps);
 list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
 	map<int, ArgumentBase*> workflow_inputs);
 void expand_arguments(map<int, ArgumentBase*> &ref_arguments, int copies, 
 	list<map<int, ArgumentBase*>> &copy_arguments);
 void expand_stages(map<int, PipelineComponentBase*> &base_stages, int copies, 
 	list<map<int, PipelineComponentBase*>> &all_stages);
+void iterative_full_merging(list<map<int, ArgumentBase*>> &all_inputs, list<map<int, ArgumentBase*>> &all_outputs, 
+	list<map<int, PipelineComponentBase*>> &all_stages, list<map<int, ArgumentBase*>> &all_interstage_arguments, 
+	map<int, ArgumentBase*> &interstage_arguments_ref, map<int, ArgumentBase*> &merged_arguments, 
+	map<int, ArgumentBase*> &merged_outputs, map<int, PipelineComponentBase*> &merged_stages);
+void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, map<int, ArgumentBase*> &merged_arguments, 
+	map<int, list<int>> &deps, RegionTemplateCollection *rts);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -113,7 +123,7 @@ string get_workflow_field(FILE* workflow, string field);
 list<string> get_workflow_input_arguments(FILE* workflow, string entry_type);
 list<ArgumentBase*> get_workflow_output_arguments(FILE* workflow, string entry_type);
 void get_workflow_arguments(FILE* workflow, string entry_type, list<ArgumentBase*> &output_arguments, 
-	list<string> &input_arguments, bool is_output);
+	list<string> &input_arguments, bool is_output);	
 vector<general_field_t> get_all_fields(FILE* workflow, string start, string end);
 PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, string name);
 ArgumentBase* find_argument(map<int, ArgumentBase*> arguments, string name);
@@ -122,16 +132,17 @@ parsing::port_type_t get_port_type(string s);
 map<int, ArgumentBase*> cpy_ab_map(map<int, ArgumentBase*> &ref);
 template <class T>
 T map_pop(map<int, T> &m);
+int find_id_by_name(string name, map<int, ArgumentBase*> &ref);
 
 
 
-int main() {
+int main(int argc, char* argv[]) {
 
 	// Handler to the distributed execution system environment
-	// SysEnv sysEnv;
+	SysEnv sysEnv;
 
-	// // Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	// Tell the system which libraries should be used
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 
 	FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
@@ -181,14 +192,22 @@ int main() {
 	for (pair<int, ArgumentBase*> p : interstage_arguments)
 		cout << p.first << ":" << p.second->getName() << endl;
 
+	// this map is a dependency structure: stage -> dependency_list
+	map<int, list<int>> deps;
+	
 	// connect the stages inputs/outputs 
-	connect_stages_from_file(workflow_descriptor, base_stages, interstage_arguments, workflow_inputs);
+	connect_stages_from_file(workflow_descriptor, base_stages, interstage_arguments, workflow_inputs, deps);
 	map<int, ArgumentBase*> all_argument(workflow_inputs);
 	for (pair<int, ArgumentBase*> a : interstage_arguments)
 		all_argument[a.first] = a.second;
 
 	cout << endl << "all_arguments:" << endl;
 	mapprint(all_argument);
+
+	cout << endl << "deps:" << endl;
+	for (pair<int, list<int>> p : deps)
+		for (int d : p.second)
+			cout << "\t" << base_stages[p.first]->getName() << " depends on " << base_stages[d]->getName() << endl;
 
 // buggy buggggy
 /*for (map<int, PipelineComponentBase*>::iterator it = base_stages.begin(); it != base_stages.end(); ++it) {
@@ -256,6 +275,18 @@ int main() {
 		cout << endl;
 	}
 
+	// replicate interstage arguments
+	list<map<int, ArgumentBase*>> all_interstage_arguments;
+	expand_arguments(interstage_arguments, expanded_parameters.size(), all_interstage_arguments);
+	i = 0;
+	for (map<int, ArgumentBase*> parameter_set : all_interstage_arguments) {
+		cout << "Interstage arguments set " << i++ << endl;
+		for (pair<int, ArgumentBase*> p : parameter_set) {
+			cout << "\t" << p.first << ":" << p.second->getName() << endl;
+		}
+		cout << endl;
+	}
+
 	// replicate stages
 	list<map<int, PipelineComponentBase*>> all_stages;
 	expand_stages(base_stages, expanded_parameters.size(), all_stages);
@@ -273,20 +304,7 @@ int main() {
 			}
 		}
 		cout << endl;
-	}	
-
-	// replicate interstage arguments
-	list<map<int, ArgumentBase*>> all_interstage_arguments;
-	expand_arguments(interstage_arguments, expanded_parameters.size(), all_interstage_arguments);
-	i = 0;
-	for (map<int, ArgumentBase*> parameter_set : all_interstage_arguments) {
-		cout << "Interstage arguments set " << i++ << endl;
-		for (pair<int, ArgumentBase*> p : parameter_set) {
-			cout << "\t" << p.first << ":" << p.second->getName() << endl;
-		}
-		cout << endl;
 	}
-
 
 	//------------------------------------------------------------
 	// Iterative merging of stages
@@ -294,24 +312,43 @@ int main() {
 
 	// maybe try to merge the inputs, and then merge stages iteratively
 	// again, updating the uids (Task and local id)
-	// {map<int, RTPipelineComponentBase> merged_stages,
-	// 	map<int, ArgumentBase> merged_outputs,
-	// 	map<int, ArgumentBase> merged_arguments} = iterative_full_merging(all_inputs, all_outputs, all_stages);
+	map<int, ArgumentBase*> merged_arguments;
+	map<int, ArgumentBase*> merged_outputs;
+	map<int, PipelineComponentBase*> merged_stages;
+	iterative_full_merging(expanded_parameters, all_outputs, all_stages, all_interstage_arguments, 
+		interstage_arguments, merged_arguments, merged_outputs, merged_stages);
+
+	cout << endl << "merged stages" << endl;
+	for (pair<int, PipelineComponentBase*> p : merged_stages) {
+		cout << "\t" << p.first << ":" << p.second->getName() << " with inputs:" << endl;
+		for (int inp : p.second->getInputs()) {
+			cout << "\t\t" << inp << ":" << merged_arguments[inp]->getName() << endl;
+		}
+		cout << "\tand outputs: " << endl;
+		for (int out : p.second->getOutputs()) {
+			cout << "\t\t" << out << ":" << merged_arguments[out]->getName() << endl;
+		}
+	}
+	cout << endl;
 
 	//------------------------------------------------------------
 	// Add workflows to Manager to be executed
 	//------------------------------------------------------------
 
+	// Create region templates description without instantiating data
+	RegionTemplateCollection *rts;
+	// string inputFolderPath = "~/Desktop/images15"
+	// rtCollection = RTFromFiles(inputFolderPath);
+
 	// add arguments to each stage
-	// list<RTPipelineComponentBase> ready_stages = add_arguments_to_stages(merged_stages, merged_arguments);
+	add_arguments_to_stages(merged_stages, merged_arguments, deps, rts);
 
 	// add all stages to manager
-	// for each RTPipelineComponentBase s of ready_stages do
-	// 	sysEnv.executeComponent(s);
-	// end
+	for (pair<int, PipelineComponentBase*> s : merged_stages)
+		sysEnv.executeComponent(s.second);
 
 	// execute workflows
-	// sysEnv.startupExecution();
+	sysEnv.startupExecution();
 
 	// get results
 	// for each ArgumentBase output of merged_outputs do
@@ -601,7 +638,8 @@ void get_stages_from_file(FILE* workflow_descriptor,
 void connect_stages_from_file(FILE* workflow_descriptor, 
 	map<int, PipelineComponentBase*> &base_stages, 
 	map<int, ArgumentBase*> &interstage_arguments,
-	map<int, ArgumentBase*> &input_arguments) {
+	map<int, ArgumentBase*> &input_arguments,
+	map<int, list<int>> &deps) {
 
 	char *line = NULL;
 	size_t len = 0;
@@ -647,6 +685,7 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 				// cout << "source from workflow is " << arg->getId() << ":" << arg->getName() << endl;
 			} else {
 				// if the source is another stage
+				deps[sink_stg->getId()].emplace_back(find_stage(base_stages, all_source_fields[0].data)->getId());
 				arg = find_argument(interstage_arguments, all_source_fields[1].data);
 				// cout << "source from stage " << all_source_fields[0].data << " is " << arg->getId() << ":" << arg->getName() << endl;
 			}
@@ -751,6 +790,114 @@ void expand_stages(map<int, PipelineComponentBase*> &base_stages, int copies,
 
 		all_stages.emplace_back(cpy);
 	}
+}
+
+/***************************************************************/
+/********* Workflow merging and preparation functions **********/
+/***************************************************************/
+
+void iterative_full_merging(list<map<int, ArgumentBase*>> &all_inputs, 
+	list<map<int, ArgumentBase*>> &all_outputs, 
+	list<map<int, PipelineComponentBase*>> &all_stages, 
+	list<map<int, ArgumentBase*>> &all_interstage_arguments, 
+	map<int, ArgumentBase*> &interstage_arguments_ref, 
+	map<int, ArgumentBase*> &merged_arguments, 
+	map<int, ArgumentBase*> &merged_outputs,
+	map<int, PipelineComponentBase*> &merged_stages) {
+
+	list<map<int, ArgumentBase*>>::iterator inputs_it = all_inputs.begin();
+	list<map<int, ArgumentBase*>>::iterator outputs_it = all_outputs.begin();
+	list<map<int, ArgumentBase*>>::iterator interstage_arguments_it = all_interstage_arguments.begin();
+
+	int i=0;
+	for (map<int, PipelineComponentBase*> stages : all_stages) {
+		// cout << "starting stage " << i << endl;
+		int io_offset = inputs_it->begin()->first - 1;
+		int input_lim = inputs_it->size();
+		int output_lim = inputs_it->size() + outputs_it->size();
+
+		// cout << "io_offset " << io_offset << endl;
+		// cout << "input_lim " << input_lim << endl;
+		// cout << "output_lim " << output_lim << endl;
+
+		for (pair<int, PipelineComponentBase*> stage : stages) {
+			// cout << "\tstage " << stage.first << ":" << stage.second->getName() << endl;
+			// replace all inputs and outputs ids
+			for (int inp : stage.second->getInputs()) {
+				if (inp <= input_lim) {
+					// cout << "\t\treg_input" << endl;
+					stage.second->replaceInput(inp, inp+io_offset);
+					// cout << "\t\tinput " << inp << " swaped with " << inp+io_offset << endl;
+				} else {
+					// cout << "\t\targ_input" << endl;
+					int new_inp = find_id_by_name(interstage_arguments_ref[inp]->getName(), 
+						*interstage_arguments_it);
+					stage.second->replaceInput(inp, new_inp);
+					// cout << "\t\tisa_input " << inp << new_inp << endl;
+				}
+			}
+			for (int out : stage.second->getOutputs()) {
+				if (out <= output_lim) {
+					stage.second->replaceOutput(out, out+io_offset);
+				} else {
+					int new_inp = find_id_by_name(interstage_arguments_ref[out]->getName(), 
+						*interstage_arguments_it);
+					stage.second->replaceOutput(out, new_inp);
+				}
+			}
+		}
+		inputs_it++;
+		outputs_it++;
+		interstage_arguments_it++;
+	}
+
+	// merge all inputs, outputs and interstage arguments into one
+	for (map<int, ArgumentBase*> m : all_inputs) 
+		for (pair<int, ArgumentBase*> p : m)
+			merged_arguments[p.first] = p.second;
+	for (map<int, ArgumentBase*> m : all_outputs) {
+		for (pair<int, ArgumentBase*> p : m) {
+			merged_arguments[p.first] = p.second;
+			merged_outputs[p.first] = p.second;
+		}
+	}
+	for (map<int, ArgumentBase*> m : all_interstage_arguments) 
+		for (pair<int, ArgumentBase*> p : m)
+			merged_arguments[p.first] = p.second;
+
+
+	// merged_arguments
+
+	// bool changes = true;
+	// while (changes) {
+	// 	changes = false;
+
+	// 	// 
+	// }
+
+	merged_stages = all_stages.front();
+}
+
+void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
+	map<int, ArgumentBase*> &merged_arguments,
+	map<int, list<int>> &deps,
+	RegionTemplateCollection *rts) {
+
+	int i=0;
+	for (pair<int, PipelineComponentBase*> stage : merged_stages) {
+		// add arguments to stage, adding them as RT as needed
+		for (int arg_id : stage.second->getInputs()) {
+			stage.second->addArgument(merged_arguments[arg_id]);
+			if (merged_arguments[arg_id]->getType() == ArgumentBase::STRING)
+				cout << "RT : " << merged_arguments[arg_id]->getName() << endl;
+				// stage.second->addRegionTemplateInstance(rts->getRT(i), rts->getRT(i++)->getName());
+		}
+
+		// add dependencies
+		for (int d : deps[stage.second->getId()])
+			((RTPipelineComponentBase*)stage.second)->addDependency(d);
+	}
+
 }
 
 /***************************************************************/
@@ -971,4 +1118,12 @@ T map_pop(map<int, T> &m) {
 	T val = i->second;
 	m.erase(i);
 	return val;
+}
+
+int find_id_by_name(string name, map<int, ArgumentBase*> &ref) {
+	for (pair<int, ArgumentBase*> p : ref) {
+		if (name.compare(p.second->getName()) == 0)
+			return p.first;
+	}
+	return 0;
 }
