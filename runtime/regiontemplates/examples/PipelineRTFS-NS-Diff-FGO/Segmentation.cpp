@@ -134,7 +134,7 @@ int Segmentation::run() {
 	}
 
 	if (set_cout < this->getArgumentsSize())
-		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
+		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation. got " << set_cout << " out of " << this->getArgumentsSize() << std::endl;
 
 	this->addInputOutputDataRegion("tile", inputImage_name, RTPipelineComponentBase::INPUT);
 

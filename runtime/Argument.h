@@ -52,6 +52,7 @@ public:
 	static const int INT = 2;
 	static const int STRING = 3;
 	static const int FLOAT = 4;
+	static const int RT = 5;
 	static const int FLOAT_ARRAY = 8;
 
 };
@@ -131,5 +132,26 @@ public:
 	void addArgValue(ArgumentFloat arg_value);
 	int getNumArguments();
 };
+
+class ArgumentRT: public ArgumentBase{
+private:
+	std::string path;
+
+public:
+	ArgumentRT();
+	ArgumentRT(std::string path);
+	virtual ~ArgumentRT();
+
+	virtual ArgumentBase* clone();
+
+	std::string toString() {return path;};
+
+	int size();
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	std::string getArgValue() const;
+	void setArgValue(std::string path);
+};
+
 
 #endif /* ARGUMENT_H_ */
