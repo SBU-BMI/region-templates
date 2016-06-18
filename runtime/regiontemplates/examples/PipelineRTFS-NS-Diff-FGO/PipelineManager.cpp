@@ -850,7 +850,7 @@ string get_workflow_field(FILE* workflow, string field) {
 	size_t len = 0;
 	
 	// create field regex
-	regex r ("<" + field + ">[\"\\:\\w {},.\\[\\]-]+<\\/" + field + ">");
+	regex r ("<" + field + ">[\"\\:\\w {},.~\\/\\[\\]-]+<\\/" + field + ">");
 
 	// get a new line until name is found
 	while (get_line(&line, workflow) != -1) {
