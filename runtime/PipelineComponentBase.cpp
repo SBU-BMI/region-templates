@@ -252,6 +252,9 @@ int PipelineComponentBase::deserialize(char *buff)
 			case ArgumentBase::FLOAT_ARRAY:
 				arg = new ArgumentFloatArray();
 				break;
+			case ArgumentBase::RT:
+				arg = new ArgumentRT();
+				break;
 			default:
 				std::cout << "Argument type not known: " << arg_type << std::endl;
 				exit(1);

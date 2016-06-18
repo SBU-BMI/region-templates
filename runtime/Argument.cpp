@@ -13,20 +13,61 @@ ArgumentBase::ArgumentBase(int type) {
 }
 
 int ArgumentBase::size()
-{
-	return (sizeof(int));
+{	
+	// starts with the size of the type
+	int arg_size = sizeof(int);
+
+	// used to store the size of the name stored
+	arg_size+=sizeof(int);
+
+	// the actual size of the name
+	arg_size+=sizeof(char) * this->name.size();
+	
+	return arg_size;
 }
 
 int ArgumentBase::serialize(char *buff)
 {
+	// add type value
+	int serialized_bytes = sizeof(int);
 	((int*)buff)[0] = this->getType();
-	return ArgumentBase::size();
+
+	// pack the size of the name
+	int string_size = this->name.size();
+	memcpy(buff+serialized_bytes, &string_size, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// serialize the name itself
+	memcpy(buff+serialized_bytes, this->name.c_str(), this->name.size()*sizeof(char));
+	serialized_bytes+=this->name.size()*sizeof(char);
+
+	return serialized_bytes;
 }
 
 int ArgumentBase::deserialize(char *buff)
 {
+	// get type
 	this->setType(((int*)buff)[0]);
-	return ArgumentBase::size();
+	int deserialized_bytes = sizeof(int);
+
+	// get Size of the name
+	int string_size;
+	memcpy(&string_size, buff+deserialized_bytes, sizeof(int));
+	deserialized_bytes+= sizeof(int);
+
+	// create string to extract data from memory buffer
+	char string_value[string_size+1];
+	string_value[string_size] = '\0';
+
+	// copy name string from message buffer to local variable holding string terminator
+	memcpy(string_value, buff+deserialized_bytes, sizeof(char)*string_size);
+	deserialized_bytes+=sizeof(char)*string_size;
+
+	// init argument value from string extracted
+	this->setName(string_value);
+
+	// return total number of bytes extracted from message
+	return deserialized_bytes;
 }
 
 void ArgumentBase::setType(int type)
@@ -386,21 +427,19 @@ std::string ArgumentFloatArray::toString() {
 	return out;
 }
 
-ArgumentRT::ArgumentRT() : path(""), ArgumentBase(ArgumentBase::RT){}
+ArgumentRT::ArgumentRT() : name(""), isFileInput(false), ArgumentBase(ArgumentBase::RT){}
 
-ArgumentRT::ArgumentRT(std::string path) : ArgumentBase(ArgumentBase::RT) {
-	this->setArgValue(path);
-}
+ArgumentRT::ArgumentRT(std::string name) : name(name), isFileInput(false), ArgumentBase(ArgumentBase::RT){}
 
 ArgumentRT::~ArgumentRT() {}
 
 
 std::string ArgumentRT::getArgValue() const {
-    return path;
+    return name;
 }
 
-void ArgumentRT::setArgValue(std::string path) {
-    this->path = path;
+void ArgumentRT::setArgValue(std::string name) {
+    this->name = name;
 }
 
 int ArgumentRT::serialize(char *buff) {
@@ -418,6 +457,10 @@ int ArgumentRT::serialize(char *buff) {
 	memcpy(buff+serialized_bytes, this->getArgValue().c_str(), this->getArgValue().size()*sizeof(char));
 	serialized_bytes+=this->getArgValue().size()*sizeof(char);
 
+	// pack the isFileInput var
+	memcpy(buff+serialized_bytes, &isFileInput, sizeof(bool));
+	serialized_bytes+=sizeof(bool);
+
 	return serialized_bytes;
 }
 
@@ -430,6 +473,9 @@ int ArgumentRT::size() {
 
 	// the actual size of the string
 	arg_size+=sizeof(char) * this->getArgValue().size();
+
+	// the size of the bool
+	arg_size+=sizeof(bool);
 
 	return arg_size;
 }
@@ -461,6 +507,10 @@ int ArgumentRT::deserialize(char *buff) {
 	// copy string from message buffer to local variable holding string terminator
 	memcpy(string_value, buff+deserialized_bytes, sizeof(char)*string_size);
 	deserialized_bytes+=sizeof(char)*string_size;
+
+	// get the isFileInput variable
+	memcpy(&isFileInput, buff+deserialized_bytes, sizeof(bool));
+	deserialized_bytes+=sizeof(bool);	
 
 	// init argument value from string extracted
 	this->setArgValue(string_value);

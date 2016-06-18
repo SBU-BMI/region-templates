@@ -1,9 +1,9 @@
 {"name":"Segmentation",
 "includes":"#include \"opencv2/opencv.hpp\"\n#include \"opencv2/gpu/gpu.hpp\"\n#include \"HistologicalEntities.h\"", 
-"call":"::nscale::HistologicalEntities::segmentNuclei(inputImage, outMask, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity)",
+"call":"::nscale::HistologicalEntities::segmentNuclei(normalized_rt, segmented_rt, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity)",
 "args":[
-	{"name":"inputImage", "type":"dr", "io":"input"}, 
-	{"name":"outMask", "type":"dr", "io":"output"}, 
+	{"name":"normalized_rt", "type":"dr", "io":"input"}, 
+	{"name":"segmented_rt", "type":"dr", "io":"output"}, 
 	{"name":"blue", "type":"uchar"}, 
 	{"name":"green", "type":"uchar"}, 
 	{"name":"red", "type":"uchar"}, 

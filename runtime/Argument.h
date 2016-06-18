@@ -13,13 +13,14 @@
 #include <string.h>
 #include <vector>
 #include <string>
-
+ 
 class ArgumentBase {
 protected:
 	int type;
 	std::string name;
 
-	// this field is used only on workflow generation
+	// this fields are used only on workflow generation
+	int parent;
 	int id;
 
 public:
@@ -41,6 +42,9 @@ public:
 
 	int getId() {return id;};
 	void setId(int id) {this->id = id;};
+
+	int getParent() {return parent;};
+	void setParent(int parent) {this->parent = parent;};
 
 	virtual std::string toString() = 0;
 
@@ -135,22 +139,24 @@ public:
 
 class ArgumentRT: public ArgumentBase{
 private:
-	std::string path;
+	std::string name;
 
 public:
 	ArgumentRT();
-	ArgumentRT(std::string path);
+	ArgumentRT(std::string name);
 	virtual ~ArgumentRT();
 
 	virtual ArgumentBase* clone();
 
-	std::string toString() {return path;};
+	std::string toString() {return name;};
+
+	bool isFileInput;
 
 	int size();
 	int serialize(char *buff);
 	int deserialize(char *buff);
 	std::string getArgValue() const;
-	void setArgValue(std::string path);
+	void setArgValue(std::string name);
 };
 
 

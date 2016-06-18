@@ -26,8 +26,8 @@ int Segmentation::run() {
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	std::string inputImage_name;
-	std::string outMask_name;
+	std::string normalized_rt_name;
+	std::string segmented_rt_name;
 	unsigned char blue;
 	unsigned char green;
 	unsigned char red;
@@ -46,13 +46,13 @@ int Segmentation::run() {
 
 	int set_cout = 0;
 	for(int i=0; i<this->getArgumentsSize(); i++){
-		if (this->getArgument(i)->getName().compare("inputImage") == 0) {
-			inputImage_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("normalized_rt") == 0) {
+			normalized_rt_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
-		if (this->getArgument(i)->getName().compare("outMask") == 0) {
-			outMask_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("segmented_rt") == 0) {
+			segmented_rt_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
@@ -134,30 +134,30 @@ int Segmentation::run() {
 	}
 
 	if (set_cout < this->getArgumentsSize())
-		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation. got " << set_cout << " out of " << this->getArgumentsSize() << std::endl;
+		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	this->addInputOutputDataRegion("tile", inputImage_name, RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("tile", normalized_rt_name, RTPipelineComponentBase::INPUT);
 
-	this->addInputOutputDataRegion("tile", outMask_name, RTPipelineComponentBase::OUTPUT);
+	this->addInputOutputDataRegion("tile", segmented_rt_name, RTPipelineComponentBase::OUTPUT);
 
 
 	if(inputRt != NULL){
-		DenseDataRegion2D *inputImage = NULL;
+		DenseDataRegion2D *normalized_rt = NULL;
 
-		DenseDataRegion2D *outMask = NULL;
+		DenseDataRegion2D *segmented_rt = NULL;
 
 		try{
-			inputImage = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(inputImage_name, "", 0, dr_id));
+			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_name, "", 0, workflow_id));
 
-			outMask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(outMask_name, "", 0, dr_id));
+			segmented_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(segmented_rt_name, "", 0, workflow_id));
 
-			std::cout << "Segmentation. paramenterId: "<< dr_id <<std::endl;
+			std::cout << "Segmentation. paramenterId: "<< workflow_id <<std::endl;
 		}catch(...){
 			std::cout <<"ERROR Segmentation " << std::endl;
 		}
 
 		// Create processing task
-		TaskSegmentation * task = new TaskSegmentation(inputImage, outMask, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity);
+		TaskSegmentation * task = new TaskSegmentation(normalized_rt, segmented_rt, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity);
 
 		this->executeTask(task);
 
@@ -182,10 +182,10 @@ bool registeredSegmentation = PipelineComponentBase::ComponentFactory::component
 /*********************************** Task functions ***********************************/
 /**************************************************************************************/
 
-TaskSegmentation::TaskSegmentation(DenseDataRegion2D* inputImage_temp, DenseDataRegion2D* outMask_temp, unsigned char blue, unsigned char green, unsigned char red, double T1, double T2, unsigned char G1, int minSize, int maxSize, unsigned char G2, int minSizePl, int minSizeSeg, int maxSizeSeg, int fillHolesConnectivity, int reconConnectivity, int watershedConnectivity) {
+TaskSegmentation::TaskSegmentation(DenseDataRegion2D* normalized_rt_temp, DenseDataRegion2D* segmented_rt_temp, unsigned char blue, unsigned char green, unsigned char red, double T1, double T2, unsigned char G1, int minSize, int maxSize, unsigned char G2, int minSizePl, int minSizeSeg, int maxSizeSeg, int fillHolesConnectivity, int reconConnectivity, int watershedConnectivity) {
 	
-	this->inputImage_temp = inputImage_temp;
-	this->outMask_temp = outMask_temp;
+	this->normalized_rt_temp = normalized_rt_temp;
+	this->segmented_rt_temp = segmented_rt_temp;
 	this->blue = blue;
 	this->green = green;
 	this->red = red;
@@ -206,23 +206,23 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D* inputImage_temp, DenseData
 }
 
 TaskSegmentation::~TaskSegmentation() {
-	if(inputImage_temp != NULL) delete inputImage_temp;
+	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
 
 }
 
 bool TaskSegmentation::run(int procType, int tid) {
 	
-	cv::Mat inputImage = this->inputImage_temp->getData();
+	cv::Mat normalized_rt = this->normalized_rt_temp->getData();
 
-	cv::Mat outMask = this->outMask_temp->getData();
+	cv::Mat segmented_rt = this->segmented_rt_temp->getData();
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "TaskSegmentation executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNuclei(inputImage, outMask, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity);
+	::nscale::HistologicalEntities::segmentNuclei(normalized_rt, segmented_rt, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity);
 	
-	this->outMask_temp->setData(outMask);
+	this->segmented_rt_temp->setData(segmented_rt);
 
 	uint64_t t2 = Util::ClockGetTimeProfile();
 

@@ -1,10 +1,10 @@
 {"name":"NormalizationComp",
 "includes":"#include \"opencv2/opencv.hpp\"\n#include \"opencv2/gpu/gpu.hpp\"\n#include \"Normalization.h\"", 
-"call":"normalizedImg = ::nscale::Normalization::normalization(inputImage, targetMean, targetStd)",
+"call":"normalized_rt = ::nscale::Normalization::normalization(input_img, target_mean, target_std)",
 "args":[
-	{"name":"inputImage", "type":"dr", "io":"input"},
-	{"name":"normalizedImg", "type":"dr", "io":"output"},
-	{"name":"targetMean", "type":"float_array"},
-	{"name":"targetStd", "type":"float_array"}
+	{"name":"input_img", "type":"dr", "io":"input"},
+	{"name":"normalized_rt", "type":"dr", "io":"output"},
+	{"name":"target_mean", "type":"float_array"},
+	{"name":"target_std", "type":"float_array"}
 	]
 }

@@ -24,13 +24,13 @@ class Segmentation : public RTPipelineComponentBase {
 private:
 	// data region id
 	// IMPORTANT: this need to be set during the creation of this object
-	int dr_id;
+	int workflow_id;
 
 public:
 	Segmentation();
 	virtual ~Segmentation();
 
-	void set_dr_id(int id) {dr_id = id;};
+	void set_workflow_id(int id) {workflow_id = id;};
 
 	int run();
 };
@@ -40,8 +40,8 @@ class TaskSegmentation: public Task {
 private:
 
 	// data regions
-	DenseDataRegion2D* inputImage_temp;
-	DenseDataRegion2D* outMask_temp;
+	DenseDataRegion2D* normalized_rt_temp;
+	DenseDataRegion2D* segmented_rt_temp;
 
 
 	// all other variables
@@ -63,7 +63,7 @@ private:
 
 
 public:
-	TaskSegmentation(DenseDataRegion2D* inputImage_temp, DenseDataRegion2D* outMask_temp, unsigned char blue, unsigned char green, unsigned char red, double T1, double T2, unsigned char G1, int minSize, int maxSize, unsigned char G2, int minSizePl, int minSizeSeg, int maxSizeSeg, int fillHolesConnectivity, int reconConnectivity, int watershedConnectivity);
+	TaskSegmentation(DenseDataRegion2D* normalized_rt_temp, DenseDataRegion2D* segmented_rt_temp, unsigned char blue, unsigned char green, unsigned char red, double T1, double T2, unsigned char G1, int minSize, int maxSize, unsigned char G2, int minSizePl, int minSizeSeg, int maxSizeSeg, int fillHolesConnectivity, int reconConnectivity, int watershedConnectivity);
 
 	virtual ~TaskSegmentation();
 

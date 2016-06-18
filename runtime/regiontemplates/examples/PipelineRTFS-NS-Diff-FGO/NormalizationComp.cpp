@@ -26,30 +26,30 @@ int NormalizationComp::run() {
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	std::string inputImage_name;
-	std::string normalizedImg_name;
-	float* targetMean;
-	float* targetStd;
+	std::string input_img_name;
+	std::string normalized_rt_name;
+	float* target_mean;
+	float* target_std;
 
 	int set_cout = 0;
 	for(int i=0; i<this->getArgumentsSize(); i++){
-		if (this->getArgument(i)->getName().compare("inputImage") == 0) {
-			inputImage_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("input_img") == 0) {
+			input_img_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
-		if (this->getArgument(i)->getName().compare("normalizedImg") == 0) {
-			normalizedImg_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("normalized_rt") == 0) {
+			normalized_rt_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
-		if (this->getArgument(i)->getName().compare("targetMean") == 0) {
-			targetMean = (float*)((ArgumentFloatArray*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("target_mean") == 0) {
+			target_mean = (float*)((ArgumentFloatArray*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
-		if (this->getArgument(i)->getName().compare("targetStd") == 0) {
-			targetStd = (float*)((ArgumentFloatArray*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("target_std") == 0) {
+			target_std = (float*)((ArgumentFloatArray*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
 
@@ -58,28 +58,28 @@ int NormalizationComp::run() {
 	if (set_cout < this->getArgumentsSize())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on NormalizationComp" << std::endl;
 
-	this->addInputOutputDataRegion("tile", inputImage_name, RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("tile", input_img_name, RTPipelineComponentBase::INPUT);
 
-	this->addInputOutputDataRegion("tile", normalizedImg_name, RTPipelineComponentBase::OUTPUT);
+	this->addInputOutputDataRegion("tile", normalized_rt_name, RTPipelineComponentBase::OUTPUT);
 
 
 	if(inputRt != NULL){
-		DenseDataRegion2D *inputImage = NULL;
+		DenseDataRegion2D *input_img = NULL;
 
-		DenseDataRegion2D *normalizedImg = NULL;
+		DenseDataRegion2D *normalized_rt = NULL;
 
 		try{
-			inputImage = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(inputImage_name, "", 0, dr_id));
+			input_img = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(input_img_name, "", 0, workflow_id));
 
-			normalizedImg = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalizedImg_name, "", 0, dr_id));
+			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_name, "", 0, workflow_id));
 
-			std::cout << "NormalizationComp. paramenterId: "<< dr_id <<std::endl;
+			std::cout << "NormalizationComp. paramenterId: "<< workflow_id <<std::endl;
 		}catch(...){
 			std::cout <<"ERROR NormalizationComp " << std::endl;
 		}
 
 		// Create processing task
-		TaskNormalizationComp * task = new TaskNormalizationComp(inputImage, normalizedImg, targetMean, targetStd);
+		TaskNormalizationComp * task = new TaskNormalizationComp(input_img, normalized_rt, target_mean, target_std);
 
 		this->executeTask(task);
 
@@ -104,34 +104,34 @@ bool registeredNormalizationComp = PipelineComponentBase::ComponentFactory::comp
 /*********************************** Task functions ***********************************/
 /**************************************************************************************/
 
-TaskNormalizationComp::TaskNormalizationComp(DenseDataRegion2D* inputImage_temp, DenseDataRegion2D* normalizedImg_temp, float* targetMean, float* targetStd) {
+TaskNormalizationComp::TaskNormalizationComp(DenseDataRegion2D* input_img_temp, DenseDataRegion2D* normalized_rt_temp, float* target_mean, float* target_std) {
 	
-	this->inputImage_temp = inputImage_temp;
-	this->normalizedImg_temp = normalizedImg_temp;
-	this->targetMean = targetMean;
-	this->targetStd = targetStd;
+	this->input_img_temp = input_img_temp;
+	this->normalized_rt_temp = normalized_rt_temp;
+	this->target_mean = target_mean;
+	this->target_std = target_std;
 
 	
 }
 
 TaskNormalizationComp::~TaskNormalizationComp() {
-	if(inputImage_temp != NULL) delete inputImage_temp;
+	if(input_img_temp != NULL) delete input_img_temp;
 
 }
 
 bool TaskNormalizationComp::run(int procType, int tid) {
 	
-	cv::Mat inputImage = this->inputImage_temp->getData();
+	cv::Mat input_img = this->input_img_temp->getData();
 
-	cv::Mat normalizedImg = this->normalizedImg_temp->getData();
+	cv::Mat normalized_rt = this->normalized_rt_temp->getData();
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "TaskNormalizationComp executing." << std::endl;	
 
-	normalizedImg = ::nscale::Normalization::normalization(inputImage, targetMean, targetStd);
+	normalized_rt = ::nscale::Normalization::normalization(input_img, target_mean, target_std);
 	
-	this->normalizedImg_temp->setData(normalizedImg);
+	this->normalized_rt_temp->setData(normalized_rt);
 
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
