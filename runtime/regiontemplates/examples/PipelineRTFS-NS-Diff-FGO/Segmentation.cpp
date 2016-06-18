@@ -26,8 +26,8 @@ int Segmentation::run() {
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	std::string normalized_rt_name;
-	std::string segmented_rt_name;
+	ArgumentRT* normalized_rt_arg;
+	ArgumentRT* segmented_rt_arg;
 	unsigned char blue;
 	unsigned char green;
 	unsigned char red;
@@ -47,12 +47,12 @@ int Segmentation::run() {
 	int set_cout = 0;
 	for(int i=0; i<this->getArgumentsSize(); i++){
 		if (this->getArgument(i)->getName().compare("normalized_rt") == 0) {
-			normalized_rt_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+			normalized_rt_arg = (ArgumentRT*)this->getArgument(i);
 			set_cout++;
 		}
 
 		if (this->getArgument(i)->getName().compare("segmented_rt") == 0) {
-			segmented_rt_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+			segmented_rt_arg = (ArgumentRT*)this->getArgument(i);
 			set_cout++;
 		}
 
@@ -136,9 +136,9 @@ int Segmentation::run() {
 	if (set_cout < this->getArgumentsSize())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	this->addInputOutputDataRegion("tile", normalized_rt_name, RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("tile", normalized_rt_arg->getName(), RTPipelineComponentBase::INPUT);
 
-	this->addInputOutputDataRegion("tile", segmented_rt_name, RTPipelineComponentBase::OUTPUT);
+	this->addInputOutputDataRegion("tile", segmented_rt_arg->getName(), RTPipelineComponentBase::OUTPUT);
 
 
 	if(inputRt != NULL){
@@ -147,9 +147,9 @@ int Segmentation::run() {
 		DenseDataRegion2D *segmented_rt = NULL;
 
 		try{
-			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_name, "", 0, workflow_id));
+			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_arg->getName(), std::to_string(normalized_rt_arg->getId()), 0, normalized_rt_arg->getId()));
 
-			segmented_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(segmented_rt_name, "", 0, workflow_id));
+			segmented_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(segmented_rt_arg->getName(), std::to_string(segmented_rt_arg->getId()), 0, segmented_rt_arg->getId()));
 
 			std::cout << "Segmentation. paramenterId: "<< workflow_id <<std::endl;
 		}catch(...){

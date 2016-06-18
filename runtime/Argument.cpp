@@ -17,6 +17,9 @@ int ArgumentBase::size()
 	// starts with the size of the type
 	int arg_size = sizeof(int);
 
+	// used to store the id
+	arg_size+=sizeof(int);
+
 	// used to store the size of the name stored
 	arg_size+=sizeof(int);
 
@@ -31,6 +34,11 @@ int ArgumentBase::serialize(char *buff)
 	// add type value
 	int serialized_bytes = sizeof(int);
 	((int*)buff)[0] = this->getType();
+
+	// add id value
+	int id = this->getId();
+	memcpy(buff+serialized_bytes, &id, sizeof(int));
+	serialized_bytes += sizeof(int);
 
 	// pack the size of the name
 	int string_size = this->name.size();
@@ -49,6 +57,12 @@ int ArgumentBase::deserialize(char *buff)
 	// get type
 	this->setType(((int*)buff)[0]);
 	int deserialized_bytes = sizeof(int);
+
+	// get id
+	int id;
+	memcpy(&id, buff+deserialized_bytes, sizeof(int));
+	deserialized_bytes+= sizeof(int);
+	this->setId(id);
 
 	// get Size of the name
 	int string_size;

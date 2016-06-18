@@ -164,17 +164,16 @@ string generate_source(Json::Value data) {
 			// Generate input strings
 			if (data["args"][i]["io"].asString().compare("input") == 0) {
 				// generate input dr name declaration - $PCB_ARGS$
-				commonArgsDec += "\tstd::string " + dr_name + "_name;\n";
+				commonArgsDec += "\tArgumentRT* " + dr_name + "_arg;\n";
 
 				// generate input dr name conditional assignment - $PCB_ARGS$
 				commonArgsLoop += "\t\tif (this->getArgument(i)->getName().compare(\"" +
-					dr_name + "\") == 0) {\n\t\t\t" + dr_name + "_name = (std::string)" + 
-					"((ArgumentString*)this->getArgument(i))->getArgValue();\n" + 
-					"\t\t\tset_cout++;\n\t\t}\n\n";
+					dr_name + "\") == 0) {\n\t\t\t" + dr_name + "_arg = (ArgumentRT*)" + 
+					"this->getArgument(i);\n\t\t\tset_cout++;\n\t\t}\n\n";
 
 				// generate DataRegion IOs - $INPUT_DR_CREATE$
 				dataRegionInputCreate += "\tthis->addInputOutputDataRegion(\"tile\", " +
-					dr_name + "_name, RTPipelineComponentBase::INPUT);\n";
+					dr_name + "_arg->getName(), RTPipelineComponentBase::INPUT);\n";
 
 				// generate DataRegion input declaration - $INPUT_DECL_DR$
 				dataRegionInputDecl += "\t\tDenseDataRegion2D *" + 
@@ -182,8 +181,10 @@ string generate_source(Json::Value data) {
 
 				// generate DataRegion input cast - $INPUT_CAST_DR$
 				dataRegionInputCast += "\t\t\t" + dr_name + 
-					" = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(" + 
-					dr_name + "_name, \"\", 0, workflow_id));\n";
+					" = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(" +
+					dr_name + "_arg->getName(), " +
+					"std::to_string(" + dr_name + "_arg->getId()), 0, " + dr_name + 
+					"_arg->getId()));\n";
 
 				// generate DR cleaning for the destructor - $INPUT_DR_DELETE$
 				dr_delete += "\tif(" + dr_name + "_temp != NULL) delete " + dr_name + "_temp;\n";
@@ -195,17 +196,16 @@ string generate_source(Json::Value data) {
 			// generate output string
 			else if (data["args"][i]["io"].asString().compare("output") == 0) {
 				// generate input dr name declaration - $PCB_ARGS$
-				commonArgsDec += "\tstd::string " + dr_name + "_name;\n";
+				commonArgsDec += "\tArgumentRT* " + dr_name + "_arg;\n";
 
 				// generate input dr name conditional assignment - $PCB_ARGS$
 				commonArgsLoop += "\t\tif (this->getArgument(i)->getName().compare(\"" +
-					dr_name + "\") == 0) {\n\t\t\t" + dr_name + "_name = (std::string)" + 
-					"((ArgumentString*)this->getArgument(i))->getArgValue();\n" + 
-					"\t\t\tset_cout++;\n\t\t}\n\n";
+					dr_name + "\") == 0) {\n\t\t\t" + dr_name + "_arg = (ArgumentRT*)" + 
+					"this->getArgument(i);\n\t\t\tset_cout++;\n\t\t}\n\n";
 
 				// generate DataRegion IOs - $OUTPUT_DR_CREATE$
 				dataRegionOutputCreate += "\tthis->addInputOutputDataRegion(\"tile\", " +
-					dr_name + "_name, RTPipelineComponentBase::OUTPUT);\n";
+					dr_name + "_arg->getName(), RTPipelineComponentBase::OUTPUT);\n";
 
 				// generate DataRegion output declaration - $OUTPUT_DECL_DR$
 				dataRegionOutputDecl += "\t\tDenseDataRegion2D *" + 
@@ -214,7 +214,9 @@ string generate_source(Json::Value data) {
 				// generate DataRegion output cast - $OUTPUT_CAST_DR$
 				dataRegionOutputCast += "\t\t\t" + dr_name + 
 					" = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(" + 
-					dr_name + "_name, \"\", 0, workflow_id));\n";
+					dr_name + "_arg->getName(), " +
+					"std::to_string(" + dr_name + "_arg->getId()), 0, " + dr_name + 
+					"_arg->getId()));\n";
 
 				// generate cv::Mat variables to hold input DR - $OUTPUT_MAT_DR$
 				output_mat_dr += "\tcv::Mat " + dr_name + " = this->" + 

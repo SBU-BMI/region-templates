@@ -18,10 +18,10 @@ class ArgumentBase {
 protected:
 	int type;
 	std::string name;
+	int id;
 
 	// this fields are used only on workflow generation
 	int parent;
-	int id;
 
 public:
 	ArgumentBase(){};

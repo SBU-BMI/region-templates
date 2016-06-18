@@ -26,20 +26,20 @@ int NormalizationComp::run() {
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	std::string input_img_name;
-	std::string normalized_rt_name;
+	ArgumentRT* input_img_arg;
+	ArgumentRT* normalized_rt_arg;
 	float* target_mean;
 	float* target_std;
 
 	int set_cout = 0;
 	for(int i=0; i<this->getArgumentsSize(); i++){
 		if (this->getArgument(i)->getName().compare("input_img") == 0) {
-			input_img_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+			input_img_arg = (ArgumentRT*)this->getArgument(i);
 			set_cout++;
 		}
 
 		if (this->getArgument(i)->getName().compare("normalized_rt") == 0) {
-			normalized_rt_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+			normalized_rt_arg = (ArgumentRT*)this->getArgument(i);
 			set_cout++;
 		}
 
@@ -58,9 +58,9 @@ int NormalizationComp::run() {
 	if (set_cout < this->getArgumentsSize())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on NormalizationComp" << std::endl;
 
-	this->addInputOutputDataRegion("tile", input_img_name, RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("tile", input_img_arg->getName(), RTPipelineComponentBase::INPUT);
 
-	this->addInputOutputDataRegion("tile", normalized_rt_name, RTPipelineComponentBase::OUTPUT);
+	this->addInputOutputDataRegion("tile", normalized_rt_arg->getName(), RTPipelineComponentBase::OUTPUT);
 
 
 	if(inputRt != NULL){
@@ -69,9 +69,9 @@ int NormalizationComp::run() {
 		DenseDataRegion2D *normalized_rt = NULL;
 
 		try{
-			input_img = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(input_img_name, "", 0, workflow_id));
+			input_img = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(input_img_arg->getName(), std::to_string(input_img_arg->getId()), 0, input_img_arg->getId()));
 
-			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_name, "", 0, workflow_id));
+			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_arg->getName(), std::to_string(normalized_rt_arg->getId()), 0, normalized_rt_arg->getId()));
 
 			std::cout << "NormalizationComp. paramenterId: "<< workflow_id <<std::endl;
 		}catch(...){
