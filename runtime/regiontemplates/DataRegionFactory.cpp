@@ -5,7 +5,9 @@
  *      Author: george
  */
 
+#include <fstream>
 #include "DataRegionFactory.h"
+#include "PolygonListDataRegion.h"
 
 DataRegionFactory::DataRegionFactory() {
 }
@@ -110,7 +112,7 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 #ifdef DEBUG
 					std::cout << "Failed to read image:" << inputFile << std::endl;
 #endif
-
+                    //return false;
 				}else{
 					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
 					dataRegion->setData(chunkData);
@@ -280,8 +282,9 @@ bool DataRegionFactory::writeDDR2DATASPACES(DenseDataRegion2D* dataRegion) {
 
 bool DataRegionFactory::instantiateDataRegion(DataRegion* dr, int chunkId, std::string path) {
 	DenseDataRegion2D *dr2D = dynamic_cast<DenseDataRegion2D*>(dr);
-	
-	switch(dr->getType()){
+    PolygonListDataRegion *polygonListDataRegion = dynamic_cast<PolygonListDataRegion *>(dr);
+
+    switch (dr->getType()) {
 		case RegionTemplateType::DENSE_REGION_2D:
 
 			switch(dr->getInputType()){
@@ -300,6 +303,9 @@ bool DataRegionFactory::instantiateDataRegion(DataRegion* dr, int chunkId, std::
 		case RegionTemplateType::DENSE_REGION_3D:
 			std::cout << "Dense data region 3D instantiation to be implemented" << std::endl;
 			break;
+        case RegionTemplateType::POLYGON_LIST:
+            readPolyListDRFS(polygonListDataRegion, path);
+            break;
 		default:
 			std::cout << "Unknown data region type:"<< dr->getType() << " name:" << dr->getName() <<std::endl;
 			break;
@@ -309,6 +315,7 @@ bool DataRegionFactory::instantiateDataRegion(DataRegion* dr, int chunkId, std::
 
 bool DataRegionFactory::stageDataRegion(DataRegion* dr) {
 	DenseDataRegion2D *dr2D = dynamic_cast<DenseDataRegion2D*>(dr);
+    PolygonListDataRegion *polygonListDataRegion = dynamic_cast<PolygonListDataRegion *>(dr);
 
 	switch(dr->getType()){
 		case RegionTemplateType::DENSE_REGION_2D:
@@ -327,9 +334,139 @@ bool DataRegionFactory::stageDataRegion(DataRegion* dr) {
 		case RegionTemplateType::DENSE_REGION_3D:
 			std::cout << "Dense data region 3D instantiation to be implemented" << std::endl;
 			break;
+        case RegionTemplateType::POLYGON_LIST:
+            writePolyListDRFS(polygonListDataRegion);
+            break;
 		default:
 			std::cout << "Unknown data region type:"<< dr->getType() << std::endl;
 			break;
 	}
 	return true;
 }
+
+bool DataRegionFactory::readPolyListDRFS(PolygonListDataRegion *dataRegion, std::string path) {
+
+    std::string inputFile;
+    std::vector<std::vector<cv::Point> > chunkData;
+
+#ifdef DEBUG
+    std::cout << "readPolyListDRFS: dataRegion: " << dataRegion->getName() << " id: " << dataRegion->getId() <<
+    " version:" << dataRegion->getVersion() << " outputExt: " << dataRegion->getOutputExtension() << std::endl;
+#endif
+    if (dataRegion->getIsAppInput()) {
+        inputFile = dataRegion->getInputFileName();
+    } else {
+        if (!path.empty())inputFile.append(path);
+
+        inputFile.append(dataRegion->getName());
+        inputFile.append("-").append(dataRegion->getId());
+        inputFile.append("-").append(number2String(dataRegion->getVersion()));
+        inputFile.append("-").append(number2String(dataRegion->getTimestamp()));
+
+        inputFile.append(".polylist");
+
+        // create lock.
+        std::string lockFile = inputFile;
+        lockFile.append(".loc");
+        FILE *pFile = fopen(lockFile.c_str(), "r");
+        if (pFile == NULL) {
+
+#ifdef DEBUG
+            std::cout << "ERROR:::: could not read lock file:" << lockFile << std::endl;
+#endif
+            return false;
+        }
+        fclose(pFile);
+    }
+
+    // It is stored as a file
+
+    std::ifstream fsIn;
+    fsIn.open(inputFile.c_str());
+    if (fsIn.fail()) {
+        std::cout << "Failed to open: " << inputFile << std::endl;
+        return (false);
+    }
+    cv::Point pt;
+    std::vector<cv::Point> vPt;
+    std::string line;
+    while (getline(fsIn, line, ']')) {
+        //std::cout << line.substr(1,line.size()-1) << std::endl;
+        std::string ptStr;
+        std::stringstream s(line.substr(1, line.size() - 1));
+
+        vPt.clear();
+        int i = 0;
+        while (getline(s, ptStr, ';')) {
+            i++;
+            std::string toReplace("[");
+            size_t f = ptStr.find(toReplace);
+            if (f != std::string::npos) ptStr.replace(f, toReplace.length(), "");
+            std::stringstream s1(ptStr);
+            std::string lastStr;
+            getline(s1, lastStr, ',');
+            pt.x = atoi(lastStr.c_str());
+            getline(s1, lastStr, ',');
+            pt.y = atoi(lastStr.c_str());
+            vPt.push_back(pt);
+        }
+        if (i > 0) {
+            chunkData.push_back(vPt);
+            //std::cout<<vPt << "-----" <<std::endl;
+        }
+    }
+
+    fsIn.close();
+
+    if (chunkData.empty()) {
+#ifdef DEBUG
+        std::cout << "Failed to read polygonListFile:" << inputFile << std::endl;
+#endif
+        return false;
+    } else {
+        dataRegion->setData(chunkData);
+    }
+
+    return (true);
+}
+
+bool DataRegionFactory::writePolyListDRFS(PolygonListDataRegion *dataRegion, std::string path) {
+
+    std::string outputFile;
+    if (!path.empty())outputFile.append(path);
+
+    outputFile.append(dataRegion->getName());
+    outputFile.append("-").append(dataRegion->getId());
+    outputFile.append("-").append(number2String(dataRegion->getVersion()));
+    outputFile.append("-").append(number2String(dataRegion->getTimestamp()));
+    outputFile.append(".polylist");
+
+    //Write the polylist to the file
+    std::vector<std::vector<cv::Point> > vvP = dataRegion->getData();
+    std::ofstream fsOut;
+    std::vector<std::vector<cv::Point> >::iterator p;
+
+    fsOut.open(outputFile.c_str());
+    if (fsOut.fail()) {
+        std::cout << "Failed to open " << outputFile << std::endl;
+        return (false);
+    }
+    for (p = vvP.begin(); p != vvP.end(); p++) {
+        fsOut << (*p) << std::endl;
+    }
+    fsOut.close();
+
+    // create lock.
+    outputFile.append(".loc");
+    FILE *pFile = fopen(outputFile.c_str(), "w");
+    if (pFile == NULL) {
+#ifdef DEBUG
+        std::cout << "ERROR:::: could not write lock file" << std::endl;
+#endif
+    }
+
+    fclose(pFile);
+
+    return true;
+}
+

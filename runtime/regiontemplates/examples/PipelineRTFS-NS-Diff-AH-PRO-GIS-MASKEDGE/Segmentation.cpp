@@ -10,8 +10,13 @@
 
 Segmentation::Segmentation() {
     this->setComponentName("Segmentation");
-    this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::INPUT);//_OUTPUT
-    this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::OUTPUT);//_OUTPUT
+//    this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::INPUT);//_OUTPUT
+//    this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::OUTPUT);//_OUTPUT
+
+    this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::INPUT);
+    this->addInputOutputDataRegion("tile", "POLY_LIST", RTPipelineComponentBase::INPUT_OUTPUT);
+    this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::OUTPUT);
+
 }
 
 Segmentation::~Segmentation() {

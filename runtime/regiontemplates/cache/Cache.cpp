@@ -340,19 +340,37 @@ DataRegion* Cache::getDR(std::string rtName, std::string rtId,
 
 			// if it is not on any cache layer and is an input, lets read it
 			if(i+1 == this->cacheLayers.size() && isInput){
-				DenseDataRegion2D * ddr2D = new DenseDataRegion2D();
-				ddr2D->setName(drName);
-				ddr2D->setId(drId);
-				ddr2D->setTimestamp(timestamp);
-				ddr2D->setVersion(version);
-				ddr2D->setIsAppInput(isInput);
-				ddr2D->setInputFileName(inputPath);
+				if (drName == "POLY_LIST") {
+					PolygonListDataRegion *polygonListDataRegion = new PolygonListDataRegion();
+					polygonListDataRegion->setName(drName);
+					polygonListDataRegion->setId(drId);
+					polygonListDataRegion->setTimestamp(timestamp);
+					polygonListDataRegion->setVersion(version);
+					polygonListDataRegion->setIsAppInput(isInput);
+					polygonListDataRegion->setInputFileName(inputPath);
 
-				retValue = ddr2D;
+					retValue = polygonListDataRegion;
+				}
+				else {
+					DenseDataRegion2D *ddr2D = new DenseDataRegion2D();
+					ddr2D->setName(drName);
+					ddr2D->setId(drId);
+					ddr2D->setTimestamp(timestamp);
+					ddr2D->setVersion(version);
+					ddr2D->setIsAppInput(isInput);
+					ddr2D->setInputFileName(inputPath);
+
+					retValue = ddr2D;
+				}
+
+
 				if(retValue->getType() == DataRegionType::DENSE_REGION_2D){
 					DataRegionFactory::readDDR2DFS(dynamic_cast<DenseDataRegion2D*>(retValue), -1);
 				//	std::cout << "READING INPUT DR. "<< retValue->getName() << " "<< retValue->getId() <<" "<< retValue->getTimestamp() << " "<< retValue->getVersion() << " inputFile: "<< inputPath<< std::endl;
-				}else{
+				} else if (retValue->getType() == DataRegionType::POLYGON_LIST) {
+					DataRegionFactory::readPolyListDRFS(dynamic_cast<PolygonListDataRegion *>(retValue));
+				}
+				else {
 					std::cout << "Data region type: "<< retValue << " not supported"<< std::endl;
 					exit(1);
 				}

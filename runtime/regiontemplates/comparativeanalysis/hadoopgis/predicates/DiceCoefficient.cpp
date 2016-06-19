@@ -2,6 +2,7 @@
 // Created by taveira on 11/10/15.
 //
 
+#include <regiontemplates/PolygonListDataRegion.h>
 #include "DiceCoefficient.h"
 
 DiceCoefficient::DiceCoefficient(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels) {
@@ -9,6 +10,24 @@ DiceCoefficient::DiceCoefficient(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2,
     this->dr2 = dr2;
     getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
     getPolygonsFromMask(this->dr2->getData(), this->listOfPolygons[1]);
+    this->diff = diffPixels;
+    this->scriptName = "SpatialQuery.sh";
+}
+
+DiceCoefficient::DiceCoefficient(DenseDataRegion2D *tileMask, PolygonListDataRegion *polyListDRFromReferenceMask,
+                                 float *diffPixels) {
+    this->dr1 = tileMask;
+    this->dr2 = NULL;
+
+    //Extract the polygons from the tile
+    getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
+
+    //Save the reference for the list of polygons from the reference mask
+    std::vector<std::vector<cv::Point> > *pointer = new std::vector<std::vector<cv::Point> >(
+            polyListDRFromReferenceMask->getData());
+    //std::vector<std::vector<cv::Point> > listOfPolygonsFromReferenceMask (polyListDRFromReferenceMask->getData());
+    this->listOfPolygons[1] = pointer;
+
     this->diff = diffPixels;
     this->scriptName = "SpatialQuery.sh";
 }
@@ -21,6 +40,7 @@ void DiceCoefficient::parseOutput(std::string myMaskPath, double a1, double a2) 
     std::string line;
     float intersectArea;
     float totalIntersectArea = 0;
+
     //Get the total area of the intersection
     while (std::getline(infile, line)) {
         stringstream ss(line);

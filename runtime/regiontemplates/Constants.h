@@ -48,6 +48,7 @@ private:
 public:
 	static const int DENSE_REGION_2D 	= 1; // Dense matrix representation
 	static const int DENSE_REGION_3D 	= 2; // Dense (cube) array of matrices
+	static const int POLYGON_LIST = 3; //	List of polygons
 
 };
 
@@ -59,6 +60,7 @@ private:
 public:
 	static const int DENSE_REGION_2D 	= 1; // Dense matrix representation
 	static const int DENSE_REGION_3D 	= 2; // Dense (cube) array of matrices
+	static const int POLYGON_LIST = 3; //	List of polygons
 };
 
 class DataSourceType{

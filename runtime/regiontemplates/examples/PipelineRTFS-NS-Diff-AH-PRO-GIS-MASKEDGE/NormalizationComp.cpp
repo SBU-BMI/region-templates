@@ -3,7 +3,11 @@
 
 NormalizationComp::NormalizationComp() {
     this->setComponentName("NormalizationComp");
+    //this->addInputOutputDataRegion("tile", "RAW", RTPipelineComponentBase::INPUT);
+    //this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::OUTPUT);
     this->addInputOutputDataRegion("tile", "RAW", RTPipelineComponentBase::INPUT);
+    this->addInputOutputDataRegion("tile", "REF_MASK", RTPipelineComponentBase::INPUT);
+    this->addInputOutputDataRegion("tile", "POLY_LIST", RTPipelineComponentBase::OUTPUT);
     this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::OUTPUT);
 }
 

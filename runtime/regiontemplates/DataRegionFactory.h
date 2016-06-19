@@ -15,6 +15,7 @@
 //#include "cv.hpp"
 //#include "opencv2/gpu/gpu.hpp"
 #include "highgui.h"
+#include "PolygonListDataRegion.h"
 #include <string>
 #include <sstream>
 
@@ -31,6 +32,10 @@ class DataRegionFactory {
 private:
 	static bool readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId=-1, std::string path="", bool ssd=false);
 	static bool writeDDR2DFS(DenseDataRegion2D *dataRegion, std::string path="", bool ssd=false);
+
+	static bool readPolyListDRFS(PolygonListDataRegion *dataRegion, std::string path = "");
+
+	static bool writePolyListDRFS(PolygonListDataRegion *dataRegion, std::string path = "");
 
 	static bool readDDR2DATASPACES(DenseDataRegion2D* dataRegion);
 	static bool writeDDR2DATASPACES(DenseDataRegion2D* dataRegion);

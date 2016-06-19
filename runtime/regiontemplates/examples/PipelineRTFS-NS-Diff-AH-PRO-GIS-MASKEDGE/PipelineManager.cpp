@@ -1,19 +1,14 @@
 #include "SysEnv.h"
-#include <sstream>
-#include <stdlib.h>
-#include <iostream>
-#include <string>
 #include "FileUtils.h"
-#include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
 
 #include "NormalizationComp.h"
 #include "Segmentation.h"
-#include "FeatureExtraction.h"
 #include "DiffMaskComp.h"
 #include "ParameterSet.h"
 
 #include "hclient.h"
+#include "PolygonExtractionComp.h"
 
 #define INF    100000
 
@@ -45,19 +40,45 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
 
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
     // Search for input files in folder path
-    FileUtils fileUtils(".mask.png");
-    std::vector<std::string> fileList;
-    fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
+
     RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
     rtCollection->setName("inputimage");
 
     std::cout << "Input Folder: " << inputFolderPath << std::endl;
 
+
+    // Create reference mask region template
+    // Search for input files in folder path
+    FileUtils maskFileUtils(".mask.png");
+    std::vector<std::string> maskFileList;
+    maskFileUtils.traverseDirectoryRecursive(inputFolderPath, maskFileList);
+    DenseDataRegion2D *ddr2dRefMask;
+    cout << "========= REF MASKS =========" << endl;
+    ddr2dRefMask = new DenseDataRegion2D();
+    std::ostringstream oss;
+    oss << 0;
+    ddr2dRefMask->setName("REF_MASK");
+    ddr2dRefMask->setId(oss.str());
+    ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM);
+    ddr2dRefMask->setIsAppInput(true);
+    ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM);
+    ddr2dRefMask->setInputFileName(maskFileList[0]);
+    cout << "REF: " << maskFileList[0] << endl;
+
+//        RegionTemplate *rtRef = new RegionTemplate();
+//    rtRef->setName("mask");
+//    rtRef->insertDataRegion(ddr2dRefMask);
+//    rtCollection->addRT(rtRef);
+
+    // Search for input files in folder path
+    FileUtils fileUtils(".tiff");
+    std::vector<std::string> imageFileList;
+    fileUtils.traverseDirectoryRecursive(inputFolderPath, imageFileList);
     std::string temp;
     // Create one region template instance for each input data file
     // (creates representations without instantiating them)
-    for (int i = 0; i < fileList.size(); i++) {
-
+    for (int i = 0; i < imageFileList.size(); i++) {
+        cout << "========= RAW MASKS =========" << endl;
         // Create input mask data region
         DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
         ddr2d->setName("RAW");
@@ -67,17 +88,14 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
         ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
         ddr2d->setIsAppInput(true);
         ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-        std::string inputFileName = fileUtils.replaceExt(fileList[i], ".mask.png", ".tiff");
-        ddr2d->setInputFileName(inputFileName);
+        //std::string inputFileName = fileUtils.replaceExt(imageFileList[i], ".mask.png", ".tiff");
+        ddr2d->setInputFileName(imageFileList[i]);
+        cout << "RAW: " << imageFileList[i] << " ID: " << ddr2d->getId() << endl;
 
-        // Create reference mask data region
-        DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
-        ddr2dRefMask->setName("REF_MASK");
-        ddr2dRefMask->setId(oss.str());
-        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM);
-        ddr2dRefMask->setIsAppInput(true);
-        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM);
-        ddr2dRefMask->setInputFileName(fileList[i]);
+
+        DataRegion *ddr2dRef;
+        ddr2dRef = ddr2dRefMask->clone(true);
+        ddr2dRef->setId(oss.str());
 
         /*	// Create reference mask data region
             DenseDataRegion2D *ddr2dRefNorm = new DenseDataRegion2D();
@@ -91,8 +109,9 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
         // Adding data regions to region template
         RegionTemplate *rt = new RegionTemplate();
         rt->setName("tile");
+        rt->setId(oss.str());
         rt->insertDataRegion(ddr2d);
-        rt->insertDataRegion(ddr2dRefMask);
+        rt->insertDataRegion(ddr2dRef);
         //rt->insertDataRegion(ddr2dRefNorm);
 
         // Adding region template instance to collection
@@ -334,12 +353,22 @@ int main(int argc, char **argv) {
 
     double perf[numClients];//=100000;
 
-    int max_number_of_iterations = 100;
+    int max_number_of_iterations = 5;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
     float maxdiff = 0;
 
-    int versionNorm = 0, versionSeg = 0;
+    int versionNorm = 0, versionPoly = 0, versionSeg = 0;
     bool executedAlready[numClients];
+
+
+    //Extract polygons from reference mask
+//    PolygonExtractionComp *poly = new PolygonExtractionComp();
+//    poly->addArgument(new ArgumentInt(versionPoly));
+//    poly->addRegionTemplateInstance(rtCollection->getRT(0), rtCollection->getRT(0)->getName());
+//    assert(rtCollection->getRT(0)->getName() == "mask");
+//    cout << "################################ " << rtCollection->getRT(0)->getName() <<
+//    " ################################" << endl;
+//    sysEnv.executeComponent(poly);
 
     /* main loop */
     for (int loop = 0; !harmony_converged(hdesc[0]) && loop < max_number_of_iterations;) {
@@ -405,10 +434,18 @@ int main(int argc, char **argv) {
             DiffMaskComp *diff = NULL;
             NormalizationComp *norm = new NormalizationComp();
 
+            //Polygon extraction for reference mask
+            PolygonExtractionComp *poly = new PolygonExtractionComp();
+            poly->addArgument(new ArgumentInt(versionPoly));
+            poly->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+            sysEnv.executeComponent(poly);
+
+
             // normalization parameters
             norm->addArgument(new ArgumentInt(versionNorm));
             norm->addArgument(argSetInstanceNorm[0]);
             norm->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+            norm->addDependency(poly->getId());
             sysEnv.executeComponent(norm);
             // END CREATING NORMALIZATION STEP
 
@@ -460,9 +497,12 @@ int main(int argc, char **argv) {
                     // version of the data region that will be read. It is created during the segmentation.
                     diff->addArgument(new ArgumentInt(versionSeg));
 
+//                    //Add the reference mask rt
+//                    diff->addRegionTemplateInstance(rtCollection->getRT(0), rtCollection->getRT(0)->getName());
                     // region template name
                     diff->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
                     diff->addDependency(seg->getId());
+                    diff->addDependency(poly->getId());
 
                     // add to the list of diff component ids.
                     diffComponentIds[j].push_back(diff->getId());

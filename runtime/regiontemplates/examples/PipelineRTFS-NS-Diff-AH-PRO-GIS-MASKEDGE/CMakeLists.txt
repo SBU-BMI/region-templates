@@ -39,7 +39,7 @@ set(libname componentnsdiffahprogisedge)
 
 # Source files used by the Runtime System
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp DiffMaskComp.cpp
-        TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp)
+        TaskNormalization.cpp TaskSegmentation.cpp TaskFeatures.cpp PolygonExtractionComp.cpp TaskPolygonExtraction.cpp)
 
 #Hadoopgis Dependencies
 

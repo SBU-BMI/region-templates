@@ -226,8 +226,12 @@ bool CacheComponent::insertDR(std::string rtName, std::string rtId, DataRegion* 
 		if(DataRegionType::DENSE_REGION_2D == dataRegion->getType()){
 			DenseDataRegion2D *aux = dynamic_cast<DenseDataRegion2D*>(dataRegion);
 			DataRegionFactory::writeDDR2DFS(aux,this->getPath(),this->getDevice() == Cache::SSD);
-			 std::cout<< "Cache write comp path: "<< this->getPath()<< std::endl;
-		}else{
+			std::cout << "DDR2D Cache write comp path: " << this->getPath() << std::endl;
+		} else if (DataRegionType::POLYGON_LIST == dataRegion->getType()) {
+			PolygonListDataRegion *aux = dynamic_cast<PolygonListDataRegion *>(dataRegion);
+			DataRegionFactory::writePolyListDRFS(aux, this->getPath());
+			std::cout << "PolyList Cache write comp path: " << this->getPath() << std::endl;
+		} else {
 			std::cout << "ERROR: Unknown data region type: "<< dataRegion->getType() << std::endl;
 			exit(1);
 		}
@@ -256,17 +260,37 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 	case Cache::HDD:
 	{
 
-		retValue = new DenseDataRegion2D();
-		retValue->setName(drName);
-		retValue->setId(drId);
-		retValue->setTimestamp(timestamp);
-		retValue->setVersion(version);
+		if (drName == "POLY_LIST") {
+			retValue = new PolygonListDataRegion();
+			retValue->setName(drName);
+			retValue->setId(drId);
+			retValue->setTimestamp(timestamp);
+			retValue->setVersion(version);
+			bool retDRF = DataRegionFactory::readPolyListDRFS(dynamic_cast<PolygonListDataRegion *>(retValue),
+															  this->getPath());
 
-		bool retDRF = DataRegionFactory::readDDR2DFS(dynamic_cast<DenseDataRegion2D*>(retValue), -1, this->getPath(), this->getDevice() == Cache::SSD);
+//			PolygonListDataRegion* ldr = dynamic_cast<PolygonListDataRegion *>(retValue);
+//			std::cout<< "PolyList cache read list size: "<< ldr->getData().size() << " bool " << true<< std::endl;
 
-		if(retDRF == false) {
-			delete retValue;
-			retValue = NULL;
+			if (retDRF == false) {
+				delete retValue;
+				retValue = NULL;
+			}
+		}
+		else {
+			retValue = new DenseDataRegion2D();
+			retValue->setName(drName);
+			retValue->setId(drId);
+			retValue->setTimestamp(timestamp);
+			retValue->setVersion(version);
+
+			bool retDRF = DataRegionFactory::readDDR2DFS(dynamic_cast<DenseDataRegion2D *>(retValue), -1,
+														 this->getPath(), this->getDevice() == Cache::SSD);
+
+			if (retDRF == false) {
+				delete retValue;
+				retValue = NULL;
+			}
 		}
 
 		break;

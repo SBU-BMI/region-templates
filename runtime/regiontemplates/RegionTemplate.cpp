@@ -146,6 +146,10 @@ DataRegion* RegionTemplate::getDataRegion(std::string drName, std::string drId, 
 
 						retValue = auxCache->getDR(this->getName(), this->getId(), retValue->getName(), retValue->getId(), retValue->getTimestamp(), retValue->getVersion(), true, retValue->getIsAppInput(), retValue->getInputFileName());
 
+                        //if (retValue->getName() == "POLY_LIST" ){
+                        //PolygonListDataRegion* ldr = dynamic_cast<PolygonListDataRegion *>(retValue);
+                        //std::cout<< "-------------------------- Inside getDataRegion PolyList cache read list size: "<< ldr->getData().size() << std::endl;
+                        //}
 					}else{
 						std::cout << "RT::getDataRegion: CACHE is NULL. rtName: "<< this->getName() << std::endl;
 						//exit(1);

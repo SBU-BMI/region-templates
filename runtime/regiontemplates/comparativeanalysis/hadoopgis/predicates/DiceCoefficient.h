@@ -17,6 +17,8 @@ protected:
 public:
     DiceCoefficient(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels);
 
+    DiceCoefficient(DenseDataRegion2D *tileMask, PolygonListDataRegion *polyListDRFromReferenceMask, float *diffPixels);
+
     void parseOutput(std::string pathToMaskOutputtedByTheScript, double area1, double area2);
 
 };

@@ -5,6 +5,7 @@
 
 #include "Task.h"
 #include "DenseDataRegion2D.h"
+#include <regiontemplates/PolygonListDataRegion.h>
 #include "opencv2/opencv.hpp"
 
 
