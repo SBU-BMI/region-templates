@@ -71,7 +71,11 @@ int NormalizationComp::run() {
 		try{
 			input_img = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(input_img_arg->getName(), std::to_string(input_img_arg->getId()), 0, input_img_arg->getId()));
 
-			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_arg->getName(), std::to_string(normalized_rt_arg->getId()), 0, normalized_rt_arg->getId()));
+			normalized_rt = new DenseDataRegion2D();
+			normalized_rt->setName(normalized_rt_arg->getName());
+			normalized_rt->setId(std::to_string(normalized_rt_arg->getId()));
+			normalized_rt->setVersion(normalized_rt_arg->getId());
+			inputRt->insertDataRegion(normalized_rt);
 
 			std::cout << "NormalizationComp. paramenterId: "<< workflow_id <<std::endl;
 		}catch(...){
@@ -115,7 +119,7 @@ TaskNormalizationComp::TaskNormalizationComp(DenseDataRegion2D* input_img_temp, 
 }
 
 TaskNormalizationComp::~TaskNormalizationComp() {
-	if(input_img_temp != NULL) delete input_img_temp;
+	// if(input_img_temp != NULL) delete input_img_temp;
 
 }
 
@@ -123,7 +127,7 @@ bool TaskNormalizationComp::run(int procType, int tid) {
 	
 	cv::Mat input_img = this->input_img_temp->getData();
 
-	cv::Mat normalized_rt = this->normalized_rt_temp->getData();
+	cv::Mat normalized_rt;
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 

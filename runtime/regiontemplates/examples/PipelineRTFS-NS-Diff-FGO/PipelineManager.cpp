@@ -216,8 +216,16 @@ int main(int argc, char* argv[]) {
 
 	// add all stages to manager
 	cout << endl << "executeComponent" << endl;
-	for (pair<int, PipelineComponentBase*> s : expanded_stages)
+	for (pair<int, PipelineComponentBase*> s : expanded_stages) {
+		cout << "sent component " << s.second->getName() << " to execute with args:" << endl;
+		cout << "\tinputs: " << endl;
+		for (int i : s.second->getInputs())
+			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " << expanded_args[i]->toString() << endl;
+		cout << "\toutputs: " << endl;
+		for (int i : s.second->getOutputs())
+			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " << expanded_args[i]->toString() << endl;
 		sysEnv.executeComponent(s.second);
+	}
 
 	// execute workflows
 	cout << endl << "startupExecution" << endl;
@@ -360,10 +368,11 @@ void get_inputs_from_file(FILE* workflow_descriptor,
 				exit(-4);
 		}
 
-		// set inp_arg name and id
+		// set inp_arg name, id and input type
 		inp_arg->setName(name);
 		int arg_id = new_uid();
 		inp_arg->setId(arg_id);
+		inp_arg->setIo(ArgumentBase::input);
 
 		// add input argument to map
 		workflow_inputs[arg_id] = inp_arg;
@@ -455,6 +464,7 @@ void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &w
 		}
 		
 		out_arg->setName(name);
+		out_arg->setIo(ArgumentBase::output);
 		workflow_outputs[new_uid()] = out_arg;
 
 		// consumes the port ending
@@ -762,22 +772,20 @@ void generate_drs(RegionTemplate* rt,
 	for (pair<int, ArgumentBase*> p : expanded_args) {
 		// if an argument is a region template data region
 		if (p.second->getType() == ArgumentBase::RT) {
-			// create the data region and add it to the input region template
-			DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-			ddr2d->setName(p.second->getName());
-			std::ostringstream oss;
-			oss << p.first;
-			ddr2d->setId(oss.str());
-			ddr2d->setVersion(p.first);
-
-			// aditional setup if the argument is an input from file
 			if (((ArgumentRT*)p.second)->isFileInput) {
-				ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
+				// create the data region and add it to the input region template
+				DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+				ddr2d->setName(p.second->getName());
+				std::ostringstream oss;
+				oss << p.first;
+				ddr2d->setId(oss.str());
+				ddr2d->setVersion(p.first);
 				ddr2d->setIsAppInput(true);
+				ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
 				ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
 				ddr2d->setInputFileName(p.second->toString());
+				rt->insertDataRegion(ddr2d);
 			}
-			rt->insertDataRegion(ddr2d);
 		}
 	}
 }
@@ -791,12 +799,13 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 		// add input arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getInputs()) {
 			stage.second->addArgument(merged_arguments[arg_id]);
+			cout << "added input argument " << merged_arguments[arg_id]->getName() << " sized " << merged_arguments[arg_id]->size() << endl;
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
 				cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
-				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName() ,merged_arguments[arg_id]->getName(), RTPipelineComponentBase::INPUT);
+				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::INPUT);
 			}
 			((RTPipelineComponentBase*)stage.second)->addDependency(merged_arguments[arg_id]->getParent());
 		}
@@ -804,12 +813,13 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 		// add output arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getOutputs()) {
 			stage.second->addArgument(merged_arguments[arg_id]);
+			cout << "added output argument " << merged_arguments[arg_id]->getName() << " sized " << merged_arguments[arg_id]->size() << endl;
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
 				cout << "output RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
-				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName() ,merged_arguments[arg_id]->getName(), RTPipelineComponentBase::OUTPUT);
+				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::OUTPUT);
 			}
 		}
 	}

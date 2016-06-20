@@ -35,7 +35,12 @@ PipelineComponentBase::~PipelineComponentBase() {
 	while(this->arguments.size()> 0){
 		ArgumentBase *aux = this->arguments.back();
 		this->arguments.pop_back();
-		delete aux;
+		if (aux->getIo() == ArgumentBase::input) {
+			std::cout << __FILE__ << ":" << __LINE__ <<" TODO: remove argument" << aux->getId() << 
+				":" << aux->getName() << " only when no other stage needs it" << std::endl;
+			// std::cout << "[PipelineComponentBase] deleting input " << aux->getName() << std::endl;
+			// delete aux;
+		}
 	}
 	if(resultData != NULL) free(resultData);
 }
@@ -56,7 +61,16 @@ ArgumentBase *PipelineComponentBase::getArgument(int index)
 	return retArg;
 }
 
-
+ArgumentBase *PipelineComponentBase::getArgumentById(int id) 
+{
+	ArgumentBase *retArg = NULL;
+	for (vector<ArgumentBase*>::iterator i = this->arguments.begin(); i != this->arguments.end(); i++) {
+		if ((*i)->getId() == id) {
+			retArg = *i;
+		}
+	}
+	return retArg;
+}
 
 std::string PipelineComponentBase::getComponentName() const
 {

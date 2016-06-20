@@ -107,6 +107,11 @@ public:
 	// Retrieve "index"th argument, if it exists, otherwise NULL is returned
 	ArgumentBase *getArgument(int index);
 
+	// Retrieve an argument with 'id', if it exists, otherwise NULL is returned
+	// This is used by the pipeline generator and was added here as a new function
+	// instead of changing getArgument(int) for compatibility reasons
+	ArgumentBase *getArgumentById(int id);
+
 	// Get current number of arguments associated to this component.
 	int getArgumentsSize();
 

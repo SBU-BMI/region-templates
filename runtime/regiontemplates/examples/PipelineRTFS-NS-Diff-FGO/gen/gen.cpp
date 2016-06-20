@@ -213,14 +213,14 @@ string generate_source(Json::Value data) {
 
 				// generate DataRegion output cast - $OUTPUT_CAST_DR$
 				dataRegionOutputCast += "\t\t\t" + dr_name + 
-					" = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(" + 
-					dr_name + "_arg->getName(), " +
-					"std::to_string(" + dr_name + "_arg->getId()), 0, " + dr_name + 
-					"_arg->getId()));\n";
+					" = new DenseDataRegion2D();\n\t\t\t" + dr_name + "->setName(" + 
+					dr_name + "_arg->getName());\n\t\t\t" + dr_name + "->setId(std::to_string(" + 
+					dr_name + "_arg->getId()));\n\t\t\t" + dr_name + "->setVersion(" + 
+					dr_name + "_arg->getId());\n\t\t\tinputRt->insertDataRegion(" + 
+					dr_name + ");\n";
 
 				// generate cv::Mat variables to hold input DR - $OUTPUT_MAT_DR$
-				output_mat_dr += "\tcv::Mat " + dr_name + " = this->" + 
-					dr_name + "_temp->getData();";
+				output_mat_dr += "\tcv::Mat " + dr_name + ";";
 
 				// generate mat assignment to output DR string - $OUTPUT_DR_RETURN$
 				output_return += "\tthis->" + dr_name + "_temp->setData(" + dr_name + ");";

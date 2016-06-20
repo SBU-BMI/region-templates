@@ -149,7 +149,11 @@ int Segmentation::run() {
 		try{
 			normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(normalized_rt_arg->getName(), std::to_string(normalized_rt_arg->getId()), 0, normalized_rt_arg->getId()));
 
-			segmented_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(segmented_rt_arg->getName(), std::to_string(segmented_rt_arg->getId()), 0, segmented_rt_arg->getId()));
+			segmented_rt = new DenseDataRegion2D();
+			segmented_rt->setName(segmented_rt_arg->getName());
+			segmented_rt->setId(std::to_string(segmented_rt_arg->getId()));
+			segmented_rt->setVersion(segmented_rt_arg->getId());
+			inputRt->insertDataRegion(segmented_rt);
 
 			std::cout << "Segmentation. paramenterId: "<< workflow_id <<std::endl;
 		}catch(...){
@@ -206,7 +210,7 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D* normalized_rt_temp, DenseD
 }
 
 TaskSegmentation::~TaskSegmentation() {
-	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
+	// if(normalized_rt_temp != NULL) delete normalized_rt_temp;
 
 }
 
@@ -214,7 +218,7 @@ bool TaskSegmentation::run(int procType, int tid) {
 	
 	cv::Mat normalized_rt = this->normalized_rt_temp->getData();
 
-	cv::Mat segmented_rt = this->segmented_rt_temp->getData();
+	cv::Mat segmented_rt;
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
