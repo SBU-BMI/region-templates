@@ -42,7 +42,8 @@ PipelineComponentBase::~PipelineComponentBase() {
 			// delete aux;
 		}
 	}
-	if(resultData != NULL) free(resultData);
+	std::cout << __FILE__ << ":" << __LINE__ << "TODO: free resultData if needed" << std::endl;
+	// if(resultData != NULL) free(resultData);
 }
 
 void PipelineComponentBase::addArgument(ArgumentBase *arg)
