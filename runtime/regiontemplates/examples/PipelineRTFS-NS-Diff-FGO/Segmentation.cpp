@@ -210,7 +210,7 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D* normalized_rt_temp, DenseD
 }
 
 TaskSegmentation::~TaskSegmentation() {
-	// if(normalized_rt_temp != NULL) delete normalized_rt_temp;
+	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
 
 }
 

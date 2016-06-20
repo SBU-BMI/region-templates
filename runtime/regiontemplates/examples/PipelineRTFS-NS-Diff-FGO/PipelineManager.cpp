@@ -60,7 +60,7 @@ void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentB
 	map<int, ArgumentBase*> &interstage_arguments);
 void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
 	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments,
-	map<int, list<int>> &deps);
+	map<int, list<int>> &deps, map<int, ArgumentBase*> &workflow_outputs);
 void expand_stages(const map<int, ArgumentBase*> &args, map<int, list<ArgumentBase*>> args_values, 
 	map<int, ArgumentBase*> &expanded_args,map<int, PipelineComponentBase*> stages,
 	map<int, PipelineComponentBase*> &expanded_stages);
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -120,9 +120,9 @@ int main(int argc, char* argv[]) {
 	// get all workflow outputs
 	map<int, ArgumentBase*> workflow_outputs;
 	get_outputs_from_file(workflow_descriptor, workflow_outputs);
-	// cout << endl << "workflow_outputs " << endl;
-	// for (pair<int, ArgumentBase*> p : workflow_outputs)
-	// 	cout << p.first << ":" << p.second->getName() << endl;
+	cout << endl << "workflow_outputs " << endl;
+	for (pair<int, ArgumentBase*> p : workflow_outputs)
+		cout << p.first << ":" << p.second->getName() << endl;
 
 	// get all stages, also setting the uid from this context to Task (i.e Task::setId())
 	// also returns the list of arguments used
@@ -137,15 +137,15 @@ int main(int argc, char* argv[]) {
 	// 		cout << "\t" << i << ":" << interstage_arguments[i]->getName() << endl;
 	// }
 
-	// cout << endl << "interstage_arguments:" << endl;
-	// for (pair<int, ArgumentBase*> p : interstage_arguments)
-	// 	cout << p.first << ":" << p.second->getName() << endl;
+	cout << endl << "interstage_arguments:" << endl;
+	for (pair<int, ArgumentBase*> p : interstage_arguments)
+		cout << p.first << ":" << p.second->getName() << endl;
 
 	// this map is a dependency structure: stage -> dependency_list
 	map<int, list<int>> deps;
 	
 	// connect the stages inputs/outputs 
-	connect_stages_from_file(workflow_descriptor, base_stages, interstage_arguments, workflow_inputs, deps);
+	connect_stages_from_file(workflow_descriptor, base_stages, interstage_arguments, workflow_inputs, deps, workflow_outputs);
 	map<int, ArgumentBase*> all_argument(workflow_inputs);
 	for (pair<int, ArgumentBase*> a : interstage_arguments)
 		all_argument[a.first] = a.second;
@@ -231,8 +231,8 @@ int main(int argc, char* argv[]) {
 	cout << endl << "startupExecution" << endl;
 	sysEnv.startupExecution();
 
-	// get results
-	// for each ArgumentBase output of merged_outputs do
+	// // get results
+	// for ArgumentBase output of merged_outputs do
 	// 	cout << sysEnv.getComponentResultData(output.getId()) << endl;
 	// end
 	sysEnv.finalizeSystem();
@@ -542,7 +542,8 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 	map<int, PipelineComponentBase*> &base_stages, 
 	map<int, ArgumentBase*> &interstage_arguments,
 	map<int, ArgumentBase*> &input_arguments,
-	map<int, list<int>> &deps) {
+	map<int, list<int>> &deps,
+	map<int, ArgumentBase*> &workflow_outputs) {
 
 	char *line = NULL;
 	size_t len = 0;
@@ -596,9 +597,19 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 			// add the link to the sink stage
 			sink_stg->addInput(arg->getId());
 		} 
-		// else {
-		// 	cout << "workflow argument sink: " << all_sink_fields[0].data << endl;
-		// }
+		else {
+			cout << "workflow argument sink: " << all_sink_fields[0].data << endl;
+			// update workflow output id in order to access it later to retreive the output
+			
+			ArgumentBase* itstg_argument = find_argument(interstage_arguments, all_source_fields[1].data);
+			cout << "Output " << all_sink_fields[0].data << " connects to argument " << itstg_argument->getId() << 
+				":" << itstg_argument->getName() << endl;
+			ArgumentBase* output = find_argument(workflow_outputs, all_source_fields[0].data);
+			cout << "Output " << all_sink_fields[0].data << " had id " << output->getId() << endl;
+			output->setId(itstg_argument->getId());
+			cout << "Output " << all_sink_fields[0].data << " now has id " << output->getId() << endl;
+
+		}
 
 		// consumes the datalink ending
 		while (string(line).find(de) == string::npos && get_line(&line, workflow_descriptor) != -1);

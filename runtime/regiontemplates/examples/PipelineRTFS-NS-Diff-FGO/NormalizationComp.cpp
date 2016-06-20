@@ -119,7 +119,7 @@ TaskNormalizationComp::TaskNormalizationComp(DenseDataRegion2D* input_img_temp, 
 }
 
 TaskNormalizationComp::~TaskNormalizationComp() {
-	// if(input_img_temp != NULL) delete input_img_temp;
+	if(input_img_temp != NULL) delete input_img_temp;
 
 }
 
