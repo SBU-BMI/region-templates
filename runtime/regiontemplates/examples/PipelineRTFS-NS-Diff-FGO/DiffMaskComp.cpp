@@ -17,23 +17,23 @@ int DiffMaskComp::run() {
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 	
 	// int parameterSegId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
-	std::string computed_mask_name;
-	std::string reference_mask_name;
+	ArgumentRT* computed_mask_name;
+	ArgumentRT* reference_mask_name;
 	float* diffPixels;
 
 	int set_cout = 0;
 	for(int i=0; i<this->getArgumentsSize(); i++){
-		if (this->getArgument(i)->getName().compare("computed_mask") == 0) {
-			computed_mask_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("segmented_rt") == 0) {
+			computed_mask_name = (ArgumentRT*)this->getArgument(i);
 			set_cout++;
 		}
 
-		if (this->getArgument(i)->getName().compare("reference_mask") == 0) {
-			reference_mask_name = (std::string)((ArgumentString*)this->getArgument(i))->getArgValue();
+		if (this->getArgument(i)->getName().compare("input_ref_img") == 0) {
+			reference_mask_name = (ArgumentRT*)this->getArgument(i);
 			set_cout++;
 		}
 
-		if (this->getArgument(i)->getName().compare("diffPixels") == 0) {
+		if (this->getArgument(i)->getName().compare("diff") == 0) {
 			diffPixels = (float*)((ArgumentFloatArray*)this->getArgument(i))->getArgValue();
 			set_cout++;
 		}
@@ -41,7 +41,7 @@ int DiffMaskComp::run() {
 	}
 
 	if (set_cout < this->getArgumentsSize())
-		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
+		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on DiffMaskComp" << std::endl;
 
 	// this->addInputOutputDataRegion("tile", inputDr, RTPipelineComponentBase::INPUT);
 
@@ -54,9 +54,13 @@ int DiffMaskComp::run() {
 	if(inputRt != NULL){
 
 		// Mask computed in segmentation using specific application parameter set
-		DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(computed_mask_name, "", 0, dr_id));
+		DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(
+			inputRt->getDataRegion(computed_mask_name->getName(), std::to_string(computed_mask_name->getId()), 0, 
+			computed_mask_name->getId()));
 		// Mask used as a reference
-		DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(reference_mask_name, "", 0, dr_id));
+		DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D*>(
+			inputRt->getDataRegion(reference_mask_name->getName(), std::to_string(reference_mask_name->getId()), 0, 
+			reference_mask_name->getId()));
 
 		if(computed_mask != NULL && reference_mask != NULL){
 			// gambiarra
@@ -76,7 +80,6 @@ int DiffMaskComp::run() {
 //                std::cout << "DiffMaskComp: you didn't specify a task: " << std::endl;
 //                inputRt->print();
 //            }
-
 		}else{
 			std::cout << "DiffMaskComp: did not find data regions: " << std::endl;
 			inputRt->print();

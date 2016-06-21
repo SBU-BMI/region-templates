@@ -62,7 +62,7 @@ void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineCompon
 	map<int, list<int>> &deps, map<int, ArgumentBase*> &workflow_outputs);
 void expand_stages(const map<int, ArgumentBase*> &args, map<int, list<ArgumentBase*>> args_values, 
 	map<int, ArgumentBase*> &expanded_args,map<int, PipelineComponentBase*> stages,
-	map<int, PipelineComponentBase*> &expanded_stages);
+	map<int, PipelineComponentBase*> &expanded_stages, map<int, ArgumentBase*> &workflow_outputs);
 void generate_drs(RegionTemplate* rt, const map<int, ArgumentBase*> &expanded_args);
 void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
 	map<int, ArgumentBase*> &merged_arguments,
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
 	map<int, ArgumentBase*> expanded_args;
 	map<int, PipelineComponentBase*> expanded_stages;
 
-	expand_stages(args, parameters_values, expanded_args, base_stages, expanded_stages);
+	expand_stages(args, parameters_values, expanded_args, base_stages, expanded_stages, workflow_outputs);
 
 	cout << endl<< "merged: " << endl;
 	for (pair<int, PipelineComponentBase*> p : expanded_stages) {
@@ -231,10 +231,21 @@ int main(int argc, char* argv[]) {
 	cout << endl << "startupExecution" << endl;
 	sysEnv.startupExecution();
 
-	// // get results
-	// for ArgumentBase output of merged_outputs do
-	// 	cout << sysEnv.getComponentResultData(output.getId()) << endl;
-	// end
+	// get results
+	cout << endl << "Results: " << endl;
+	for (pair<int, ArgumentBase*> output : workflow_outputs) {
+		// cout << "\t" << output.second->getName() << ":" << output.second->getId() << " = " << 
+		// 	sysEnv.getComponentResultData(output.second->getId()) << endl;
+		char *resultData = sysEnv.getComponentResultData(output.second->getId());
+        std::cout << "Diff Id: " << output.second->getId() << " resultData -  ";
+		if(resultData != NULL){
+            std::cout << "size: " << ((int *) resultData)[0] << " Diff: " << ((float *) resultData)[1] <<
+            " Secondary Metric: " << ((float *) resultData)[2] << std::endl;
+		}else{
+			std::cout << "NULL" << std::endl;
+		}
+	}
+
 	sysEnv.finalizeSystem();
 
 }
@@ -649,7 +660,8 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 	map<int, list<ArgumentBase*>> args_values, 
 	map<int, ArgumentBase*> &expanded_args,
 	map<int, PipelineComponentBase*> stages,
-	map<int, PipelineComponentBase*> &expanded_stages) {
+	map<int, PipelineComponentBase*> &expanded_stages,
+	map<int, ArgumentBase*> &workflow_outputs) {
 
 	// cout << endl << "args:" << endl;
 	// mapprint(args);
@@ -776,11 +788,33 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 	}
 
 	// flatten the arg values into expanded_args
+	cout << endl << "arg_values" << endl;
 	for (pair<int, list<ArgumentBase*>> p : args_values) {
-		// cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
+		cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
 		for (ArgumentBase* a : p.second) {
-			// cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
 			expanded_args[a->getId()] = a;
+		}
+	}
+
+	// update the output arguments
+	map<int, ArgumentBase*> workflow_outputs_cpy = workflow_outputs;
+	while (workflow_outputs_cpy.size() != 0) {
+		// get the first output argument
+		ArgumentBase* old_arg = (workflow_outputs_cpy.begin())->second;
+
+		// get the list of parameters (i.e the number of copies and the final ids) of the outputs
+		list<ArgumentBase*> l = args_values[old_arg->getId()];
+
+		// remove the current, outdated, argument from final map
+		workflow_outputs.erase(old_arg->getId());
+		workflow_outputs_cpy.erase(old_arg->getId());
+
+		// add a copy of the old arg with the correct id to the final map for each repeated output
+		for (ArgumentBase* a : l) {
+			ArgumentBase* temp = old_arg->clone();
+			temp->setId(a->getId());
+			workflow_outputs[temp->getId()] = temp;
 		}
 	}
 }
@@ -819,9 +853,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 		// add input arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getInputs()) {
 			stage.second->addArgument(merged_arguments[arg_id]);
-			cout << "added input argument " << merged_arguments[arg_id]->getName() << " sized " << merged_arguments[arg_id]->size() << endl;
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
-				cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
+				// cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
@@ -833,9 +866,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 		// add output arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getOutputs()) {
 			stage.second->addArgument(merged_arguments[arg_id]);
-			cout << "added output argument " << merged_arguments[arg_id]->getName() << " sized " << merged_arguments[arg_id]->size() << endl;
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
-				cout << "output RT : " << merged_arguments[arg_id]->getName() << endl;
+				// cout << "output RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
