@@ -852,7 +852,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 	for (pair<int, PipelineComponentBase*> stage : merged_stages) {
 		// add input arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getInputs()) {
-			stage.second->addArgument(merged_arguments[arg_id]);
+			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
+			stage.second->addArgument(new_arg);
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
 				// cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
@@ -865,7 +866,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 
 		// add output arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getOutputs()) {
-			stage.second->addArgument(merged_arguments[arg_id]);
+			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
+			stage.second->addArgument(new_arg);
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
 				// cout << "output RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added

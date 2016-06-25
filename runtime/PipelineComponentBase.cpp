@@ -36,14 +36,11 @@ PipelineComponentBase::~PipelineComponentBase() {
 		ArgumentBase *aux = this->arguments.back();
 		this->arguments.pop_back();
 		if (aux->getIo() == ArgumentBase::input) {
-			std::cout << __FILE__ << ":" << __LINE__ <<" TODO: remove argument" << aux->getId() << 
-				":" << aux->getName() << " only when no other stage needs it" << std::endl;
-			// std::cout << "[PipelineComponentBase] deleting input " << aux->getName() << std::endl;
-			// delete aux;
+			std::cout << "[PipelineComponentBase] deleting input " << aux->getName() << std::endl;
+			delete aux;
 		}
 	}
-	std::cout << __FILE__ << ":" << __LINE__ << "TODO: free resultData if needed" << std::endl;
-	// if(resultData != NULL) free(resultData);
+	if(resultData != NULL) free(resultData);
 }
 
 void PipelineComponentBase::addArgument(ArgumentBase *arg)
