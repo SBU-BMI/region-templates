@@ -1,0 +1,36 @@
+#  DAKOTA INPUT FILE - dakota_nscale_ps_moat.in
+#  This is a sample file for parameter study with the nscale segmentation pipeline
+#  using DACE LHS method
+
+
+method
+  dace random
+	samples = 200
+#	partitions = 20
+	seed = 500 
+	variance_based_decomp
+model
+  single
+
+variables
+  continuous_design = 8
+    lower_bounds    2.5		5.0	2.0	2.0		900.0		5.0		2.0		4.0	
+    upper_bounds    7.5		80.0	40.0	40.0		1500.0		80.0		80.0		8.0	
+    descriptors     'T2'	'G1'	'G2'	'minSize'	'maxSize'	'minSizePl'	'minSizeSeg'	'recon'	
+
+interface,
+	fork
+#	  asynchronous
+	  analysis_driver = 'simulator_script'
+	  parameters_file = 'params.in'
+	  results_file    = 'results.out'
+	  work_directory directory_tag
+# uncomment to leave params.in and results.out files in work_dir subdirectories
+# 	  named 'workdir' file_save  directory_save
+
+
+responses
+  response_functions = 1
+  no_gradients
+  no_hessians	  
+

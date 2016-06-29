@@ -1,0 +1,52 @@
+#!/bin/sh
+# Sample simulator to Dakota system call script
+# See Advanced Simulation Code Interfaces chapter in Users Manual
+
+# $1 is params.in FROM Dakota
+# $2 is results.out returned to Dakota
+
+# --------------
+# PRE-PROCESSING
+# --------------
+# Incorporate the parameters from DAKOTA into the template, writing ros.in
+place=`pwd`;
+echo "BEFORE START: "$place
+cat $1
+
+grep "otsuRatio" $1 | grep -v "DVV" | awk '{print $2,+$1,+$1,10}' > parametersFile.in
+grep "curvatureWeight" $1 | grep -v "DVV" | awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "sizeThld" $1 | grep -v "DVV" | awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+echo "sizeUpperThld 200 200 10" >> parametersFile.in 
+grep "sizeUpperThld" $1 | grep -v "DVV" | awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "msKernel" $1 | grep -v "DVV" | awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+grep "levelsetNumberOfIteration" $1 | grep -v "DVV" | awk '{print $2,+$1,+$1,10}' >> parametersFile.in
+
+# ANALYSIS
+# --------
+APP_DIR=/work/02542/gteodoro/region-templates/runtime/build/regiontemplates/examples/Pipeline-Yi-ParStudy/
+cd $APP_DIR;
+cp ${place}/parametersFile.in ${APP_DIR}/parCopied.in
+
+
+INPUTDIR=/scratch/02542/gteodoro/subset-nobg-512-512/
+INPUTDIR=/scratch/02542/gteodoro/TCGA-02-0001-01Z-00-DX1-copy-nobg-512-512/
+cores=16
+export OMP_NUM_THREADS=16
+
+source ~/.bash_profile 
+source ~/.profile 
+
+OUTDIR=.
+
+ibrun tacc_affinity ./Pipeline-Yi-ParStudy -c ${cores} -a ${APP_DIR}/parCopied.in -i ${INPUTDIR} &> ${APP_DIR}/out.txt
+
+
+cd -
+# ---------------
+# POST-PROCESSING
+# ---------------
+
+mv ${APP_DIR}/results.out .
+
+rm /scratch/02542/gteodoro/temp/*
+

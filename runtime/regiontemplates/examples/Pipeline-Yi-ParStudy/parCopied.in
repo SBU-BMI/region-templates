@@ -1,0 +1,6 @@
+otsuRatio 0.737646 0.737646 10
+curvatureWeight 0.555087 0.555087 10
+sizeThld 18.9186 18.9186 10
+sizeUpperThld 200 200 10
+msKernel 23.1598 23.1598 10
+levelsetNumberOfIteration 123.503 123.503 10
