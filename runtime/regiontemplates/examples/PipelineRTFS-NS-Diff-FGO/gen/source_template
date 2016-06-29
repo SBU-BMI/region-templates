@@ -1,0 +1,98 @@
+/*
+ * $NAME$.cpp
+ *
+ *  GENERATED CODE
+ *  DO NOT CHANGE IT MANUALLY!!!!!
+ */
+
+#include "$NAME$.hpp"
+
+#include <string>
+#include <sstream>
+
+/**************************************************************************************/
+/**************************** PipelineComponent functions *****************************/
+/**************************************************************************************/
+
+$NAME$::$NAME$() {
+	this->setComponentName("$NAME$");
+}
+
+$NAME$::~$NAME$() {}
+
+int $NAME$::run() {
+
+	// Print name and id of the component instance
+	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
+	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
+
+$PCB_ARGS$
+
+$INPUT_DR_CREATE$
+$OUTPUT_DR_CREATE$
+
+	if(inputRt != NULL){
+$INPUT_DECL_DR$
+$OUTPUT_DECL_DR$
+		try{
+$INPUT_CAST_DR$
+$OUTPUT_CAST_DR$
+			std::cout << "$NAME$. paramenterId: "<< workflow_id <<std::endl;
+		}catch(...){
+			std::cout <<"ERROR $NAME$ " << std::endl;
+		}
+
+		// Create processing task
+		Task$NAME$ * task = new Task$NAME$($PCB_TASK_PARAMS$);
+
+		this->executeTask(task);
+
+
+	}else{
+		std::cout << __FILE__ << ":" << __LINE__ <<" RT == NULL" << std::endl;
+	}
+
+	return 0;
+}
+
+// Create the component factory
+PipelineComponentBase* componentFactory$NAME$() {
+	return new $NAME$();
+}
+
+// register factory with the runtime system
+bool registered$NAME$ = PipelineComponentBase::ComponentFactory::componentRegister("$NAME$", &componentFactory$NAME$);
+
+
+/**************************************************************************************/
+/*********************************** Task functions ***********************************/
+/**************************************************************************************/
+
+Task$NAME$::Task$NAME$($TASK_PARAMS$) {
+	
+$TASK_ARGS$
+	
+}
+
+Task$NAME$::~Task$NAME$() {
+$INPUT_DR_DELETE$
+}
+
+bool Task$NAME$::run(int procType, int tid) {
+	
+$INPUT_MAT_DR$
+
+$OUTPUT_MAT_DR$
+
+	uint64_t t1 = Util::ClockGetTimeProfile();
+
+	std::cout << "Task$NAME$ executing." << std::endl;	
+
+	$CMD$;
+	
+$OUTPUT_DR_RETURN$
+
+	uint64_t t2 = Util::ClockGetTimeProfile();
+
+	std::cout << "Task $NAME$ time elapsed: "<< t2-t1 << std::endl;
+}

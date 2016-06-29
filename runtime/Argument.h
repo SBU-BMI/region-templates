@@ -12,9 +12,15 @@
 #include <iostream>
 #include <string.h>
 #include <vector>
+#include <string>
+
 class ArgumentBase {
 protected:
 	int type;
+	std::string name;
+
+	// this field is used only on workflow generation
+	int id;
 
 public:
 	ArgumentBase(){};
@@ -27,8 +33,16 @@ public:
 
 	virtual ArgumentBase* clone() = 0;
 
-    int getType() const;
-    void setType(int type);
+	int getType() const;
+	void setType(int type);
+
+	void setName(std::string name) {this->name = name;};
+	std::string getName(void) const {return name;};
+
+	int getId() {return id;};
+	void setId(int id) {this->id = id;};
+
+	virtual std::string toString() = 0;
 
 	static const int INPUT = 0;
 	static const int OUTPUT = 0;
@@ -38,6 +52,7 @@ public:
 	static const int INT = 2;
 	static const int STRING = 3;
 	static const int FLOAT = 4;
+	static const int RT = 5;
 	static const int FLOAT_ARRAY = 8;
 
 };
@@ -53,11 +68,13 @@ public:
 
 	virtual ArgumentBase* clone();
 
+	std::string toString() {return arg_value;};
+
 	int size();
 	int serialize(char *buff);
 	int deserialize(char *buff);
-    std::string getArgValue() const;
-    void setArgValue(std::string arg_value);
+	std::string getArgValue() const;
+	void setArgValue(std::string arg_value);
 };
 
 class ArgumentInt: public ArgumentBase{
@@ -69,11 +86,13 @@ public:
 	virtual ~ArgumentInt();
 	virtual ArgumentBase* clone();
 
+	std::string toString();
+
 	int size();
 	int serialize(char *buff);
 	int deserialize(char *buff);
-    int getArgValue() const;
-    void setArgValue(int arg_value);
+	int getArgValue() const;
+	void setArgValue(int arg_value);
 };
 
 class ArgumentFloat: public ArgumentBase{
@@ -85,11 +104,13 @@ public:
 	virtual ~ArgumentFloat();
 	virtual ArgumentBase* clone();
 
+	std::string toString();
+
 	int size();
 	int serialize(char *buff);
 	int deserialize(char *buff);
-    float getArgValue() const;
-    void setArgValue(float arg_value);
+	float getArgValue() const;
+	void setArgValue(float arg_value);
 };
 
 class ArgumentFloatArray: public ArgumentBase{
@@ -101,12 +122,36 @@ public:
 	virtual ~ArgumentFloatArray();
 	virtual ArgumentBase* clone();
 
+	std::string toString();
+
 	int size();
 	int serialize(char *buff);
 	int deserialize(char *buff);
-    ArgumentFloat getArgValue(int index);
-    void addArgValue(ArgumentFloat arg_value);
-    int getNumArguments();
+	ArgumentFloat getArgValue(int index);
+	float* getArgValue();
+	void addArgValue(ArgumentFloat arg_value);
+	int getNumArguments();
 };
+
+class ArgumentRT: public ArgumentBase{
+private:
+	std::string path;
+
+public:
+	ArgumentRT();
+	ArgumentRT(std::string path);
+	virtual ~ArgumentRT();
+
+	virtual ArgumentBase* clone();
+
+	std::string toString() {return path;};
+
+	int size();
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	std::string getArgValue() const;
+	void setArgValue(std::string path);
+};
+
 
 #endif /* ARGUMENT_H_ */

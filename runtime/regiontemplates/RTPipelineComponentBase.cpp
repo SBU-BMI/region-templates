@@ -205,6 +205,16 @@ int RTPipelineComponentBase::deserialize(char* buff) {
 }
 
 
+PipelineComponentBase* RTPipelineComponentBase::clone() {
+	RTPipelineComponentBase* retValue = new RTPipelineComponentBase();
+	int size = this->size();
+	char *buff = new char[size];
+	this->serialize(buff);
+	retValue->deserialize(buff);
+	delete buff;
+	return retValue;
+}
+
 RegionTemplate* RTPipelineComponentBase::getRegionTemplateInstance(std::string dataRegionName) {
 	RegionTemplate *retRegionTemplate = NULL;
 	std::map<std::string, RegionTemplate*>::iterator it;
