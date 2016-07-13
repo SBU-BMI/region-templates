@@ -8,7 +8,7 @@
 #include "Argument.h"
 #include <sstream>
 
-ArgumentBase::ArgumentBase(int type) : io(ArgumentBase::input) {
+ArgumentBase::ArgumentBase(int type) : io(ArgumentBase::input), parent(0) {
 	this->type=type;
 }
 
@@ -521,8 +521,6 @@ int ArgumentRT::serialize(char *buff) {
 	memcpy(buff+serialized_bytes, &isFileInput, sizeof(bool));
 	serialized_bytes+=sizeof(bool);
 
-	std::cout << "[ArgumentRT] serialized arg " << this->getName() << " with value " << this->getArgValue() << " and size " << this->size() << std::endl;
-
 	return serialized_bytes;
 }
 
@@ -576,8 +574,6 @@ int ArgumentRT::deserialize(char *buff) {
 
 	// init argument value from string extracted
 	this->setArgValue(string_value);
-
-	std::cout << "[ArgumentRT] deserialized arg " << this->getName() << " with value " << this->getArgValue() << " and size " << this->size() << std::endl;
 
 	// return total number of bytes extracted from message
 	return deserialized_bytes;

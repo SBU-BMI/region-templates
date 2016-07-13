@@ -7,6 +7,14 @@
 
 #include "RTPipelineComponentBase.h"
 
+void RTPipelineComponentBase::getRT() {
+	for (std::map<std::string, RegionTemplate*>::iterator i = regionTemplates.begin(); i!=regionTemplates.end();i++) {
+		i->second->printRT();
+		std::cout << std::endl;
+	}
+
+};
+
 RTPipelineComponentBase::RTPipelineComponentBase() {
 	this->setType(PipelineComponentBase::RT_COMPONENT_BASE);
 	this->cache = NULL;

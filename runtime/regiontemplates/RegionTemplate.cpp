@@ -7,6 +7,16 @@
 
 #include "RegionTemplate.h"
 
+void RegionTemplate::printRT() {
+	for (std::map<std::string, std::list<DataRegion*> >::iterator r = templateRegions.begin(); r!=templateRegions.end(); r++) {
+		cout << "RT: " << r->first << endl;
+		for (std::list<DataRegion*>::iterator d = r->second.begin(); d!=r->second.end(); d++) {
+			cout << "\tDR: " << (*d)->getName() << endl;
+		}
+	}
+}
+
+
 RegionTemplate::RegionTemplate() {
 //	lazyRead = false;
 	this->setLazyRead(false);

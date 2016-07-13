@@ -76,6 +76,7 @@ string get_workflow_field(FILE* workflow, string field);
 void get_workflow_arguments(FILE* workflow, list<ArgumentBase*> &output_arguments);
 vector<general_field_t> get_all_fields(FILE* workflow, string start, string end);
 PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, string name);
+int find_stage_id(map<int, PipelineComponentBase*> stages, string name);
 ArgumentBase* find_argument(const map<int, ArgumentBase*> arguments, string name);
 ArgumentBase* new_typed_arg_base(string type);
 parsing::port_type_t get_port_type(string s);
@@ -150,13 +151,12 @@ int main(int argc, char* argv[]) {
 	for (pair<int, ArgumentBase*> a : interstage_arguments)
 		all_argument[a.first] = a.second;
 
-	// cout << endl << "all_arguments:" << endl;
 	// mapprint(all_argument);
 
-	// cout << endl << "deps:" << endl;
-	// for (pair<int, list<int>> p : deps)
-	// 	for (int d : p.second)
-	// 		cout << "\t" << base_stages[p.first]->getName() << " depends on " << base_stages[d]->getName() << endl;
+	cout << endl << "all_arguments:" << endl;
+	for (pair<int, ArgumentBase*> p : all_argument) {
+		cout << p.second->getId() << ":" << p.second->getName() << " parent " << p.second->getParent() << endl;
+	}
 
 	// cout << endl << "connected base_stages:" << endl;
 	// for (pair<int, PipelineComponentBase*> p : base_stages) {
@@ -217,10 +217,10 @@ int main(int argc, char* argv[]) {
 	// add all stages to manager
 	cout << endl << "executeComponent" << endl;
 	for (pair<int, PipelineComponentBase*> s : expanded_stages) {
-		cout << "sent component " << s.second->getName() << " to execute with args:" << endl;
+		cout << "sent component " << s.second->getId() << ":" << s.second->getName() << " to execute with args:" << endl;
 		cout << "\tinputs: " << endl;
 		for (int i : s.second->getInputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " << expanded_args[i]->toString() << endl;
+			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " << expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
 		cout << "\toutputs: " << endl;
 		for (int i : s.second->getOutputs())
 			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " << expanded_args[i]->toString() << endl;
@@ -604,7 +604,9 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 				// if the source is another stage
 				deps[sink_stg->getId()].emplace_back(find_stage(base_stages, all_source_fields[0].data)->getId());
 				arg = find_argument(interstage_arguments, all_source_fields[1].data);
-				// cout << "source from stage " << all_source_fields[0].data << " is " << arg->getId() << ":" << arg->getName() << endl;
+				arg->setParent(find_stage(base_stages, all_source_fields[0].data)->getId());
+				cout << "source from stage " << all_source_fields[0].data << " is " << arg->getId() << ":" 
+					<< arg->getName() << " parent " << arg->getParent() << endl;
 			}
 
 			// add the link to the sink stage
@@ -754,6 +756,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 						ArgumentBase* ab_cpy = args.at(out_id)->clone();
 						ab_cpy->setName(args.at(out_id)->getName());
 						ab_cpy->setId(new_id);
+						ab_cpy->setParent(pt->getId());
 						pt->replaceOutput(out_id, new_id);
 						temp.emplace_back(ab_cpy);
 					}
@@ -813,6 +816,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 		// add a copy of the old arg with the correct id to the final map for each repeated output
 		for (ArgumentBase* a : l) {
 			ArgumentBase* temp = old_arg->clone();
+			temp->setParent(old_arg->getParent());
 			temp->setId(a->getId());
 			workflow_outputs[temp->getId()] = temp;
 		}
@@ -861,7 +865,10 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
 				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::INPUT);
 			}
-			((RTPipelineComponentBase*)stage.second)->addDependency(merged_arguments[arg_id]->getParent());
+			if (merged_arguments[arg_id]->getParent() != 0) {
+				cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName() << " ->addDependency( " << merged_arguments[arg_id]->getParent() << " )" << endl;
+				((RTPipelineComponentBase*)stage.second)->addDependency(merged_arguments[arg_id]->getParent());
+			}
 		}
 
 		// add output arguments to stage, adding them as RT as needed
@@ -1016,6 +1023,13 @@ PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, strin
 		if (p.second->getName().compare(name) == 0)
 			return p.second;
 	return NULL;
+}
+
+int find_stage_id(map<int, PipelineComponentBase*> stages, string name) {
+	for (pair<int, PipelineComponentBase*> p : stages)
+		if (p.second->getName().compare(name) == 0)
+			return p.first;
+	return -1;
 }
 
 ArgumentBase* find_argument(const map<int, ArgumentBase*> arguments, string name) {

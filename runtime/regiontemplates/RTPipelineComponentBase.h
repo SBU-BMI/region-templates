@@ -39,6 +39,9 @@ class RTPipelineComponentBase : public PipelineComponentBase {
 		void setLocation(int location);
 
 	public:
+
+		void getRT();
+
 		RTPipelineComponentBase();
 		virtual ~RTPipelineComponentBase();
 
