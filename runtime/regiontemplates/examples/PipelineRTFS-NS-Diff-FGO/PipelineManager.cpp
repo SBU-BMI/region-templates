@@ -146,7 +146,8 @@ int main(int argc, char* argv[]) {
 	map<int, list<int>> deps;
 	
 	// connect the stages inputs/outputs 
-	connect_stages_from_file(workflow_descriptor, base_stages, interstage_arguments, workflow_inputs, deps, workflow_outputs);
+	connect_stages_from_file(workflow_descriptor, base_stages, 
+		interstage_arguments, workflow_inputs, deps, workflow_outputs);
 	map<int, ArgumentBase*> all_argument(workflow_inputs);
 	for (pair<int, ArgumentBase*> a : interstage_arguments)
 		all_argument[a.first] = a.second;
@@ -155,7 +156,8 @@ int main(int argc, char* argv[]) {
 
 	cout << endl << "all_arguments:" << endl;
 	for (pair<int, ArgumentBase*> p : all_argument) {
-		cout << p.second->getId() << ":" << p.second->getName() << " parent " << p.second->getParent() << endl;
+		cout << p.second->getId() << ":" << p.second->getName() 
+			<< " parent " << p.second->getParent() << endl;
 	}
 
 	// cout << endl << "connected base_stages:" << endl;
@@ -182,7 +184,8 @@ int main(int argc, char* argv[]) {
 	map<int, ArgumentBase*> expanded_args;
 	map<int, PipelineComponentBase*> expanded_stages;
 
-	expand_stages(args, parameters_values, expanded_args, base_stages, expanded_stages, workflow_outputs);
+	expand_stages(args, parameters_values, expanded_args, 
+		base_stages, expanded_stages, workflow_outputs);
 
 	cout << endl<< "merged: " << endl;
 	for (pair<int, PipelineComponentBase*> p : expanded_stages) {
@@ -197,7 +200,8 @@ int main(int argc, char* argv[]) {
 
 	cout << endl << "merged args" << endl;
 	for (pair<int, ArgumentBase*> p : expanded_args)
-		cout << "\t" << p.first << ":" << p.second->getName() << " = " << p.second->toString() << " sized: " << p.second->size() << endl;
+		cout << "\t" << p.first << ":" << p.second->getName() << " = " 
+			<< p.second->toString() << " sized: " << p.second->size() << endl;
 
 	//------------------------------------------------------------
 	// Add workflows to Manager to be executed
@@ -217,13 +221,16 @@ int main(int argc, char* argv[]) {
 	// add all stages to manager
 	cout << endl << "executeComponent" << endl;
 	for (pair<int, PipelineComponentBase*> s : expanded_stages) {
-		cout << "sent component " << s.second->getId() << ":" << s.second->getName() << " to execute with args:" << endl;
+		cout << "sent component " << s.second->getId() << ":" 
+			<< s.second->getName() << " to execute with args:" << endl;
 		cout << "\tinputs: " << endl;
 		for (int i : s.second->getInputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " << expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
+			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+				<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
 		cout << "\toutputs: " << endl;
 		for (int i : s.second->getOutputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " << expanded_args[i]->toString() << endl;
+			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+				<< expanded_args[i]->toString() << endl;
 		sysEnv.executeComponent(s.second);
 	}
 
@@ -756,7 +763,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 						ArgumentBase* ab_cpy = args.at(out_id)->clone();
 						ab_cpy->setName(args.at(out_id)->getName());
 						ab_cpy->setId(new_id);
-						ab_cpy->setParent(pt->getId());
+						ab_cpy->setParent(((Task*)pt)->getId());
 						pt->replaceOutput(out_id, new_id);
 						temp.emplace_back(ab_cpy);
 					}
@@ -861,12 +868,15 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
 				// cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
-				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
+				if (((RTPipelineComponentBase*)stage.second)->
+						getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
-				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::INPUT);
+				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(
+					rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::INPUT);
 			}
 			if (merged_arguments[arg_id]->getParent() != 0) {
-				cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName() << " ->addDependency( " << merged_arguments[arg_id]->getParent() << " )" << endl;
+				cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName() 
+					<< " ->addDependency( " << merged_arguments[arg_id]->getParent() << " )" << endl;
 				((RTPipelineComponentBase*)stage.second)->addDependency(merged_arguments[arg_id]->getParent());
 			}
 		}
@@ -880,7 +890,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
-				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::OUTPUT);
+				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName(), 
+					merged_arguments[arg_id]->getName(), RTPipelineComponentBase::OUTPUT);
 			}
 		}
 	}
