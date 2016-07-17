@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
 
     double perf[numClients];//=100000;
 
-    int max_number_of_iterations = 5;
+    int max_number_of_iterations = 100;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
     float maxdiff = 0;
 
@@ -524,8 +524,9 @@ int main(int argc, char **argv) {
         sysEnv.startupExecution();
 
         for (int j = 0; j < numClients; j++) {
-            float diff = 0;
+            float totalIntersectArea = 0;
             float secondaryMetric = 0;
+            float tileArea = 0;
 
             if (executedAlready[j] == false) {
                 for (int i = 0; i < diffComponentIds[j].size(); i++) {
@@ -535,13 +536,15 @@ int main(int argc, char **argv) {
                         std::cout << "size: " << ((int *) resultData)[0] << " diffPixels: " <<
                         ((float *) resultData)[1] <<
                         " refPixels: " << ((float *) resultData)[2] << std::endl;
-                        diff += ((float *) resultData)[1];
-                        secondaryMetric += ((float *) resultData)[2];
+                        totalIntersectArea += ((float *) resultData)[1];
+                        secondaryMetric = ((float *) resultData)[2];
+                        tileArea += ((float *) resultData)[3];
                     } else {
                         std::cout << "NULL" << std::endl;
                     }
                     sysEnv.eraseResultData(diffComponentIds[j][i]);
                 }
+                float diff = 2 * totalIntersectArea / (secondaryMetric + tileArea);
                 diffComponentIds[j].clear();
                 //TODO Change here if using PixelCompare or Hadoopgis
                 perf[j] = (double) 1 / diff; //If using Hadoopgis
@@ -554,8 +557,9 @@ int main(int argc, char **argv) {
                 " maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] << " morphElement: " <<
                 morphElement[j] <<
                 " watershedElement: " << watershedElement[j] <<
-                " total hadoopgis diff: " << diff << " secondaryMetric: " <<
-                secondaryMetric << " perf: " << perf[j] << std::endl;
+                " total TaskDiceDiffPolyList diff: " << diff << " secondaryMetric: " <<
+                secondaryMetric << " totalTileArea: " <<
+                tileArea << " perf: " << perf[j] << std::endl;
 
                 totaldiffs[loop] = diff;
                 (maxdiff < diff) ? maxdiff = diff : maxdiff;

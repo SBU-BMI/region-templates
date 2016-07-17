@@ -4,6 +4,7 @@
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/MaskIntersection.h>
 #include <regiontemplates/PolygonListDataRegion.h>
 #include "DiffMaskComp.h"
+#include "TaskDiceDiffPolyList.h"
 
 DiffMaskComp::DiffMaskComp() {
 //	diffPercentage = 0.0;
@@ -24,10 +25,11 @@ int DiffMaskComp::run() {
     PolygonListDataRegion *reference_poly_list = dynamic_cast<PolygonListDataRegion *>(inputRt->getDataRegion(
             "POLY_LIST", "", 0, 0));
 //    DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D *>(inputRt->getDataRegion("MASK", "", 0, parameterSegId));
-    float *diffPixels = (float *) malloc(2 * sizeof(float));
+    float *diffPixels = (float *) malloc(3 * sizeof(float));
     diffPixels[0] = 0;
     diffPixels[1] = 0;
-    this->setResultData((char *) diffPixels, 2 * sizeof(float));
+    diffPixels[2] = 0;
+    this->setResultData((char *) diffPixels, 3 * sizeof(float));
 
     if (inputRt != NULL) {
 
@@ -48,7 +50,7 @@ int DiffMaskComp::run() {
             // gambiarra
             diffPixels[0] = this->getId();
             // Create processing task
-            TaskDiffMask *tDiffMask = new DiceCoefficient(computed_mask, reference_poly_list, diffPixels);
+            TaskDiffMask *tDiffMask = new TaskDiceDiffPolyList(computed_mask, reference_poly_list, diffPixels);
 
             this->executeTask(tDiffMask);
         } else {
