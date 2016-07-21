@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
     int numClients = 1;
 
     // Folder when input data images are stored
-    std::string inputFolderPath, AHpolicy = "pro.so", initPercent;
+    std::string inputFolderPath, AHpolicy = "nm.so", initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
     std::vector<int> diffComponentIds[numClients];
