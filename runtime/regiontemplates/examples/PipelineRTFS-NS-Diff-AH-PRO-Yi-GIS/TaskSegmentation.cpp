@@ -13,7 +13,7 @@
 
 TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, float otsuRatio,
                                    float curvatureWeight, float sizeThld, float sizeUpperThld, float mpp,
-                                   float mskernel, int levelSetNumberOfIteration) {
+                                   float mskernel, int levelSetNumberOfIteration, uint64_t *executionTime) {
     this->bgr = bgr;
     this->mask = mask;
     this->otsuRatio = otsuRatio;
@@ -23,6 +23,7 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *ma
     this->mpp = mpp;
     this->mskernel = mskernel;
     this->levelSetNumberOfIteration = levelSetNumberOfIteration;
+    this->executionTime = executionTime;
 }
 
 TaskSegmentation::~TaskSegmentation() {
@@ -48,5 +49,7 @@ bool TaskSegmentation::run(int procType, int tid) {
 
     uint64_t t2 = Util::ClockGetTimeProfile();
 
-    std::cout << "Task Segmentation time elapsed: " << t2 - t1 << std::endl;
+    this->executionTime[0] = t2 - t1;
+
+    std::cout << "Task Segmentation time elapsed: " << this->executionTime[0] << std::endl;
 }

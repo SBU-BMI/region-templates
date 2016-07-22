@@ -31,11 +31,13 @@ private:
 
     float otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, mpp, mskernel;
     int levelSetNumberOfIteration;
+    uint64_t *executionTime;
 
 
 public:
     TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, float otsuRatio, float curvatureWeight,
-                     float sizeThld, float sizeUpperThld, float mpp, float mskernel, int levelSetNumberOfIteration);
+                     float sizeThld, float sizeUpperThld, float mpp, float mskernel, int levelSetNumberOfIteration,
+                     uint64_t *executionTime);
 
     virtual ~TaskSegmentation();
 

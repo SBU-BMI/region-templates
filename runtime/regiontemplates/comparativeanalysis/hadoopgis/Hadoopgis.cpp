@@ -105,7 +105,7 @@ bool Hadoopgis::run(int procType, int tid) {
 
     uint64_t t2 = Util::ClockGetTimeProfile();
 
-    std::cout << "Task Diff Computation time elapsed: " << t2 - t1 << std::endl;
+    std::cout << "\t(**query)Task Diff Computation time elapsed: " << t2 - t1 << std::endl;
 
 }
 

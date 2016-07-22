@@ -108,6 +108,7 @@ int main(int argc, char **argv) {
     std::string inputFolderPath, AHpolicy = "nm.so", initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
+    std::vector<int> segComponentIds[numClients];
     std::vector<int> diffComponentIds[numClients];
     std::map<std::string, double> perfDataBase;
 
@@ -221,8 +222,9 @@ int main(int argc, char **argv) {
 
     double perf[numClients];
 
-    int max_number_of_iterations = 100;
+    int max_number_of_iterations = 1;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
+    uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_iterations);
     float maxdiff = 0;
 
     int versionSeg = 0;
@@ -307,6 +309,7 @@ int main(int argc, char **argv) {
                     diff->addDependency(seg->getId());
 
                     // add to the list of diff component ids.
+                    segComponentIds[j].push_back(seg->getId());
                     diffComponentIds[j].push_back(diff->getId());
 
                     sysEnv.executeComponent(seg);
@@ -341,9 +344,18 @@ int main(int argc, char **argv) {
                     } else {
                         std::cout << "NULL" << std::endl;
                     }
+                    char *segExecutionTime = sysEnv.getComponentResultData(segComponentIds[j][i]);
+                    cout << "------------------------ AQUI" << endl;
+                    if (segExecutionTime != NULL) {
+                        std::cout << "size: " << ((int *) segExecutionTime)[0];
+                        totalexecutiontimes[loop] = ((int *) segExecutionTime)[1];
+                        cout << "------------------------ ALI -" << totalexecutiontimes[loop] << endl;
+                    }
                     sysEnv.eraseResultData(diffComponentIds[j][i]);
+                    sysEnv.eraseResultData(segComponentIds[j][i]);
                 }
                 diffComponentIds[j].clear();
+                segComponentIds[j].clear();
 
                 //TODO Change here if using PixelCompare or Hadoopgis
                 perf[j] = (double) 1 / diff; //If using Hadoopgis
@@ -380,7 +392,8 @@ int main(int argc, char **argv) {
     if (harmony_converged(hdesc[0])) {
         std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
         for (int i = 0; i < max_number_of_iterations; ++i) {
-            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << "\tExecution Time: " <<
+            totalexecutiontimes[i] << std::endl;
         }
         std::cout << "\tMaxDiff: " << maxdiff << std::endl;
     }
@@ -388,7 +401,8 @@ int main(int argc, char **argv) {
         std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
 
         for (int i = 0; i < max_number_of_iterations; ++i) {
-            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << "\tExecution Time: " <<
+            totalexecutiontimes[i] << std::endl;
         }
         std::cout << "\tMaxDiff: " << maxdiff << std::endl;
     }
