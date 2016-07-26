@@ -68,6 +68,11 @@ if(RT_PARAMETER_STUDY_YI_EXAMPLE)
         add_subdirectory(Pipeline-Yi-ParStudy)                         
 endif(RT_PARAMETER_STUDY_YI_EXAMPLE)   
 
+option (RT_YI_EXAMPLE "Enable compilation of Yi's Pipeline" OFF)
+if(RT_YI_EXAMPLE)
+	add_subdirectory(PipelineRTFS-SF-Yi)
+endif(RT_YI_EXAMPLE)
+
 add_subdirectory("HelloWorldRT")
 #add_subdirectory("PipelineRTFS-NSF-Diff")
 #add_subdirectory("HelloWorldRT")
