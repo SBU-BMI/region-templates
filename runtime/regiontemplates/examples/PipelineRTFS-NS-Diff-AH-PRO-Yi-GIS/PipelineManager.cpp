@@ -222,10 +222,15 @@ int main(int argc, char **argv) {
 
     double perf[numClients];
 
-    int max_number_of_iterations = 1;
+    int max_number_of_iterations = 50;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
     uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_iterations);
+    double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_iterations);
     float maxdiff = 0;
+    double minperf = INT_MAX;
+
+    double timeWeight = 1;
+    double metricWeight = 2;
 
     int versionSeg = 0;
     bool executedAlready[numClients];
@@ -345,11 +350,9 @@ int main(int argc, char **argv) {
                         std::cout << "NULL" << std::endl;
                     }
                     char *segExecutionTime = sysEnv.getComponentResultData(segComponentIds[j][i]);
-                    cout << "------------------------ AQUI" << endl;
                     if (segExecutionTime != NULL) {
-                        std::cout << "size: " << ((int *) segExecutionTime)[0];
                         totalexecutiontimes[loop] = ((int *) segExecutionTime)[1];
-                        cout << "------------------------ ALI -" << totalexecutiontimes[loop] << endl;
+                        cout << "Segmentation execution time:" << totalexecutiontimes[loop] << endl;
                     }
                     sysEnv.eraseResultData(diffComponentIds[j][i]);
                     sysEnv.eraseResultData(segComponentIds[j][i]);
@@ -357,13 +360,22 @@ int main(int argc, char **argv) {
                 diffComponentIds[j].clear();
                 segComponentIds[j].clear();
 
-                //TODO Change here if using PixelCompare or Hadoopgis
+                //Multi Objective Tuning
+                double tSlowest = 750000; //Empirical Data
+                double tFastest = 10000; //Empirical Data
+                double timeNormalized = (tSlowest - (double) totalexecutiontimes[loop]) / (tSlowest - tFastest);
+//TODO Change here if using PixelCompare or Hadoopgis
                 perf[j] = (double) 1 / diff; //If using Hadoopgis
                 //perf[j] = diff; //If using PixelCompare.
-
+                //perf[j] = (double) 1 / (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
+                cout << "$$$$$$$$$$$$$$$$ - Diff: " << diff << " Time Normalized: " << timeNormalized << " Time: " <<
+                totalexecutiontimes[loop] << " Perf: " << perf[j] << endl;
                 totaldiffs[loop] = diff;
-                (maxdiff < diff) ? maxdiff = diff : maxdiff;
+                if (perf[j] < 0) perf[j] = 0;
 
+                (maxdiff < diff) ? maxdiff = diff : maxdiff;
+                (minperf > perf[j]) ? minperf = perf[j] : minperf;
+                totalExecutionTimesNormalized[loop] = timeNormalized;
                 std::ostringstream oss;
                 oss << otsuRatio[j] << "-" << curvatureWeight[j] << "-" << sizeThld[j] << "-" << sizeUpperThld[j];
 
@@ -391,21 +403,20 @@ int main(int argc, char **argv) {
 
     if (harmony_converged(hdesc[0])) {
         std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
-        for (int i = 0; i < max_number_of_iterations; ++i) {
-            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << "\tExecution Time: " <<
-            totalexecutiontimes[i] << std::endl;
-        }
-        std::cout << "\tMaxDiff: " << maxdiff << std::endl;
     }
     else {
         std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
-
-        for (int i = 0; i < max_number_of_iterations; ++i) {
-            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << "\tExecution Time: " <<
-            totalexecutiontimes[i] << std::endl;
-        }
-        std::cout << "\tMaxDiff: " << maxdiff << std::endl;
     }
+    for (int i = 0; i < max_number_of_iterations; ++i) {
+        double perfWeighted =
+                (double) 1 / (double) (metricWeight * totaldiffs[i] + timeWeight * totalExecutionTimesNormalized[i]);
+        if (perfWeighted < 0) perfWeighted = 0;
+        std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << "\tExecution Time: " <<
+        totalexecutiontimes[i] << "\tTime Normalized: " << totalExecutionTimesNormalized[i] << " Perf(weighted): " <<
+        perfWeighted << std::endl;
+    }
+    std::cout << "\tMaxDiff: " << maxdiff << std::endl;
+    std::cout << "\tBest answer - MinPerfWeighted: " << minperf << std::endl;
 
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();

@@ -27,9 +27,9 @@ int Segmentation::run()
 
 	int parameterSegId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
 	float otsuRatio = (float)((ArgumentFloat*)this->getArgument(1))->getArgValue();
- 	float curvatureWeight = (unsigned char)((ArgumentFloat*)this->getArgument(2))->getArgValue();
-	float sizeThld = (unsigned char)((ArgumentFloat*)this->getArgument(3))->getArgValue();
-	float sizeUpperThld = (unsigned char)((ArgumentFloat*)this->getArgument(4))->getArgValue();
+	float curvatureWeight = ((ArgumentFloat *) this->getArgument(2))->getArgValue();
+	float sizeThld = ((ArgumentFloat *) this->getArgument(3))->getArgValue();
+	float sizeUpperThld = ((ArgumentFloat *) this->getArgument(4))->getArgValue();
 	float mpp = (float) ((ArgumentFloat *) this->getArgument(5))->getArgValue();
 	float mskernel = (float) ((ArgumentFloat *) this->getArgument(6))->getArgValue();
 	int levelSetNumberOfIteration = ((ArgumentInt *) this->getArgument(7))->getArgValue();

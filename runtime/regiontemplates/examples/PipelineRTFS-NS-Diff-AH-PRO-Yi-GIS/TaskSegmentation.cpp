@@ -42,6 +42,9 @@ bool TaskSegmentation::run(int procType, int tid) {
         outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld,
                                                                    sizeUpperThld, mpp, mskernel,
                                                                    levelSetNumberOfIteration);
+//        outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, 1.0, 0.8, 3,
+//                                                                   200, 0.25, 20.0,
+//                                                                   100);
 //		outMask = processTile(inputImage, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, 0.25);
     else
         std::cout << "Segmentation: input data NULL" << std::endl;
