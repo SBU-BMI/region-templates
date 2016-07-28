@@ -1,0 +1,35 @@
+#  DAKOTA INPUT FILE - dakota_nscale_ps_moat.in
+#  using the PSUADE MOAT method
+
+
+method
+  psuade_moat
+	samples = 120
+	partitions = 20
+	seed = 500 
+
+model
+  single
+
+variables
+  continuous_design = 7
+    lower_bounds    	0.3	0.0	1.0	50.0	5.0	5.0	0.0
+    upper_bounds     	1.5	1.0  	20.0	400.0	30.0	150.0	1.0
+    descriptors       	'otsuRatio'   'curvatureWeight'  'sizeThld'   'sizeUpperThld'    'msKernel'	'levelsetNumberOfIteration'	'dummy'
+
+interface,
+	fork
+#	  asynchronous
+	  analysis_driver = 'simulator_script'
+	  parameters_file = 'params.in'
+	  results_file    = 'results.out'
+	  work_directory directory_tag
+# uncomment to leave params.in and results.out files in work_dir subdirectories
+# 	  named 'workdir' file_save  directory_save
+
+
+responses
+  response_functions = 1
+  no_gradients
+  no_hessians	  
+

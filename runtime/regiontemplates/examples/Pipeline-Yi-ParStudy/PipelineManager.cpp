@@ -115,6 +115,8 @@ void buildParameterSet(ParameterSet &segmentation, std::string parametersFile){
 	assert(parameters.find("curvatureWeight") != parameters.end());
 	assert(parameters.find("sizeThld") != parameters.end());
 	assert(parameters.find("sizeUpperThld") != parameters.end());
+	assert(parameters.find("msKernel") != parameters.end());
+	assert(parameters.find("levelsetNumberOfIteration") != parameters.end());
 	std::cout <<  "AFTER ASSERT" << std::endl;                                                                                                   
 
 	// otsuRatio
@@ -128,6 +130,13 @@ void buildParameterSet(ParameterSet &segmentation, std::string parametersFile){
 	
 	// sizeUpperThld
 	segmentation.addArgument(new ArgumentFloat(parameters["sizeUpperThld"][0]));
+
+	// msKernel
+	segmentation.addArgument(new ArgumentFloat(parameters["msKernel"][0]));
+	
+	// levelsetNumberOfIteration
+	segmentation.addArgument(new ArgumentFloat(parameters["levelsetNumberOfIteration"][0]));
+
 
 	return;
 }
@@ -175,7 +184,7 @@ int main (int argc, char **argv){
 		seg->addArgument(new ArgumentInt(versionSeg));
 
 		// add remaining (application specific) parameters from the argSegInstance
-		for(int j =0; j < 4; j++){
+		for(int j = 0; j < 6; j++){
 			seg->addArgument(argSetInstanceSegmentation[j]);
 		}
 		// and region template instance that it is suppose to process

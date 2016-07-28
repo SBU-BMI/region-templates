@@ -27,10 +27,13 @@ int Segmentation::run()
 
 	int parameterSegId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
 	float otsuRatio = (float)((ArgumentFloat*)this->getArgument(1))->getArgValue();
- 	float curvatureWeight = (unsigned char)((ArgumentFloat*)this->getArgument(2))->getArgValue();
+ 	float curvatureWeight = (float)((ArgumentFloat*)this->getArgument(2))->getArgValue();
 	float sizeThld = (unsigned char)((ArgumentFloat*)this->getArgument(3))->getArgValue();
 	float sizeUpperThld = (unsigned char)((ArgumentFloat*)this->getArgument(4))->getArgValue();
+	float msKernel = (float)((ArgumentFloat*)this->getArgument(5))->getArgValue();
+	float levelsetNumberOfIteration = (float)((ArgumentFloat*)this->getArgument(6))->getArgValue();
 	
+	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	if(inputRt != NULL){
 		DenseDataRegion2D *bgr = NULL;
 		try{
@@ -53,7 +56,7 @@ int Segmentation::run()
 
 
 			// Create processing task
-			TaskSegmentation * segTask = new TaskSegmentation(bgr, mask, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld );
+			TaskSegmentation * segTask = new TaskSegmentation(bgr, mask, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, msKernel, levelsetNumberOfIteration );
 
 			this->executeTask(segTask);
 

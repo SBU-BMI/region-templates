@@ -6,6 +6,7 @@ add_subdirectory("PipelineRTFS-SF")
 
 #Difference analysis basic pipelines
 option(RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
+option(USE_FINE_GRAIN_SEG_TASKS "Enable use of fine grain segmentation tasks of NScale for tuning optimization" OFF)
 option(USE_HADOOPGIS "Compile HadoopGIS examples (Requires Hadoopgis)" OFF)
 
 if (RT_TUNING_NSCALE_EXAMPLE)
@@ -42,6 +43,9 @@ if (RT_TUNING_NSCALE_EXAMPLE)
         endif (USE_ACTIVE_HARMONY)
 
     endif (USE_HADOOPGIS)
+    if (USE_FINE_GRAIN_SEG_TASKS)
+        add_subdirectory("PipelineRTFS-NS-Diff-FGO")
+    endif ()
 endif (RT_TUNING_NSCALE_EXAMPLE)
 
 option(RT_TUNING_YI_EXAMPLE "Enable compilation of Yi's examples with tuning" OFF)
@@ -63,6 +67,11 @@ option (RT_PARAMETER_STUDY_YI_EXAMPLE "Enable compilation of Yi's example with P
 if(RT_PARAMETER_STUDY_YI_EXAMPLE)                                      
         add_subdirectory(Pipeline-Yi-ParStudy)                         
 endif(RT_PARAMETER_STUDY_YI_EXAMPLE)   
+
+option (RT_YI_EXAMPLE "Enable compilation of Yi's Pipeline" OFF)
+if(RT_YI_EXAMPLE)
+	add_subdirectory(PipelineRTFS-SF-Yi)
+endif(RT_YI_EXAMPLE)
 
 add_subdirectory("HelloWorldRT")
 #add_subdirectory("PipelineRTFS-NSF-Diff")

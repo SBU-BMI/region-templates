@@ -6,6 +6,7 @@
  */
 
 #include "Argument.h"
+#include <sstream>
 
 ArgumentBase::ArgumentBase(int type) {
 	this->type=type;
@@ -200,6 +201,12 @@ void ArgumentInt::setArgValue(int arg_value) {
 	this->arg_value = arg_value;
 }
 
+std::string ArgumentInt::toString() {
+	std::ostringstream convert;
+	convert << arg_value;
+	return convert.str();
+}
+
 ArgumentFloat::ArgumentFloat() : ArgumentBase(ArgumentBase::FLOAT){
 	this->arg_value = 0.0;
 }
@@ -261,6 +268,12 @@ ArgumentBase* ArgumentFloat::clone() {
 
 void ArgumentFloat::setArgValue(float arg_value) {
 	this->arg_value = arg_value;
+}
+
+std::string ArgumentFloat::toString() {
+	std::ostringstream convert;
+	convert << arg_value;
+	return convert.str();
 }
 
 ArgumentFloatArray::ArgumentFloatArray() : ArgumentBase(ArgumentBase::FLOAT_ARRAY){
@@ -333,9 +346,16 @@ ArgumentFloat ArgumentFloatArray::getArgValue(int index) {
 	}
 }
 
+float* ArgumentFloatArray::getArgValue() {
+	float* val = new float[this->arg_value.size()];
+	for (int i=0; i<this->arg_value.size(); i++) {
+		val[i] = this->arg_value[i].getArgValue();
+	}
+	return val;
+}
+
 void ArgumentFloatArray::addArgValue(ArgumentFloat arg_value) {
 	this->arg_value.push_back(arg_value);
-
 }
 
 int ArgumentFloatArray::getNumArguments() {
@@ -350,4 +370,101 @@ ArgumentBase* ArgumentFloatArray::clone() {
 	retValue->deserialize(buff);
 	delete buff;
 	return retValue;
+}
+
+std::string ArgumentFloatArray::toString() {
+	std::string out;
+
+	if (arg_value.size() == 0)
+		return "";
+
+	out += "[" + arg_value[0].toString();
+	for (int i=1; i<arg_value.size(); i++) {
+		out += ", " + arg_value[i].toString();
+	}
+	out += "]";
+	return out;
+}
+
+ArgumentRT::ArgumentRT() : path(""), ArgumentBase(ArgumentBase::RT){}
+
+ArgumentRT::ArgumentRT(std::string path) : ArgumentBase(ArgumentBase::RT) {
+	this->setArgValue(path);
+}
+
+ArgumentRT::~ArgumentRT() {}
+
+
+std::string ArgumentRT::getArgValue() const {
+    return path;
+}
+
+void ArgumentRT::setArgValue(std::string path) {
+    this->path = path;
+}
+
+int ArgumentRT::serialize(char *buff) {
+	int serialized_bytes = 0;
+
+	// serialize data from ArgumentBase class
+	serialized_bytes+=ArgumentBase::serialize(buff);
+
+	// pack the size of the string
+	int string_size = this->getArgValue().size();
+	memcpy(buff+serialized_bytes, &string_size, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// serialize the string itself
+	memcpy(buff+serialized_bytes, this->getArgValue().c_str(), this->getArgValue().size()*sizeof(char));
+	serialized_bytes+=this->getArgValue().size()*sizeof(char);
+
+	return serialized_bytes;
+}
+
+int ArgumentRT::size() {
+	// space use by the Argument class
+	int arg_size = ArgumentBase::size();
+
+	// used to store the size of the string stored
+	arg_size+=sizeof(int);
+
+	// the actual size of the string
+	arg_size+=sizeof(char) * this->getArgValue().size();
+
+	return arg_size;
+}
+
+ArgumentBase* ArgumentRT::clone() {
+	ArgumentRT* retValue = new ArgumentRT();
+	int size = this->size();
+	char *buff = new char[size];
+	this->serialize(buff);
+	retValue->deserialize(buff);
+	delete buff;
+	return retValue;
+}
+
+int ArgumentRT::deserialize(char *buff) {
+	int deserialized_bytes = 0;
+	// fill up Argument class data
+	deserialized_bytes +=ArgumentBase::deserialize(buff);
+
+	// get Size of the string
+	int string_size;
+	memcpy(&string_size, buff+deserialized_bytes, sizeof(int));
+	deserialized_bytes+= sizeof(int);
+
+	// create string to extract data from memory buffer
+	char string_value[string_size+1];
+	string_value[string_size] = '\0';
+
+	// copy string from message buffer to local variable holding string terminator
+	memcpy(string_value, buff+deserialized_bytes, sizeof(char)*string_size);
+	deserialized_bytes+=sizeof(char)*string_size;
+
+	// init argument value from string extracted
+	this->setArgValue(string_value);
+
+	// return total number of bytes extracted from message
+	return deserialized_bytes;
 }
