@@ -28,13 +28,15 @@ private:
 	// IMPORTANT: this need to be set during the creation of this object
 	int workflow_id;
 
+	list<ReusableTask*> mergable_t1;
+
 public:
 	Segmentation();
 	virtual ~Segmentation();
 
 	void set_workflow_id(int id) {workflow_id = id;};
 
-	void merge(MergableStage &s) {};
+	void merge(MergableStage &s);
 
 	int run();
 };

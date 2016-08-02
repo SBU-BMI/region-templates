@@ -16,6 +16,61 @@
 
 Segmentation::Segmentation() {
 	this->setComponentName("Segmentation");
+
+	// generate task descriptors
+	list<ArgumentBase*> segmentation_task_args;
+	ArgumentRT* normalized_rt = new ArgumentRT();
+	normalized_rt->setName("normalized_rt");
+	segmentation_task_args.emplace_back(normalized_rt);
+	ArgumentRT* segmented_rt = new ArgumentRT();
+	segmented_rt->setName("segmented_rt");
+	segmentation_task_args.emplace_back(segmented_rt);
+	ArgumentInt* blue = new ArgumentInt();
+	blue->setName("blue");
+	segmentation_task_args.emplace_back(blue);
+	ArgumentInt* green = new ArgumentInt();
+	green->setName("green");
+	segmentation_task_args.emplace_back(green);
+	ArgumentInt* red = new ArgumentInt();
+	red->setName("red");
+	segmentation_task_args.emplace_back(red);
+	ArgumentFloat* T1 = new ArgumentFloat();
+	T1->setName("T1");
+	segmentation_task_args.emplace_back(T1);
+	ArgumentFloat* T2 = new ArgumentFloat();
+	T2->setName("T2");
+	segmentation_task_args.emplace_back(T2);
+	ArgumentInt* G1 = new ArgumentInt();
+	G1->setName("G1");
+	segmentation_task_args.emplace_back(G1);
+	ArgumentInt* minSize = new ArgumentInt();
+	minSize->setName("minSize");
+	segmentation_task_args.emplace_back(minSize);
+	ArgumentInt* maxSize = new ArgumentInt();
+	maxSize->setName("maxSize");
+	segmentation_task_args.emplace_back(maxSize);
+	ArgumentInt* G2 = new ArgumentInt();
+	G2->setName("G2");
+	segmentation_task_args.emplace_back(G2);
+	ArgumentInt* minSizePl = new ArgumentInt();
+	minSizePl->setName("minSizePl");
+	segmentation_task_args.emplace_back(minSizePl);
+	ArgumentInt* minSizeSeg = new ArgumentInt();
+	minSizeSeg->setName("minSizeSeg");
+	segmentation_task_args.emplace_back(minSizeSeg);
+	ArgumentInt* maxSizeSeg = new ArgumentInt();
+	maxSizeSeg->setName("maxSizeSeg");
+	segmentation_task_args.emplace_back(maxSizeSeg);
+	ArgumentInt* fillHolesConnectivity = new ArgumentInt();
+	fillHolesConnectivity->setName("fillHolesConnectivity");
+	segmentation_task_args.emplace_back(fillHolesConnectivity);
+	ArgumentInt* reconConnectivity = new ArgumentInt();
+	reconConnectivity->setName("reconConnectivity");
+	segmentation_task_args.emplace_back(reconConnectivity);
+	ArgumentInt* watershedConnectivity = new ArgumentInt();
+	watershedConnectivity->setName("watershedConnectivity");
+	segmentation_task_args.emplace_back(watershedConnectivity);
+	this->tasksDesc["TaskSegmentation"] = segmentation_task_args;
 }
 
 Segmentation::~Segmentation() {}
@@ -174,6 +229,41 @@ int Segmentation::run() {
 	}
 
 	return 0;
+}
+
+// MergableStage s must be a non-previuosly-merged stage
+void Segmentation::merge(MergableStage &s) {
+
+	cout << "[Segmentation] trying to merage";
+
+	list<ReusableTask*>* tasks_lists[] = {&this->mergable_t1};
+	list<ReusableTask*>* new_tasks_lists[] = {&((Segmentation*)&s)->mergable_t1};
+
+	for (int i=0; i<3; i++) {
+		bool reuse = false;
+		
+		// attempt to find a reusable task
+		ReusableTask* rt = tasks_lists[i]->front();
+		for (ReusableTask* t : *tasks_lists[i]) {
+			if (t->reusable(rt)) {
+				reuse = true;
+			}
+		}
+
+		if (!reuse) {
+			// add all tasks
+			for (int j=i; j<3; j++) {
+				tasks_lists[j]->emplace_back(new_tasks_lists[j]->front());
+			}
+
+			// // add DRs from merged stage to this stage
+			// std::set<std::pair<std::string, std::string> >* inp = &((Segmentation*)&s)->input_data_regions;
+			// std::set<std::pair<std::string, std::string> >* out = &((Segmentation*)&s)->output_data_regions;
+			// this->input_data_regions.insert(inp->begin(), inp->end());
+			// this->output_data_regions.insert(out->begin(), out->end());
+			return;
+		}
+	}
 }
 
 // Create the component factory
