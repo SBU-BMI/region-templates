@@ -13,6 +13,8 @@
 #include "PipelineComponentBase.h"
 #include "RTPipelineComponentBase.h"
 #include "RegionTemplateCollection.h"
+#include "ReusableTask.hpp"
+#include "MergableStage.hpp"
 
 using namespace std;
 
@@ -826,6 +828,122 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 			temp->setParent(old_arg->getParent());
 			temp->setId(a->getId());
 			workflow_outputs[temp->getId()] = temp;
+		}
+	}
+}
+
+ArgumentBase* find_argument(PipelineComponentBase* p, string name, map<int, ArgumentBase*> expanded_args) {
+	for(int i : p->getInputs()){
+		if (expanded_args[i]->getName().compare(name) == 0) {
+			return expanded_args[i];
+		}
+	}
+	for(int i : p->getOutputs()){
+		if (expanded_args[i]->getName().compare(name) == 0) {
+			return expanded_args[i];
+		}
+	}
+
+	return NULL;
+}
+
+// This function assumes that the merged PCB has at least, but not limited to one ReusableTask on tasks
+// of type task_name. Also, to_merge must have exactly one ReusableTask of type task_name. These
+// conditions are not checked.
+bool exists_reusable_task(PipelineComponentBase* merged, PipelineComponentBase* to_merge, string task_name) {
+	// get the only task of to_merge that has the type task_name
+	ReusableTask* to_merge_task = NULL;
+	for (pair<int, ReusableTask*> t : to_merge->tasks)
+		if (t.second->getTaskName().compare(task_name) == 0)
+			to_merge_task = t.second;
+
+	for (pair<int, ReusableTask*> t : merged->tasks)
+		if (t.second->getTaskName().compare(task_name) == 0 && 
+				to_merge_task->reusable(t.second))
+			return true;
+
+	return false;
+}
+
+// for the meantime the mearging will happen whenever at least the first task is reusable
+bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_merge) {
+	// check if the first task is reusable
+	pair<string, list<ArgumentBase*>> m = *merged->tasksDesc.begin();
+	pair<string, list<ArgumentBase*>> n = *to_merge->tasksDesc.begin();
+
+	if (m.first.compare(n.first) == 0 && exists_reusable_task(merged, to_merge, m.first))
+		return true;
+	else
+		return false;
+}
+
+// filters all the stages from an input map by the stage's name
+void filter_stages(const map<int, PipelineComponentBase*> &all_stages, 
+	string stage_name, list<PipelineComponentBase*> &filtered_stages) {
+
+	for (pair<int, PipelineComponentBase*> p : all_stages)
+		if (p.second->getName().compare(stage_name) == 0)
+			filtered_stages.emplace_back(p.second);
+}
+
+map<int, ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, 
+	PipelineComponentBase* p, RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
+
+	map<int, ReusableTask*> tasks;
+
+	for (pair<string, list<ArgumentBase*>> t : tasks_desc) {
+		// get task args
+		list<ArgumentBase*> args;
+		for (ArgumentBase* a : t.second) {
+			ArgumentBase* aa = find_argument(p, a->getName(), expanded_args);
+			if (aa != NULL)
+				args.emplace_back(aa);
+		}
+
+		// call constructor
+		int uid = new_uid();
+		tasks[uid] = ReusableTask::ReusableTaskFactory::getTaskFromName(t.first, args, rt);
+		tasks[uid]->setId(uid);
+		tasks[uid]->setTaskName(t.first);
+	}
+
+	return tasks;
+}
+
+void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
+	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
+	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
+
+	// attempt merging for each stage type
+	for (pair<int, PipelineComponentBase*> ref : stages_ref) {
+		// get only the stages from the current stage_ref
+		list<PipelineComponentBase*> current_ref_stages;
+		filter_stages(all_stages, ref.second->getName(), current_ref_stages);
+
+		// attempt to merge all current stages
+		while (!current_ref_stages.empty()) {
+			// get one stage to start merging
+			PipelineComponentBase* current = current_ref_stages.front();
+			current_ref_stages.pop_front();
+
+			// start by generating all tasks
+			current->tasks = task_generator(ref.second->tasksDesc, current, rt, expanded_args);
+
+			// attempt to merge all stages to the current merged stages
+			list<PipelineComponentBase*>::iterator i = current_ref_stages.begin();
+			while (i != current_ref_stages.end()) {
+				// add stage to merged stages if the merging condition is true
+				PipelineComponentBase* s = *i;
+				if (merging_condition(s, current)) {
+					((MergableStage*)current)->merge(*((MergableStage*)s));
+					current_ref_stages.erase(i);
+				} else {
+					i++;
+				}
+			}
+
+			// add merged stages to final map as one stage
+			merged_stages[((PipelineComponentBase*)current)->getId()] = (PipelineComponentBase*)current;
 		}
 	}
 }
