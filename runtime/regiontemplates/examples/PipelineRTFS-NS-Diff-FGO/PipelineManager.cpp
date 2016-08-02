@@ -16,6 +16,10 @@
 #include "ReusableTask.hpp"
 #include "MergableStage.hpp"
 
+
+
+#include "Segmentation.hpp"
+
 using namespace std;
 
 namespace parsing {
@@ -233,6 +237,12 @@ int main(int argc, char* argv[]) {
 		for (int i : s.second->getOutputs())
 			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
 				<< expanded_args[i]->toString() << endl;
+		if (s.second->getName().compare("segmentation") == 0) {
+			ReusableTask* t = new TaskSegmentation();
+			t->setTaskName("TaskSegmentation");
+			s.second->tasks[10] = t;
+			cout << "[TEST] added a task -----------------------------------------------------------------------" << endl;
+		}
 		sysEnv.executeComponent(s.second);
 	}
 

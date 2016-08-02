@@ -22,11 +22,6 @@ PipelineComponentBase::PipelineComponentBase(){
 	this->resultData = NULL;
 	// this->input_arguments = new std::list<int>();
 	// this->output_arguments = new std::list<int>();
-
-	// TEST: REMOVE AFTER
-	ReusableTask* t = new ReusableTestTask();
-	t->setTaskName("ReusableTestTask");
-	tasks[10] = t;
 }
 
 PipelineComponentBase::~PipelineComponentBase() {
@@ -349,10 +344,10 @@ int PipelineComponentBase::deserialize(char *buff)
 		std::string task_name_s = task_name;
 
 		// deserialize the task
-		// ReusableTask* task = ReusableTask::ReusableTaskFactory::getTaskFromName(task_name_s);
-		// task->setTaskName(task_name_s);
-		// deserialized_bytes += task->deserialize(buff+deserialized_bytes);
-		// this->tasks[id] = task;
+		ReusableTask* task = ReusableTask::ReusableTaskFactory::getTaskFromName(task_name_s);
+		task->setTaskName(task_name_s);
+		deserialized_bytes += task->deserialize(buff+deserialized_bytes);
+		this->tasks[id] = task;
 	}
 
 //	std::cout << "PipelineComponentBase::deserialize" << std::endl;

@@ -65,17 +65,3 @@ ReusableTask *ReusableTask::ReusableTaskFactory::getTaskFromName(std::string nam
 	}
 	return t;
 }
-
-
-// Create the task factory
-ReusableTask* taskFactorySegmentation1(list<ArgumentBase*> args, RegionTemplate* inputRt) {
-	return new ReusableTestTask(args, inputRt);
-}
-
-// Create the task factory
-ReusableTask* taskFactorySegmentation2() {
-	return new ReusableTestTask();
-} 
-
-// register factory with the runtime system
-bool registeredSegmentationTask = ReusableTask::ReusableTaskFactory::taskRegister("ReusableTestTask", &taskFactorySegmentation1, &taskFactorySegmentation2);
