@@ -15,6 +15,7 @@
 
 #include "Argument.h"
 #include "Task.h"
+#include "ReusableTask.hpp"
 //#include "Worker.h"
 //#include "Manager.h"
 
@@ -25,6 +26,7 @@
 
 class PipelineComponentBase;
 class Manager;
+class ReusableTask;
 
 
 // Define factory function type that creates objects of type PipelineComponentBase and its subclasses
@@ -161,6 +163,11 @@ public:
 
 	void replaceInput(int old_a, int new_a);
 	void replaceOutput(int old_a, int new_a);
+
+	// a map of all tasks ID used by the stage and the list of arguments for each task
+	std::map<std::string, std::list<ArgumentBase*> > tasksDesc;
+
+	std::map<int, ReusableTask*> tasks;
 
 	// Factory class is used to build "reflection", and instantiate objects of
 	// PipelineComponentBase subclasses that register with it

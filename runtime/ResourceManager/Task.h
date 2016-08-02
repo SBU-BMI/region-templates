@@ -66,6 +66,9 @@ class Task {
 		// during the execution to an object of type CallBackTask.
 		bool callBackDepsReady;
 
+		// used to get the task type on FGO
+		std::string taskName;
+
 	public:
 
 		Task();
@@ -130,6 +133,14 @@ class Task {
 
 		void setStatus(int status) {
 			this->status = status;
+		}
+
+		std::string getTaskName () {
+			return taskName;
+		}
+
+		void setTaskName (std::string taskName) {
+			this->taskName = taskName;
 		}
 
 };
