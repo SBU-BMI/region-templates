@@ -117,7 +117,7 @@ int Segmentation::run() {
 		inputRt->insertDataRegion(segmented_rt);
 
 		// Create processing task
-		TaskSegmentation * task = (TaskSegmentation*)tasks.begin()->second->clone();
+		TaskSegmentation* task = (TaskSegmentation*)tasks.begin()->second->clone();
 		task->normalized_rt_temp = normalized_rt;
 		task->segmented_rt_temp = segmented_rt;
 

@@ -69,7 +69,7 @@ public:
 	DenseDataRegion2D* normalized_rt_temp;
 	DenseDataRegion2D* segmented_rt_temp;
 
-	TaskSegmentation() {this->setTaskName("TaskSegmentation");};
+	TaskSegmentation() {};
 	TaskSegmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation();

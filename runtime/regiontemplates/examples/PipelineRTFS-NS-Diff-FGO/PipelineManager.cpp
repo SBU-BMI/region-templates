@@ -129,8 +129,8 @@ int main(int argc, char* argv[]) {
 	// get all workflow outputs
 	map<int, ArgumentBase*> workflow_outputs;
 	get_outputs_from_file(workflow_descriptor, workflow_outputs);
-	cout << endl << "workflow_outputs " << endl;
-	mapprint(workflow_outputs);
+	// cout << endl << "workflow_outputs " << endl;
+	// mapprint(workflow_outputs);
 	// for (pair<int, ArgumentBase*> p : workflow_outputs)
 	// 	cout << p.second->getId() << ":" << p.second->getName() << endl;
 
@@ -140,16 +140,24 @@ int main(int argc, char* argv[]) {
 	map<int, PipelineComponentBase*> base_stages;
 	map<int, ArgumentBase*> interstage_arguments;
 	get_stages_from_file(workflow_descriptor, base_stages, interstage_arguments);
-	// cout << endl << "base_stages:" << endl;
-	// for (pair<int, PipelineComponentBase*> p : base_stages) {
-	// 	cout << p.first << ":" << p.second->getName() << ", outputs: " << p.second->getOutputs().size() << endl << endl;
-	// 	for (int i : p.second->getOutputs())
-	// 		cout << "\t" << i << ":" << interstage_arguments[i]->getName() << endl;
-	// }
-
-	cout << endl << "interstage_arguments:" << endl;
-	for (pair<int, ArgumentBase*> p : interstage_arguments)
+	cout << endl << "base_stages:" << endl;
+	for (pair<int, PipelineComponentBase*> p : base_stages) {
 		cout << p.first << ":" << p.second->getName() << endl;
+		cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
+		for (int i : p.second->getOutputs())
+			cout << "\t\t" << i << ":" << interstage_arguments[i]->getName() << endl;
+		cout << "\t task descriptors:" << endl;
+		for (pair<string, list<ArgumentBase*>> d : p.second->tasksDesc) {
+			cout << "\t\ttask: " << d.first << endl;
+			for (ArgumentBase* a : d.second)
+				cout << "\t\t\t" << a->getName() << endl;
+		}
+	}
+
+
+	// cout << endl << "interstage_arguments:" << endl;
+	// for (pair<int, ArgumentBase*> p : interstage_arguments)
+	// 	cout << p.first << ":" << p.second->getName() << endl;
 
 	// this map is a dependency structure: stage -> dependency_list
 	map<int, list<int>> deps;
@@ -163,11 +171,11 @@ int main(int argc, char* argv[]) {
 
 	// mapprint(all_argument);
 
-	cout << endl << "all_arguments:" << endl;
-	for (pair<int, ArgumentBase*> p : all_argument) {
-		cout << p.second->getId() << ":" << p.second->getName() 
-			<< " parent " << p.second->getParent() << endl;
-	}
+	// cout << endl << "all_arguments:" << endl;
+	// for (pair<int, ArgumentBase*> p : all_argument) {
+	// 	cout << p.second->getId() << ":" << p.second->getName() 
+	// 		<< " parent " << p.second->getParent() << endl;
+	// }
 
 	// cout << endl << "connected base_stages:" << endl;
 	// for (pair<int, PipelineComponentBase*> p : base_stages) {
@@ -632,29 +640,29 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 				deps[sink_stg->getId()].emplace_back(find_stage(base_stages, all_source_fields[0].data)->getId());
 				arg = find_argument(interstage_arguments, all_source_fields[1].data);
 				arg->setParent(find_stage(base_stages, all_source_fields[0].data)->getId());
-				cout << "source from stage " << all_source_fields[0].data << " is " << arg->getId() << ":" 
-					<< arg->getName() << " parent " << arg->getParent() << endl;
+				// cout << "source from stage " << all_source_fields[0].data << " is " << arg->getId() << ":" 
+				// 	<< arg->getName() << " parent " << arg->getParent() << endl;
 			}
 
 			// add the link to the sink stage
 			sink_stg->addInput(arg->getId());
 		} 
 		else {
-			cout << "workflow argument sink: " << all_sink_fields[0].data << endl;
+			// cout << "workflow argument sink: " << all_sink_fields[0].data << endl;
 			// update workflow output id in order to access it later to retreive the output
 			
 			ArgumentBase* itstg_argument = find_argument(interstage_arguments, all_source_fields[1].data);
-			cout << "Output " << all_sink_fields[0].data << " connects to argument " << itstg_argument->getId() << 
-				":" << itstg_argument->getName() << endl;
+			// cout << "Output " << all_sink_fields[0].data << " connects to argument " << itstg_argument->getId() << 
+			// 	":" << itstg_argument->getName() << endl;
 			ArgumentBase* output = find_argument(workflow_outputs, all_sink_fields[0].data);
-			cout << "Output " << all_sink_fields[0].data << " had id " << output->getId() << endl;
+			// cout << "Output " << all_sink_fields[0].data << " had id " << output->getId() << endl;
 			
 			// remove reference of old id from map
 			workflow_outputs.erase(output->getId());
 
 			// update the output id
 			output->setId(itstg_argument->getId());
-			cout << "Output " << all_sink_fields[0].data << " now has id " << output->getId() << endl;
+			// cout << "Output " << all_sink_fields[0].data << " now has id " << output->getId() << endl;
 			
 			// re-insert the output with the new id
 			workflow_outputs[output->getId()] = output;
@@ -818,11 +826,11 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 	}
 
 	// flatten the arg values into expanded_args
-	cout << endl << "arg_values" << endl;
+	// cout << endl << "arg_values" << endl;
 	for (pair<int, list<ArgumentBase*>> p : args_values) {
-		cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
+		// cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
 		for (ArgumentBase* a : p.second) {
-			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+			// cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
 			expanded_args[a->getId()] = a;
 		}
 	}
@@ -875,6 +883,7 @@ bool exists_reusable_task(PipelineComponentBase* merged, PipelineComponentBase* 
 		if (t.second->getTaskName().compare(task_name) == 0)
 			to_merge_task = t.second;
 
+	// attempt to find the same task on merged
 	for (pair<int, ReusableTask*> t : merged->tasks)
 		if (t.second->getTaskName().compare(task_name) == 0 && 
 				to_merge_task->reusable(t.second))
@@ -884,12 +893,14 @@ bool exists_reusable_task(PipelineComponentBase* merged, PipelineComponentBase* 
 }
 
 // for the meantime the mearging will happen whenever at least the first task is reusable
-bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_merge) {
-	// check if the first task is reusable
-	pair<string, list<ArgumentBase*>> m = *merged->tasksDesc.begin();
-	pair<string, list<ArgumentBase*>> n = *to_merge->tasksDesc.begin();
+bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_merge, map<string, list<ArgumentBase*>> ref) {
+	
+	// compatibility with stages that dont implement task reuse
+	if (ref.size() == 0)
+		return false;
 
-	if (m.first.compare(n.first) == 0 && exists_reusable_task(merged, to_merge, m.first))
+	// verify if the first task is reusable
+	if (exists_reusable_task(merged, to_merge, ref.begin()->first))
 		return true;
 	else
 		return false;
@@ -936,30 +947,31 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 	// attempt merging for each stage type
 	for (pair<int, PipelineComponentBase*> ref : stages_ref) {
 		// get only the stages from the current stage_ref
-		list<PipelineComponentBase*> current_ref_stages;
-		filter_stages(all_stages, ref.second->getName(), current_ref_stages);
+		list<PipelineComponentBase*> current_stages;
+		filter_stages(all_stages, ref.second->getName(), current_stages);
 
 		// attempt to merge all current stages
-		while (!current_ref_stages.empty()) {
+		while (!current_stages.empty()) {
 			// get one stage to start merging
-			PipelineComponentBase* current = current_ref_stages.front();
-			current_ref_stages.pop_front();
+			PipelineComponentBase* current = current_stages.front();
+			current_stages.pop_front();
 
 			// start by generating all tasks
 			current->tasks = task_generator(ref.second->tasksDesc, current, rt, expanded_args);
 
 			// attempt to merge all stages to the current merged stages
-			list<PipelineComponentBase*>::iterator i = current_ref_stages.begin();
-			while (i != current_ref_stages.end()) {
-				// add stage to merged stages if the merging condition is true
-				PipelineComponentBase* s = *i;
-				if (merging_condition(s, current)) {
-					((MergableStage*)current)->merge(*((MergableStage*)s));
-					current_ref_stages.erase(i);
-				} else {
-					i++;
-				}
-			}
+			// list<PipelineComponentBase*>::iterator i = current_stages.begin();
+			// while (i != current_stages.end()) {
+			// 	// add stage to merged stages if the merging condition is true
+			// 	PipelineComponentBase* s = *i;
+			// 	if (merging_condition(s, current, ref.second->tasksDesc)) {
+			// 		cout << "[merge_stages_fine_grain] reused task" << endl;
+			// 		((MergableStage*)current)->merge(*((MergableStage*)s));
+			// 		i = current_stages.erase(i);
+			// 	} else {
+			// 		i++;
+			// 	}
+			// }
 
 			// add merged stages to final map as one stage
 			merged_stages[((PipelineComponentBase*)current)->getId()] = (PipelineComponentBase*)current;

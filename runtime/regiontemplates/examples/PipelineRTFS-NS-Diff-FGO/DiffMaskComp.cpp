@@ -53,14 +53,20 @@ int DiffMaskComp::run() {
 
 	if(inputRt != NULL){
 
+		cout << "[DiffMaskComp] trying to get data regions:" << endl;
+
 		// Mask computed in segmentation using specific application parameter set
 		DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(
 			inputRt->getDataRegion(computed_mask_name->getName(), std::to_string(computed_mask_name->getId()), 0, 
 			computed_mask_name->getId()));
+		cout << "\t" << computed_mask_name->getName() << ":" << computed_mask_name->getId() 
+			<< ":0:" << computed_mask_name->getId() << endl;
 		// Mask used as a reference
 		DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D*>(
 			inputRt->getDataRegion(reference_mask_name->getName(), std::to_string(reference_mask_name->getId()), 0, 
 			reference_mask_name->getId()));
+		cout << "\t" << reference_mask->getName() << ":" << reference_mask->getId() 
+			<< ":0:" << reference_mask->getId() << endl;
 
 		if(computed_mask != NULL && reference_mask != NULL){
 			// gambiarra
