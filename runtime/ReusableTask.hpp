@@ -25,6 +25,7 @@ class ReusableTask: public Task {
 
 public:
 	ReusableTask() {};
+	virtual ~ReusableTask() {};
 
 	virtual bool reusable(ReusableTask* t) = 0;
 

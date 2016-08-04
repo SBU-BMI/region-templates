@@ -69,6 +69,9 @@ void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineCompon
 void expand_stages(const map<int, ArgumentBase*> &args, map<int, list<ArgumentBase*>> args_values, 
 	map<int, ArgumentBase*> &expanded_args,map<int, PipelineComponentBase*> stages,
 	map<int, PipelineComponentBase*> &expanded_stages, map<int, ArgumentBase*> &workflow_outputs);
+void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
+	const map<int, PipelineComponentBase*> &stages_ref,	map<int, PipelineComponentBase*> &merged_stages, 
+	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args);
 void generate_drs(RegionTemplate* rt, const map<int, ArgumentBase*> &expanded_args);
 void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
 	map<int, ArgumentBase*> &merged_arguments,
@@ -209,6 +212,17 @@ int main(int argc, char* argv[]) {
 		cout << "\t" << p.first << ":" << p.second->getName() << " = " 
 			<< p.second->toString() << " sized: " << p.second->size() << endl;
 
+	map<int, PipelineComponentBase*> merged_stages;
+	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args);
+
+	cout << endl<< "merged-fine: " << endl;
+	for (pair<int, PipelineComponentBase*> p : merged_stages) {
+		cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
+		cout << "\ttasks: " << endl;
+		for (pair<int, ReusableTask*> t : p.second->tasks)
+			cout << "\t\t" << t.first << ":" << t.second->getTaskName() << endl;
+	}
+
 	//------------------------------------------------------------
 	// Add workflows to Manager to be executed
 	//------------------------------------------------------------
@@ -222,11 +236,11 @@ int main(int argc, char* argv[]) {
 
 	// add arguments to each stage
 	cout << endl << "add_arguments_to_stages" << endl;
-	add_arguments_to_stages(expanded_stages, expanded_args, rt);
+	add_arguments_to_stages(merged_stages, expanded_args, rt);
 
 	// add all stages to manager
 	cout << endl << "executeComponent" << endl;
-	for (pair<int, PipelineComponentBase*> s : expanded_stages) {
+	for (pair<int, PipelineComponentBase*> s : merged_stages) {
 		cout << "sent component " << s.second->getId() << ":" 
 			<< s.second->getName() << " to execute with args:" << endl;
 		cout << "\tinputs: " << endl;
@@ -237,12 +251,6 @@ int main(int argc, char* argv[]) {
 		for (int i : s.second->getOutputs())
 			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
 				<< expanded_args[i]->toString() << endl;
-		if (s.second->getName().compare("segmentation") == 0) {
-			ReusableTask* t = new TaskSegmentation();
-			t->setTaskName("TaskSegmentation");
-			s.second->tasks[10] = t;
-			cout << "[TEST] added a task -----------------------------------------------------------------------" << endl;
-		}
 		sysEnv.executeComponent(s.second);
 	}
 
@@ -915,6 +923,7 @@ map<int, ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_d
 		tasks[uid] = ReusableTask::ReusableTaskFactory::getTaskFromName(t.first, args, rt);
 		tasks[uid]->setId(uid);
 		tasks[uid]->setTaskName(t.first);
+		cout << "[task_generator] new task " << uid << ":" << t.first << " with size " << tasks[uid]->size() << endl;
 	}
 
 	return tasks;

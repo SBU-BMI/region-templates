@@ -34,8 +34,6 @@ typedef PipelineComponentBase* (componetFactory_t)();
 
 class PipelineComponentBase: public Task {
 private:
-	// Contain pointers to all arguments associated to this pipeline component
-	std::vector<ArgumentBase*> arguments;
 
 	// Holds the string name of the component, which should be the same used to register with the ComponentFactory
 	std::string component_name;
@@ -73,6 +71,9 @@ private:
 	std::list<int> output_arguments;
 
 protected:
+	// Contain pointers to all arguments associated to this pipeline component
+	std::vector<ArgumentBase*> arguments;
+	
 	// is this component at the worker or manager side?
 	int location;
 	// this is used to pass cache stored in the Worker to the Pipeline component

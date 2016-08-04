@@ -155,11 +155,11 @@ int PipelineComponentBase::size()
 		// add the task name size
 		size_bytes += sizeof(int);
 
-		// add the task name
-		size_bytes += p->second->getTaskName().size() * sizeof(char);
-
 		// add the task size
 		size_bytes += p->second->size();
+
+		// add the task name
+		size_bytes += p->second->getTaskName().size() * sizeof(char);
 	}
 
 	return size_bytes;
@@ -222,6 +222,9 @@ int PipelineComponentBase::serialize(char *buff)
 		// copy the task name
 		memcpy(buff+serialized_bytes, p->second->getTaskName().c_str(), task_name_size*sizeof(char) );
 		serialized_bytes+=task_name_size*sizeof(char);
+
+		cout << "[PipelineComponentBase] serializing task name " << p->second->getTaskName() 
+			<< " of size " << p->second->getTaskName().size() << endl;
 
 		// copy the task
 		serialized_bytes += p->second->serialize(buff+serialized_bytes);
@@ -341,7 +344,11 @@ int PipelineComponentBase::deserialize(char *buff)
 		task_name[task_name_size] = '\0';
 		memcpy(task_name, buff+deserialized_bytes, sizeof(char)*task_name_size);
 		deserialized_bytes += sizeof(char)*task_name_size;
-		std::string task_name_s = task_name;
+		std::string task_name_s = std::string(task_name);
+		// std::string task_name_s = "TaskSegmentation";
+
+		cout << "[PipelineComponentBase] deserializing task name " << task_name_s 
+			<< " of size " << task_name_s.size() << endl;
 
 		// deserialize the task
 		ReusableTask* task = ReusableTask::ReusableTaskFactory::getTaskFromName(task_name_s);
