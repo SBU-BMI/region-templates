@@ -170,6 +170,8 @@ public:
 
 	std::map<int, ReusableTask*> tasks;
 
+	void printTasks();
+
 	// Factory class is used to build "reflection", and instantiate objects of
 	// PipelineComponentBase subclasses that register with it
     class ComponentFactory{

@@ -38,6 +38,8 @@ public:
 
 	void merge(MergableStage &s);
 
+	void print();
+
 	int run();
 };
 
@@ -82,6 +84,8 @@ public:
 	virtual int deserialize(char *buff);
 	virtual ReusableTask* clone();
 	virtual int size();
+
+	void print();
 };
 
 #endif /* Segmentation_H_ */

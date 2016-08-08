@@ -227,8 +227,10 @@ int main(int argc, char* argv[]) {
 	for (pair<int, PipelineComponentBase*> p : merged_stages) {
 		cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
 		cout << "\ttasks: " << endl;
-		for (pair<int, ReusableTask*> t : p.second->tasks)
+		for (pair<int, ReusableTask*> t : p.second->tasks) {
 			cout << "\t\t" << t.first << ":" << t.second->getTaskName() << endl;
+			t.second->print();
+		}
 	}
 
 	//------------------------------------------------------------
@@ -960,18 +962,18 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			current->tasks = task_generator(ref.second->tasksDesc, current, rt, expanded_args);
 
 			// attempt to merge all stages to the current merged stages
-			// list<PipelineComponentBase*>::iterator i = current_stages.begin();
-			// while (i != current_stages.end()) {
-			// 	// add stage to merged stages if the merging condition is true
-			// 	PipelineComponentBase* s = *i;
-			// 	if (merging_condition(s, current, ref.second->tasksDesc)) {
-			// 		cout << "[merge_stages_fine_grain] reused task" << endl;
-			// 		((MergableStage*)current)->merge(*((MergableStage*)s));
-			// 		i = current_stages.erase(i);
-			// 	} else {
-			// 		i++;
-			// 	}
-			// }
+			list<PipelineComponentBase*>::iterator i = current_stages.begin();
+			while (i != current_stages.end()) {
+				// add stage to merged stages if the merging condition is true
+				PipelineComponentBase* s = *i;
+				if (merging_condition(s, current, ref.second->tasksDesc)) {
+					cout << "[merge_stages_fine_grain] reused task" << endl;
+					((MergableStage*)current)->merge(*((MergableStage*)s));
+					i = current_stages.erase(i);
+				} else {
+					i++;
+				}
+			}
 
 			// add merged stages to final map as one stage
 			merged_stages[((PipelineComponentBase*)current)->getId()] = (PipelineComponentBase*)current;

@@ -39,6 +39,8 @@ public:
 
 	virtual int size() = 0;
 
+	virtual void print() = 0;
+
 
 	// Factory class is used to build "reflection", and instantiate objects of
 	// ReusableTask subclasses that register with it

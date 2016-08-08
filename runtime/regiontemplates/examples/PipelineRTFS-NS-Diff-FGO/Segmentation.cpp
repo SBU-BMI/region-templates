@@ -293,37 +293,38 @@ bool TaskSegmentation::run(int procType, int tid) {
 
 bool TaskSegmentation::reusable(ReusableTask* rt) {
 	TaskSegmentation* t = (TaskSegmentation*)(rt);
-	if (this->normalized_rt_temp->getName() == t->normalized_rt_temp->getName() &&
-		this->normalized_rt_temp->getId() == t->normalized_rt_temp->getId() &&
-		this->normalized_rt_temp->getVersion() == t->normalized_rt_temp->getVersion() &&
-		this->segmented_rt_temp->getName() == t->segmented_rt_temp->getName() &&
-		this->segmented_rt_temp->getId() == t->segmented_rt_temp->getId() &&
-		this->segmented_rt_temp->getVersion() == t->segmented_rt_temp->getVersion() &&
-		this->blue == t->blue &&
-		this->green == t->green &&
-		this->red == t->red &&
-		this->T1 == t->T1 &&
-		this->T2 == t->T2 &&
-		this->G1 == t->G1 &&
-		this->minSize == t->minSize &&
-		this->maxSize == t->maxSize &&
-		this->G2 == t->G2 &&
-		this->minSizePl == t->minSizePl &&
-		this->minSizeSeg == t->minSizeSeg &&
-		this->maxSizeSeg == t->maxSizeSeg &&
-		this->fillHolesConnectivity == t->fillHolesConnectivity &&
-		this->reconConnectivity == t->reconConnectivity &&
-		this->watershedConnectivity == t->watershedConnectivity) {
+	// if (this->normalized_rt_temp->getName() == t->normalized_rt_temp->getName() &&
+	// 	this->normalized_rt_temp->getId() == t->normalized_rt_temp->getId() &&
+	// 	this->normalized_rt_temp->getVersion() == t->normalized_rt_temp->getVersion() &&
+	// 	this->segmented_rt_temp->getName() == t->segmented_rt_temp->getName() &&
+	// 	this->segmented_rt_temp->getId() == t->segmented_rt_temp->getId() &&
+	// 	this->segmented_rt_temp->getVersion() == t->segmented_rt_temp->getVersion() &&
+	// 	this->blue == t->blue &&
+	// 	this->green == t->green &&
+	// 	this->red == t->red &&
+	// 	this->T1 == t->T1 &&
+	// 	this->T2 == t->T2 &&
+	// 	this->G1 == t->G1 &&
+	// 	this->minSize == t->minSize &&
+	// 	this->maxSize == t->maxSize &&
+	// 	this->G2 == t->G2 &&
+	// 	this->minSizePl == t->minSizePl &&
+	// 	this->minSizeSeg == t->minSizeSeg &&
+	// 	this->maxSizeSeg == t->maxSizeSeg &&
+	// 	this->fillHolesConnectivity == t->fillHolesConnectivity &&
+	// 	this->reconConnectivity == t->reconConnectivity &&
+	// 	this->watershedConnectivity == t->watershedConnectivity) {
 
-		return true;
-	} else {
-		return false;
-	}
+	// 	return true;
+	// } else {
+	// 	return false;
+	// }
+	return true;
 }
 
 int TaskSegmentation::size() {
-	return sizeof(unsigned char) + sizeof(unsigned char) + sizeof(unsigned char) + sizeof(float) + 
-		sizeof(float) + sizeof(unsigned char) + sizeof(int) + sizeof(int) + sizeof(unsigned char) + 
+	return sizeof(unsigned char) + sizeof(unsigned char) + sizeof(unsigned char) + sizeof(double) + 
+		sizeof(double) + sizeof(unsigned char) + sizeof(int) + sizeof(int) + sizeof(unsigned char) + 
 		sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int);
 }
 
@@ -343,12 +344,12 @@ int TaskSegmentation::serialize(char *buff) {
 		serialized_bytes+=sizeof(unsigned char);
 		
 	// copy field T1
-	memcpy(buff+serialized_bytes, &T1, sizeof(float));
-		serialized_bytes+=sizeof(float);
+	memcpy(buff+serialized_bytes, &T1, sizeof(double));
+		serialized_bytes+=sizeof(double);
 		
 	// copy field T2
-	memcpy(buff+serialized_bytes, &T2, sizeof(float));
-		serialized_bytes+=sizeof(float);
+	memcpy(buff+serialized_bytes, &T2, sizeof(double));
+		serialized_bytes+=sizeof(double);
 		
 	// copy field G1
 	memcpy(buff+serialized_bytes, &G1, sizeof(unsigned char));
@@ -409,19 +410,15 @@ int TaskSegmentation::deserialize(char *buff) {
 	deserialized_bytes += sizeof(unsigned char);
 
 	// extract field T1
-	this->T1 = ((float*)(buff+deserialized_bytes))[0];
-	deserialized_bytes += sizeof(float);
+	this->T1 = ((double*)(buff+deserialized_bytes))[0];
+	deserialized_bytes += sizeof(double);
 
 	// extract field T2
-	this->T2 = ((float*)(buff+deserialized_bytes))[0];
-	deserialized_bytes += sizeof(float);
+	this->T2 = ((double*)(buff+deserialized_bytes))[0];
+	deserialized_bytes += sizeof(double);
 
 	// extract field G1
 	this->G1 = ((unsigned char*)(buff+deserialized_bytes))[0];
-	deserialized_bytes += sizeof(unsigned char);
-
-	// extract field G2
-	this->G2 = ((unsigned char*)(buff+deserialized_bytes))[0];
 	deserialized_bytes += sizeof(unsigned char);
 
 	// extract field minSize
@@ -431,6 +428,10 @@ int TaskSegmentation::deserialize(char *buff) {
 	// extract field maxSize
 	this->maxSize = ((int*)(buff+deserialized_bytes))[0];
 	deserialized_bytes += sizeof(int);
+
+	// extract field G2
+	this->G2 = ((unsigned char*)(buff+deserialized_bytes))[0];
+	deserialized_bytes += sizeof(unsigned char);
 
 	// extract field minSizePl
 	this->minSizePl = ((int*)(buff+deserialized_bytes))[0];
@@ -470,6 +471,25 @@ ReusableTask* TaskSegmentation::clone() {
 	return retValue;
 }
 
+void TaskSegmentation::print() {
+	
+	cout << "blue: " << int(blue) << endl;
+	cout << "green: " << int(green) << endl;
+	cout << "blue: " << int(red) << endl;
+	cout << "t1: " << T1 << endl;
+	cout << "t2: " << T2 << endl;
+	cout << "g1: " << int(G1) << endl;
+	cout << "minSize: " << minSize << endl;
+	cout << "maxSize: " << maxSize << endl;
+	cout << "G2: " << int(G2) << endl;
+	cout << "minSizePl: " << minSizePl << endl;
+	cout << "minSizeSeg: " << minSizeSeg << endl;
+	cout << "maxSizeSeg: " << maxSizeSeg << endl;
+	cout << "fillHolesConnectivity: " << fillHolesConnectivity << endl;
+	cout << "reconConnectivity: " << reconConnectivity << endl;
+	cout << "watershedConnectivity: " << watershedConnectivity << endl;
+}
+
 // Create the task factory
 ReusableTask* taskFactorySegmentation1(list<ArgumentBase*> args, RegionTemplate* inputRt) {
 	return new TaskSegmentation(args, inputRt);
@@ -478,7 +498,7 @@ ReusableTask* taskFactorySegmentation1(list<ArgumentBase*> args, RegionTemplate*
 // Create the task factory
 ReusableTask* taskFactorySegmentation2() {
 	return new TaskSegmentation();
-} 
+}
 
 // register factory with the runtime system
 bool registeredSegmentationTask = ReusableTask::ReusableTaskFactory::taskRegister("TaskSegmentation", 

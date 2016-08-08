@@ -372,6 +372,12 @@ PipelineComponentBase* PipelineComponentBase::clone() {
 	return retValue;
 }
 
+void PipelineComponentBase::printTasks() {
+	for (std::map<int, ReusableTask*>::iterator i = tasks.begin(); i!=tasks.end(); i++) {
+		i->second->print();
+	}
+}
+
 void PipelineComponentBase::executeTask(Task *task)
 {
 	if(this->getResourceManager() != NULL){
