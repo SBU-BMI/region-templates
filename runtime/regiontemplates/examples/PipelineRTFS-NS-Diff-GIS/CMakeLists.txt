@@ -42,7 +42,8 @@ set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.c
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp
             ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
             ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp
-            ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp)
+            ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp
+            ../../comparativeanalysis/hadoopgis/predicates/DiceNotCoolCoefficient.cpp)
 
     #Replace Macro inside program
     add_definitions(-DHADOOPGIS_SCRIPTS_DIRECTORY=${HADOOPGIS_SCRIPTS_OUTPUT_DIR})

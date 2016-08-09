@@ -3,6 +3,7 @@
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/JaccardIndex.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/MaskIntersection.h>
+#include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceNotCoolCoefficient.h>
 
 DiffMaskComp::DiffMaskComp() {
     this->setComponentName("DiffMaskComp");
@@ -35,7 +36,7 @@ int DiffMaskComp::run() {
             // gambiarra
             diffPixels[0] = this->getId();
             // Create processing task
-            TaskDiffMask *tDiffMask = new DiceCoefficient(computed_mask, reference_mask, diffPixels);
+            TaskDiffMask *tDiffMask = new DiceNotCoolCoefficient(computed_mask, reference_mask, diffPixels);
 
             this->executeTask(tDiffMask);
         } else {

@@ -49,7 +49,8 @@ set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
         ../../comparativeanalysis/pixelcompare/PixelCompare.cpp ../../comparativeanalysis/hadoopgis/Hadoopgis.cpp
         ../../comparativeanalysis/hadoopgis/predicates/DiceCoefficient.cpp
         ../../comparativeanalysis/hadoopgis/predicates/JaccardIndex.cpp
-        ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp)
+        ../../comparativeanalysis/hadoopgis/predicates/MaskIntersection.cpp
+        ../../comparativeanalysis/hadoopgis/predicates/DiceNotCoolCoefficient.cpp)
 #Replace Macro inside program
 add_definitions(-DHADOOPGIS_SCRIPTS_DIRECTORY=${HADOOPGIS_SCRIPTS_OUTPUT_DIR})
 add_definitions(-DWRITE_ENABLED_TEMPORARY_PATH=${WRITE_ENABLED_TEMP_PATH})
