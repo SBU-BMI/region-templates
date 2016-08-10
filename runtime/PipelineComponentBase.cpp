@@ -148,7 +148,7 @@ int PipelineComponentBase::size()
 	// add the number of tasks
 	size_bytes += sizeof(int);
 
-	for(map<int, ReusableTask*>::iterator p=this->tasks.begin(); p!=this->tasks.end(); p++){
+	for(list<ReusableTask*>::iterator t=this->tasks.begin(); t!=this->tasks.end(); t++){
 		// add the task id
 		size_bytes += sizeof(int);
 
@@ -156,10 +156,10 @@ int PipelineComponentBase::size()
 		size_bytes += sizeof(int);
 
 		// add the task size
-		size_bytes += p->second->size();
+		size_bytes += (*t)->size();
 
 		// add the task name
-		size_bytes += p->second->getTaskName().size() * sizeof(char);
+		size_bytes += (*t)->getTaskName().size() * sizeof(char);
 	}
 
 	return size_bytes;
@@ -208,26 +208,26 @@ int PipelineComponentBase::serialize(char *buff)
 	serialized_bytes+=sizeof(int);
 
 	// serialize each of the tasks
-	for(map<int, ReusableTask*>::iterator p=this->tasks.begin(); p!=this->tasks.end(); p++){
+	for(list<ReusableTask*>::iterator t=this->tasks.begin(); t!=this->tasks.end(); t++){
 		// Copy the task id
-		int id = p->first;
+		int id = (*t)->getId();
 		memcpy(buff+serialized_bytes, &id, sizeof(int));
 		serialized_bytes+=sizeof(int);
 
 		// copy the task name size
-		int task_name_size = p->second->getTaskName().size();
+		int task_name_size = (*t)->getTaskName().size();
 		memcpy(buff+serialized_bytes, &task_name_size, sizeof(int));
 		serialized_bytes+=sizeof(int);
 
 		// copy the task name
-		memcpy(buff+serialized_bytes, p->second->getTaskName().c_str(), task_name_size*sizeof(char) );
+		memcpy(buff+serialized_bytes, (*t)->getTaskName().c_str(), task_name_size*sizeof(char) );
 		serialized_bytes+=task_name_size*sizeof(char);
 
-		cout << "[PipelineComponentBase] serializing task name " << p->second->getTaskName() 
-			<< " of size " << p->second->getTaskName().size() << endl;
+		cout << "[PipelineComponentBase] serializing task name " << (*t)->getTaskName() 
+			<< " of size " << (*t)->getTaskName().size() << endl;
 
 		// copy the task
-		serialized_bytes += p->second->serialize(buff+serialized_bytes);
+		serialized_bytes += (*t)->serialize(buff+serialized_bytes);
 	}
 
 //	std::cout << "PipelineComponentBase::serialize" << std::endl;
@@ -353,8 +353,9 @@ int PipelineComponentBase::deserialize(char *buff)
 		// deserialize the task
 		ReusableTask* task = ReusableTask::ReusableTaskFactory::getTaskFromName(task_name_s);
 		task->setTaskName(task_name_s);
+		task->setId(id);
 		deserialized_bytes += task->deserialize(buff+deserialized_bytes);
-		this->tasks[id] = task;
+		this->tasks.push_back(task);
 	}
 
 //	std::cout << "PipelineComponentBase::deserialize" << std::endl;
@@ -373,8 +374,8 @@ PipelineComponentBase* PipelineComponentBase::clone() {
 }
 
 void PipelineComponentBase::printTasks() {
-	for (std::map<int, ReusableTask*>::iterator i = tasks.begin(); i!=tasks.end(); i++) {
-		i->second->print();
+	for (std::list<ReusableTask*>::iterator i = tasks.begin(); i!=tasks.end(); i++) {
+		(*i)->print();
 	}
 }
 

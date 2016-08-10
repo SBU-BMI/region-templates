@@ -117,7 +117,7 @@ int Segmentation::run() {
 		inputRt->insertDataRegion(segmented_rt);
 
 		// Create processing task
-		TaskSegmentation* task = (TaskSegmentation*)tasks.begin()->second->clone();
+		TaskSegmentation* task = (TaskSegmentation*)(*tasks.begin())->clone();
 		task->normalized_rt_temp = normalized_rt;
 		task->segmented_rt_temp = segmented_rt;
 
@@ -129,41 +129,6 @@ int Segmentation::run() {
 	}
 
 	return 0;
-}
-
-// MergableStage s must be a non-previuosly-merged stage
-void Segmentation::merge(MergableStage &s) {
-
-	cout << "[Segmentation] trying to merage";
-
-	list<ReusableTask*>* tasks_lists[] = {&this->mergable_t1};
-	list<ReusableTask*>* new_tasks_lists[] = {&((Segmentation*)&s)->mergable_t1};
-
-	for (int i=0; i<3; i++) {
-		bool reuse = false;
-		
-		// attempt to find a reusable task
-		ReusableTask* rt = tasks_lists[i]->front();
-		for (ReusableTask* t : *tasks_lists[i]) {
-			if (t->reusable(rt)) {
-				reuse = true;
-			}
-		}
-
-		if (!reuse) {
-			// add all tasks
-			for (int j=i; j<3; j++) {
-				tasks_lists[j]->emplace_back(new_tasks_lists[j]->front());
-			}
-
-			// // add DRs from merged stage to this stage
-			// std::set<std::pair<std::string, std::string> >* inp = &((Segmentation*)&s)->input_data_regions;
-			// std::set<std::pair<std::string, std::string> >* out = &((Segmentation*)&s)->output_data_regions;
-			// this->input_data_regions.insert(inp->begin(), inp->end());
-			// this->output_data_regions.insert(out->begin(), out->end());
-			return;
-		}
-	}
 }
 
 // Create the component factory
@@ -293,32 +258,32 @@ bool TaskSegmentation::run(int procType, int tid) {
 
 bool TaskSegmentation::reusable(ReusableTask* rt) {
 	TaskSegmentation* t = (TaskSegmentation*)(rt);
-	// if (this->normalized_rt_temp->getName() == t->normalized_rt_temp->getName() &&
-	// 	this->normalized_rt_temp->getId() == t->normalized_rt_temp->getId() &&
-	// 	this->normalized_rt_temp->getVersion() == t->normalized_rt_temp->getVersion() &&
-	// 	this->segmented_rt_temp->getName() == t->segmented_rt_temp->getName() &&
-	// 	this->segmented_rt_temp->getId() == t->segmented_rt_temp->getId() &&
-	// 	this->segmented_rt_temp->getVersion() == t->segmented_rt_temp->getVersion() &&
-	// 	this->blue == t->blue &&
-	// 	this->green == t->green &&
-	// 	this->red == t->red &&
-	// 	this->T1 == t->T1 &&
-	// 	this->T2 == t->T2 &&
-	// 	this->G1 == t->G1 &&
-	// 	this->minSize == t->minSize &&
-	// 	this->maxSize == t->maxSize &&
-	// 	this->G2 == t->G2 &&
-	// 	this->minSizePl == t->minSizePl &&
-	// 	this->minSizeSeg == t->minSizeSeg &&
-	// 	this->maxSizeSeg == t->maxSizeSeg &&
-	// 	this->fillHolesConnectivity == t->fillHolesConnectivity &&
-	// 	this->reconConnectivity == t->reconConnectivity &&
-	// 	this->watershedConnectivity == t->watershedConnectivity) {
+	if (this->normalized_rt_temp->getName() == t->normalized_rt_temp->getName() &&
+		this->normalized_rt_temp->getId() == t->normalized_rt_temp->getId() &&
+		this->normalized_rt_temp->getVersion() == t->normalized_rt_temp->getVersion() &&
+		this->segmented_rt_temp->getName() == t->segmented_rt_temp->getName() &&
+		this->segmented_rt_temp->getId() == t->segmented_rt_temp->getId() &&
+		this->segmented_rt_temp->getVersion() == t->segmented_rt_temp->getVersion() &&
+		this->blue == t->blue &&
+		this->green == t->green &&
+		this->red == t->red &&
+		this->T1 == t->T1 &&
+		this->T2 == t->T2 &&
+		this->G1 == t->G1 &&
+		this->minSize == t->minSize &&
+		this->maxSize == t->maxSize &&
+		this->G2 == t->G2 &&
+		this->minSizePl == t->minSizePl &&
+		this->minSizeSeg == t->minSizeSeg &&
+		this->maxSizeSeg == t->maxSizeSeg &&
+		this->fillHolesConnectivity == t->fillHolesConnectivity &&
+		this->reconConnectivity == t->reconConnectivity &&
+		this->watershedConnectivity == t->watershedConnectivity) {
 
-	// 	return true;
-	// } else {
-	// 	return false;
-	// }
+		return true;
+	} else {
+		return false;
+	}
 	return true;
 }
 

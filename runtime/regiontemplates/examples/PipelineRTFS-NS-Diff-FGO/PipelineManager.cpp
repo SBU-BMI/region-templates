@@ -14,11 +14,6 @@
 #include "RTPipelineComponentBase.h"
 #include "RegionTemplateCollection.h"
 #include "ReusableTask.hpp"
-#include "MergableStage.hpp"
-
-
-
-#include "Segmentation.hpp"
 
 using namespace std;
 
@@ -227,9 +222,9 @@ int main(int argc, char* argv[]) {
 	for (pair<int, PipelineComponentBase*> p : merged_stages) {
 		cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
 		cout << "\ttasks: " << endl;
-		for (pair<int, ReusableTask*> t : p.second->tasks) {
-			cout << "\t\t" << t.first << ":" << t.second->getTaskName() << endl;
-			t.second->print();
+		for (ReusableTask* t : p.second->tasks) {
+			cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
+			// t.second->print();
 		}
 	}
 
@@ -881,14 +876,14 @@ ArgumentBase* find_argument(PipelineComponentBase* p, string name, map<int, Argu
 bool exists_reusable_task(PipelineComponentBase* merged, PipelineComponentBase* to_merge, string task_name) {
 	// get the only task of to_merge that has the type task_name
 	ReusableTask* to_merge_task = NULL;
-	for (pair<int, ReusableTask*> t : to_merge->tasks)
-		if (t.second->getTaskName().compare(task_name) == 0)
-			to_merge_task = t.second;
+	for (ReusableTask* t : to_merge->tasks)
+		if (t->getTaskName().compare(task_name) == 0)
+			to_merge_task = t;
 
 	// attempt to find the same task on merged
-	for (pair<int, ReusableTask*> t : merged->tasks)
-		if (t.second->getTaskName().compare(task_name) == 0 && 
-				to_merge_task->reusable(t.second))
+	for (ReusableTask* t : merged->tasks)
+		if (t->getTaskName().compare(task_name) == 0 && 
+				to_merge_task->reusable(t))
 			return true;
 
 	return false;
@@ -917,10 +912,10 @@ void filter_stages(const map<int, PipelineComponentBase*> &all_stages,
 			filtered_stages.emplace_back(p.second);
 }
 
-map<int, ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, 
+list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, 
 	PipelineComponentBase* p, RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
 
-	map<int, ReusableTask*> tasks;
+	list<ReusableTask*> tasks;
 
 	for (pair<string, list<ArgumentBase*>> t : tasks_desc) {
 		// get task args
@@ -933,13 +928,37 @@ map<int, ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_d
 
 		// call constructor
 		int uid = new_uid();
-		tasks[uid] = ReusableTask::ReusableTaskFactory::getTaskFromName(t.first, args, rt);
-		tasks[uid]->setId(uid);
-		tasks[uid]->setTaskName(t.first);
-		cout << "[task_generator] new task " << uid << ":" << t.first << " with size " << tasks[uid]->size() << endl;
+		ReusableTask* n_task = ReusableTask::ReusableTaskFactory::getTaskFromName(t.first, args, rt);
+		n_task->setId(uid);
+		n_task->setTaskName(t.first);
+		tasks.emplace_back(n_task);
+		cout << "[task_generator] new task " << uid << ":" << t.first << " with size " << n_task->size() << endl;
 	}
 
 	return tasks;
+}
+
+ReusableTask* find_task(list<ReusableTask*> l, string name) {
+	for (ReusableTask* t : l)
+		if (t->getTaskName().compare(name) == 0)
+			return t;
+	return NULL;
+}
+
+void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<string, list<ArgumentBase*>> ref) {
+	for (map<std::string, std::list<ArgumentBase*>>::iterator p=ref.begin(); p!=ref.end(); p++) {
+		// verify if this is the first reusable task
+		ReusableTask* t = find_task(s->tasks, p->first);
+		if (find_task(current->tasks, p->first)->reusable(t)) {
+			cout << "[merged_stages] found reusable task " << p->first << endl;
+			// add all remaining tasks
+			for (; p!=ref.end(); p++) {
+				cout << "[merged_stages] reused task " << p->first << endl;
+				current->tasks.emplace_back(t);
+			}
+			return;
+		}
+	}
 }
 
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
@@ -959,16 +978,22 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			current_stages.pop_front();
 
 			// start by generating all tasks
-			current->tasks = task_generator(ref.second->tasksDesc, current, rt, expanded_args);
+			if (current->tasks.size() == 0)
+				current->tasks = task_generator(ref.second->tasksDesc, current, rt, expanded_args);
 
 			// attempt to merge all stages to the current merged stages
 			list<PipelineComponentBase*>::iterator i = current_stages.begin();
 			while (i != current_stages.end()) {
 				// add stage to merged stages if the merging condition is true
 				PipelineComponentBase* s = *i;
+
+				// generate tasks if it they weren't generated yet
+				if (s->tasks.size() == 0)
+					s->tasks = task_generator(ref.second->tasksDesc, s, rt, expanded_args);
+
 				if (merging_condition(s, current, ref.second->tasksDesc)) {
 					cout << "[merge_stages_fine_grain] reused task" << endl;
-					((MergableStage*)current)->merge(*((MergableStage*)s));
+					merge_stages(current, s, ref.second->tasksDesc);
 					i = current_stages.erase(i);
 				} else {
 					i++;

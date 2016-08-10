@@ -168,7 +168,7 @@ public:
 	// a map of all tasks ID used by the stage and the list of arguments for each task
 	std::map<std::string, std::list<ArgumentBase*> > tasksDesc;
 
-	std::map<int, ReusableTask*> tasks;
+	std::list<ReusableTask*> tasks;
 
 	void printTasks();
 

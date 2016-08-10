@@ -13,7 +13,6 @@
 #include "FileUtils.h"
 #include "Task.h"
 #include "DenseDataRegion2D.h"
-#include "MergableStage.hpp"
 #include "ReusableTask.hpp"
 
 #include "opencv2/opencv.hpp"
@@ -21,7 +20,7 @@
 #include "HistologicalEntities.h"
 
 // PipelineComponent header
-class Segmentation : public RTPipelineComponentBase, public MergableStage {
+class Segmentation : public RTPipelineComponentBase {
 
 private:
 	// data region id
@@ -35,8 +34,6 @@ public:
 	virtual ~Segmentation();
 
 	void set_workflow_id(int id) {workflow_id = id;};
-
-	void merge(MergableStage &s);
 
 	void print();
 
