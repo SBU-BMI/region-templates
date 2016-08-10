@@ -75,12 +75,13 @@ public:
 
 	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
 
-	virtual bool reusable(ReusableTask* t);
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
 
-	virtual int serialize(char *buff);
-	virtual int deserialize(char *buff);
-	virtual ReusableTask* clone();
-	virtual int size();
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
 
 	void print();
 };

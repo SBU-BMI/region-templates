@@ -81,52 +81,53 @@ int Segmentation::run() {
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
-	ArgumentRT* normalized_rt_arg;
-	ArgumentRT* segmented_rt_arg;
+	// ArgumentRT* normalized_rt_arg;
+	// ArgumentRT* segmented_rt_arg;
 
-	int set_cout = 0;
-	for(int i=0; i<this->getArgumentsSize(); i++){
-		if (this->getArgument(i)->getName().compare("normalized_rt") == 0) {
-			normalized_rt_arg = (ArgumentRT*)this->getArgument(i);
-			set_cout++;
+	// for(int i=0; i<this->getArgumentsSize(); i++){
+	// 	if (this->getArgument(i)->getName().compare("normalized_rt") == 0) {
+	// 		normalized_rt_arg = (ArgumentRT*)this->getArgument(i);
+	// 	}
+
+	// 	if (this->getArgument(i)->getName().compare("segmented_rt") == 0) {
+	// 		segmented_rt_arg = (ArgumentRT*)this->getArgument(i);
+	// 	}
+	// }
+
+	this->addInputOutputDataRegion("tile", "normalized_rt", RTPipelineComponentBase::INPUT);
+
+	this->addInputOutputDataRegion("tile", "segmented_rt", RTPipelineComponentBase::OUTPUT);
+
+
+	// if(inputRt != NULL){
+	// 	DenseDataRegion2D *normalized_rt = NULL;
+
+	// 	DenseDataRegion2D *segmented_rt = NULL;
+
+	// 	normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(
+	// 		normalized_rt_arg->getName(), std::to_string(normalized_rt_arg->getId()), 0, normalized_rt_arg->getId()));
+
+	// 	segmented_rt = new DenseDataRegion2D();
+	// 	segmented_rt->setName(segmented_rt_arg->getName());
+	// 	segmented_rt->setId(std::to_string(segmented_rt_arg->getId()));
+	// 	segmented_rt->setVersion(segmented_rt_arg->getId());
+	// 	inputRt->insertDataRegion(segmented_rt);
+
+		// // Create processing task
+		// TaskSegmentation* task = (TaskSegmentation*)(*tasks.begin())->clone();
+		// task->normalized_rt_temp = normalized_rt;
+		// task->segmented_rt_temp = segmented_rt;
+
+		for (ReusableTask* task : tasks) {
+			ReusableTask* t = task->clone();
+			t->updateDR(inputRt);
+			this->executeTask(t);
 		}
 
-		if (this->getArgument(i)->getName().compare("segmented_rt") == 0) {
-			segmented_rt_arg = (ArgumentRT*)this->getArgument(i);
-			set_cout++;
-		}
-	}
-
-	this->addInputOutputDataRegion("tile", normalized_rt_arg->getName(), RTPipelineComponentBase::INPUT);
-
-	this->addInputOutputDataRegion("tile", segmented_rt_arg->getName(), RTPipelineComponentBase::OUTPUT);
-
-
-	if(inputRt != NULL){
-		DenseDataRegion2D *normalized_rt = NULL;
-
-		DenseDataRegion2D *segmented_rt = NULL;
-
-		normalized_rt = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(
-			normalized_rt_arg->getName(), std::to_string(normalized_rt_arg->getId()), 0, normalized_rt_arg->getId()));
-
-		segmented_rt = new DenseDataRegion2D();
-		segmented_rt->setName(segmented_rt_arg->getName());
-		segmented_rt->setId(std::to_string(segmented_rt_arg->getId()));
-		segmented_rt->setVersion(segmented_rt_arg->getId());
-		inputRt->insertDataRegion(segmented_rt);
-
-		// Create processing task
-		TaskSegmentation* task = (TaskSegmentation*)(*tasks.begin())->clone();
-		task->normalized_rt_temp = normalized_rt;
-		task->segmented_rt_temp = segmented_rt;
-
-		this->executeTask(task);
-
-	}else{
-		std::cout << __FILE__ << ":" << __LINE__ <<" RT == NULL" << std::endl;
-		exit(1);
-	}
+	// }else{
+	// 	std::cout << __FILE__ << ":" << __LINE__ <<" RT == NULL" << std::endl;
+	// 	exit(1);
+	// }
 
 	return 0;
 }
@@ -148,6 +149,27 @@ TaskSegmentation::TaskSegmentation(list<ArgumentBase*> args, RegionTemplate* inp
 
 	int set_cout = 0;
 	for(ArgumentBase* a : args){
+
+		if (a->getName().compare("normalized_rt") == 0) {
+			ArgumentRT* normalized_rt_arg;
+			normalized_rt_arg = (ArgumentRT*)a;
+			this->normalized_rt_temp = new DenseDataRegion2D();
+			this->normalized_rt_temp->setName(normalized_rt_arg->getName());
+			this->normalized_rt_temp->setId(std::to_string(normalized_rt_arg->getId()));
+			this->normalized_rt_temp->setVersion(normalized_rt_arg->getId());
+			set_cout++;
+		}
+
+		if (a->getName().compare("segmented_rt") == 0) {
+			ArgumentRT* segmented_rt_arg;
+			segmented_rt_arg = (ArgumentRT*)a;
+			this->segmented_rt_temp = new DenseDataRegion2D();
+			this->segmented_rt_temp->setName(segmented_rt_arg->getName());
+			this->segmented_rt_temp->setId(std::to_string(segmented_rt_arg->getId()));
+			this->segmented_rt_temp->setVersion(segmented_rt_arg->getId());
+			set_cout++;
+		}
+
 		if (a->getName().compare("blue") == 0) {
 			this->blue = (unsigned char)((ArgumentInt*)a)->getArgValue();
 			set_cout++;
@@ -225,14 +247,13 @@ TaskSegmentation::TaskSegmentation(list<ArgumentBase*> args, RegionTemplate* inp
 	}
 
 	// all arguments except the DataRegions
-	if (set_cout < args.size()-2)
+	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
 }
 
 TaskSegmentation::~TaskSegmentation() {
 	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
-
 }
 
 bool TaskSegmentation::run(int procType, int tid) {
@@ -254,6 +275,13 @@ bool TaskSegmentation::run(int procType, int tid) {
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 	std::cout << "Task Segmentation time elapsed: "<< t2-t1 << std::endl;
+}
+
+void TaskSegmentation::updateDR(RegionTemplate* rt) {
+	normalized_rt_temp = dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(this->normalized_rt_temp->getName(), 
+		this->normalized_rt_temp->getId(), 0, stoi(this->normalized_rt_temp->getId())));
+
+	rt->insertDataRegion(this->segmented_rt_temp);
 }
 
 bool TaskSegmentation::reusable(ReusableTask* rt) {
@@ -290,77 +318,147 @@ bool TaskSegmentation::reusable(ReusableTask* rt) {
 int TaskSegmentation::size() {
 	return sizeof(unsigned char) + sizeof(unsigned char) + sizeof(unsigned char) + sizeof(double) + 
 		sizeof(double) + sizeof(unsigned char) + sizeof(int) + sizeof(int) + sizeof(unsigned char) + 
-		sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int);
+		sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) + 
+		sizeof(int) + sizeof(int) + normalized_rt_temp->getName().length()*sizeof(char) + 
+		sizeof(int) + sizeof(int) + segmented_rt_temp->getName().length()*sizeof(char);
 }
 
 int TaskSegmentation::serialize(char *buff) {
 	int serialized_bytes = 0;
 
+	// copy normalized_rt id
+	int normalized_rt_id = stoi(normalized_rt_temp->getId());
+	memcpy(buff+serialized_bytes, &normalized_rt_id, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// copy normalized_rt name size
+	int normalized_rt_name_size = normalized_rt_temp->getName().length();
+	memcpy(buff+serialized_bytes, &normalized_rt_name_size, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// copy normalized_rt name
+	memcpy(buff+serialized_bytes, normalized_rt_temp->getName().c_str(), normalized_rt_name_size*sizeof(char));
+	serialized_bytes+=normalized_rt_name_size*sizeof(char);
+
+	// copy segmented_rt id
+	int segmented_rt_id = stoi(segmented_rt_temp->getId());
+	memcpy(buff+serialized_bytes, &segmented_rt_id, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// copy segmented_rt name size
+	int segmented_rt_name_size = segmented_rt_temp->getName().length();
+	memcpy(buff+serialized_bytes, &segmented_rt_name_size, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// copy segmented_rt name
+	memcpy(buff+serialized_bytes, segmented_rt_temp->getName().c_str(), segmented_rt_name_size*sizeof(char));
+	serialized_bytes+=segmented_rt_name_size*sizeof(char);
+
 	// copy field blue
 	memcpy(buff+serialized_bytes, &blue, sizeof(unsigned char));
-		serialized_bytes+=sizeof(unsigned char);
+	serialized_bytes+=sizeof(unsigned char);
 
 	// copy field green
 	memcpy(buff+serialized_bytes, &green, sizeof(unsigned char));
-		serialized_bytes+=sizeof(unsigned char);
+	serialized_bytes+=sizeof(unsigned char);
 
 	// copy field red
 	memcpy(buff+serialized_bytes, &red, sizeof(unsigned char));
-		serialized_bytes+=sizeof(unsigned char);
+	serialized_bytes+=sizeof(unsigned char);
 		
 	// copy field T1
 	memcpy(buff+serialized_bytes, &T1, sizeof(double));
-		serialized_bytes+=sizeof(double);
+	serialized_bytes+=sizeof(double);
 		
 	// copy field T2
 	memcpy(buff+serialized_bytes, &T2, sizeof(double));
-		serialized_bytes+=sizeof(double);
+	serialized_bytes+=sizeof(double);
 		
 	// copy field G1
 	memcpy(buff+serialized_bytes, &G1, sizeof(unsigned char));
-		serialized_bytes+=sizeof(unsigned char);
+	serialized_bytes+=sizeof(unsigned char);
 		
 	// copy field minSize
 	memcpy(buff+serialized_bytes, &minSize, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	// copy field maxSize
 	memcpy(buff+serialized_bytes, &maxSize, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	// copy field G2
 	memcpy(buff+serialized_bytes, &G2, sizeof(unsigned char));
-		serialized_bytes+=sizeof(unsigned char);
+	serialized_bytes+=sizeof(unsigned char);
 		
 	// copy field minSizePl
 	memcpy(buff+serialized_bytes, &minSizePl, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	// copy field minSizeSeg
 	memcpy(buff+serialized_bytes, &minSizeSeg, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	// copy field maxSizeSeg
 	memcpy(buff+serialized_bytes, &maxSizeSeg, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	// copy field fillHolesConnectivity
 	memcpy(buff+serialized_bytes, &fillHolesConnectivity, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	// copy field reconConnectivity
 	memcpy(buff+serialized_bytes, &reconConnectivity, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	// copy field watershedConnectivity
 	memcpy(buff+serialized_bytes, &watershedConnectivity, sizeof(int));
-		serialized_bytes+=sizeof(int);
+	serialized_bytes+=sizeof(int);
 
 	return serialized_bytes;
 }
 
 int TaskSegmentation::deserialize(char *buff) {
 	int deserialized_bytes = 0;
+
+	// create the normalized_rt
+	this->normalized_rt_temp = new DenseDataRegion2D();
+
+	// extract normalized_rt id
+	int normalized_rt_id = ((int*)(buff+deserialized_bytes))[0];
+	this->normalized_rt_temp->setId(to_string(normalized_rt_id));
+	this->normalized_rt_temp->setVersion(normalized_rt_id);
+	deserialized_bytes += sizeof(int);
+
+	// extract normalized_rt name size
+	int normalized_rt_name_size = ((int*)(buff+deserialized_bytes))[0];
+	deserialized_bytes += sizeof(int);
+
+	// copy normalized_rt name
+	char normalized_rt_name[normalized_rt_name_size+1]; 
+	normalized_rt_name[normalized_rt_name_size] = '\0';
+	memcpy(normalized_rt_name, buff+deserialized_bytes, sizeof(char)*normalized_rt_name_size);
+	deserialized_bytes += sizeof(char)*normalized_rt_name_size;
+	this->normalized_rt_temp->setName(normalized_rt_name);
+
+	// create the segmented_rt
+	this->segmented_rt_temp = new DenseDataRegion2D();
+
+	// extract segmented_rt id
+	int segmented_rt_id = ((int*)(buff+deserialized_bytes))[0];
+	this->segmented_rt_temp->setId(to_string(segmented_rt_id));
+	this->segmented_rt_temp->setVersion(segmented_rt_id);
+	deserialized_bytes += sizeof(int);
+
+	// extract segmented_rt name size
+	int segmented_rt_name_size = ((int*)(buff+deserialized_bytes))[0];
+	deserialized_bytes += sizeof(int);
+
+	// copy segmented_rt name
+	char segmented_rt_name[segmented_rt_name_size+1]; 
+	segmented_rt_name[segmented_rt_name_size] = '\0';
+	memcpy(segmented_rt_name, buff+deserialized_bytes, sizeof(char)*segmented_rt_name_size);
+	deserialized_bytes += sizeof(char)*segmented_rt_name_size;
+	this->segmented_rt_temp->setName(segmented_rt_name);
 
 	// extract field blue
 	this->blue = ((unsigned char*)(buff+deserialized_bytes))[0];
