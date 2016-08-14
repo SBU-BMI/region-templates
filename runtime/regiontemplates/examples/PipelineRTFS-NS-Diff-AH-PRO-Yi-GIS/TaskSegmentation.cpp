@@ -41,7 +41,12 @@ bool TaskSegmentation::run(int procType, int tid) {
     if (inputImage.rows > 0)
         outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld,
                                                                    sizeUpperThld, mpp, mskernel,
-                                                                   levelSetNumberOfIteration);
+                                                                   levelSetNumberOfIteration, 2);
+        //0) mean-shift declumping
+        //1) no declumping
+        //2) watershed declumping
+
+
 //        outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, 1.0, 0.8, 3,
 //                                                                   200, 0.25, 20.0,
 //                                                                   100);

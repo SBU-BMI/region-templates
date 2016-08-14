@@ -54,6 +54,8 @@ add_library("${libname}" SHARED ${libcomponentssrcs} ${libcomparativeanalysis})
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
 target_link_libraries(${libname} regiontemplates)
+set(CMAKE_CXX_FLAGS "-fopenmp")
+set(CMAKE_C_FLAGS "-fopenmp")
 
 target_link_libraries(${libname} ${YI_BUILD_DIR}/liblocalLibraries.a)
 
