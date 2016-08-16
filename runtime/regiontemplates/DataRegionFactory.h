@@ -10,6 +10,7 @@
 
 #include "DataRegion.h"
 #include "DenseDataRegion2D.h"
+#include "DataRegion2DUnaligned.h"
 
 // OpenCV library includes: used as an auxiliar lib to read/write data(images) to fs
 //#include "cv.hpp"
@@ -29,20 +30,29 @@ class DenseDataRegion2D;
 
 class DataRegionFactory {
 private:
-	static bool readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId=-1, std::string path="", bool ssd=false);
-	static bool writeDDR2DFS(DenseDataRegion2D *dataRegion, std::string path="", bool ssd=false);
 
 	static bool readDDR2DATASPACES(DenseDataRegion2D* dataRegion);
-	static bool writeDDR2DATASPACES(DenseDataRegion2D* dataRegion);
+		static bool writeDDR2DATASPACES(DenseDataRegion2D* dataRegion);
+
+	static bool createLockFile(DataRegion* dr, std::string outputFile);
+	static int lockFileExists(DataRegion* dr, std::string path);
+	static std::string createOutputFileName(DataRegion* dr, std::string path, std::string extension);
+
+	static bool writeDr2DUn(DataRegion2DUnaligned* dr, std::string outputFile);
+	static bool readDr2DUn(DataRegion2DUnaligned* dr, std::string inputFile);
 
 	friend class CacheComponent;
 	friend class Cache;
 public:
+	static bool readDDR2DFS(DataRegion **dataRegion, int chunkId=-1, std::string path="", bool ssd=false);
+	static bool writeDDR2DFS(DataRegion *dataRegion, std::string path="", bool ssd=false);
+
+
 	DataRegionFactory();
 	virtual ~DataRegionFactory();
 
-	static bool instantiateDataRegion(DataRegion *dr, int chunkId=-1, std::string path="");
-	static bool stageDataRegion(DataRegion *dr);
+	/*static bool instantiateDataRegion(DataRegion *dr, int chunkId=-1, std::string path="");
+	static bool stageDataRegion(DataRegion *dr);*/
 };
 
 #endif /* DATAREGIONFACTORY_H_ */

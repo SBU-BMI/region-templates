@@ -12,6 +12,7 @@ FeatureExtraction::FeatureExtraction() {
 	this->setComponentName("FeatureExtraction");
 	this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::INPUT);
 	this->addInputOutputDataRegion("tile", "mask", RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("tile", "features", RTPipelineComponentBase::OUTPUT);
 }
 
 FeatureExtraction::~FeatureExtraction() {
@@ -34,8 +35,18 @@ int FeatureExtraction::run()
 			mask->print();
 			std::cout << "END MASK print" << std::endl;
 #endif
+			// Create output data region
+			DataRegion2DUnaligned *features = new DataRegion2DUnaligned();
+			features->setName("features");
+			features->setId(bgr->getId());
+			std::cout << "featuresId: "<< features->getId() << std::endl;
+			// Because this is the application output, I want it to be written in the FS. Thus,
+			// I will force the storage level 1 (defined in rtconf.xml) that must be a FS storage.
+			features->setStorageLevel(1);
+			inputRt->insertDataRegion(features);
+
 			// Create processing task
-			TaskFeatures * feaTask = new TaskFeatures(bgr, mask);
+			TaskFeatures * feaTask = new TaskFeatures(bgr, mask, features);
 
 			this->executeTask(feaTask);
 		}

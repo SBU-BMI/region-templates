@@ -223,14 +223,14 @@ bool CacheComponent::insertDR(std::string rtName, std::string rtId, DataRegion* 
 	// if FileSystem based caching, write the data to file and keep only the metadata cached.
 	if(this->getDevice() == Cache::SSD || this->getDevice() == Cache::HDD){
 //		std::cout << "InsertComponent: "<< dataRegion->getName() <<" version: "<<dataRegion->getVersion()<< " rows:"<< (dynamic_cast<DenseDataRegion2D*>(dataRegion))->getData().rows << std::endl;
-		if(DataRegionType::DENSE_REGION_2D == dataRegion->getType()){
-			DenseDataRegion2D *aux = dynamic_cast<DenseDataRegion2D*>(dataRegion);
-			DataRegionFactory::writeDDR2DFS(aux,this->getPath(),this->getDevice() == Cache::SSD);
-			 std::cout<< "Cache write comp path: "<< this->getPath()<< std::endl;
-		}else{
-			std::cout << "ERROR: Unknown data region type: "<< dataRegion->getType() << std::endl;
-			exit(1);
-		}
+//		if(DataRegionType::DENSE_REGION_2D == dataRegion->getType()){
+	//		DenseDataRegion2D *aux = dynamic_cast<DenseDataRegion2D*>(dataRegion);
+			DataRegionFactory::writeDDR2DFS(dataRegion,this->getPath(),this->getDevice() == Cache::SSD);
+//			 std::cout<< "Cache write comp path: "<< this->getPath()<< std::endl;
+//		}else{
+//			std::cout << "ERROR: Unknown data region type: "<< dataRegion->getType() << std::endl;
+//			exit(1);
+//		}
 	}
 
 	std::cout << "Inserting DR: " << dataRegion->getName() << " id: "<< dataRegion->getId() <<" "<< dataRegion->getTimestamp() << " "<<dataRegion->getVersion()<< std::endl;
@@ -255,14 +255,14 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 	case Cache::SSD:
 	case Cache::HDD:
 	{
-
-		retValue = new DenseDataRegion2D();
+		// Create generic data region to pass arguments.
+		retValue = new DataRegion();
 		retValue->setName(drName);
 		retValue->setId(drId);
 		retValue->setTimestamp(timestamp);
 		retValue->setVersion(version);
 
-		bool retDRF = DataRegionFactory::readDDR2DFS(dynamic_cast<DenseDataRegion2D*>(retValue), -1, this->getPath(), this->getDevice() == Cache::SSD);
+		bool retDRF = DataRegionFactory::readDDR2DFS(&retValue, -1, this->getPath(), this->getDevice() == Cache::SSD);
 
 		if(retDRF == false) {
 			delete retValue;

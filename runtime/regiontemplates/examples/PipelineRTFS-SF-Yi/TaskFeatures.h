@@ -5,6 +5,9 @@
 
 #include "Task.h"
 #include "DenseDataRegion2D.h"
+#include "DataRegion2DUnaligned.h"
+// for testing only
+#include "DataRegionFactory.h"
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/gpu/gpu.hpp"
@@ -17,9 +20,10 @@ class TaskFeatures: public Task {
 private:
 	DenseDataRegion2D* bgr;
 	DenseDataRegion2D* mask;
+	DataRegion2DUnaligned* features;
 
 public:
-	TaskFeatures(DenseDataRegion2D* bgr, DenseDataRegion2D* mask);
+	TaskFeatures(DenseDataRegion2D* bgr, DenseDataRegion2D* mask, DataRegion2DUnaligned* features);
 
 	virtual ~TaskFeatures();
 

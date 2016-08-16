@@ -11,6 +11,8 @@ DataRegion::DataRegion() {
 	this->inputType = DataSourceType::FILE_SYSTEM;
 	this->outputType = DataSourceType::FILE_SYSTEM;
 
+	this->storageLevel = -1;
+
 	this->outputExtension = DataRegion::PBM;
 
 	this->cacheLevel = -1;
@@ -444,6 +446,7 @@ void DataRegion::print() {
 	std::cout << "\tinputFileName: " << this->getInputFileName() << std::endl;
 	std::cout << "\tTimestamp: "<< this->getTimestamp() << std::endl;
 	std::cout << "\tVersion: "<< this->getVersion() << std::endl;
+	std::cout << "\tDRType: "<< this->getType() << std::endl;
 	std::cout << "\tisAppInput?:" << this->getIsAppInput() << std::endl;
 	std::cout << "\tInType: " << this->getInputType() << std::endl;
 	std::cout << "\tOutType: " << this->getOutputType() << std::endl;
@@ -557,3 +560,10 @@ void DataRegion::setIsAppInput(bool isAppInput) {
 	this->isAppInput = isAppInput;
 }
 
+int DataRegion::getStorageLevel() const {
+	return storageLevel;
+}
+
+void DataRegion::setStorageLevel(int storageLevel) {
+	this->storageLevel = storageLevel;
+}
