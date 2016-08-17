@@ -953,28 +953,32 @@ ReusableTask* find_task(list<ReusableTask*> l, string name) {
 }
 
 void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<string, list<ArgumentBase*>> ref) {
-	for (map<std::string, std::list<ArgumentBase*>>::iterator p=ref.begin(); p!=ref.end(); p++) {
+	list<ReusableTask*> non_reusable_tasks;
+	for (map<std::string, std::list<ArgumentBase*>>::reverse_iterator p=ref.rbegin(); p!=ref.rend(); p++) {
 		// verify if this is the first reusable task
 		ReusableTask* t_s = find_task(s->tasks, p->first);
 		ReusableTask* t_cur = find_task(current->tasks, p->first);
 		if (t_cur->reusable(t_s)) {
 			cout << "[merged_stages] found reusable task " << p->first << endl;
+			list<ReusableTask*>::iterator t = non_reusable_tasks.begin();
 			
 			// update interstage args of frontier task
-			t_s = find_task(s->tasks, (++p)->first);
-			t_cur = find_task(current->tasks, p->first);
+			t_s = find_task(s->tasks, (*t)->getTaskName());
+			t_cur = find_task(current->tasks, (*t)->getTaskName());
+			t_s->parentTask = t_cur->parentTask;
+			t++;
 			
-			current->tasks.emplace_back(t_s);
-			p++;
+			current->tasks.emplace_front(t_s);
 			
 			// add all remaining tasks
-			for (; p!=ref.end(); p++) {
-				cout << "[merged_stages] reused task " << p->first << endl;
-				t_s = find_task(s->tasks, p->first);
-				current->tasks.emplace_back(t_s);
+			for (;t!=non_reusable_tasks.end(); t++) {
+				cout << "[merged_stages] non reused task added " << (*t)->getId() << endl;
+				t_s = find_task(s->tasks, (*t)->getTaskName());
+				current->tasks.emplace_front(t_s);
 			}
 			return;
-		}
+		} else
+			non_reusable_tasks.emplace_back(t_s);
 	}
 }
 
