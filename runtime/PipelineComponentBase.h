@@ -170,6 +170,8 @@ public:
 
 	std::list<ReusableTask*> tasks;
 
+	PipelineComponentBase* reused;
+
 	void printTasks();
 
 	// Factory class is used to build "reflection", and instantiate objects of

@@ -20,6 +20,8 @@ PipelineComponentBase::PipelineComponentBase(){
 	this->setLocation(PipelineComponentBase::MANAGER_SIDE);
 	this->resultDataSize = 0;
 	this->resultData = NULL;
+
+	this->reused = NULL;
 	// this->input_arguments = new std::list<int>();
 	// this->output_arguments = new std::list<int>();
 }

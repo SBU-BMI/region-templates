@@ -220,7 +220,8 @@ int main(int argc, char* argv[]) {
 
 	cout << endl<< "merged-fine: " << endl;
 	for (pair<int, PipelineComponentBase*> p : merged_stages) {
-		cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
+		string s = p.second->reused!=NULL?" - reused":"";
+		cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
 		cout << "\ttasks: " << endl;
 		for (ReusableTask* t : p.second->tasks) {
 			cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
@@ -246,17 +247,20 @@ int main(int argc, char* argv[]) {
 	// add all stages to manager
 	cout << endl << "executeComponent" << endl;
 	for (pair<int, PipelineComponentBase*> s : merged_stages) {
-		cout << "sent component " << s.second->getId() << ":" 
-			<< s.second->getName() << " to execute with args:" << endl;
-		cout << "\tinputs: " << endl;
-		for (int i : s.second->getInputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
-				<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
-		cout << "\toutputs: " << endl;
-		for (int i : s.second->getOutputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
-				<< expanded_args[i]->toString() << endl;
-		sysEnv.executeComponent(s.second);
+		if (s.second->reused == NULL) {
+			cout << "sent component " << s.second->getId() << ":" 
+				<< s.second->getName() << " to execute with args:" << endl;
+			cout << "\tinputs: " << endl;
+			for (int i : s.second->getInputs())
+				cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+					<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
+			cout << "\toutputs: " << endl;
+			for (int i : s.second->getOutputs())
+				cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+					<< expanded_args[i]->toString() << endl;
+			((Task*)s.second)->setId(s.second->getId());
+			sysEnv.executeComponent(s.second);
+		}
 	}
 
 	// execute workflows
@@ -788,7 +792,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 						ArgumentBase* ab_cpy = args.at(out_id)->clone();
 						ab_cpy->setName(args.at(out_id)->getName());
 						ab_cpy->setId(new_id);
-						ab_cpy->setParent(((Task*)pt)->getId());
+						ab_cpy->setParent(pt->getId());
 						pt->replaceOutput(out_id, new_id);
 						temp.emplace_back(ab_cpy);
 					}
@@ -953,6 +957,7 @@ ReusableTask* find_task(list<ReusableTask*> l, string name) {
 }
 
 void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<string, list<ArgumentBase*>> ref) {
+	s->reused = current;
 	list<ReusableTask*> non_reusable_tasks;
 	for (map<std::string, std::list<ArgumentBase*>>::reverse_iterator p=ref.rbegin(); p!=ref.rend(); p++) {
 		// verify if this is the first reusable task
@@ -1015,10 +1020,10 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 				if (merging_condition(s, current, ref.second->tasksDesc)) {
 					cout << "[merge_stages_fine_grain] reused task" << endl;
 					merge_stages(current, s, ref.second->tasksDesc);
-					i = current_stages.erase(i);
-				} else {
-					i++;
+					// i = current_stages.erase(i);
+				// } else {
 				}
+				i++;
 			}
 
 			// add merged stages to final map as one stage
@@ -1072,9 +1077,15 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 					rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::INPUT);
 			}
 			if (merged_arguments[arg_id]->getParent() != 0) {
-				cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName() 
-					<< " ->addDependency( " << merged_arguments[arg_id]->getParent() << " )" << endl;
-				((RTPipelineComponentBase*)stage.second)->addDependency(merged_arguments[arg_id]->getParent());
+				// verify if the dependency stage was reused
+				int parent = merged_arguments[arg_id]->getParent();
+				cout << "[before]Dependency: " << stage.second->getId() << ":" << stage.second->getName()
+					<< " ->addDependency( " << parent << " )" << endl;
+				if (merged_stages[merged_arguments[arg_id]->getParent()]->reused != NULL)
+					parent = merged_stages[merged_arguments[arg_id]->getParent()]->reused->getId();
+				cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName()
+					<< " ->addDependency( " << parent << " )" << endl;
+				((RTPipelineComponentBase*)stage.second)->addDependency(parent);
 			}
 		}
 
