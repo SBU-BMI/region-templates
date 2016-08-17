@@ -22,13 +22,18 @@ typedef ReusableTask* (task_factory_t1)(list<ArgumentBase*> args, RegionTemplate
 typedef ReusableTask* (task_factory_t2)();
 
 class ReusableTask: public Task {
-
 public:
-	ReusableTask() {};
+	// list of tasks' ids that are dependent on this task
+	int parentTask;
+
+	ReusableTask() {parentTask = -1;};
 	virtual ~ReusableTask() {};
 
 	virtual bool reusable(ReusableTask* t) = 0;
 	virtual void updateDR(RegionTemplate* rt) = 0;
+	// sets the interstage arguments with the pointers of the task t
+	virtual void updateInterStageArgs(ReusableTask* t) = 0;
+	virtual void resolveDependencies(ReusableTask* t) = 0;
 
 	// Write component data to a buffer
 	virtual int serialize(char *buff) = 0;

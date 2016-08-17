@@ -40,8 +40,9 @@ public:
 	int run();
 };
 
-// Task header
-class TaskSegmentation: public ReusableTask {
+// Task1Segmentation header
+class Task1Segmentation: public ReusableTask {
+friend class Task2Segmentation;
 private:
 
 	// all other variables
@@ -54,29 +55,103 @@ private:
 	int minSize;
 	int maxSize;
 	unsigned char G2;
-	int minSizePl;
-	int minSizeSeg;
-	int maxSizeSeg;
 	int fillHolesConnectivity;
 	int reconConnectivity;
-	int watershedConnectivity;
-
+	
+	// intertask arguments
+	cv::Mat *seg_open;
 
 public:
 
 	// data regions
 	DenseDataRegion2D* normalized_rt_temp;
-	DenseDataRegion2D* segmented_rt_temp;
 
-	TaskSegmentation() {};
-	TaskSegmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
+	Task1Segmentation() {};
+	Task1Segmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
-	virtual ~TaskSegmentation();
+	virtual ~Task1Segmentation();
 
 	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
 
 	bool reusable(ReusableTask* t);
 	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
+
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
+
+	void print();
+};
+
+// Task2Segmentation header
+class Task2Segmentation: public ReusableTask {
+friend class Task3Segmentation;
+private:
+
+	// all other variables
+	int minSizePl;
+	int watershedConnectivity;
+
+	// intertask arguments
+	cv::Mat **seg_open;
+	cv::Mat *seg_nonoverlap;
+
+public:
+
+	// data regions
+	DenseDataRegion2D* normalized_rt_temp;
+
+	Task2Segmentation() {};
+	Task2Segmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
+
+	virtual ~Task2Segmentation();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
+
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
+
+	void print();
+};
+
+// Task3Segmentation header
+class Task3Segmentation: public ReusableTask {
+private:
+
+	// all other variables
+	int minSizeSeg;
+	int maxSizeSeg;
+	int fillHolesConnectivity;
+
+	// intertask arguments
+	cv::Mat **seg_nonoverlap;
+
+public:
+
+	// data regions
+	DenseDataRegion2D* segmented_rt_temp;
+
+	Task3Segmentation() {};
+	Task3Segmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
+
+	virtual ~Task3Segmentation();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
 
 	int serialize(char *buff);
 	int deserialize(char *buff);

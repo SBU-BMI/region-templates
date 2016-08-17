@@ -224,7 +224,7 @@ int main(int argc, char* argv[]) {
 		cout << "\ttasks: " << endl;
 		for (ReusableTask* t : p.second->tasks) {
 			cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
-			// t.second->print();
+			t->print();
 		}
 	}
 
@@ -916,11 +916,13 @@ list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc,
 	PipelineComponentBase* p, RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
 
 	list<ReusableTask*> tasks;
+	ReusableTask* prev_task = NULL;
 
-	for (pair<string, list<ArgumentBase*>> t : tasks_desc) {
+	// traverse the map on reverse order to set dependencies
+	for (map<string, list<ArgumentBase*>>::reverse_iterator t=tasks_desc.rbegin(); t!=tasks_desc.rend(); t++) {
 		// get task args
 		list<ArgumentBase*> args;
-		for (ArgumentBase* a : t.second) {
+		for (ArgumentBase* a : t->second) {
 			ArgumentBase* aa = find_argument(p, a->getName(), expanded_args);
 			if (aa != NULL)
 				args.emplace_back(aa);
@@ -928,11 +930,16 @@ list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc,
 
 		// call constructor
 		int uid = new_uid();
-		ReusableTask* n_task = ReusableTask::ReusableTaskFactory::getTaskFromName(t.first, args, rt);
+		ReusableTask* n_task = ReusableTask::ReusableTaskFactory::getTaskFromName(t->first, args, rt);
 		n_task->setId(uid);
-		n_task->setTaskName(t.first);
+		n_task->setTaskName(t->first);
+		// set prevoius task dependency if this isn't the first task generated
+		if (t != tasks_desc.rbegin()) {
+			prev_task->parentTask = n_task->getId();
+		}
+		prev_task = n_task;
 		tasks.emplace_back(n_task);
-		cout << "[task_generator] new task " << uid << ":" << t.first << " with size " << n_task->size() << endl;
+		cout << "[task_generator] new task " << uid << ":" << t->first << " with size " << n_task->size() << endl;
 	}
 
 	return tasks;
@@ -948,13 +955,23 @@ ReusableTask* find_task(list<ReusableTask*> l, string name) {
 void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<string, list<ArgumentBase*>> ref) {
 	for (map<std::string, std::list<ArgumentBase*>>::iterator p=ref.begin(); p!=ref.end(); p++) {
 		// verify if this is the first reusable task
-		ReusableTask* t = find_task(s->tasks, p->first);
-		if (find_task(current->tasks, p->first)->reusable(t)) {
+		ReusableTask* t_s = find_task(s->tasks, p->first);
+		ReusableTask* t_cur = find_task(current->tasks, p->first);
+		if (t_cur->reusable(t_s)) {
 			cout << "[merged_stages] found reusable task " << p->first << endl;
+			
+			// update interstage args of frontier task
+			t_s = find_task(s->tasks, (++p)->first);
+			t_cur = find_task(current->tasks, p->first);
+			
+			current->tasks.emplace_back(t_s);
+			p++;
+			
 			// add all remaining tasks
 			for (; p!=ref.end(); p++) {
 				cout << "[merged_stages] reused task " << p->first << endl;
-				current->tasks.emplace_back(t);
+				t_s = find_task(s->tasks, p->first);
+				current->tasks.emplace_back(t_s);
 			}
 			return;
 		}
