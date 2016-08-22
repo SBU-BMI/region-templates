@@ -225,6 +225,7 @@ int main(int argc, char* argv[]) {
 		cout << "\ttasks: " << endl;
 		for (ReusableTask* t : p.second->tasks) {
 			cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
+			cout << "\t\t\tparent_task: " << t->parentTask << endl;
 			t->print();
 		}
 	}
@@ -943,7 +944,7 @@ list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc,
 		}
 		prev_task = n_task;
 		tasks.emplace_back(n_task);
-		cout << "[task_generator] new task " << uid << ":" << t->first << " with size " << n_task->size() << endl;
+		// cout << "[task_generator] new task " << uid << ":" << t->first << " with size " << n_task->size() << endl;
 	}
 
 	return tasks;
@@ -956,34 +957,48 @@ ReusableTask* find_task(list<ReusableTask*> l, string name) {
 	return NULL;
 }
 
+list<ReusableTask*> find_tasks(list<ReusableTask*> l, string name) {
+	list<ReusableTask*> tasks;
+	for (ReusableTask* t : l)
+		if (t->getTaskName().compare(name) == 0)
+			tasks.emplace_back(t);
+	return tasks;
+}
+
 void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<string, list<ArgumentBase*>> ref) {
+	
 	s->reused = current;
-	list<ReusableTask*> non_reusable_tasks;
-	for (map<std::string, std::list<ArgumentBase*>>::reverse_iterator p=ref.rbegin(); p!=ref.rend(); p++) {
+
+	ReusableTask* current_frontier_reusable_tasks;
+	map<std::string, std::list<ArgumentBase*>>::iterator p=ref.begin();
+	for (; p!=ref.end(); p++) {
 		// verify if this is the first reusable task
 		ReusableTask* t_s = find_task(s->tasks, p->first);
-		ReusableTask* t_cur = find_task(current->tasks, p->first);
-		if (t_cur->reusable(t_s)) {
-			cout << "[merged_stages] found reusable task " << p->first << endl;
-			list<ReusableTask*>::iterator t = non_reusable_tasks.begin();
-			
-			// update interstage args of frontier task
-			t_s = find_task(s->tasks, (*t)->getTaskName());
-			t_cur = find_task(current->tasks, (*t)->getTaskName());
-			t_s->parentTask = t_cur->parentTask;
-			t++;
-			
-			current->tasks.emplace_front(t_s);
-			
-			// add all remaining tasks
-			for (;t!=non_reusable_tasks.end(); t++) {
-				cout << "[merged_stages] non reused task added " << (*t)->getId() << endl;
-				t_s = find_task(s->tasks, (*t)->getTaskName());
-				current->tasks.emplace_front(t_s);
+		list<ReusableTask*> t_cur = find_tasks(current->tasks, p->first);
+
+		// check all of the same tasks of current
+		bool reusable = false;
+		for (ReusableTask* t : t_cur) {
+			if (t->reusable(t_s)) {
+				reusable = true;
+				current_frontier_reusable_tasks = t;
+				break;
 			}
-			return;
-		} else
-			non_reusable_tasks.emplace_back(t_s);
+		}
+		if (!reusable) {
+			break;
+		}
+	}
+
+	// updates the first non-reusable task dependency
+	ReusableTask* frontier = find_task(s->tasks, p->first);
+	frontier->parentTask = current_frontier_reusable_tasks->getId();
+	current->tasks.emplace_front(frontier);
+	p++;
+
+	// adds the remaining non-reusable tasks to current
+	for (; p!=ref.end(); p++) {
+		current->tasks.emplace_front(find_task(s->tasks, p->first));
 	}
 }
 
@@ -992,10 +1007,10 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
 
 	// attempt merging for each stage type
-	for (pair<int, PipelineComponentBase*> ref : stages_ref) {
+	for (map<int, PipelineComponentBase*>::const_iterator ref=stages_ref.cbegin(); ref!=stages_ref.cend(); ref++) {
 		// get only the stages from the current stage_ref
 		list<PipelineComponentBase*> current_stages;
-		filter_stages(all_stages, ref.second->getName(), current_stages);
+		filter_stages(all_stages, ref->second->getName(), current_stages);
 
 		// attempt to merge all current stages
 		while (!current_stages.empty()) {
@@ -1003,27 +1018,29 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			PipelineComponentBase* current = current_stages.front();
 			current_stages.pop_front();
 
-			// start by generating all tasks
-			if (current->tasks.size() == 0)
-				current->tasks = task_generator(ref.second->tasksDesc, current, rt, expanded_args);
+			// move forward if this stage was merged with another one
+			if (current->reused == NULL) {				
 
-			// attempt to merge all stages to the current merged stages
-			list<PipelineComponentBase*>::iterator i = current_stages.begin();
-			while (i != current_stages.end()) {
-				// add stage to merged stages if the merging condition is true
-				PipelineComponentBase* s = *i;
+				// start by generating all tasks
+				if (current->tasks.size() == 0)
+					current->tasks = task_generator(ref->second->tasksDesc, current, rt, expanded_args);
 
-				// generate tasks if it they weren't generated yet
-				if (s->tasks.size() == 0)
-					s->tasks = task_generator(ref.second->tasksDesc, s, rt, expanded_args);
+				// attempt to merge all stages to the current merged stages
+				list<PipelineComponentBase*>::iterator i = current_stages.begin();
+				while (i != current_stages.end()) {
+					// add stage to merged stages if the merging condition is true
+					PipelineComponentBase* s = *i;
 
-				if (merging_condition(s, current, ref.second->tasksDesc)) {
-					cout << "[merge_stages_fine_grain] reused task" << endl;
-					merge_stages(current, s, ref.second->tasksDesc);
-					// i = current_stages.erase(i);
-				// } else {
+					// generate tasks if it they weren't generated yet
+					if (s->tasks.size() == 0)
+						s->tasks = task_generator(ref->second->tasksDesc, s, rt, expanded_args);
+
+					if (merging_condition(s, current, ref->second->tasksDesc)) {
+						cout << "[merge_stages_fine_grain] mearging " << current->getId() << " with " << s->getId() << endl;
+						merge_stages(current, s, ref->second->tasksDesc);
+					}
+					i++;
 				}
-				i++;
 			}
 
 			// add merged stages to final map as one stage

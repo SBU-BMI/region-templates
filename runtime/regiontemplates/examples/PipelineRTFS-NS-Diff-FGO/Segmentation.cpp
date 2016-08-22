@@ -247,8 +247,8 @@ void Task1Segmentation::resolveDependencies(ReusableTask* t) {}
 bool Task1Segmentation::reusable(ReusableTask* rt) {
 	Task1Segmentation* t = (Task1Segmentation*)(rt);
 	if (this->normalized_rt_temp->getName() == t->normalized_rt_temp->getName() &&
-		this->normalized_rt_temp->getId() == t->normalized_rt_temp->getId() &&
-		this->normalized_rt_temp->getVersion() == t->normalized_rt_temp->getVersion() &&
+		// this->normalized_rt_temp->getId() == t->normalized_rt_temp->getId() &&
+		// this->normalized_rt_temp->getVersion() == t->normalized_rt_temp->getVersion() &&
 		this->blue == t->blue &&
 		this->green == t->green &&
 		this->red == t->red &&
