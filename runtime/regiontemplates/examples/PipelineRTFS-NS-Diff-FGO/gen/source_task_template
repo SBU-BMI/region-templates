@@ -16,14 +16,15 @@ $INPUT_DR_DELETE$
 bool Task$NAME$::run(int procType, int tid) {
 $INPUT_MAT_DR$
 $OUTPUT_MAT_DR$
+$INTERTASK_MAT$
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "Task$NAME$ executing." << std::endl;	
 
-	$CMD$;
+	$CMD$
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
-
+$INTERTASK_RETURN$
 $OUTPUT_DR_RETURN$
 	std::cout << "Task $NAME$ time elapsed: "<< t2-t1 << std::endl;
 }
@@ -115,15 +116,16 @@ $TASK_PRINT$
 }
 
 // Create the task factory
-ReusableTask* $NAME$FactorySegmentation1(list<ArgumentBase*> args, RegionTemplate* inputRt) {
+ReusableTask* $NAME$Factory1(list<ArgumentBase*> args, RegionTemplate* inputRt) {
 	return new Task$NAME$(args, inputRt);
 }
 
 // Create the task factory
-ReusableTask* $NAME$FactorySegmentation2() {
+ReusableTask* $NAME$Factory2() {
 	return new Task$NAME$();
 }
 
 // register factory with the runtime system
-bool registeredSegmentationTask2 = ReusableTask::ReusableTaskFactory::taskRegister("Task$NAME$", 
-	&$NAME$FactorySegmentation1, &$NAME$FactorySegmentation2);
+bool registeredTask$NAME$2 = ReusableTask::ReusableTaskFactory::taskRegister("Task$NAME$", 
+	&$NAME$Factory1, &$NAME$Factory2);
+

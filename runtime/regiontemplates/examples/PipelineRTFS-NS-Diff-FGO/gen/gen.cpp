@@ -9,9 +9,10 @@ using namespace std;
 
 string generate_header(Json::Value data);
 string generate_source(Json::Value data);
-string generate_tasks(Json::Value data, string &exec_task);
+string generate_tasks(Json::Value data, string &desc_decl, string &desc_def);
 string getTypeCast(string type);
 string getArgumentTypeCast(string type);
+string getMatDRType(string type);
 void replace_multiple_string(string& str, string to_find, string to_replace);
 string uppercase(string s);
 
@@ -57,10 +58,10 @@ int main(int argc, char** argv) {
 
 	string name = data["name"].asString();
 
-	string header = generate_header(data);
-	std::ofstream header_file(string(name + ".hpp"));
-	header_file << header;
-	header_file.close();
+	// string header = generate_header(data);
+	// std::ofstream header_file(string(name + ".hpp"));
+	// header_file << header;
+	// header_file.close();
 
 	string source = generate_source(data);
 	std::ofstream source_file(string(name + ".cpp"));
@@ -139,121 +140,24 @@ string generate_header(Json::Value data) {
 string generate_source(Json::Value data) {
 	// get name
 	string name = data["name"].asString();
+	string stage_desc_decl;
+	string stage_desc_def;
+	string stage_input_dr;
+	string stage_output_dr;
 
-	string dataRegionOutputCreate;	// $OUTPUT_DR_CREATE$
-	string dataRegionInputCreate;	// $INPUT_DR_CREATE$
-	string dataRegionOutputCast;	// $OUTPUT_CAST_DR$
-	string dataRegionInputCast;		// $INPUT_CAST_DR$
-	string dataRegionOutputDecl;	// $OUTPUT_DECL_DR$
-	string dataRegionInputDecl;		// $INPUT_DECL_DR$
-	string commonArgsDec;			// $PCB_ARGS$
-	string commonArgsLoop = 		// $PCB_ARGS$
-		"\tint set_cout = 0;\n\tfor(int i=0; i<this->getArgumentsSize(); i++){\n";
-	string pcb_task_params;			// $PCB_TASK_PARAMS$
-	string task_args;				// $TASK_ARGS$
-	string exec_task;
-
-	// generate DataRegion strings
-	for (int i=0; i<data["args"].size(); i++) {
-		if (data["args"][i]["type"].asString().compare("dr") == 0) {
-			string dr_name = data["args"][i]["name"].asString();
-
-			// Generate input strings
-			if (data["args"][i]["io"].asString().compare("input") == 0) {
-				// generate input dr name declaration - $PCB_ARGS$
-				commonArgsDec += "\tArgumentRT* " + dr_name + "_arg;\n";
-
-				// generate input dr name conditional assignment - $PCB_ARGS$
-				commonArgsLoop += "\t\tif (this->getArgument(i)->getName().compare(\"" +
-					dr_name + "\") == 0) {\n\t\t\t" + dr_name + "_arg = (ArgumentRT*)" + 
-					"this->getArgument(i);\n\t\t\tset_cout++;\n\t\t}\n\n";
-
-				// generate DataRegion IOs - $INPUT_DR_CREATE$
-				dataRegionInputCreate += "\tthis->addInputOutputDataRegion(\"tile\", " +
-					dr_name + "_arg->getName(), RTPipelineComponentBase::INPUT);\n";
-
-				// generate DataRegion input declaration - $INPUT_DECL_DR$
-				dataRegionInputDecl += "\t\tDenseDataRegion2D *" + 
-					dr_name + " = NULL;\n";
-
-				// generate DataRegion input cast - $INPUT_CAST_DR$
-				dataRegionInputCast += "\t\t\t" + dr_name + 
-					" = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(" +
-					dr_name + "_arg->getName(), " +
-					"std::to_string(" + dr_name + "_arg->getId()), 0, " + dr_name + 
-					"_arg->getId()));\n";
-
-			} 
-			// generate output string
-			else if (data["args"][i]["io"].asString().compare("output") == 0) {
-				// generate input dr name declaration - $PCB_ARGS$
-				commonArgsDec += "\tArgumentRT* " + dr_name + "_arg;\n";
-
-				// generate input dr name conditional assignment - $PCB_ARGS$
-				commonArgsLoop += "\t\tif (this->getArgument(i)->getName().compare(\"" +
-					dr_name + "\") == 0) {\n\t\t\t" + dr_name + "_arg = (ArgumentRT*)" + 
-					"this->getArgument(i);\n\t\t\tset_cout++;\n\t\t}\n\n";
-
-				// generate DataRegion IOs - $OUTPUT_DR_CREATE$
-				dataRegionOutputCreate += "\tthis->addInputOutputDataRegion(\"tile\", " +
-					dr_name + "_arg->getName(), RTPipelineComponentBase::OUTPUT);\n";
-
-				// generate DataRegion output declaration - $OUTPUT_DECL_DR$
-				dataRegionOutputDecl += "\t\tDenseDataRegion2D *" + 
-					dr_name + " = NULL;\n";
-
-				// generate DataRegion output cast - $OUTPUT_CAST_DR$
-				dataRegionOutputCast += "\t\t\t" + dr_name + 
-					" = new DenseDataRegion2D();\n\t\t\t" + dr_name + "->setName(" + 
-					dr_name + "_arg->getName());\n\t\t\t" + dr_name + "->setId(std::to_string(" + 
-					dr_name + "_arg->getId()));\n\t\t\t" + dr_name + "->setVersion(" + 
-					dr_name + "_arg->getId());\n\t\t\tinputRt->insertDataRegion(" + 
-					dr_name + ");\n";
-
-			} else {
-				cout << "Malformed descriptor." << endl;
-				exit(-1);
-			}
-
-			// generate DR args $PCB_TASK_PARAMS$
-			pcb_task_params += dr_name + ", ";
-
-			// generate DR args $TASK_ARGS$
-			task_args += "\tthis->" + dr_name + "_temp = " + dr_name + "_temp;\n";
+	// generate DataRegion io strings
+	for (int i=0; i<data["dr_args"].size(); i++) {
+		if (data["dr_args"][i]["io"].asString().compare("input") == 0) {
+			stage_input_dr += "\tthis->addInputOutputDataRegion(\"tile\", \"" + 
+				data["dr_args"][i]["name"].asString() + "\", RTPipelineComponentBase::INPUT);\n";
+		} else {
+			stage_output_dr += "\tthis->addInputOutputDataRegion(\"tile\", \"" + 
+				data["dr_args"][i]["name"].asString() + "\", RTPipelineComponentBase::OUTPUT);\n";
 		}
 	}
-
-	// generate all common args string
-	for (int i=0; i<data["args"].size(); i++) {
-		if (data["args"][i]["type"].asString().compare("dr") != 0) {
-			string arg_name = data["args"][i]["name"].asString();
-			string arg_type = data["args"][i]["type"].asString();
-			
-			// generate arg declaration - $PCB_ARGS$
-			commonArgsDec += "\t" + getTypeCast(arg_type) + " " + arg_name + ";\n";
-
-			// generate arg conditional assignment - $PCB_ARGS$
-			commonArgsLoop += "\t\tif (this->getArgument(i)->getName().compare(\"" +
-				arg_name + "\") == 0) {\n\t\t\t" + arg_name + " = (" + getTypeCast(arg_type) + 
-				")(" + getArgumentTypeCast(arg_type) + "this->getArgument(i))->getArgValue();\n" + 
-				"\t\t\tset_cout++;\n\t\t}\n\n";
-
-			// generate common args $PCB_TASK_PARAMS$
-			pcb_task_params += arg_name + ", ";
-		}
-	}
-
-	// finish generating $PCB_ARGS$
-	string commonArgs = commonArgsDec + "\n" + commonArgsLoop + "\t}\n\n" + 
-		"\tif (set_cout < this->getArgumentsSize())\n\t\tstd::cout " + 
-		"<< __FILE__ << \":\" << __LINE__ <<\" Missing common arguments on " + 
-		name + "\" << std::endl;";
-
-	// remove final comma from pcb_task_params
-	pcb_task_params.erase(pcb_task_params.length()-2, 2);
 
 	// generate the tasks
-	string tasks = generate_tasks(data, exec_task);
+	string tasks = generate_tasks(data, stage_desc_decl, stage_desc_def);
 
 	/********************************************************/
 	/***************** Generate File String *****************/
@@ -273,32 +177,17 @@ string generate_source(Json::Value data) {
 	// $NAME$
 	replace_multiple_string(source, "$NAME$", name);
 
-	// $OUTPUT_DR_CREATE$
-	replace_multiple_string(source, "$OUTPUT_DR_CREATE$", dataRegionOutputCreate);
+	// $STAGE_DESC_DECL$
+	replace_multiple_string(source, "$STAGE_DESC_DECL$", stage_desc_decl);
 
-	// $INPUT_DR_CREATE$
-	replace_multiple_string(source, "$INPUT_DR_CREATE$", dataRegionInputCreate);
+	// $STAGE_DESC_DEF$
+	replace_multiple_string(source, "$STAGE_DESC_DEF$", stage_desc_def);
 
-	// $PCB_ARGS$
-	replace_multiple_string(source, "$PCB_ARGS$", commonArgs);
+	// $STAGE_INPUT_DR$
+	replace_multiple_string(source, "$STAGE_INPUT_DR$", stage_input_dr);
 
-	// $OUTPUT_CAST_DR$
-	replace_multiple_string(source, "$OUTPUT_CAST_DR$", dataRegionOutputCast);
-
-	// $INPUT_CAST_DR$
-	replace_multiple_string(source, "$INPUT_CAST_DR$", dataRegionInputCast);
-
-	// $OUTPUT_DECL_DR$
-	replace_multiple_string(source, "$OUTPUT_DECL_DR$", dataRegionOutputDecl);
-
-	// $INPUT_DECL_DR$
-	replace_multiple_string(source, "$INPUT_DECL_DR$", dataRegionInputDecl);
-
-	// $PCB_TASK_PARAMS$
-	replace_multiple_string(source, "$PCB_TASK_PARAMS$", pcb_task_params);
-
-	// $EXEC_TASK$
-	replace_multiple_string(source, "$EXEC_TASK$", exec_task);
+	// $STAGE_OUTPUT_DR$
+	replace_multiple_string(source, "$STAGE_OUTPUT_DR$", stage_output_dr);	
 
 	// $TASKS$
 	replace_multiple_string(source, "$TASKS$", tasks);
@@ -306,19 +195,23 @@ string generate_source(Json::Value data) {
 	return source;
 }
 
-string generate_tasks(Json::Value data, string &exec_task) {
+string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 
 	string final_source;
+	map<string, bool> fisrt_forward;
 
 	// go through all tasks
 	for (int i=0; i<data["tasks"].size(); i++) {
 		string name = data["name"].asString() + to_string(i);
+		string name_prev = data["name"].asString() + to_string(i-1);
 		string type_check = "";
 		string task_args;
 		string input_dr_delete;
 		string input_mat_dr;
 		string output_mat_dr;
+		string intertask_mat;
 		string cmd = data["tasks"][i]["call"].asString() + "(";
+		string intertask_return;
 		string call_args;
 		string output_dr_return;
 		string update_mat_dr;
@@ -336,9 +229,17 @@ string generate_tasks(Json::Value data, string &exec_task) {
 				"] \" << __FILE__ << \":\" << __LINE__ <<\" incompatible tasks.\" << std::endl;\n\t}\n";
 		}
 
+		desc_decl += "\tlist<ArgumentBase*> task_" + name + "_args;\n";
+
 		// go through all args
 		for (int j=0; j<data["tasks"][i]["args"].size(); j++) {
-			call_args += data["tasks"][i]["args"][j]["name"].asString() + ", ";
+			desc_def += "\t" + getArgumentTypeCast(data["tasks"][i]["args"][j]["type"].asString()) + "* " + 
+				data["tasks"][i]["args"][j]["name"].asString() + to_string(i) + " = new " + 
+				getArgumentTypeCast(data["tasks"][i]["args"][j]["type"].asString()) + "();\n\t" + 
+				data["tasks"][i]["args"][j]["name"].asString() + to_string(i) + "->setName(\"" + 
+				data["tasks"][i]["args"][j]["name"].asString() + "\");\n\ttask_" + 
+				name + "_args.emplace_back(" + 
+				data["tasks"][i]["args"][j]["name"].asString() + to_string(i) + ");\n";
 
 			if (data["tasks"][i]["args"][j]["type"].asString().compare("dr") == 0) {
 				task_args += "\t\tif (a->getName().compare(\"" + 
@@ -404,10 +305,13 @@ string generate_tasks(Json::Value data, string &exec_task) {
 					data["tasks"][i]["args"][j]["name"].asString() + "_name);\n\n";
 
 				if (data["tasks"][i]["args"][j]["io"].asString().compare("input") == 0) {
+					call_args += data["tasks"][i]["args"][j]["name"].asString() + ", ";
+
 					input_dr_delete += "\tif(" + data["tasks"][i]["args"][j]["name"].asString() + "_temp != NULL) delete " + 
 						data["tasks"][i]["args"][j]["name"].asString() + "_temp;\n";
 
-					input_mat_dr += "\tcv::Mat " + data["tasks"][i]["args"][j]["name"].asString() + ";\n";
+					input_mat_dr += "\tcv::Mat " + data["tasks"][i]["args"][j]["name"].asString() + " = this->" + 
+						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getData();\n";
 
 					update_mat_dr += "\t" + data["tasks"][i]["args"][j]["name"].asString() + 
 						"_temp = dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(this->" + 
@@ -415,22 +319,25 @@ string generate_tasks(Json::Value data, string &exec_task) {
 						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getId(), 0, stoi(this->" + 
 						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getId())));\n";
 				} else {
-					output_mat_dr += "\tcv::Mat " + data["tasks"][i]["args"][j]["name"].asString() + " = this->" + 
-						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getData();\n";
+					call_args += "&" + data["tasks"][i]["args"][j]["name"].asString() + ", ";
 
-					output_dr_return += "\t" + data["tasks"][i]["args"][j]["name"].asString() + 
-						" = new cv::Mat(" + data["tasks"][i]["args"][j]["name"].asString() + "_temp);\n";
+					output_mat_dr += "\tcv::Mat " + data["tasks"][i]["args"][j]["name"].asString() + ";\n";
+
+					output_dr_return += "\tthis->" + data["tasks"][i]["args"][j]["name"].asString() + 
+						"_temp->setData(" + data["tasks"][i]["args"][j]["name"].asString() + ");\n";
 
 					update_mat_dr += "rt->insertDataRegion(this->" + 
 						data["tasks"][i]["args"][j]["name"].asString() + "_temp);\n";
 				}
 			} else {
+				call_args += data["tasks"][i]["args"][j]["name"].asString() + ", ";
+
 				task_args += "\t\tif (a->getName().compare(\"" + 
 					data["tasks"][i]["args"][j]["name"].asString() + "\") == 0) {\n\t\t\tthis->" + 
 					data["tasks"][i]["args"][j]["name"].asString() + " = (" + 
-					getTypeCast(data["tasks"][i]["args"][j]["type"].asString()) + ")(" + 
+					getTypeCast(data["tasks"][i]["args"][j]["type"].asString()) + ")((" + 
 					getArgumentTypeCast(data["tasks"][i]["args"][j]["type"].asString()) + 
-					"a)->getArgValue();\n\t\t\tset_cout++;\n\t\t}\n\n";
+					"*)a)->getArgValue();\n\t\t\tset_cout++;\n\t\t}\n\n";
 
 				reusable_cond += "\t\tthis->" + data["tasks"][i]["args"][j]["name"].asString() + " == t->" + 
 					data["tasks"][i]["args"][j]["name"].asString() + " &&\n";
@@ -450,21 +357,51 @@ string generate_tasks(Json::Value data, string &exec_task) {
 					"*)(buff+deserialized_bytes))[0];\n\tdeserialized_bytes += sizeof(" + 
 					getTypeCast(data["tasks"][i]["args"][j]["type"].asString()) + ");\n\n";
 
-				task_print += "\tcout << \"\t\t\tminSizePl: \" << " + 
+				task_print += "\tcout << \"" + data["tasks"][i]["args"][j]["name"].asString() + ": \" << " + 
 					data["tasks"][i]["args"][j]["name"].asString() + " << endl;\n";
 			}
 		}
 
 		// go through all interstage args
 		for (int j=0; j<data["tasks"][i]["interstage_args"].size(); j++) {
-			call_args += data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
 
 			if (data["tasks"][i]["interstage_args"][j]["io"].asString().compare("input") == 0) {
 				update_ints_args += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
 					" = ((Task$NAME$*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
 
-				resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
-					" = &((Task$NAME$*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
+				// check if this is the a forwarded argument
+				if (fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] == true) {
+					resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
+						" = ((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_fw;\n";
+				} else {
+					resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
+						" = &((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
+				}
+
+				call_args += "*" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
+			} else if (data["tasks"][i]["interstage_args"][j]["io"].asString().compare("output") == 0) {
+				call_args += "&" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_temp, ";
+				fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] = false;
+
+				intertask_mat += "\t" + getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + " " + 
+					data["tasks"][i]["interstage_args"][j]["name"].asString() + "_temp;\n";
+
+				intertask_return += "\t" + data["tasks"][i]["interstage_args"][j]["name"].asString() + " = new " + 
+					getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + "(" + 
+					data["tasks"][i]["interstage_args"][j]["name"].asString() + "_temp);\n";
+			} else {
+				update_ints_args += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
+					"_fw = ((Task$NAME$*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_fw;\n";
+
+				// check if this is the first forward
+				if (fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] == false) {
+					fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] = true;
+					resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
+						"_fw = &((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
+				} else {
+					resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
+						"_fw = ((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_fw;\n";
+				}
 			}
 		}
 
@@ -495,8 +432,14 @@ string generate_tasks(Json::Value data, string &exec_task) {
 		// $OUTPUT_MAT_DR$
 		replace_multiple_string(source, "$OUTPUT_MAT_DR$", output_mat_dr);
 
+		// $INTERTASK_MAT$
+		replace_multiple_string(source, "$INTERTASK_MAT$", intertask_mat);
+
 		// $CMD$
 		replace_multiple_string(source, "$CMD$", cmd);
+
+		// $INTERTASK_RETURN$
+		replace_multiple_string(source, "$INTERTASK_RETURN$", intertask_return);
 
 		// $OUTPUT_DR_RETURN$
 		replace_multiple_string(source, "$OUTPUT_DR_RETURN$", output_dr_return);
@@ -533,8 +476,7 @@ string generate_tasks(Json::Value data, string &exec_task) {
 
 		final_source += source;
 
-		exec_task += "\t\tTask" + name + " * task" + to_string(i) + " = new Task" + name + 
-			"(" + call_args + ");\n\t\tthis->executeTask(task" + to_string(i) + ");\n";
+		desc_def += "\tthis->tasksDesc[\"Task" + name + "\"] = task_" + name + "_args;\n\n";
 	}
 
 	return final_source;
@@ -549,19 +491,32 @@ string getTypeCast(string type) {
 		return "double";
 	else if (type.compare("float_array") == 0)
 		return "float*";
+	else if (type.compare("dr") == 0)
+		return "ArgumentRT";
 	else
 		return nullptr;
 }
 
 string getArgumentTypeCast(string type) {
 	if (type.compare("uchar") == 0)
-		return "(ArgumentInt*)";
+		return "ArgumentInt";
 	else if (type.compare("int") == 0)
-		return "(ArgumentInt*)";
+		return "ArgumentInt";
 	else if (type.compare("double") == 0)
-		return "(ArgumentFloat*)";
+		return "ArgumentFloat";
 	else if (type.compare("float_array") == 0)
-		return "(ArgumentFloatArray*)";
+		return "ArgumentFloatArray";
+	else if (type.compare("dr") == 0)
+		return "ArgumentRT";
+	else
+		return nullptr;
+}
+
+string getMatDRType(string type) {
+	if (type.compare("mat") == 0)
+		return "cv::Mat";
+	else if (type.compare("mat_vect") == 0)
+		return "std::vector<cv::Mat>";
 	else
 		return nullptr;
 }

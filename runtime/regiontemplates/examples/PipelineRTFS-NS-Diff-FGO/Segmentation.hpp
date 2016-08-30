@@ -41,35 +41,30 @@ public:
 };
 
 // Task1Segmentation header
-class Task1Segmentation: public ReusableTask {
-friend class Task2Segmentation;
+class TaskSegmentation0: public ReusableTask {
+friend class TaskSegmentation1;
 private:
 
-	// all other variables
+	// all parameters
 	unsigned char blue;
 	unsigned char green;
 	unsigned char red;
 	double T1;
 	double T2;
-	unsigned char G1;
-	int minSize;
-	int maxSize;
-	unsigned char G2;
-	int fillHolesConnectivity;
-	int reconConnectivity;
 	
 	// intertask arguments
-	cv::Mat *seg_open;
+	std::vector<cv::Mat> *bgr;
+	cv::Mat *rbc;
 
 public:
 
 	// data regions
 	DenseDataRegion2D* normalized_rt_temp;
 
-	Task1Segmentation() {};
-	Task1Segmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
+	TaskSegmentation0() {};
+	TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
-	virtual ~Task1Segmentation();
+	virtual ~TaskSegmentation0();
 
 	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
 
@@ -87,27 +82,30 @@ public:
 };
 
 // Task2Segmentation header
-class Task2Segmentation: public ReusableTask {
-friend class Task3Segmentation;
+class TaskSegmentation1: public ReusableTask {
+friend class TaskSegmentation2;
 private:
 
-	// all other variables
-	int minSizePl;
-	int watershedConnectivity;
-
+	// all parameters
+	int reconConnectivity;
+	
 	// intertask arguments
-	cv::Mat **seg_open;
-	cv::Mat *seg_nonoverlap;
+	std::vector<cv::Mat> **bgr;
+	cv::Mat* rc;
+	cv::Mat* rc_recon;
+	cv::Mat* rc_open;
+
+	// forward intertask arguments
+	cv::Mat **rbc_fw;
 
 public:
 
 	// data regions
-	DenseDataRegion2D* normalized_rt_temp;
 
-	Task2Segmentation() {};
-	Task2Segmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
+	TaskSegmentation1() {};
+	TaskSegmentation1(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
-	virtual ~Task2Segmentation();
+	virtual ~TaskSegmentation1();
 
 	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
 
@@ -124,27 +122,191 @@ public:
 	void print();
 };
 
-// Task3Segmentation header
-class Task3Segmentation: public ReusableTask {
+// TaskSegmentation2 header
+class TaskSegmentation2: public ReusableTask {
+friend class TaskSegmentation3;
 private:
 
-	// all other variables
+	// all parameters
+	int fillHolesConnectivity;
+	unsigned char G1;
+	
+	// intertask arguments
+	cv::Mat** rc;
+	cv::Mat** rc_recon;
+	cv::Mat** rc_open;
+	cv::Mat* bw1;
+	cv::Mat* diffIm;
+
+	// forward intertask arguments
+	cv::Mat **rbc_fw;
+
+public:
+
+	// data regions
+
+	TaskSegmentation2() {};
+	TaskSegmentation2(list<ArgumentBase*> args, RegionTemplate* inputRt);
+
+	virtual ~TaskSegmentation2();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
+
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
+
+	void print();
+};
+
+// TaskSegmentation3 header
+class TaskSegmentation3: public ReusableTask {
+friend class TaskSegmentation4;
+private:
+
+	// all parameters
+	int minSize;
+	int maxSize;
+	
+	// intertask arguments
+	cv::Mat** bw1;
+	cv::Mat* bw1_t;
+
+	// forward intertask arguments
+	cv::Mat **rbc_fw;
+	cv::Mat **diffIm_fw;
+
+public:
+
+	// data regions
+
+	TaskSegmentation3() {};
+	TaskSegmentation3(list<ArgumentBase*> args, RegionTemplate* inputRt);
+
+	virtual ~TaskSegmentation3();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
+
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
+
+	void print();
+};
+
+// TaskSegmentation4 header
+class TaskSegmentation4: public ReusableTask {
+friend class TaskSegmentation5;
+private:
+
+	// all parameters
+	unsigned char G2;
+	
+	// intertask arguments
+	cv::Mat** diffIm;
+	cv::Mat** bw1_t;
+	cv::Mat** rbc;
+	cv::Mat* seg_open;
+
+public:
+
+	// data regions
+
+	TaskSegmentation4() {};
+	TaskSegmentation4(list<ArgumentBase*> args, RegionTemplate* inputRt);
+
+	virtual ~TaskSegmentation4();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
+
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
+
+	void print();
+};
+
+// Task5Segmentation5 header
+class TaskSegmentation5: public ReusableTask {
+friend class TaskSegmentation6;
+private:
+
+	// all parameters
+	int minSizePl;
+	int watershedConnectivity;
+	
+	// intertask arguments
+	cv::Mat** seg_open;
+	cv::Mat* seg_nonoverlap;
+
+	// forward intertask arguments
+	cv::Mat **seg_open_fw;
+
+public:
+
+	// data regions
+	DenseDataRegion2D* normalized_rt_temp;
+
+	TaskSegmentation5() {};
+	TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* inputRt);
+
+	virtual ~TaskSegmentation5();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
+
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
+
+	void print();
+};
+
+// TaskSegmentation6 header
+class TaskSegmentation6: public ReusableTask {
+private:
+
+	// all parameters
 	int minSizeSeg;
 	int maxSizeSeg;
 	int fillHolesConnectivity;
-
+	
 	// intertask arguments
-	cv::Mat **seg_nonoverlap;
+	cv::Mat** seg_open;
+	cv::Mat** seg_nonoverlap;
 
 public:
 
 	// data regions
 	DenseDataRegion2D* segmented_rt_temp;
 
-	Task3Segmentation() {};
-	Task3Segmentation(list<ArgumentBase*> args, RegionTemplate* inputRt);
+	TaskSegmentation6() {};
+	TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
-	virtual ~Task3Segmentation();
+	virtual ~TaskSegmentation6();
 
 	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
 

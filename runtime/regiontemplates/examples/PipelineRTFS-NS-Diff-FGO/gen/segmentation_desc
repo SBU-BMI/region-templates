@@ -1,23 +1,8 @@
 {"name":"Segmentation",
 "includes":"#include \"opencv2/opencv.hpp\"\n#include \"opencv2/gpu/gpu.hpp\"\n#include \"HistologicalEntities.h\"", 
-"args":[
+"dr_args":[
 		{"name":"normalized_rt", "type":"dr", "io":"input"}, 
-		{"name":"segmented_rt", "type":"dr", "io":"output"}, 
-		{"name":"blue", "type":"uchar"}, 
-		{"name":"green", "type":"uchar"}, 
-		{"name":"red", "type":"uchar"}, 
-		{"name":"T1", "type":"double"}, 
-		{"name":"T2", "type":"double"}, 
-		{"name":"G1", "type":"uchar"}, 
-		{"name":"minSize", "type":"int"}, 
-		{"name":"maxSize", "type":"int"}, 
-		{"name":"G2", "type":"uchar"}, 
-		{"name":"minSizePl", "type":"int"}, 
-		{"name":"minSizeSeg", "type":"int"}, 
-		{"name":"maxSizeSeg", "type":"int"}, 
-		{"name":"fillHolesConnectivity", "type":"int"}, 
-		{"name":"reconConnectivity", "type":"int"}, 
-		{"name":"watershedConnectivity", "type":"int"}
+		{"name":"segmented_rt", "type":"dr", "io":"output"}
 	],
 "tasks":[
 		{"call":"::nscale::HistologicalEntities::segmentNucleiStg1", 
@@ -33,7 +18,77 @@
 				{"name":"bgr", "type":"mat_vect", "io":"output"}, 
 				{"name":"rbc", "type":"mat", "io":"output"}
 			]
+		},
+		{"call":"::nscale::HistologicalEntities::segmentNucleiStg2", 
+			"args":[
+				{"name":"reconConnectivity", "type":"int"}
+			],
+			"interstage_args":[
+				{"name":"bgr", "type":"mat_vect", "io":"input"},
+				{"name":"rbc", "type":"mat", "io":"forward"},
+				{"name":"rc", "type":"mat", "io":"output"},
+				{"name":"rc_recon", "type":"mat", "io":"output"},
+				{"name":"rc_open", "type":"mat", "io":"output"}
+			]
+		},
+		{"call":"::nscale::HistologicalEntities::segmentNucleiStg3", 
+			"args":[
+				{"name":"fillHolesConnectivity", "type":"int"},
+				{"name":"G1", "type":"int"}
+			],
+			"interstage_args":[
+				{"name":"rc", "type":"mat", "io":"input"}, 
+				{"name":"rc_recon", "type":"mxat", "io":"input"},
+				{"name":"rc_open", "type":"mat", "io":"input"},
+				{"name":"rbc", "type":"mat", "io":"forward"},
+				{"name":"bw1", "type":"mat", "io":"output"},
+				{"name":"diffIm", "type":"mat", "io":"output"}
+			]
+		},
+		{"call":"::nscale::HistologicalEntities::segmentNucleiStg4", 
+			"args":[
+				{"name":"minSize", "type":"int"},
+				{"name":"maxSize", "type":"int"}
+			],
+			"interstage_args":[
+				{"name":"bw1", "type":"mat", "io":"input"},
+				{"name":"rbc", "type":"mat", "io":"forward"},
+				{"name":"diffIm", "type":"mat", "io":"forward"},
+				{"name":"bw1_t", "type":"mat", "io":"output"}
+			]
+		},
+		{"call":"::nscale::HistologicalEntities::segmentNucleiStg5", 
+			"args":[
+				{"name":"G2", "type":"int"}
+			],
+			"interstage_args":[
+				{"name":"diffIm", "type":"mat", "io":"input"},
+				{"name":"bw1_t", "type":"mat", "io":"input"},
+				{"name":"rbc", "type":"mat", "io":"input"},
+				{"name":"seg_open", "type":"mat", "io":"output"}
+			]
+		},
+		{"call":"::nscale::HistologicalEntities::segmentNucleiStg6", 
+			"args":[
+				{"name":"normalized_rt", "type":"dr", "io":"input"}, 
+				{"name":"minSizePl", "type":"int"},
+				{"name":"watershedConnectivity", "type":"int"}
+			],
+			"interstage_args":[
+				{"name":"seg_open", "type":"mat", "io":"input"},
+				{"name":"seg_nonoverlap", "type":"mat", "io":"output"}
+			]
+		},
+		{"call":"::nscale::HistologicalEntities::segmentNucleiStg7", 
+			"args":[
+				{"name":"segmented_rt", "type":"dr", "io":"output"},
+				{"name":"minSizeSeg", "type":"int"},
+				{"name":"maxSizeSeg", "type":"int"},
+				{"name":"fillHolesConnectivity", "type":"int"}
+			],
+			"interstage_args":[
+				{"name":"seg_nonoverlap", "type":"mat", "io":"input"}
+			]
 		}
 	]
 }
-
