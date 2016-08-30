@@ -43,11 +43,7 @@ $OUTPUT_CAST_DR$
 		}
 
 		// Create processing task
-		Task$NAME$ * task = new Task$NAME$($PCB_TASK_PARAMS$);
-
-		this->executeTask(task);
-
-
+$EXEC_TASK$
 	}else{
 		std::cout << __FILE__ << ":" << __LINE__ <<" RT == NULL" << std::endl;
 	}
@@ -68,31 +64,4 @@ bool registered$NAME$ = PipelineComponentBase::ComponentFactory::componentRegist
 /*********************************** Task functions ***********************************/
 /**************************************************************************************/
 
-Task$NAME$::Task$NAME$($TASK_PARAMS$) {
-	
-$TASK_ARGS$
-	
-}
-
-Task$NAME$::~Task$NAME$() {
-$INPUT_DR_DELETE$
-}
-
-bool Task$NAME$::run(int procType, int tid) {
-	
-$INPUT_MAT_DR$
-
-$OUTPUT_MAT_DR$
-
-	uint64_t t1 = Util::ClockGetTimeProfile();
-
-	std::cout << "Task$NAME$ executing." << std::endl;	
-
-	$CMD$;
-	
-$OUTPUT_DR_RETURN$
-
-	uint64_t t2 = Util::ClockGetTimeProfile();
-
-	std::cout << "Task $NAME$ time elapsed: "<< t2-t1 << std::endl;
-}
+$TASKS$

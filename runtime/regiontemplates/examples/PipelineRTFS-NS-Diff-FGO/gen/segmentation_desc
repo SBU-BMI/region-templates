@@ -1,22 +1,39 @@
 {"name":"Segmentation",
 "includes":"#include \"opencv2/opencv.hpp\"\n#include \"opencv2/gpu/gpu.hpp\"\n#include \"HistologicalEntities.h\"", 
-"call":"::nscale::HistologicalEntities::segmentNuclei(normalized_rt, segmented_rt, blue, green, red, T1, T2, G1, minSize, maxSize, G2, minSizePl, minSizeSeg, maxSizeSeg, fillHolesConnectivity, reconConnectivity, watershedConnectivity)",
 "args":[
-	{"name":"normalized_rt", "type":"dr", "io":"input"}, 
-	{"name":"segmented_rt", "type":"dr", "io":"output"}, 
-	{"name":"blue", "type":"uchar"}, 
-	{"name":"green", "type":"uchar"}, 
-	{"name":"red", "type":"uchar"}, 
-	{"name":"T1", "type":"double"}, 
-	{"name":"T2", "type":"double"}, 
-	{"name":"G1", "type":"uchar"}, 
-	{"name":"minSize", "type":"int"}, 
-	{"name":"maxSize", "type":"int"}, 
-	{"name":"G2", "type":"uchar"}, 
-	{"name":"minSizePl", "type":"int"}, 
-	{"name":"minSizeSeg", "type":"int"}, 
-	{"name":"maxSizeSeg", "type":"int"}, 
-	{"name":"fillHolesConnectivity", "type":"int"}, 
-	{"name":"reconConnectivity", "type":"int"}, 
-	{"name":"watershedConnectivity", "type":"int"}
-	]}
+		{"name":"normalized_rt", "type":"dr", "io":"input"}, 
+		{"name":"segmented_rt", "type":"dr", "io":"output"}, 
+		{"name":"blue", "type":"uchar"}, 
+		{"name":"green", "type":"uchar"}, 
+		{"name":"red", "type":"uchar"}, 
+		{"name":"T1", "type":"double"}, 
+		{"name":"T2", "type":"double"}, 
+		{"name":"G1", "type":"uchar"}, 
+		{"name":"minSize", "type":"int"}, 
+		{"name":"maxSize", "type":"int"}, 
+		{"name":"G2", "type":"uchar"}, 
+		{"name":"minSizePl", "type":"int"}, 
+		{"name":"minSizeSeg", "type":"int"}, 
+		{"name":"maxSizeSeg", "type":"int"}, 
+		{"name":"fillHolesConnectivity", "type":"int"}, 
+		{"name":"reconConnectivity", "type":"int"}, 
+		{"name":"watershedConnectivity", "type":"int"}
+	],
+"tasks":[
+		{"call":"::nscale::HistologicalEntities::segmentNucleiStg1", 
+			"args":[
+				{"name":"normalized_rt", "type":"dr", "io":"input"}, 
+				{"name":"blue", "type":"uchar"}, 
+				{"name":"green", "type":"uchar"}, 
+				{"name":"red", "type":"uchar"}, 
+				{"name":"T1", "type":"double"}, 
+				{"name":"T2", "type":"double"}
+			],
+			"interstage_args":[
+				{"name":"bgr", "type":"mat_vect", "io":"output"}, 
+				{"name":"rbc", "type":"mat", "io":"output"}
+			]
+		}
+	]
+}
+
