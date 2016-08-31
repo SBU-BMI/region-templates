@@ -61,7 +61,7 @@ public:
 	// data regions
 	DenseDataRegion2D* normalized_rt_temp;
 
-	TaskSegmentation0() {};
+	TaskSegmentation0();
 	TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation0();
@@ -90,19 +90,19 @@ private:
 	int reconConnectivity;
 	
 	// intertask arguments
-	std::vector<cv::Mat> **bgr;
+	std::vector<cv::Mat> *bgr;
 	cv::Mat* rc;
 	cv::Mat* rc_recon;
 	cv::Mat* rc_open;
 
 	// forward intertask arguments
-	cv::Mat **rbc_fw;
+	cv::Mat *rbc_fw;
 
 public:
 
 	// data regions
 
-	TaskSegmentation1() {};
+	TaskSegmentation1();
 	TaskSegmentation1(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation1();
@@ -132,20 +132,20 @@ private:
 	unsigned char G1;
 	
 	// intertask arguments
-	cv::Mat** rc;
-	cv::Mat** rc_recon;
-	cv::Mat** rc_open;
+	cv::Mat* rc;
+	cv::Mat* rc_recon;
+	cv::Mat* rc_open;
 	cv::Mat* bw1;
 	cv::Mat* diffIm;
 
 	// forward intertask arguments
-	cv::Mat **rbc_fw;
+	cv::Mat *rbc_fw;
 
 public:
 
 	// data regions
 
-	TaskSegmentation2() {};
+	TaskSegmentation2();
 	TaskSegmentation2(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation2();
@@ -175,18 +175,18 @@ private:
 	int maxSize;
 	
 	// intertask arguments
-	cv::Mat** bw1;
+	cv::Mat* bw1;
 	cv::Mat* bw1_t;
 
 	// forward intertask arguments
-	cv::Mat **rbc_fw;
-	cv::Mat **diffIm_fw;
+	cv::Mat *rbc_fw;
+	cv::Mat *diffIm_fw;
 
 public:
 
 	// data regions
 
-	TaskSegmentation3() {};
+	TaskSegmentation3();
 	TaskSegmentation3(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation3();
@@ -215,16 +215,16 @@ private:
 	unsigned char G2;
 	
 	// intertask arguments
-	cv::Mat** diffIm;
-	cv::Mat** bw1_t;
-	cv::Mat** rbc;
+	cv::Mat* diffIm;
+	cv::Mat* bw1_t;
+	cv::Mat* rbc;
 	cv::Mat* seg_open;
 
 public:
 
 	// data regions
 
-	TaskSegmentation4() {};
+	TaskSegmentation4();
 	TaskSegmentation4(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation4();
@@ -254,18 +254,18 @@ private:
 	int watershedConnectivity;
 	
 	// intertask arguments
-	cv::Mat** seg_open;
+	cv::Mat* seg_open;
 	cv::Mat* seg_nonoverlap;
 
 	// forward intertask arguments
-	cv::Mat **seg_open_fw;
+	cv::Mat *seg_open_fw;
 
 public:
 
 	// data regions
 	DenseDataRegion2D* normalized_rt_temp;
 
-	TaskSegmentation5() {};
+	TaskSegmentation5();
 	TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation5();
@@ -295,15 +295,15 @@ private:
 	int fillHolesConnectivity;
 	
 	// intertask arguments
-	cv::Mat** seg_open;
-	cv::Mat** seg_nonoverlap;
+	cv::Mat* seg_open;
+	cv::Mat* seg_nonoverlap;
 
 public:
 
 	// data regions
 	DenseDataRegion2D* segmented_rt_temp;
 
-	TaskSegmentation6() {};
+	TaskSegmentation6();
 	TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* inputRt);
 
 	virtual ~TaskSegmentation6();

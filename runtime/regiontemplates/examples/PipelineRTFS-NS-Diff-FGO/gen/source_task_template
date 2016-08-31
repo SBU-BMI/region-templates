@@ -1,3 +1,7 @@
+Task$NAME$::Task$NAME$() {
+$INTERTASK_INST$
+}
+
 Task$NAME$::Task$NAME$(list<ArgumentBase*> args, RegionTemplate* inputRt) {
 	
 	int set_cout = 0;
@@ -6,7 +10,8 @@ $TASK_ARGS$
 	}
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
-	
+
+$INTERTASK_INST$	
 }
 
 Task$NAME$::~Task$NAME$() {
@@ -24,7 +29,7 @@ $INTERTASK_MAT$
 	$CMD$
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
-$INTERTASK_RETURN$
+
 $OUTPUT_DR_RETURN$
 	std::cout << "Task $NAME$ time elapsed: "<< t2-t1 << std::endl;
 }

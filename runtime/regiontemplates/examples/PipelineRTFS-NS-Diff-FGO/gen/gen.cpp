@@ -210,15 +210,15 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 		string input_mat_dr;
 		string output_mat_dr;
 		string intertask_mat;
+		string intertask_inst;
 		string cmd = data["tasks"][i]["call"].asString() + "(";
-		string intertask_return;
 		string call_args;
 		string output_dr_return;
 		string update_mat_dr;
 		string update_ints_args;
 		string resolve_deps;
 		string reusable_cond;
-		string task_size;
+		string task_size = "\t\tsizeof(int) + sizeof(int) +\n";
 		string task_serialize;
 		string task_deserialize;
 		string task_print;
@@ -255,11 +255,7 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 					data["tasks"][i]["args"][j]["name"].asString() + "_arg->getId());\n\t\t\tset_cout++;\n\t\t}\n\n";
 
 				reusable_cond += "\t\tthis->" + data["tasks"][i]["args"][j]["name"].asString() + "_temp->getName() == t->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getName() &&\n\t\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getId() == t->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getId() &&\n\t\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getVersion() == t->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getVersion() &&\n";
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getName() &&\n";
 
 				task_size += "\t\tsizeof(int) + " + data["tasks"][i]["args"][j]["name"].asString() + 
 					"_temp->getName().length()*sizeof(char) + sizeof(int) +\n";
@@ -375,20 +371,20 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 						" = ((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_fw;\n";
 				} else {
 					resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
-						" = &((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
+						" = ((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
 				}
 
-				call_args += "*" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
+				call_args += data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
 			} else if (data["tasks"][i]["interstage_args"][j]["io"].asString().compare("output") == 0) {
-				call_args += "&" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_temp, ";
+				call_args += data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
 				fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] = false;
 
 				intertask_mat += "\t" + getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + " " + 
 					data["tasks"][i]["interstage_args"][j]["name"].asString() + "_temp;\n";
 
-				intertask_return += "\t" + data["tasks"][i]["interstage_args"][j]["name"].asString() + " = new " + 
-					getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + "(" + 
-					data["tasks"][i]["interstage_args"][j]["name"].asString() + "_temp);\n";
+				intertask_inst += "\t" + data["tasks"][i]["interstage_args"][j]["name"].asString() +
+					" = new " + getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + ";\n";
+
 			} else {
 				update_ints_args += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
 					"_fw = ((Task$NAME$*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_fw;\n";
@@ -397,7 +393,7 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 				if (fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] == false) {
 					fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] = true;
 					resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
-						"_fw = &((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
+						"_fw = ((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
 				} else {
 					resolve_deps += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
 						"_fw = ((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_fw;\n";
@@ -435,11 +431,11 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 		// $INTERTASK_MAT$
 		replace_multiple_string(source, "$INTERTASK_MAT$", intertask_mat);
 
+		// $INTERTASK_INST$
+		replace_multiple_string(source, "$INTERTASK_INST$", intertask_inst);
+
 		// $CMD$
 		replace_multiple_string(source, "$CMD$", cmd);
-
-		// $INTERTASK_RETURN$
-		replace_multiple_string(source, "$INTERTASK_RETURN$", intertask_return);
 
 		// $OUTPUT_DR_RETURN$
 		replace_multiple_string(source, "$OUTPUT_DR_RETURN$", output_dr_return);
