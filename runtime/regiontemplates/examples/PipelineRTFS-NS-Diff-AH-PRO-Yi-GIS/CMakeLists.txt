@@ -41,7 +41,7 @@ link_directories(${yibuilddir}/)
 set(libname componentnsdiffahproyigis)
 
 # Source files used by the Runtime System
-set(libcomponentssrcs Segmentation.cpp DiffMaskComp.cpp TaskSegmentation.cpp)
+set(libcomponentssrcs Segmentation.cpp DiffMaskComp.cpp DiceNotCoolMaskComp.cpp TaskSegmentation.cpp)
 
 #Hadoopgis Dependencies
 

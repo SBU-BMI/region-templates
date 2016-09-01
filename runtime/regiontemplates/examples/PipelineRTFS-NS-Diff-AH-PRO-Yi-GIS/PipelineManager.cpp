@@ -10,6 +10,7 @@
 //#include "NormalizationComp.h"
 #include "Segmentation.h"
 #include "DiffMaskComp.h"
+#include "DiceNotCoolMaskComp.h"
 #include "ParameterSet.h"
 
 #include "hclient.h"
@@ -110,6 +111,7 @@ int main(int argc, char **argv) {
     RegionTemplateCollection *rtCollection;
     std::vector<int> segComponentIds[numClients];
     std::vector<int> diffComponentIds[numClients];
+    std::vector<int> diceNotCoolComponentIds[numClients];
     std::map<std::string, double> perfDataBase;
 
     std::vector<hdesc_t *> hdesc;
@@ -305,20 +307,26 @@ int main(int argc, char **argv) {
 
                     std::cout << "Creating DiffMask" << std::endl;
                     DiffMaskComp *diff = new DiffMaskComp();
+                    DiceNotCoolMaskComp *diceNotCool = new DiceNotCoolMaskComp();
 
                     // version of the data region that will be read. It is created during the segmentation.
                     diff->addArgument(new ArgumentInt(versionSeg));
+                    diceNotCool->addArgument(new ArgumentInt(versionSeg));
 
                     // region template name
                     diff->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
                     diff->addDependency(seg->getId());
+                    diceNotCool->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+                    diceNotCool->addDependency(diff->getId());
 
                     // add to the list of diff component ids.
                     segComponentIds[j].push_back(seg->getId());
                     diffComponentIds[j].push_back(diff->getId());
+                    diceNotCoolComponentIds[j].push_back(diceNotCool->getId());
 
                     sysEnv.executeComponent(seg);
                     sysEnv.executeComponent(diff);
+                    sysEnv.executeComponent(diceNotCool);
 
                     std::cout << "Manager CompId: " << diff->getId() << " fileName: " <<
                     rtCollection->getRT(i)->getDataRegion(0)->getInputFileName() << std::endl;
@@ -335,17 +343,21 @@ int main(int argc, char **argv) {
         for (int j = 0; j < numClients; j++) {
             float diff = 0;
             float secondaryMetric = 0;
+            float diceNotCoolValue = 0;
 
             if (executedAlready[j] == false) {
                 for (int i = 0; i < diffComponentIds[j].size(); i++) {
                     char *resultData = sysEnv.getComponentResultData(diffComponentIds[j][i]);
-                    std::cout << "Diff Id: " << diffComponentIds[j][i] << " resultData: ";
+                    char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
+                    std::cout << "Diff Id: " << diffComponentIds[j][i] << " \tresultData: ";
                     if (resultData != NULL) {
-                        std::cout << "size: " << ((int *) resultData)[0] << " hadoopgis-metric: " <<
+                        std::cout << "size: " << ((int *) resultData)[0] << " \thadoopgis-metric: " <<
                         ((float *) resultData)[1] <<
-                        " secondary: " << ((float *) resultData)[2] << std::endl;
+                        " \tsecondary: " << ((float *) resultData)[2] << " \tdiceNotCool: " <<
+                        ((float *) diceNotCoolResultData)[1] << std::endl;
                         diff += ((float *) resultData)[1];
                         secondaryMetric += ((float *) resultData)[2];
+                        diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
                     } else {
                         std::cout << "NULL" << std::endl;
                     }
@@ -359,6 +371,11 @@ int main(int argc, char **argv) {
                 }
                 diffComponentIds[j].clear();
                 segComponentIds[j].clear();
+                diceNotCoolComponentIds[j].clear();
+
+//                float dicePlusDiceNotCool = (4* diff + diceNotCoolValue);
+//                diff = dicePlusDiceNotCool/5;
+//                if (diff <= 0) diff = FLT_EPSILON;
 
                 //Multi Objective Tuning
                 double tSlowest = 750000; //Empirical Data
@@ -411,8 +428,8 @@ int main(int argc, char **argv) {
         double perfWeighted =
                 (double) 1 / (double) (metricWeight * totaldiffs[i] + timeWeight * totalExecutionTimesNormalized[i]);
         if (perfWeighted < 0) perfWeighted = 0;
-        std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << "\tExecution Time: " <<
-        totalexecutiontimes[i] << "\tTime Normalized: " << totalExecutionTimesNormalized[i] << " Perf(weighted): " <<
+        std::cout << "\t\tLoop: " << i << " \tDiff: " << totaldiffs[i] << "\tExecution Time: " <<
+        totalexecutiontimes[i] << "\tTime Normalized: " << totalExecutionTimesNormalized[i] << " \tPerf(weighted): " <<
         perfWeighted << std::endl;
     }
     std::cout << "\tMaxDiff: " << maxdiff << std::endl;

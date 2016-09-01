@@ -32,6 +32,7 @@ void DiceCoefficient::parseOutput(std::string myMaskPath, double a1, double a2) 
         perror("Comparative Analysis - HadoopGIS - Dice: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
 
     float totalArea = (float) (a1 + a2);
+    if (totalIntersectArea <= 0) totalIntersectArea = 0;
     float dice = 2 * totalIntersectArea / (totalArea);
     float compId = diff[0];
     this->diff[0] = dice;

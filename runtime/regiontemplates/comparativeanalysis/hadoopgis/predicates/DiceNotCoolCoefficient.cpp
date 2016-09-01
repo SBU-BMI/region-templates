@@ -34,7 +34,9 @@ void DiceNotCoolCoefficient::parseOutput(std::string myMaskPath, double a1, doub
     if (remove(myMaskPath.c_str()) != 0)
         perror("Comparative Analysis - HadoopGIS - Dice 2: Error deleting temporary file. Are you executing simultaneosly the same program?\n");
 
-    float dice = totalDice / count;
+    float dice;
+    if (count > 0 && totalDice > 0) dice = totalDice / count;
+    else dice = 0;
     float compId = diff[0];
     this->diff[0] = dice;
     this->diff[1] = count;

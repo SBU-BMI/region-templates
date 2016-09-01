@@ -1,20 +1,20 @@
-#include "DiffMaskComp.h"
+#include "DiceNotCoolMaskComp.h"
 #include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/JaccardIndex.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/MaskIntersection.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceNotCoolCoefficient.h>
 
-DiffMaskComp::DiffMaskComp() {
-    this->setComponentName("DiffMaskComp");
+DiceNotCoolMaskComp::DiceNotCoolMaskComp() {
+    this->setComponentName("DiceNotCoolMaskComp");
     this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::INPUT);
 }
 
-DiffMaskComp::~DiffMaskComp() {
+DiceNotCoolMaskComp::~DiceNotCoolMaskComp() {
 
 }
 
-int DiffMaskComp::run() {
+int DiceNotCoolMaskComp::run() {
     int parameterSegId = ((ArgumentInt *) this->getArgument(0))->getArgValue();
 
     RegionTemplate *inputRt = this->getRegionTemplateInstance("tile");
@@ -36,11 +36,11 @@ int DiffMaskComp::run() {
             // gambiarra
             diffPixels[0] = this->getId();
             // Create processing task
-            TaskDiffMask *tDiffMask = new DiceCoefficient(computed_mask, reference_mask, diffPixels);
+            TaskDiffMask *tDiffMask = new DiceNotCoolCoefficient(computed_mask, reference_mask, diffPixels);
 
             this->executeTask(tDiffMask);
         } else {
-            std::cout << "DiffMaskComp: did not find data regions: " << std::endl;
+            std::cout << "DiceNotCoolMaskComp: did not find data regions: " << std::endl;
             inputRt->print();
         }
     } else {
@@ -51,11 +51,12 @@ int DiffMaskComp::run() {
 }
 
 // Create the component factory
-PipelineComponentBase *componentFactoryDF() {
-    return new DiffMaskComp();
+PipelineComponentBase *componentFactoryDNF() {
+    return new DiceNotCoolMaskComp();
 }
 
 // register factory with the runtime system
-bool registeredDF = PipelineComponentBase::ComponentFactory::componentRegister("DiffMaskComp", &componentFactoryDF);
+bool registeredDNF = PipelineComponentBase::ComponentFactory::componentRegister("DiceNotCoolMaskComp",
+                                                                                &componentFactoryDNF);
 
 
