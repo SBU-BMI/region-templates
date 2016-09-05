@@ -106,7 +106,7 @@ Segmentation::~Segmentation() {}
 int Segmentation::run() {
 
 	// Print name and id of the component instance
-	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
+	std::cout << "\t\t\tExecuting component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
 	this->addInputOutputDataRegion("tile", "normalized_rt", RTPipelineComponentBase::INPUT);
@@ -116,7 +116,7 @@ int Segmentation::run() {
 
 	map<int, ReusableTask*> prev_map;
 	for (list<ReusableTask*>::reverse_iterator task=tasks.rbegin(); task!=tasks.rend(); task++) {
-		cout << "[Segmentation] sending task " << (*task)->getId() << endl;
+		cout << "\t\t\t[Segmentation] sending task " << (*task)->getId() << endl;
 		// generate a task copy and update the DR, getting the actual data
 		ReusableTask* t = (*task)->clone();
 		t->updateDR(inputRt);
@@ -219,14 +219,14 @@ bool TaskSegmentation0::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation0 executing." << std::endl;	
+	std::cout << "\t\t\tTaskSegmentation0 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg1(normalized_rt, blue, green, red, T1, T2, bgr, rbc);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation0 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "\t\t\tTask Segmentation0 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation0::updateDR(RegionTemplate* rt) {
@@ -238,7 +238,7 @@ void TaskSegmentation0::updateDR(RegionTemplate* rt) {
 void TaskSegmentation0::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation0] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation0] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -248,7 +248,7 @@ void TaskSegmentation0::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation0::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation1)) {
-		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -404,11 +404,11 @@ ReusableTask* TaskSegmentation0::clone() {
 }
 
 void TaskSegmentation0::print() {
-	cout << "blue: " << blue << endl;
-	cout << "green: " << green << endl;
-	cout << "red: " << red << endl;
-	cout << "T1: " << T1 << endl;
-	cout << "T2: " << T2 << endl;
+	cout << "\t\t\tblue: " << blue << endl;
+	cout << "\t\t\tgreen: " << green << endl;
+	cout << "\t\t\tred: " << red << endl;
+	cout << "\t\t\tT1: " << T1 << endl;
+	cout << "\t\t\tT2: " << T2 << endl;
 
 }
 
@@ -466,14 +466,14 @@ bool TaskSegmentation1::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation1 executing." << std::endl;	
+	std::cout << "\t\t\tTaskSegmentation1 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg2(reconConnectivity, bgr, rc, rc_recon, rc_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation1 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "\t\t\tTask Segmentation1 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation1::updateDR(RegionTemplate* rt) {
@@ -483,7 +483,7 @@ void TaskSegmentation1::updateDR(RegionTemplate* rt) {
 void TaskSegmentation1::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -495,7 +495,7 @@ void TaskSegmentation1::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation1::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation2)) {
-		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -577,7 +577,7 @@ ReusableTask* TaskSegmentation1::clone() {
 }
 
 void TaskSegmentation1::print() {
-	cout << "reconConnectivity: " << reconConnectivity << endl;
+	cout << "\t\t\treconConnectivity: " << reconConnectivity << endl;
 
 }
 
@@ -637,14 +637,14 @@ bool TaskSegmentation2::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation2 executing." << std::endl;	
+	std::cout << "\t\t\tTaskSegmentation2 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg3(fillHolesConnectivity, G1, rc, rc_recon, rc_open, bw1, diffIm);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation2 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "\t\t\tTask Segmentation2 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation2::updateDR(RegionTemplate* rt) {
@@ -654,7 +654,7 @@ void TaskSegmentation2::updateDR(RegionTemplate* rt) {
 void TaskSegmentation2::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -668,7 +668,7 @@ void TaskSegmentation2::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation2::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation3)) {
-		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -762,8 +762,8 @@ ReusableTask* TaskSegmentation2::clone() {
 }
 
 void TaskSegmentation2::print() {
-	cout << "fillHolesConnectivity: " << fillHolesConnectivity << endl;
-	cout << "G1: " << G1 << endl;
+	cout << "\t\t\tfillHolesConnectivity: " << fillHolesConnectivity << endl;
+	cout << "\t\t\tG1: " << G1 << endl;
 
 }
 
@@ -820,14 +820,14 @@ bool TaskSegmentation3::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation3 executing." << std::endl;	
+	std::cout << "\t\t\tTaskSegmentation3 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg4(minSize, maxSize, bw1, bw1_t);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation3 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "\t\t\tTask Segmentation3 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation3::updateDR(RegionTemplate* rt) {
@@ -837,7 +837,7 @@ void TaskSegmentation3::updateDR(RegionTemplate* rt) {
 void TaskSegmentation3::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -850,7 +850,7 @@ void TaskSegmentation3::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation3::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation4)) {
-		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -943,8 +943,8 @@ ReusableTask* TaskSegmentation3::clone() {
 }
 
 void TaskSegmentation3::print() {
-	cout << "minSize: " << minSize << endl;
-	cout << "maxSize: " << maxSize << endl;
+	cout << "\t\t\tminSize: " << minSize << endl;
+	cout << "\t\t\tmaxSize: " << maxSize << endl;
 
 }
 
@@ -996,14 +996,14 @@ bool TaskSegmentation4::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation4 executing." << std::endl;	
+	std::cout << "\t\t\tTaskSegmentation4 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg5(G2, diffIm, bw1_t, rbc, seg_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation4 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "\t\t\tTask Segmentation4 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation4::updateDR(RegionTemplate* rt) {
@@ -1013,7 +1013,7 @@ void TaskSegmentation4::updateDR(RegionTemplate* rt) {
 void TaskSegmentation4::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -1026,7 +1026,7 @@ void TaskSegmentation4::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation4::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation5)) {
-		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -1109,7 +1109,7 @@ ReusableTask* TaskSegmentation4::clone() {
 }
 
 void TaskSegmentation4::print() {
-	cout << "G2: " << G2 << endl;
+	cout << "\t\t\tG2: " << G2 << endl;
 
 }
 
@@ -1178,14 +1178,14 @@ bool TaskSegmentation5::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation5 executing." << std::endl;	
+	std::cout << "\t\t\tTaskSegmentation5 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg6(normalized_rt, minSizePl, watershedConnectivity, seg_open, seg_nonoverlap);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation5 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "\t\t\tTask Segmentation5 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation5::updateDR(RegionTemplate* rt) {
@@ -1197,7 +1197,7 @@ void TaskSegmentation5::updateDR(RegionTemplate* rt) {
 void TaskSegmentation5::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -1208,7 +1208,7 @@ void TaskSegmentation5::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation5::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation6)) {
-		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -1335,8 +1335,8 @@ ReusableTask* TaskSegmentation5::clone() {
 }
 
 void TaskSegmentation5::print() {
-	cout << "minSizePl: " << minSizePl << endl;
-	cout << "watershedConnectivity: " << watershedConnectivity << endl;
+	cout << "\t\t\tminSizePl: " << minSizePl << endl;
+	cout << "\t\t\twatershedConnectivity: " << watershedConnectivity << endl;
 
 }
 
@@ -1406,7 +1406,7 @@ bool TaskSegmentation6::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation6 executing." << std::endl;	
+	std::cout << "\t\t\tTaskSegmentation6 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg7(&segmented_rt, minSizeSeg, maxSizeSeg, fillHolesConnectivity, seg_nonoverlap);
 	
@@ -1414,7 +1414,7 @@ bool TaskSegmentation6::run(int procType, int tid) {
 
 	this->segmented_rt_temp->setData(segmented_rt);
 
-	std::cout << "Task Segmentation6 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "\t\t\tTask Segmentation6 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation6::updateDR(RegionTemplate* rt) {
@@ -1425,7 +1425,7 @@ rt->insertDataRegion(this->segmented_rt_temp);
 void TaskSegmentation6::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "\t\t\t[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -1570,9 +1570,9 @@ ReusableTask* TaskSegmentation6::clone() {
 }
 
 void TaskSegmentation6::print() {
-	cout << "minSizeSeg: " << minSizeSeg << endl;
-	cout << "maxSizeSeg: " << maxSizeSeg << endl;
-	cout << "fillHolesConnectivity: " << fillHolesConnectivity << endl;
+	cout << "\t\t\tminSizeSeg: " << minSizeSeg << endl;
+	cout << "\t\t\tmaxSizeSeg: " << maxSizeSeg << endl;
+	cout << "\t\t\tfillHolesConnectivity: " << fillHolesConnectivity << endl;
 
 }
 

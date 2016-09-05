@@ -204,7 +204,8 @@ int main(int argc, char* argv[]) {
 		cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
 		cout << "\tinputs: " << endl;
 		for (int i : p.second->getInputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << endl;
+			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+				<< expanded_args[i]->toString() << endl;
 		cout << "\toutputs: " << endl;
 		for (int i : p.second->getOutputs())
 			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << endl;
@@ -944,7 +945,10 @@ list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc,
 		}
 		prev_task = n_task;
 		tasks.emplace_back(n_task);
-		// cout << "[task_generator] new task " << uid << ":" << t->first << " with size " << n_task->size() << endl;
+		cout << "[task_generator] new task " << uid << ":" << t->first << " from stage " << p->getId() << endl;
+		cout << "[task_generator] \targs:" << endl;
+		n_task->print();
+
 	}
 
 	return tasks;
@@ -971,6 +975,7 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 
 	ReusableTask* current_frontier_reusable_tasks;
 	map<std::string, std::list<ArgumentBase*>>::iterator p=ref.begin();
+	ReusableTask* prev_reusable_task = NULL;
 	for (; p!=ref.end(); p++) {
 		// verify if this is the first reusable task
 		ReusableTask* t_s = find_task(s->tasks, p->first);
@@ -979,8 +984,12 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 		// check all of the same tasks of current
 		bool reusable = false;
 		for (ReusableTask* t : t_cur) {
-			if (t->reusable(t_s)) {
+			// verify if t_s is reusable by checking if it's compatible with a task t and
+			//   if the prev_reusable_task is also the predecessor of t.
+			if (t->reusable(t_s) && (prev_reusable_task == NULL || 
+									prev_reusable_task->getId() == t->parentTask)) {
 				reusable = true;
+				prev_reusable_task = t;
 				current_frontier_reusable_tasks = t;
 				break;
 			}
@@ -1019,7 +1028,7 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			current_stages.pop_front();
 
 			// move forward if this stage was merged with another one
-			if (current->reused == NULL) {				
+			if (current->reused == NULL) {
 
 				// start by generating all tasks
 				if (current->tasks.size() == 0)
