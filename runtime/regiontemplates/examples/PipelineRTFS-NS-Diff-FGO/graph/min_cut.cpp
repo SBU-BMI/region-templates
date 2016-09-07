@@ -1,54 +1,14 @@
 #include <iostream>
-#include <string>
 #include <map>
-#include <list>
-#include <boost/heap/fibonacci_heap.hpp>
+
+#include "min_cut.hpp"
+
+using namespace mincut;
 
 /**************************************************/
-/**                Basic Entities                **/
+/**            Internal Funs Prototypes          **/
 /**************************************************/
 
-typedef int _id_t;
-typedef int weight_t;
-
-typedef std::pair<weight_t, _id_t> node_t;
-#define _node(w,id) std::make_pair(w,id)
-
-typedef std::pair<weight_t, std::pair<std::list<_id_t>, std::list<_id_t>>> cut_t;
-#define _cut(w, s1, s2) std::make_pair(w,std::make_pair(s1,s2))
-#define _cut_w(c) c.first
-#define _cut_s1(c) c.second.first
-#define _cut_t2(c) c.second.second
-
-/**************************************************/
-/**             Fibonacci Comparator             **/
-/**************************************************/
-/** This is needed to enforce that the weight is **/
-/** ordered in a descending manner, and id is    **/
-/** ordered in a ascending manner on the         **/
-/** fibonacci heap.                              **/
-/**************************************************/
-
-struct my_comparator {
-	bool operator() (const node_t& x, const node_t& y) const {
-		if (x.first != y.first)
-			return x.first < y.first;
-		else
-			return x.second > y.second;
-	}
-	typedef node_t first_argument_type;
-	typedef node_t second_argument_type;
-	typedef bool result_type;
-};
-
-typedef boost::heap::fibonacci_heap<node_t, 
-	boost::heap::compare<my_comparator>> fibonacci;
-
-/**************************************************/
-/**                Funs Prototypes               **/
-/**************************************************/
-
-int min_cut(size_t n, weight_t** adjMat);
 cut_t min_cut_phase(size_t n, weight_t** adjMat, 
 	std::map<_id_t,std::list<_id_t>> &vertices, _id_t a);
 
@@ -58,23 +18,24 @@ weight_t sum(size_t n, weight_t* A);
 /**                   Main code                  **/
 /**************************************************/
 
+// this is a test code for min_cut
 int main() {
-	size_t n=5;
-	weight_t _adjMat[n][n]={{0,2,2,1,1},
-							{2,0,2,1,1},
-							{2,2,0,1,1},
-							{1,1,1,0,3},
-							{1,1,1,3,0}};
-	// weight_t _adjMat[n][n]={{0,2,0,0,3,0,0,0},
-	// 						{2,0,3,0,2,2,0,0},
-	// 						{0,3,0,4,0,0,2,0},
-	// 						{0,0,4,0,0,0,2,2},
-	// 						{3,2,0,0,0,3,0,0},
-	// 						{0,2,0,0,3,0,1,0},
-	// 						{0,0,2,2,0,1,0,3},
-	// 						{0,0,0,2,0,0,3,0}};
+	size_t n=8;
+	// weight_t _adjMat[n][n]={{0,2,2,1,1},
+	// 						{2,0,2,1,1},
+	// 						{2,2,0,1,1},
+	// 						{1,1,1,0,3},
+	// 						{1,1,1,3,0}};
+	weight_t _adjMat[n][n]={{0,2,0,0,3,0,0,0},
+							{2,0,3,0,2,2,0,0},
+							{0,3,0,4,0,0,2,0},
+							{0,0,4,0,0,0,2,2},
+							{3,2,0,0,0,3,0,0},
+							{0,2,0,0,3,0,1,0},
+							{0,0,2,2,0,1,0,3},
+							{0,0,0,2,0,0,3,0}};
 	
-	// my compiler wont plat VLA, so we need this workaround
+	// my compiler won't do VLA, so we need this workaround
 	weight_t** adjMat = new weight_t *[n];
 	for (size_t i=0; i<n; i++) {
 		adjMat[i] = new weight_t [n];
@@ -82,11 +43,20 @@ int main() {
 			adjMat[i][j] = _adjMat[i][j];
 	}
 
-	min_cut(n, adjMat);
+	std::cout << "Cuts:" << std::endl;
+	for (cut_t c : min_cut(n, adjMat)) {
+		std::cout << "Got cut " << _cut_w(c) << ":" << std::endl;
+		std::cout << "\tS1:" << std::endl;
+		for (_id_t id : _cut_s1(c))
+			std::cout << "\t\t" << id << std::endl;
+		std::cout << "\tS2:" << std::endl;
+		for (_id_t id : _cut_s2(c))
+			std::cout << "\t\t" << id << std::endl;
+	}
 
 }
 
-int min_cut(size_t n, weight_t** adjMat) {
+std::list<cut_t> mincut::min_cut(size_t n, weight_t** adjMat) {
 	
 	_id_t a;
 	cut_t cut;
@@ -111,8 +81,9 @@ int min_cut(size_t n, weight_t** adjMat) {
 
 		// run a phase of cut
 		cuts.emplace_back(min_cut_phase(n, adjMat, vertices, a));
-		std::cout << std::endl;
 	}
+
+	return cuts;
 }
 
 cut_t min_cut_phase(size_t n_max, weight_t** adjMat, 
@@ -175,10 +146,11 @@ cut_t min_cut_phase(size_t n_max, weight_t** adjMat,
 	}
 
 	// get cut weight
-	cut = adjMat[s][t];
+	cut = sum(n_max, adjMat[t]);
 
 	// std::cout << "s=" << s << std::endl;
 	// std::cout << "t=" << t << std::endl;
+	// std::cout << "cut=" << cut << std::endl;
 
 	// std::cout << "before merge:" << std::endl;
 	// for (size_t i=0; i<n_max; i++) {
@@ -189,18 +161,14 @@ cut_t min_cut_phase(size_t n_max, weight_t** adjMat,
 	// }
 
 	// generate cut
-	std::list<_id_t> s1 = vertices.at(s);
 	std::list<_id_t> s2 = vertices.at(t);
+	std::list<_id_t> s1;
 
-	std::cout << "Got cut " << cut << ":" << std::endl;
-	std::cout << "\tS1:" << std::endl;
+	// get all vertices of the first sub-graph
 	for (_id_t i=0; i<n_max; i++)
 		if (i != t && vertices.count(i) > 0)
-			for (_id_t j : vertices.at(i))		
-				std::cout << "\t\t" << j << std::endl;
-	std::cout << "\tS2:" << std::endl;
-	for (_id_t i : s2)
-		std::cout << "\t\t" << i << std::endl;
+			for (_id_t j : vertices.at(i))
+				s1.emplace_back(j);
 
 	// merge s and t
 	for (std::pair<_id_t,std::list<_id_t>> _t : vertices) {
