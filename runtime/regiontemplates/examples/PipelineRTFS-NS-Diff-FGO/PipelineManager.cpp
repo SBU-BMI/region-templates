@@ -1088,13 +1088,10 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			// if the stage isn't composed of reusable tasks then 
 			(*s)->tasks = task_generator(ref->second->tasksDesc, *s, rt, expanded_args);
 			if ((*s)->tasks.size() == 0) {
-				cout << (*s)->getId() << " has " << (*s)->tasks.size() << endl;
 				merged_stages[(*s)->getId()] = *s;
 				s = current_stages.erase(s);
-			} else {
-				cout << (*s)->getId() << " hass " << (*s)->tasks.size() << endl;
+			} else
 				s++;
-			}
 		}
 
 		// if there are no stages left to attempt to merge, or only one stage, don't perform any merging
@@ -1108,7 +1105,12 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		// generate the reuse matrix and the map real-task to min-cut id
 		size_t id = 0;
 		size_t n = current_stages.size();
-		mincut::weight_t adjMat[n][n];
+		
+		// dynamic allocation of adjMat is needed because if n is waaay too big the stack will overflow
+		mincut::weight_t** adjMat = new mincut::weight_t *[n];
+		for (size_t i=0; i<n; i++) {
+			adjMat[i] = new mincut::weight_t [n];
+		}
 		map<size_t, int> id2task;
 		for (list<PipelineComponentBase*>::iterator s1=current_stages.begin(); s1!= current_stages.end(); s1++, id++) {
 			id2task[id] = (*s1)->getId();
@@ -1124,19 +1126,12 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			}
 		}
 
-		// my compiler won't do VLA, so we need this workaround
-		mincut::weight_t** adjMat_ = new mincut::weight_t *[n];
-		for (size_t i=0; i<n; i++) {
-			adjMat_[i] = new mincut::weight_t [n];
-			for (size_t j=0; j<n; j++)
-				adjMat_[i][j] = adjMat[i][j];
-		}
-		cout << endl;
-		adj_mat_print(adjMat_, id2task, n);
-		cout << endl;
+		// cout << endl;
+		// adj_mat_print(adjMat, id2task, n);
+		// cout << endl;
 
 		// send adjMat to mincut algorithm
-		list<mincut::cut_t> cuts = mincut::min_cut(n, adjMat_);
+		list<mincut::cut_t> cuts = mincut::min_cut(n, adjMat);
 
 		// get the cut with the minimal weight, using the number of merged tasks as a tiebreaker
 		mincut::cut_t best_cut = cuts.front();
@@ -1146,14 +1141,14 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		mincut::weight_t r;
 
 		for (mincut::cut_t c : cuts) {
-			cout << "cut: " << mincut::_cut_w(c) << ":" << endl;
-			cout << "\tS1:" << endl;
-			for (mincut::_id_t id : mincut::_cut_s1(c))
-				cout << "\t\t" << id2task[id] << endl;
-			cout << "\tS2:" << endl;
-			for (mincut::_id_t id : mincut::_cut_s2(c))
-				cout << "\t\t" << id2task[id] << endl;
-			cout << endl;
+			// cout << "cut: " << mincut::_cut_w(c) << ":" << endl;
+			// cout << "\tS1:" << endl;
+			// for (mincut::_id_t id : mincut::_cut_s1(c))
+			// 	cout << "\t\t" << id2task[id] << endl;
+			// cout << "\tS2:" << endl;
+			// for (mincut::_id_t id : mincut::_cut_s2(c))
+			// 	cout << "\t\t" << id2task[id] << endl;
+			// cout << endl;
 
 			// updates min cut if the weight is less that the best so far
 			if (mincut::_cut_w(c) < best_weight) {
@@ -1170,13 +1165,13 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			}
 		}
 
-		cout << "best cut: " << mincut::_cut_w(best_cut) << ":" << endl;
-		cout << "\tS1:" << endl;
-		for (mincut::_id_t id : mincut::_cut_s1(best_cut))
-			cout << "\t\t" << id2task[id] << endl;
-		cout << "\tS2:" << endl;
-		for (mincut::_id_t id : mincut::_cut_s2(best_cut))
-			cout << "\t\t" << id2task[id] << endl;
+		// cout << "best cut: " << mincut::_cut_w(best_cut) << ":" << endl;
+		// cout << "\tS1:" << endl;
+		// for (mincut::_id_t id : mincut::_cut_s1(best_cut))
+		// 	cout << "\t\t" << id2task[id] << endl;
+		// cout << "\tS2:" << endl;
+		// for (mincut::_id_t id : mincut::_cut_s2(best_cut))
+		// 	cout << "\t\t" << id2task[id] << endl;
 
 		// For some unholy reason getting the iterator directly from _cut_s1 messes the iterator up
 		// so the s1_ is a workaround for it.
@@ -1215,41 +1210,6 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			// add s1_it to merged_stages
 			merged_stages[all_stages.at(id2task[*s1_it])->getId()] = all_stages.at(id2task[*s1_it]);
 		}		
-
-		// // attempt to merge all current stages
-		// while (!current_stages.empty()) {
-		// 	// get one stage to start merging
-		// 	PipelineComponentBase* current = current_stages.front();
-		// 	current_stages.pop_front();
-
-		// 	// move forward if this stage was merged with another one
-		// 	if (current->reused == NULL) {
-
-		// 		// start by generating all tasks
-		// 		if (current->tasks.size() == 0)
-		// 			current->tasks = task_generator(ref->second->tasksDesc, current, rt, expanded_args);
-
-		// 		// attempt to merge all stages to the current merged stages
-		// 		list<PipelineComponentBase*>::iterator i = current_stages.begin();
-		// 		while (i != current_stages.end()) {
-		// 			// add stage to merged stages if the merging condition is true
-		// 			PipelineComponentBase* s = *i;
-
-		// 			// generate tasks if it they weren't generated yet
-		// 			if (s->tasks.size() == 0)
-		// 				s->tasks = task_generator(ref->second->tasksDesc, s, rt, expanded_args);
-
-		// 			if (merging_condition(s, current, ref->second->tasksDesc)) {
-		// 				cout << "[merge_stages_fine_grain] mearging " << current->getId() << " with " << s->getId() << endl;
-		// 				merge_stages(current, s, ref->second->tasksDesc);
-		// 			}
-		// 			i++;
-		// 		}
-		// 	}
-
-		// 	// add merged stages to final map as one stage
-		// 	merged_stages[((PipelineComponentBase*)current)->getId()] = (PipelineComponentBase*)current;
-		// }
 	}
 }
 
