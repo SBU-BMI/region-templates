@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -1084,8 +1084,25 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		filter_stages(all_stages, ref->second->getName(), current_stages);
 
 		// generate all tasks
-		for (list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!= current_stages.end(); s++) {
+		for (list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!= current_stages.end(); ) {
+			// if the stage isn't composed of reusable tasks then 
 			(*s)->tasks = task_generator(ref->second->tasksDesc, *s, rt, expanded_args);
+			if ((*s)->tasks.size() == 0) {
+				cout << (*s)->getId() << " has " << (*s)->tasks.size() << endl;
+				merged_stages[(*s)->getId()] = *s;
+				s = current_stages.erase(s);
+			} else {
+				cout << (*s)->getId() << " hass " << (*s)->tasks.size() << endl;
+				s++;
+			}
+		}
+
+		// if there are no stages left to attempt to merge, or only one stage, don't perform any merging
+		if (current_stages.size() == 1) {
+			merged_stages[(*current_stages.begin())->getId()] = *current_stages.begin();
+			continue;
+		} else if (current_stages.size() == 0) {
+			continue;
 		}
 
 		// generate the reuse matrix and the map real-task to min-cut id
@@ -1161,60 +1178,43 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		for (mincut::_id_t id : mincut::_cut_s2(best_cut))
 			cout << "\t\t" << id2task[id] << endl;
 
-		// merge the stages of the best cut
-		mincut::subgraph_t::iterator s1_it = mincut::_cut_s1(best_cut).begin();
-		PipelineComponentBase* current1 = all_stages.at(id2task[*s1_it]);
-		cout << *s1_it << endl;
-		s1_it++;
-		cout << *s1_it << endl;
-
-
+		// For some unholy reason getting the iterator directly from _cut_s1 messes the iterator up
+		// so the s1_ is a workaround for it.
+		// mincut::subgraph_t::iterator s1_it = mincut::_cut_s1(best_cut).begin();
 		
-		cout << "\tS1:" << endl;
-		for (mincut::_id_t id : mincut::_cut_s1(best_cut))
-			cout << "\t\t" << &id << endl;
+		// merge the stages of the best cut
+		mincut::subgraph_t s1_ = mincut::_cut_s1(best_cut);
+		for (mincut::subgraph_t::iterator s1_it = s1_.begin(); s1_it!=s1_.end(); s1_it++) {
+			// attempt to merge s1_it with all other stages
+			for (mincut::subgraph_t::iterator s2_it = next(s1_it); s2_it!=s1_.end();) {
+				if (merging_condition(all_stages.at(id2task[*s1_it]), all_stages.at(id2task[*s2_it]), ref->second->tasksDesc)) {
+					merge_stages(all_stages.at(id2task[*s1_it]), all_stages.at(id2task[*s2_it]), ref->second->tasksDesc);
+					merged_stages[all_stages.at(id2task[*s2_it])->getId()] = all_stages.at(id2task[*s2_it]);
+					s2_it = s1_.erase(s2_it);
+				} else
+					s2_it++;
+			}
 
-		cout << "\tS1 it:" << *(mincut::_cut_s1(best_cut).begin()) <<  endl;
-		list<int>::iterator id2=(mincut::_cut_s1(best_cut)).begin();
-		cout << "\tS1 it:" << &(*(id2)) <<  endl;
-		cout << "\tS1 it:" << *(id2++) <<  endl;
-		cout << "\tS1 it:" << *(id2++) <<  endl;
-		cout << "\tS1 it:" << *(id2) <<  endl;
-		for (; ;) {
-			cout << "\t\t" << (*id2) << endl;
-			if (id2==mincut::_cut_s1(best_cut).end())
-				break;
-			id2++;
+			// add s1_it to merged_stages
+			merged_stages[all_stages.at(id2task[*s1_it])->getId()] = all_stages.at(id2task[*s1_it]);
 		}
 
 
+		mincut::subgraph_t s2_ = mincut::_cut_s2(best_cut);
+		for (mincut::subgraph_t::iterator s1_it = s2_.begin(); s1_it!=s2_.end(); s1_it++) {
+			// attempt to merge s1_it with all other stages
+			for (mincut::subgraph_t::iterator s2_it = next(s1_it); s2_it!=s2_.end();) {
+				if (merging_condition(all_stages.at(id2task[*s1_it]), all_stages.at(id2task[*s2_it]), ref->second->tasksDesc)) {
+					merge_stages(all_stages.at(id2task[*s1_it]), all_stages.at(id2task[*s2_it]), ref->second->tasksDesc);
+					merged_stages[all_stages.at(id2task[*s2_it])->getId()] = all_stages.at(id2task[*s2_it]);
+					s2_it = s2_.erase(s2_it);
+				} else
+					s2_it++;
+			}
 
-		for (; s1_it!=mincut::_cut_s1(best_cut).end(); s1_it++) {
-			cout << id2task[*s1_it] << endl;
-			if (merging_condition(current1, all_stages.at(id2task[*s1_it]), ref->second->tasksDesc))
-				merge_stages(current1, all_stages.at(id2task[*s1_it]), ref->second->tasksDesc);
-			else 
-				current1->tasks.insert(current1->tasks.begin(), all_stages.at(id2task[*s1_it])->tasks.begin(), 
-					all_stages.at(id2task[*s1_it])->tasks.end());
-		}
-
-		// add merged stages to final map as one stage
-		merged_stages[current1->getId()] = current1;
-
-		mincut::subgraph_t::iterator s2_it = mincut::_cut_s2(best_cut).begin();
-		PipelineComponentBase* current2 = all_stages.at(id2task[*s2_it]);
-		s2_it++;
-		for (; s2_it!=mincut::_cut_s2(best_cut).end(); s2_it++) {
-			if (merging_condition(current2, all_stages.at(id2task[*s2_it]), ref->second->tasksDesc))
-				merge_stages(current2, all_stages.at(id2task[*s2_it]), ref->second->tasksDesc);
-			else 
-				current2->tasks.insert(current2->tasks.begin(), all_stages.at(id2task[*s2_it])->tasks.begin(), 
-					all_stages.at(id2task[*s2_it])->tasks.end());
-		}
-
-		// add merged stages to final map as one stage
-		merged_stages[current2->getId()] = current2;
-
+			// add s1_it to merged_stages
+			merged_stages[all_stages.at(id2task[*s1_it])->getId()] = all_stages.at(id2task[*s1_it]);
+		}		
 
 		// // attempt to merge all current stages
 		// while (!current_stages.empty()) {
