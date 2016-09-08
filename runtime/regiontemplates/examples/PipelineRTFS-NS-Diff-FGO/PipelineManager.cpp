@@ -14,6 +14,7 @@
 #include "RTPipelineComponentBase.h"
 #include "RegionTemplateCollection.h"
 #include "ReusableTask.hpp"
+#include "graph/min_cut.hpp"
 
 using namespace std;
 
@@ -50,6 +51,29 @@ void mapprint(map<int, list<ArgumentBase*>> mapp) {
 void mapprint(map<int, PipelineComponentBase*> mapp) {
 	for (map<int, PipelineComponentBase*>::iterator i=mapp.begin(); i!=mapp.end();i++)
 		cout << i->first << ":" << i->second->getName() << endl;
+}
+
+void adj_mat_print(mincut::weight_t** adjMat, size_t n) {
+	for (int i=0; i<n; i++) {
+		for (int j=0; j<n; j++) {
+			cout << adjMat[i][j] << "\t";
+		}
+		cout << endl;
+	}
+}
+
+void adj_mat_print(mincut::weight_t** adjMat, map<size_t, int> id2task, size_t n) {
+	cout << "x\t";
+	for (int i=0; i<n; i++)
+		cout << id2task[i] << "\t";
+	cout << endl;
+	for (int i=0; i<n; i++) {
+		cout << id2task[i] << "\t";
+		for (int j=0; j<n; j++) {
+			cout << adjMat[i][j] << "\t";
+		}
+		cout << endl;
+	}
 }
 
 // Workflow parsing functions
@@ -91,7 +115,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -211,10 +235,10 @@ int main(int argc, char* argv[]) {
 			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << endl;
 	}
 
-	cout << endl << "merged args" << endl;
-	for (pair<int, ArgumentBase*> p : expanded_args)
-		cout << "\t" << p.first << ":" << p.second->getName() << " = " 
-			<< p.second->toString() << " sized: " << p.second->size() << endl;
+	// cout << endl << "merged args" << endl;
+	// for (pair<int, ArgumentBase*> p : expanded_args)
+	// 	cout << "\t" << p.first << ":" << p.second->getName() << " = " 
+	// 		<< p.second->toString() << " sized: " << p.second->size() << endl;
 
 	map<int, PipelineComponentBase*> merged_stages;
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args);
@@ -945,9 +969,9 @@ list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc,
 		}
 		prev_task = n_task;
 		tasks.emplace_back(n_task);
-		cout << "[task_generator] new task " << uid << ":" << t->first << " from stage " << p->getId() << endl;
-		cout << "[task_generator] \targs:" << endl;
-		n_task->print();
+		// cout << "[task_generator] new task " << uid << ":" << t->first << " from stage " << p->getId() << endl;
+		// cout << "[task_generator] \targs:" << endl;
+		// n_task->print();
 
 	}
 
@@ -1011,6 +1035,44 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 	}
 }
 
+mincut::weight_t get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBase* s2, map<string, list<ArgumentBase*>> ref) {
+	PipelineComponentBase* s1_clone = s1->clone();
+	PipelineComponentBase* s2_clone = s2->clone();
+
+	merge_stages(s1_clone, s2_clone, ref);
+
+	return s1->tasks.size() + s2->tasks.size() - s1_clone->tasks.size();
+}
+
+int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, int> id2task,  
+	map<int, PipelineComponentBase*> current_stages, map<string, list<ArgumentBase*>> ref) {
+
+	// get the first stage as a base stage
+	mincut::subgraph_t::iterator s1_it = s1.begin();
+	PipelineComponentBase* current1 = current_stages[id2task[*s1_it]]->clone();
+	s1_it++;
+	for (; s1_it!=s1.end(); s1_it++) {
+		PipelineComponentBase* clone1 = current_stages[id2task[*s1_it]]->clone();
+		if (merging_condition(current1, clone1, ref))
+			merge_stages(current1, clone1, ref);
+		else 
+			current1->tasks.insert(current1->tasks.begin(), clone1->tasks.begin(), clone1->tasks.end());
+	}
+
+	// get the first stage as a base stage
+	mincut::subgraph_t::iterator s2_it = s2.begin();
+	PipelineComponentBase* current2 = current_stages[id2task[(*s2_it)]]->clone();
+	for (s2_it++; s2_it!=s2.end(); s2_it++) {
+		PipelineComponentBase* clone2 = current_stages[id2task[*s2_it]]->clone();
+		if (merging_condition(current2, clone2, ref))
+			merge_stages(current2, clone2, ref);
+		else 
+			current2->tasks.insert(current2->tasks.begin(), clone2->tasks.begin(), clone2->tasks.end());
+	}
+
+	return current1->tasks.size()>current2->tasks.size()?current1->tasks.size():current2->tasks.size();
+}
+
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
 	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
 	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
@@ -1021,40 +1083,173 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		list<PipelineComponentBase*> current_stages;
 		filter_stages(all_stages, ref->second->getName(), current_stages);
 
-		// attempt to merge all current stages
-		while (!current_stages.empty()) {
-			// get one stage to start merging
-			PipelineComponentBase* current = current_stages.front();
-			current_stages.pop_front();
+		// generate all tasks
+		for (list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!= current_stages.end(); s++) {
+			(*s)->tasks = task_generator(ref->second->tasksDesc, *s, rt, expanded_args);
+		}
 
-			// move forward if this stage was merged with another one
-			if (current->reused == NULL) {
-
-				// start by generating all tasks
-				if (current->tasks.size() == 0)
-					current->tasks = task_generator(ref->second->tasksDesc, current, rt, expanded_args);
-
-				// attempt to merge all stages to the current merged stages
-				list<PipelineComponentBase*>::iterator i = current_stages.begin();
-				while (i != current_stages.end()) {
-					// add stage to merged stages if the merging condition is true
-					PipelineComponentBase* s = *i;
-
-					// generate tasks if it they weren't generated yet
-					if (s->tasks.size() == 0)
-						s->tasks = task_generator(ref->second->tasksDesc, s, rt, expanded_args);
-
-					if (merging_condition(s, current, ref->second->tasksDesc)) {
-						cout << "[merge_stages_fine_grain] mearging " << current->getId() << " with " << s->getId() << endl;
-						merge_stages(current, s, ref->second->tasksDesc);
-					}
-					i++;
+		// generate the reuse matrix and the map real-task to min-cut id
+		size_t id = 0;
+		size_t n = current_stages.size();
+		mincut::weight_t adjMat[n][n];
+		map<size_t, int> id2task;
+		for (list<PipelineComponentBase*>::iterator s1=current_stages.begin(); s1!= current_stages.end(); s1++, id++) {
+			id2task[id] = (*s1)->getId();
+			// cout << "map: " << id << ":" << (*s1)->getId() << endl;
+			size_t id_j = id;
+			for (list<PipelineComponentBase*>::iterator s2=s1; s2!= current_stages.end(); s2++, id_j++) {
+				if (id == id_j)
+					adjMat[id][id] = 0;
+				else {
+					adjMat[id][id_j] = get_reuse_factor(*s1, *s2, ref->second->tasksDesc);
+					adjMat[id_j][id] = adjMat[id][id_j];
 				}
 			}
-
-			// add merged stages to final map as one stage
-			merged_stages[((PipelineComponentBase*)current)->getId()] = (PipelineComponentBase*)current;
 		}
+
+		// my compiler won't do VLA, so we need this workaround
+		mincut::weight_t** adjMat_ = new mincut::weight_t *[n];
+		for (size_t i=0; i<n; i++) {
+			adjMat_[i] = new mincut::weight_t [n];
+			for (size_t j=0; j<n; j++)
+				adjMat_[i][j] = adjMat[i][j];
+		}
+		cout << endl;
+		adj_mat_print(adjMat_, id2task, n);
+		cout << endl;
+
+		// send adjMat to mincut algorithm
+		list<mincut::cut_t> cuts = mincut::min_cut(n, adjMat_);
+
+		// get the cut with the minimal weight, using the number of merged tasks as a tiebreaker
+		mincut::cut_t best_cut = cuts.front();
+		mincut::weight_t best_weight = mincut::_cut_w(best_cut);
+		int best_num_tasks = get_reuse_factor(mincut::_cut_s1(best_cut), mincut::_cut_s2(best_cut), 
+			id2task, all_stages, ref->second->tasksDesc);
+		mincut::weight_t r;
+
+		for (mincut::cut_t c : cuts) {
+			cout << "cut: " << mincut::_cut_w(c) << ":" << endl;
+			cout << "\tS1:" << endl;
+			for (mincut::_id_t id : mincut::_cut_s1(c))
+				cout << "\t\t" << id2task[id] << endl;
+			cout << "\tS2:" << endl;
+			for (mincut::_id_t id : mincut::_cut_s2(c))
+				cout << "\t\t" << id2task[id] << endl;
+			cout << endl;
+
+			// updates min cut if the weight is less that the best so far
+			if (mincut::_cut_w(c) < best_weight) {
+				best_cut = c;
+				best_weight = mincut::_cut_w(c);
+				best_num_tasks = get_reuse_factor(mincut::_cut_s1(c), mincut::_cut_s2(c), 
+					id2task, all_stages, ref->second->tasksDesc);
+			} 
+			// updates min cut if the weight are the same but this cut is more balanced
+			else if (mincut::_cut_w(c) == best_weight && (r = get_reuse_factor(mincut::_cut_s1(c), 
+					mincut::_cut_s2(c), id2task, all_stages, ref->second->tasksDesc)) < best_num_tasks) {
+				best_cut = c;
+				best_num_tasks = r;
+			}
+		}
+
+		cout << "best cut: " << mincut::_cut_w(best_cut) << ":" << endl;
+		cout << "\tS1:" << endl;
+		for (mincut::_id_t id : mincut::_cut_s1(best_cut))
+			cout << "\t\t" << id2task[id] << endl;
+		cout << "\tS2:" << endl;
+		for (mincut::_id_t id : mincut::_cut_s2(best_cut))
+			cout << "\t\t" << id2task[id] << endl;
+
+		// merge the stages of the best cut
+		mincut::subgraph_t::iterator s1_it = mincut::_cut_s1(best_cut).begin();
+		PipelineComponentBase* current1 = all_stages.at(id2task[*s1_it]);
+		cout << *s1_it << endl;
+		s1_it++;
+		cout << *s1_it << endl;
+
+
+		
+		cout << "\tS1:" << endl;
+		for (mincut::_id_t id : mincut::_cut_s1(best_cut))
+			cout << "\t\t" << &id << endl;
+
+		cout << "\tS1 it:" << *(mincut::_cut_s1(best_cut).begin()) <<  endl;
+		list<int>::iterator id2=(mincut::_cut_s1(best_cut)).begin();
+		cout << "\tS1 it:" << &(*(id2)) <<  endl;
+		cout << "\tS1 it:" << *(id2++) <<  endl;
+		cout << "\tS1 it:" << *(id2++) <<  endl;
+		cout << "\tS1 it:" << *(id2) <<  endl;
+		for (; ;) {
+			cout << "\t\t" << (*id2) << endl;
+			if (id2==mincut::_cut_s1(best_cut).end())
+				break;
+			id2++;
+		}
+
+
+
+		for (; s1_it!=mincut::_cut_s1(best_cut).end(); s1_it++) {
+			cout << id2task[*s1_it] << endl;
+			if (merging_condition(current1, all_stages.at(id2task[*s1_it]), ref->second->tasksDesc))
+				merge_stages(current1, all_stages.at(id2task[*s1_it]), ref->second->tasksDesc);
+			else 
+				current1->tasks.insert(current1->tasks.begin(), all_stages.at(id2task[*s1_it])->tasks.begin(), 
+					all_stages.at(id2task[*s1_it])->tasks.end());
+		}
+
+		// add merged stages to final map as one stage
+		merged_stages[current1->getId()] = current1;
+
+		mincut::subgraph_t::iterator s2_it = mincut::_cut_s2(best_cut).begin();
+		PipelineComponentBase* current2 = all_stages.at(id2task[*s2_it]);
+		s2_it++;
+		for (; s2_it!=mincut::_cut_s2(best_cut).end(); s2_it++) {
+			if (merging_condition(current2, all_stages.at(id2task[*s2_it]), ref->second->tasksDesc))
+				merge_stages(current2, all_stages.at(id2task[*s2_it]), ref->second->tasksDesc);
+			else 
+				current2->tasks.insert(current2->tasks.begin(), all_stages.at(id2task[*s2_it])->tasks.begin(), 
+					all_stages.at(id2task[*s2_it])->tasks.end());
+		}
+
+		// add merged stages to final map as one stage
+		merged_stages[current2->getId()] = current2;
+
+
+		// // attempt to merge all current stages
+		// while (!current_stages.empty()) {
+		// 	// get one stage to start merging
+		// 	PipelineComponentBase* current = current_stages.front();
+		// 	current_stages.pop_front();
+
+		// 	// move forward if this stage was merged with another one
+		// 	if (current->reused == NULL) {
+
+		// 		// start by generating all tasks
+		// 		if (current->tasks.size() == 0)
+		// 			current->tasks = task_generator(ref->second->tasksDesc, current, rt, expanded_args);
+
+		// 		// attempt to merge all stages to the current merged stages
+		// 		list<PipelineComponentBase*>::iterator i = current_stages.begin();
+		// 		while (i != current_stages.end()) {
+		// 			// add stage to merged stages if the merging condition is true
+		// 			PipelineComponentBase* s = *i;
+
+		// 			// generate tasks if it they weren't generated yet
+		// 			if (s->tasks.size() == 0)
+		// 				s->tasks = task_generator(ref->second->tasksDesc, s, rt, expanded_args);
+
+		// 			if (merging_condition(s, current, ref->second->tasksDesc)) {
+		// 				cout << "[merge_stages_fine_grain] mearging " << current->getId() << " with " << s->getId() << endl;
+		// 				merge_stages(current, s, ref->second->tasksDesc);
+		// 			}
+		// 			i++;
+		// 		}
+		// 	}
+
+		// 	// add merged stages to final map as one stage
+		// 	merged_stages[((PipelineComponentBase*)current)->getId()] = (PipelineComponentBase*)current;
+		// }
 	}
 }
 

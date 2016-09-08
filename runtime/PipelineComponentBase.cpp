@@ -38,7 +38,6 @@ PipelineComponentBase::~PipelineComponentBase() {
 		ArgumentBase *aux = this->arguments.back();
 		this->arguments.pop_back();
 		if (aux->getIo() == ArgumentBase::input) {
-			std::cout << "[PipelineComponentBase] deleting input " << aux->getName() << std::endl;
 			delete aux;
 		}
 	}
@@ -225,9 +224,6 @@ int PipelineComponentBase::serialize(char *buff)
 		memcpy(buff+serialized_bytes, (*t)->getTaskName().c_str(), task_name_size*sizeof(char) );
 		serialized_bytes+=task_name_size*sizeof(char);
 
-		cout << "[PipelineComponentBase] serializing task name " << (*t)->getTaskName() 
-			<< " of size " << (*t)->getTaskName().size() << endl;
-
 		// copy the task
 		serialized_bytes += (*t)->serialize(buff+serialized_bytes);
 	}
@@ -348,9 +344,6 @@ int PipelineComponentBase::deserialize(char *buff)
 		deserialized_bytes += sizeof(char)*task_name_size;
 		std::string task_name_s = std::string(task_name);
 		// std::string task_name_s = "TaskSegmentation";
-
-		cout << "[PipelineComponentBase] deserializing task name " << task_name_s 
-			<< " of size " << task_name_s.size() << endl;
 
 		// deserialize the task
 		ReusableTask* task = ReusableTask::ReusableTaskFactory::getTaskFromName(task_name_s);
