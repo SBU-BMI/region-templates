@@ -358,7 +358,7 @@ int main (int argc, char **argv){
 
 	 double perf[numClients];//=100000;
 
-    int max_number_of_iterations = 100;
+	int max_number_of_iterations = 20;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
     float mindiff = std::numeric_limits<float>::infinity();;
 

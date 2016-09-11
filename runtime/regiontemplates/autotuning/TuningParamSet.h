@@ -10,23 +10,29 @@
 
 
 class TuningParamSet {
-protected:
+public:
     std::map<std::string, void *> paramSet;
     double score;
-public:
-    void bindParam(std::string paramName, void *paramValue);
+
+    void addParam(std::string paramName, void *paramInitialValue);
+
+    void setScore(double score);
+
+    double getScore();
+
 };
 
-void TuningParamSet::bindParam(std::string paramName, void *paramValue) {
-    paramSet.insert(paramName, paramValue);
+void TuningParamSet::addParam(std::string paramName, void *paramInitialValue) {
+    //paramSet.insert(paramName, paramValue);
+    paramSet[paramName] = paramInitialValue;
 }
 
 void TuningParamSet::setScore(double score) {
-    this.score = score;
+    this->score = score;
 }
 
 double TuningParamSet::getScore() {
-    return this.score;
+    return this->score;
 }
 
 #endif //RUNTIME_TUNINGPARAMSET_H
