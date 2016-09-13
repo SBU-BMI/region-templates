@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -247,8 +247,12 @@ int main(int argc, char* argv[]) {
 	// 	cout << "\t" << p.first << ":" << p.second->getName() << " = " 
 	// 		<< p.second->toString() << " sized: " << p.second->size() << endl;
 
+	// add arguments to each stage
+	cout << endl << "add_arguments_to_stages" << endl;
+	add_arguments_to_stages(expanded_stages, expanded_args, rt);
+
 	map<int, PipelineComponentBase*> merged_stages;
-	int size = 4;
+	int size = 6;
 	// MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size);
 
@@ -271,13 +275,6 @@ int main(int argc, char* argv[]) {
 	string inputFolderPath = "~/Desktop/images15";
 	cout << endl << "generate_drs" << endl;
 	generate_drs(rt, expanded_args);
-
-	// RegionTemplateCollection* rts;
-	// rts = RTFromFiles(inputFolderPath);
-
-	// add arguments to each stage
-	cout << endl << "add_arguments_to_stages" << endl;
-	add_arguments_to_stages(merged_stages, expanded_args, rt);
 
 	// add all stages to manager
 	cout << endl << "executeComponent" << endl;
@@ -929,17 +926,31 @@ bool exists_reusable_task(PipelineComponentBase* merged, PipelineComponentBase* 
 }
 
 // for the meantime the mearging will happen whenever at least the first task is reusable
-bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_merge, map<string, list<ArgumentBase*>> ref) {
+bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_merge, 
+	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 	
 	// compatibility with stages that dont implement task reuse
 	if (ref.size() == 0)
 		return false;
 
 	// verify if the first task is reusable
-	if (exists_reusable_task(merged, to_merge, ref.begin()->first))
-		return true;
-	else
+	if (!exists_reusable_task(merged, to_merge, ref.begin()->first))
 		return false;
+
+	// verify if the stage dependecy is the same
+	for (ArgumentBase* a1 : merged->getArguments()) {
+		ArgumentBase* arg1 = args[a1->getId()];
+		if (arg1->getParent() != 0) {
+			for (ArgumentBase* a2 : to_merge->getArguments()) {
+				ArgumentBase* arg2 = args[a2->getId()];
+				if (arg1->getParent() == arg2->getParent()) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }
 
 // filters all the stages from an input map by the stage's name
@@ -1003,7 +1014,7 @@ list<ReusableTask*> find_tasks(list<ReusableTask*> l, string name) {
 }
 
 void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<string, list<ArgumentBase*>> ref) {
-	
+
 	s->reused = current;
 
 	ReusableTask* current_frontier_reusable_tasks;
@@ -1044,7 +1055,9 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 	}
 }
 
-list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages, map<string, list<ArgumentBase*>> ref) {
+list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages, 
+	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
+
 	if (stages.size() == 1)
 		return stages;
 
@@ -1052,7 +1065,7 @@ list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages, m
 	
 	for (; i!=stages.end(); i++) {
 		for (list<PipelineComponentBase*>::iterator j = next(i); j!=stages.end();) {
-			if (merging_condition(*i, *j, ref)) {
+			if (merging_condition(*i, *j, args, ref)) {
 				merge_stages(*i, *j, ref);
 				j = stages.erase(j);
 			} else
@@ -1063,17 +1076,29 @@ list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages, m
 	return stages;
 }
 
-mincut::weight_t get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBase* s2, map<string, list<ArgumentBase*>> ref) {
+mincut::weight_t get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBase* s2, 
+	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
+
+	if (!merging_condition(s1, s2, args, ref))
+		return 0;
+
 	PipelineComponentBase* s1_clone = s1->clone();
 	PipelineComponentBase* s2_clone = s2->clone();
 
 	merge_stages(s1_clone, s2_clone, ref);
 
-	return s1->tasks.size() + s2->tasks.size() - s1_clone->tasks.size();
+	mincut::weight_t ret = s1->tasks.size() + s2->tasks.size() - s1_clone->tasks.size();
+
+	// clean memory
+	delete s1_clone;
+	delete s2_clone;
+
+	return ret;
 }
 
 int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, int> id2task,  
-	map<int, PipelineComponentBase*> current_stages, map<string, list<ArgumentBase*>> ref) {
+	map<int, PipelineComponentBase*> current_stages, map<int, ArgumentBase*> &args,
+	map<string, list<ArgumentBase*>> ref) {
 
 	// get the first stage as a base stage
 	mincut::subgraph_t::iterator s1_it = s1.begin();
@@ -1081,10 +1106,11 @@ int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, i
 	s1_it++;
 	for (; s1_it!=s1.end(); s1_it++) {
 		PipelineComponentBase* clone1 = current_stages[id2task[*s1_it]]->clone();
-		if (merging_condition(current1, clone1, ref))
+		if (merging_condition(current1, clone1, args, ref))
 			merge_stages(current1, clone1, ref);
 		else 
 			current1->tasks.insert(current1->tasks.begin(), clone1->tasks.begin(), clone1->tasks.end());
+		delete clone1;
 	}
 
 	// get the first stage as a base stage
@@ -1092,23 +1118,31 @@ int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, i
 	PipelineComponentBase* current2 = current_stages[id2task[(*s2_it)]]->clone();
 	for (s2_it++; s2_it!=s2.end(); s2_it++) {
 		PipelineComponentBase* clone2 = current_stages[id2task[*s2_it]]->clone();
-		if (merging_condition(current2, clone2, ref))
+		if (merging_condition(current2, clone2, args, ref))
 			merge_stages(current2, clone2, ref);
 		else 
 			current2->tasks.insert(current2->tasks.begin(), clone2->tasks.begin(), clone2->tasks.end());
+		delete clone2;
 	}
 
-	return current1->tasks.size()>current2->tasks.size()?current1->tasks.size():current2->tasks.size();
+	int ret = current1->tasks.size()>current2->tasks.size()?current1->tasks.size():current2->tasks.size();
+
+	// clear memory
+	delete current1;
+
+	return ret;
 }
 
-float calc_stage_proc(list<PipelineComponentBase*> s, map<string, list<ArgumentBase*>> ref) {
+float calc_stage_proc(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 	list<PipelineComponentBase*>::iterator i = s.begin();
 
 	for (; i!=s.end(); i++) {
 		PipelineComponentBase* current = (*i)->clone();
 		for (list<PipelineComponentBase*>::iterator j = next(i); j!=s.end();) {
-			if (merging_condition(*i, *j, ref)) {
-				merge_stages(current, (*j)->clone(), ref);
+			if (merging_condition(*i, *j, args, ref)) {
+				PipelineComponentBase* j_clone = (*j)->clone();
+				merge_stages(current, j_clone, ref);
+				delete j_clone;
 				j = s.erase(j);
 			} else
 				j++;
@@ -1117,52 +1151,61 @@ float calc_stage_proc(list<PipelineComponentBase*> s, map<string, list<ArgumentB
 	}
 
 	float proc_cost = 0;
-	for (PipelineComponentBase* p : s)
+	for (PipelineComponentBase* p : s) {
 		for (ReusableTask* t : p->tasks)
 			// proc_cost += t->getProcCost();
 			proc_cost++;
+		delete p;
+	}
 
 	return proc_cost;
 }
 
 // just add PCB s symbolicaly and calc the cost with stages
-float calc_stage_proc(list<PipelineComponentBase*> stages, PipelineComponentBase* s, map<string, list<ArgumentBase*>> ref) {
+float calc_stage_proc(list<PipelineComponentBase*> stages, PipelineComponentBase* s, map<int, ArgumentBase*> &args, 
+	map<string, list<ArgumentBase*>> ref) {
 	stages.emplace_back(s);
-	return calc_stage_proc(stages, ref);
+	return calc_stage_proc(stages, args, ref);
 }
 
-float calc_stage_mem(list<PipelineComponentBase*> s, map<string, list<ArgumentBase*>> ref) {
+float calc_stage_mem(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 	list<PipelineComponentBase*>::iterator i = s.begin();
 
 	for (; i!=s.end(); i++) {
 		PipelineComponentBase* current = (*i)->clone();
 		for (list<PipelineComponentBase*>::iterator j = next(i); j!=s.end();) {
-			if (merging_condition(*i, *j, ref)) {
-				merge_stages(current, (*j)->clone(), ref);
+			if (merging_condition(*i, *j, args, ref)) {
+				PipelineComponentBase* j_clone = (*j)->clone();
+				merge_stages(current, j_clone, ref);
 				j = s.erase(j);
+				delete j_clone;
 			} else
 				j++;
 		}
 	}
 
 	float mem_cost = 0;
-	for (PipelineComponentBase* p : s)
+	for (PipelineComponentBase* p : s) {
 		for (ReusableTask* t : p->tasks)
 			// mem_cost += t->getMemCost();
 			mem_cost+=0;
+		delete p;
+	}
 
 	return mem_cost;
 }
 
-bool cutting_condition(list<PipelineComponentBase*> current, float nrS_mksp, float max_mem, map<string, list<ArgumentBase*>> ref) {
-	if (calc_stage_proc(current, ref) > nrS_mksp || calc_stage_mem(current, ref) > max_mem)
+bool cutting_condition(list<PipelineComponentBase*> current, float nrS_mksp, float max_mem, 
+	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
+
+	if (calc_stage_proc(current, args, ref) > nrS_mksp || calc_stage_mem(current, args, ref) > max_mem)
 		return true;
 	else
 		return false;
 }
 
 pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> get_cut(list<PipelineComponentBase*> current_stages, 
-	const map<int, PipelineComponentBase*> &all_stages, map<string, list<ArgumentBase*>> ref) {
+	const map<int, PipelineComponentBase*> &all_stages, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 
 	// generate the reuse matrix and the map real-task to min-cut id
 	size_t id = 0;
@@ -1183,7 +1226,7 @@ pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> get_cut(list<Pi
 			if (id == id_j)
 				adjMat[id][id] = 0;
 			else {
-				adjMat[id][id_j] = get_reuse_factor(*s1, *s2, ref);
+				adjMat[id][id_j] = get_reuse_factor(*s1, *s2, args, ref);
 				adjMat[id_j][id] = adjMat[id][id_j];
 			}
 		}
@@ -1200,7 +1243,7 @@ pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> get_cut(list<Pi
 	mincut::cut_t best_cut = cuts.front();
 	mincut::weight_t best_weight = mincut::_cut_w(best_cut);
 	int best_num_tasks = get_reuse_factor(mincut::_cut_s1(best_cut), mincut::_cut_s2(best_cut), 
-		id2task, all_stages, ref);
+		id2task, all_stages, args, ref);
 	mincut::weight_t r;
 
 	for (mincut::cut_t c : cuts) {
@@ -1218,11 +1261,11 @@ pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> get_cut(list<Pi
 			best_cut = c;
 			best_weight = mincut::_cut_w(c);
 			best_num_tasks = get_reuse_factor(mincut::_cut_s1(c), mincut::_cut_s2(c), 
-				id2task, all_stages, ref);
+				id2task, all_stages, args, ref);
 		} 
 		// updates min cut if the weight are the same but this cut is more balanced
 		else if (mincut::_cut_w(c) == best_weight && (r = get_reuse_factor(mincut::_cut_s1(c), 
-				mincut::_cut_s2(c), id2task, all_stages, ref)) < best_num_tasks) {
+				mincut::_cut_s2(c), id2task, all_stages, args, ref)) < best_num_tasks) {
 			best_cut = c;
 			best_num_tasks = r;
 		}
@@ -1235,18 +1278,24 @@ pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> get_cut(list<Pi
 	for (mincut::_id_t i : mincut::_cut_s2(best_cut))
 		best_cut_pcb.second.emplace_back(all_stages.at(id2task[i]));
 
+	// clean adjMat
+	for (size_t i=0; i<n; i++) {
+		delete[] adjMat[i];
+	}
+	delete[] adjMat;
+
 	return best_cut_pcb;
 }
 
-list<list<PipelineComponentBase*>> recursive_cut(list<PipelineComponentBase*> rem, 
-	const map<int, PipelineComponentBase*> &all_stages, int n, map<string, list<ArgumentBase*>> ref) {
+list<list<PipelineComponentBase*>> recursive_cut(list<PipelineComponentBase*> rem, const map<int, PipelineComponentBase*> &all_stages, 
+	int n, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 
 	list<list<PipelineComponentBase*>> last_solution;
 
 	// finishes if there is no more need for a cut (i.e n=1) or if we can't make any more cuts (i.e size=1)
 	if (n == 1 || rem.size() == 1) {
 		last_solution.emplace_back(rem);
-		cout << "retuned n=" << n << ", size=" << rem.size() << endl;
+		// cout << "retuned n=" << n << ", size=" << rem.size() << endl;
 		return last_solution;
 	}
 
@@ -1255,7 +1304,6 @@ list<list<PipelineComponentBase*>> recursive_cut(list<PipelineComponentBase*> re
 	list<PipelineComponentBase*> rest;
 	list<list<PipelineComponentBase*>> buckets;
 
-	cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>> " << n << " >>>>>>>>>>>>>>>>>>>>>>>>>>>>" << endl;
 	// execute while there is improvement
 	while(current_mksp < last_mksp) {
 		last_mksp = current_mksp;
@@ -1264,78 +1312,70 @@ list<list<PipelineComponentBase*>> recursive_cut(list<PipelineComponentBase*> re
 		last_solution = buckets;
 
 		if (rem.size() == 1) {
-			cout << "retuned state for size=1, n=" << n << ":" << endl;
-			for (list<PipelineComponentBase*> b : last_solution) {
-				cout << "\tbucket with cost " << calc_stage_proc(b, ref) << ":" << endl;
-				for (PipelineComponentBase* s : b) {
-					cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
-					// for (ReusableTask* t : s->tasks) {
-					// 	cout << "\t\t\ttask " << t->getId() << ":" << t->getTaskName() << " - parent: " << t->parentTask << endl;
-					// }
-				}
-			}
+			// cout << "retuned state for size=1, n=" << n << ":" << endl;
+			// for (list<PipelineComponentBase*> b : last_solution) {
+			// 	cout << "\tbucket with cost " << calc_stage_proc(b, ref) << ":" << endl;
+			// 	for (PipelineComponentBase* s : b) {
+			// 		cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+			// 	}
+			// }
 			return last_solution;
 		}
 
-		cout << "rem:" << endl;
-		for (PipelineComponentBase* s : rem) {
-			cout << "\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
-		}
-		cout << "rest:" << endl;
-		for (PipelineComponentBase* s : rest) {
-			cout << "\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
-		}
+		// cout << "rem:" << endl;
+		// for (PipelineComponentBase* s : rem) {
+		// 	cout << "\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		// }
+		// cout << "rest:" << endl;
+		// for (PipelineComponentBase* s : rest) {
+		// 	cout << "\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		// }
 
 		// cut the current bucket
 		pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> c; 
-		c = get_cut(rem, all_stages, ref);
+		c = get_cut(rem, all_stages, args, ref);
 
-		float w1 = calc_stage_proc(c.first, ref);
-		float w2 = calc_stage_proc(c.second, ref);
+		float w1 = calc_stage_proc(c.first, args, ref);
+		float w2 = calc_stage_proc(c.second, args, ref);
 
 		list<PipelineComponentBase*> c1 = w1>=w2?c.first:c.second;
 		list<PipelineComponentBase*> c2 = w1>=w2?c.second:c.first;
 
-		cout << "cut: " << endl;
-		cout << "\tc1" << endl;
-		for (PipelineComponentBase* s : c1)
-			cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
-		cout << "\tc2" << endl;
-		for (PipelineComponentBase* s : c2)
-			cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		// cout << "cut: " << endl;
+		// cout << "\tc1" << endl;
+		// for (PipelineComponentBase* s : c1)
+		// 	cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		// cout << "\tc2" << endl;
+		// for (PipelineComponentBase* s : c2)
+		// 	cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
 
 		// join c2 with the remaining of rem
 		c2.insert(c2.begin(), rest.begin(), rest.end());
 
-		buckets = recursive_cut(c2, all_stages, n-1, ref);
+		buckets = recursive_cut(c2, all_stages, n-1, args, ref);
 		buckets.emplace_back(c1);
 		
 		// recalculate current max makespan and set rem backup on last_rem
 		float mksp;
 		current_mksp = 0;
 		for (list<PipelineComponentBase*> b : buckets) {
-			mksp = calc_stage_proc(b, ref);
+			mksp = calc_stage_proc(b, args, ref);
 			if (mksp > current_mksp)
 				current_mksp = mksp;
 		}
 
-		cout << "merged state n=" << n << ":" << endl;
-		for (list<PipelineComponentBase*> b : buckets) {
-			cout << "\tbucket with cost " << calc_stage_proc(b, ref) << ":" << endl;
-			for (PipelineComponentBase* s : b) {
-				cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
-				// for (ReusableTask* t : s->tasks) {
-				// 	cout << "\t\t\ttask " << t->getId() << ":" << t->getTaskName() << " - parent: " << t->parentTask << endl;
-				// }
-			}
-		}
+		// cout << "merged state n=" << n << ":" << endl;
+		// for (list<PipelineComponentBase*> b : buckets) {
+		// 	cout << "\tbucket with cost " << calc_stage_proc(b, args, ref) << ":" << endl;
+		// 	for (PipelineComponentBase* s : b) {
+		// 		cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		// 	}
+		// }
 
 		// set next iteration PCB lists
 		rem = c1;
 		rest = c2;
 	}
-
-	cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<< " << n << " <<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
 
 	return last_solution;
 }
@@ -1377,11 +1417,21 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			continue;
 		}
 
-		list<list<PipelineComponentBase*>> solution = recursive_cut(current_stages, all_stages, n_workers, ref->second->tasksDesc);
+		list<list<PipelineComponentBase*>> solution = recursive_cut(current_stages, all_stages, 
+			n_workers, expanded_args, ref->second->tasksDesc);
+
+		cout << "solution:" << endl;
+		for (list<PipelineComponentBase*> b : solution) {
+			cout << "\tbucket with " << b.size() << " stages and cost "
+				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << endl;
+			for (PipelineComponentBase* s : b) {
+				cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+			}
+		}
 
 		// merge all stages in each bucket, given that they are mergable
 		for (list<PipelineComponentBase*> bucket : solution) {
-			list<PipelineComponentBase*> curr = merge_stages(bucket, ref->second->tasksDesc);
+			list<PipelineComponentBase*> curr = merge_stages(bucket, expanded_args, ref->second->tasksDesc);
 			// send rem stages to merged_stages
 			for (PipelineComponentBase* s : curr)
 				merged_stages[s->getId()] = s;		

@@ -209,7 +209,7 @@ ArgumentBase* ArgumentString::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -294,7 +294,7 @@ ArgumentBase* ArgumentInt::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -363,7 +363,7 @@ ArgumentBase* ArgumentFloat::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -469,7 +469,7 @@ ArgumentBase* ArgumentFloatArray::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -546,7 +546,7 @@ ArgumentBase* ArgumentRT::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 

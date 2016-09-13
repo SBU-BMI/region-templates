@@ -172,6 +172,9 @@ public:
 
 	PipelineComponentBase* reused;
 
+	// needed for inter stage dependency verification on task merging
+	std::vector<ArgumentBase*> getArguments() {return arguments;};
+
 	void printTasks();
 
 	// makespan cost 
