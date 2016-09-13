@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <vector>
 #include <regex>
 #include <cfloat>
 
@@ -1237,6 +1238,108 @@ pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> get_cut(list<Pi
 	return best_cut_pcb;
 }
 
+list<list<PipelineComponentBase*>> recursive_cut(list<PipelineComponentBase*> rem, 
+	const map<int, PipelineComponentBase*> &all_stages, int n, map<string, list<ArgumentBase*>> ref) {
+
+	list<list<PipelineComponentBase*>> last_solution;
+
+	// finishes if there is no more need for a cut (i.e n=1) or if we can't make any more cuts (i.e size=1)
+	if (n == 1 || rem.size() == 1) {
+		last_solution.emplace_back(rem);
+		cout << "retuned n=" << n << ", size=" << rem.size() << endl;
+		return last_solution;
+	}
+
+	float last_mksp = FLT_MAX;
+	float current_mksp = FLT_MAX/10;
+	list<PipelineComponentBase*> rest;
+	list<list<PipelineComponentBase*>> buckets;
+
+	cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>> " << n << " >>>>>>>>>>>>>>>>>>>>>>>>>>>>" << endl;
+	// execute while there is improvement
+	while(current_mksp < last_mksp) {
+		last_mksp = current_mksp;
+
+		// make a copy of this solution in case the next isn't better
+		last_solution = buckets;
+
+		if (rem.size() == 1) {
+			cout << "retuned state for size=1, n=" << n << ":" << endl;
+			for (list<PipelineComponentBase*> b : last_solution) {
+				cout << "\tbucket with cost " << calc_stage_proc(b, ref) << ":" << endl;
+				for (PipelineComponentBase* s : b) {
+					cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+					// for (ReusableTask* t : s->tasks) {
+					// 	cout << "\t\t\ttask " << t->getId() << ":" << t->getTaskName() << " - parent: " << t->parentTask << endl;
+					// }
+				}
+			}
+			return last_solution;
+		}
+
+		cout << "rem:" << endl;
+		for (PipelineComponentBase* s : rem) {
+			cout << "\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		}
+		cout << "rest:" << endl;
+		for (PipelineComponentBase* s : rest) {
+			cout << "\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		}
+
+		// cut the current bucket
+		pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> c; 
+		c = get_cut(rem, all_stages, ref);
+
+		float w1 = calc_stage_proc(c.first, ref);
+		float w2 = calc_stage_proc(c.second, ref);
+
+		list<PipelineComponentBase*> c1 = w1>=w2?c.first:c.second;
+		list<PipelineComponentBase*> c2 = w1>=w2?c.second:c.first;
+
+		cout << "cut: " << endl;
+		cout << "\tc1" << endl;
+		for (PipelineComponentBase* s : c1)
+			cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+		cout << "\tc2" << endl;
+		for (PipelineComponentBase* s : c2)
+			cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+
+		// join c2 with the remaining of rem
+		c2.insert(c2.begin(), rest.begin(), rest.end());
+
+		buckets = recursive_cut(c2, all_stages, n-1, ref);
+		buckets.emplace_back(c1);
+		
+		// recalculate current max makespan and set rem backup on last_rem
+		float mksp;
+		current_mksp = 0;
+		for (list<PipelineComponentBase*> b : buckets) {
+			mksp = calc_stage_proc(b, ref);
+			if (mksp > current_mksp)
+				current_mksp = mksp;
+		}
+
+		cout << "merged state n=" << n << ":" << endl;
+		for (list<PipelineComponentBase*> b : buckets) {
+			cout << "\tbucket with cost " << calc_stage_proc(b, ref) << ":" << endl;
+			for (PipelineComponentBase* s : b) {
+				cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+				// for (ReusableTask* t : s->tasks) {
+				// 	cout << "\t\t\ttask " << t->getId() << ":" << t->getTaskName() << " - parent: " << t->parentTask << endl;
+				// }
+			}
+		}
+
+		// set next iteration PCB lists
+		rem = c1;
+		rest = c2;
+	}
+
+	cout << "<<<<<<<<<<<<<<<<<<<<<<<<<<<< " << n << " <<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
+
+	return last_solution;
+}
+
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
 	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
 	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int n_workers) {
@@ -1274,93 +1377,11 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			continue;
 		}
 
-		// instantiate nedded lists for iterative cutting
-		list<PipelineComponentBase*> rem[n_workers];
-		list<PipelineComponentBase*> last_rem[n_workers];
-		int current_index;
-		float last_mksp = FLT_MAX;
-		float current_mksp = FLT_MAX/10;
-		current_index = 0;
-		rem[0] = current_stages;
-
-		// execute while there is improvement
-		while(current_mksp < last_mksp) {
-		// for (int j=0; j<10; j++) {
-			last_mksp = current_mksp;
-
-			// get the most expensive bucket on rem and set it as current
-			float worst_proc_cost = 0;
-			for (int i=0; i<n_workers; i++) {
-				float proc_cost = calc_stage_proc(rem[i], ref->second->tasksDesc);
-				if (proc_cost > worst_proc_cost && rem[i].size() > 1) {
-					worst_proc_cost = proc_cost;
-					current_index = i;
-				}
-			}
-
-			if (rem[current_index].size() < 2) {
-				break;
-			}
-
-			// cut the current bucket
-			pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> c; 
-			c = get_cut(rem[current_index], all_stages, ref->second->tasksDesc);
-
-			float w1 = calc_stage_proc(c.first, ref->second->tasksDesc);
-			float w2 = calc_stage_proc(c.second, ref->second->tasksDesc);
-
-			list<PipelineComponentBase*> c1 = w1>=w2?c.first:c.second;
-			list<PipelineComponentBase*> c2 = w1>=w2?c.second:c.first;
-
-			// sets the current rem as the most expensive cut subset
-			rem[current_index] = c1;
-			
-			// redistributes all remaining stages from least expensive cut subset to rem
-			for (PipelineComponentBase* s : c2) {
-				float best_mksp = FLT_MAX;
-				float mksp;
-				int best_bucket_index;
-				
-				// gets best bucket to add the stage s
-				for (int i=0; i<n_workers; i++) {
-					if (i != current_index) {
-						mksp = calc_stage_proc(rem[i], s, ref->second->tasksDesc);
-						if (mksp < best_mksp) {
-							best_mksp = mksp;
-							best_bucket_index = i;
-						}
-					}
-				}
-
-				// adds the stage s to best bucket
-				rem[best_bucket_index].emplace_back(s);
-			}
-
-			// recalculate current max makespan and set rem backup on last_rem
-			float mksp;
-			current_mksp = 0;
-			for (int i=0; i<n_workers; i++) {
-				mksp = calc_stage_proc(rem[i], ref->second->tasksDesc);
-				last_rem[i] = rem[i];
-				if (mksp > current_mksp)
-					current_mksp = mksp;
-			}
-
-			cout << "current merging state:" << endl;
-			for (int i=0; i<n_workers; i++) {
-				cout << "\tbucket " << i << " with cost " << calc_stage_proc(rem[i], ref->second->tasksDesc) << ":" << endl;
-				for (PipelineComponentBase* s : rem[i]) {
-					cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
-					for (ReusableTask* t : s->tasks) {
-						cout << "\t\t\ttask " << t->getId() << ":" << t->getTaskName() << " - parent: " << t->parentTask << endl;
-					}
-				}
-			}
-		}
+		list<list<PipelineComponentBase*>> solution = recursive_cut(current_stages, all_stages, n_workers, ref->second->tasksDesc);
 
 		// merge all stages in each bucket, given that they are mergable
-		for (int i=0; i<n_workers; i++) {
-			list<PipelineComponentBase*> curr = merge_stages(last_rem[i], ref->second->tasksDesc);
+		for (list<PipelineComponentBase*> bucket : solution) {
+			list<PipelineComponentBase*> curr = merge_stages(bucket, ref->second->tasksDesc);
 			// send rem stages to merged_stages
 			for (PipelineComponentBase* s : curr)
 				merged_stages[s->getId()] = s;		
