@@ -174,6 +174,9 @@ public:
 
 	void printTasks();
 
+	// makespan cost 
+	float getMksp() {return 1;};
+
 	// Factory class is used to build "reflection", and instantiate objects of
 	// PipelineComponentBase subclasses that register with it
     class ComponentFactory{

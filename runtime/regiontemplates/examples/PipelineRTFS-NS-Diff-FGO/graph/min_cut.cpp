@@ -58,7 +58,7 @@ int main() {
 
 std::list<cut_t> mincut::min_cut(size_t n, weight_t** adjMat) {
 	
-	_id_t a;
+	_id_t a=0;
 	cut_t cut;
 	std::list<cut_t> cuts;
 
