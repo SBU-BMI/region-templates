@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -253,7 +253,7 @@ int main(int argc, char* argv[]) {
 
 	map<int, PipelineComponentBase*> merged_stages;
 	int size = 6;
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	// MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
 	cout << endl<< "merged-fine: " << endl;
@@ -1110,7 +1110,7 @@ mincut::weight_t get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBa
 	return ret;
 }
 
-int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, int> id2task,  
+mincut::weight_t get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, int> id2task,  
 	map<int, PipelineComponentBase*> current_stages, map<int, ArgumentBase*> &args,
 	map<string, list<ArgumentBase*>> ref) {
 
@@ -1405,6 +1405,166 @@ list<list<PipelineComponentBase*>> recursive_cut(list<PipelineComponentBase*> re
 	return last_solution;
 }
 
+list<list<PipelineComponentBase*>> montecarlo_cut(list<PipelineComponentBase*> rem, const map<int, PipelineComponentBase*> &all_stages, 
+	int n, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
+
+	list<list<PipelineComponentBase*>> ret;
+
+	cout << "[montecarlo_cut] n=" << n << endl;
+
+	if (n == 1 || rem.size() == 1) {
+		ret.emplace_back(rem);
+		cout << "[montecarlo_cut] n=" << n << endl;
+		return ret;
+	}
+
+	// perform cuts until there is no more tasks to cut, or, there is no more need for another cut
+	for (int i=0; i<n-1; i++) {
+		pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> c; 
+		c = get_cut(rem, all_stages, args, ref);
+
+		float w1 = calc_stage_proc(c.first, args, ref);
+		float w2 = calc_stage_proc(c.second, args, ref);
+
+		list<PipelineComponentBase*> c1 = w1>=w2?c.first:c.second;
+		list<PipelineComponentBase*> c2 = w1>=w2?c.second:c.first;
+
+		rem = c1;
+		ret.emplace_back(c2);
+
+		if (rem.size() == 1) {
+			break;
+		}
+	}
+
+	// add last bucket 
+	ret.emplace_back(rem);
+
+	// cout << "[montecarlo_cut] n=" << n << "ret:" << endl;
+	// int i=0;
+	// for (list<PipelineComponentBase*> bucket : ret) {
+	// 	cout << "\tb:" << i++ << endl;
+	// 	for (PipelineComponentBase* s : bucket)
+	// 		cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+	// }
+
+	return ret;
+}
+
+list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineComponentBase*> rem, 
+	const map<int, PipelineComponentBase*> &all_stages, int n, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
+
+	list<pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>> current_cuts;
+	pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> best_cut;
+	list<list<PipelineComponentBase*>> final_cut;
+	float best_mksp = FLT_MAX;
+
+	cout << "[montecarlo_recursive_cut] n=" << n << endl;
+
+	// stoping condition
+	if (n == 1) {
+		final_cut.emplace_back(rem);
+		cout << "[montecarlo_recursive_cut] n=" << n << " retuned1" << endl;
+		cout << "\tb0" << endl;
+		for (PipelineComponentBase* s : rem)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+		return final_cut;
+	}
+
+	// attempt all possible cuts on this level
+	list<PipelineComponentBase*> rest;
+	while (rem.size() > 1) {
+		// attempt a cut
+		pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> c; 
+		c = get_cut(rem, all_stages, args, ref);
+
+		// store the cut for the rest to be calculated later
+		float w1 = calc_stage_proc(c.first, args, ref);
+		float w2 = calc_stage_proc(c.second, args, ref);
+
+		list<PipelineComponentBase*> c1 = w1>=w2?c.first:c.second;
+		list<PipelineComponentBase*> c2 = w1>=w2?c.second:c.first;
+
+		// add rest to c2
+		c2.insert(c2.begin(), rest.begin(), rest.end());
+
+		current_cuts.emplace_back(pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>(c1, c2));
+
+		cout << "[montecarlo_recursive_cut] n=" << n << " adding cut" << endl;
+		cout << "\tc1:" << endl;
+		for (PipelineComponentBase* s : c1)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+		cout << "\tc2:" << endl;
+		for (PipelineComponentBase* s : c2)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+
+		// update rem to get a new cut
+		rem = c1;
+		rest = c2;
+	}
+
+	// runs all dependencies a la montecarlo
+	for (list<pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>>::iterator i=current_cuts.begin();
+			i!=current_cuts.end(); i++) {
+		cout << "[montecarlo_recursive_cut] n=" << n << " running cut" << endl;
+		cout << "\tc1 - cost=" << calc_stage_proc(i->first, args, ref) << ":" << endl;
+		for (PipelineComponentBase* s : i->first)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+		cout << "\tc2 - cost=" << calc_stage_proc(i->second, args, ref) << ":" << endl;
+		for (PipelineComponentBase* s : i->second)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+		
+		list<list<PipelineComponentBase*>> c = montecarlo_cut(i->second, all_stages, n-1, args, ref);
+		
+		// calculates i cut cost with rest c
+		cout << "[montecarlo_cut] n=" << n << "ret:" << endl;
+		int ii=0;
+		float mksp;
+		float max_mksp = calc_stage_proc(i->first, args, ref);
+		for (list<PipelineComponentBase*> bucket : c) {
+			mksp = calc_stage_proc(bucket, args, ref);
+			if (mksp > max_mksp)
+				max_mksp = mksp;
+			cout << "\tb" << ii++ << " - mksp=" << mksp<< endl;
+			for (PipelineComponentBase* s : bucket)
+				cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+		}
+
+		cout << "\twith mksp=" << max_mksp << endl;
+
+		// updates best cut, if this is the case
+		if (max_mksp < best_mksp) {
+			best_mksp = max_mksp;
+			list<PipelineComponentBase*> flat_c;
+			for (list<PipelineComponentBase*> bucket : c)
+				flat_c.insert(flat_c.begin(), bucket.begin(), bucket.end());
+			best_cut = pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>(i->first, flat_c);
+		}
+	}
+
+	cout << "[montecarlo_recursive_cut] n=" << n << " best cut of the stage with mksp=" << best_mksp << endl;
+		cout << "\tc1:" << endl;
+		for (PipelineComponentBase* s : best_cut.first)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+		cout << "\tc2:" << endl;
+		for (PipelineComponentBase* s : best_cut.second)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+
+	// recursive call on the best rest
+	final_cut = montecarlo_recursive_cut(best_cut.second, all_stages, n-1, args, ref);
+	final_cut.emplace_back(best_cut.first);
+
+	cout << "[montecarlo_recursive_cut] n=" << n << " final cut:" << endl;
+	int i=0;
+	for (list<PipelineComponentBase*> bucket : final_cut) {
+		cout << "\tb:" << i++ << endl;
+		for (PipelineComponentBase* s : bucket)
+			cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
+	}
+
+	return final_cut;
+}
+
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
 	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
 	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int n_workers) {
@@ -1442,7 +1602,7 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 			continue;
 		}
 
-		list<list<PipelineComponentBase*>> solution = recursive_cut(current_stages, all_stages, 
+		list<list<PipelineComponentBase*>> solution = montecarlo_recursive_cut(current_stages, all_stages, 
 			n_workers, expanded_args, ref->second->tasksDesc);
 
 		cout << "solution:" << endl;
