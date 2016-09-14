@@ -252,7 +252,7 @@ int main(int argc, char* argv[]) {
 	add_arguments_to_stages(expanded_stages, expanded_args, rt);
 
 	map<int, PipelineComponentBase*> merged_stages;
-	int size = 6;
+	int size = 9;
 	// MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
@@ -1458,6 +1458,7 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 	pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> best_cut;
 	list<list<PipelineComponentBase*>> final_cut;
 	float best_mksp = FLT_MAX;
+	float best_var = FLT_MAX;
 
 	cout << "[montecarlo_recursive_cut] n=" << n << endl;
 
@@ -1519,10 +1520,13 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 		// calculates i cut cost with rest c
 		cout << "[montecarlo_cut] n=" << n << "ret:" << endl;
 		int ii=0;
+		// mksp selection metric
 		float mksp;
 		float max_mksp = calc_stage_proc(i->first, args, ref);
+		float avg = calc_stage_proc(i->first, args, ref);
 		for (list<PipelineComponentBase*> bucket : c) {
 			mksp = calc_stage_proc(bucket, args, ref);
+			avg += mksp;
 			if (mksp > max_mksp)
 				max_mksp = mksp;
 			cout << "\tb" << ii++ << " - mksp=" << mksp<< endl;
@@ -1530,11 +1534,22 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 				cout << "\t\t" << s->getId() << ":" << s->getName() << endl;
 		}
 
-		cout << "\twith mksp=" << max_mksp << endl;
+		// standard deviation selection metric
+		avg /= (c.size()+1);
+		float var = (calc_stage_proc(i->first, args, ref)-avg)*(calc_stage_proc(i->first, args, ref)-avg);
+		for (list<PipelineComponentBase*> bucket : c) {
+			mksp = calc_stage_proc(bucket, args, ref);
+			var += (mksp-avg)*(mksp-avg);
+		}
+		var /= (c.size()+1);
+
+		cout << "with mksp=" << max_mksp << endl;
+		cout << "with var=" << var << endl;
 
 		// updates best cut, if this is the case
-		if (max_mksp < best_mksp) {
+		if (max_mksp < best_mksp || (max_mksp == best_mksp && var < best_var)) {
 			best_mksp = max_mksp;
+			best_var = var;
 			list<PipelineComponentBase*> flat_c;
 			for (list<PipelineComponentBase*> bucket : c)
 				flat_c.insert(flat_c.begin(), bucket.begin(), bucket.end());
