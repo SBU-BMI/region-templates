@@ -294,6 +294,7 @@ int main(int argc, char* argv[]) {
 			sysEnv.executeComponent(s.second);
 		}
 	}
+	// return 0;
 
 	// execute workflows
 	cout << endl << "startupExecution" << endl;
@@ -1041,6 +1042,9 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 		if (!reusable) {
 			break;
 		}
+
+		// free t_s since it was reused
+		delete t_s;
 	}
 
 	// updates the first non-reusable task dependency
@@ -1053,6 +1057,9 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 	for (; p!=ref.end(); p++) {
 		current->tasks.emplace_front(find_task(s->tasks, p->first));
 	}
+
+	// remove all tasks references since they were either deleted above or have been sent to current
+	s->tasks.clear();
 }
 
 list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages, 
@@ -1108,8 +1115,11 @@ int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, i
 		PipelineComponentBase* clone1 = current_stages[id2task[*s1_it]]->clone();
 		if (merging_condition(current1, clone1, args, ref))
 			merge_stages(current1, clone1, ref);
-		else 
-			current1->tasks.insert(current1->tasks.begin(), clone1->tasks.begin(), clone1->tasks.end());
+		else {
+			for (ReusableTask* t : clone1->tasks) {
+				current1->tasks.emplace_back(t->clone());
+			}
+		} 
 		delete clone1;
 	}
 
@@ -1121,7 +1131,9 @@ int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, i
 		if (merging_condition(current2, clone2, args, ref))
 			merge_stages(current2, clone2, ref);
 		else 
-			current2->tasks.insert(current2->tasks.begin(), clone2->tasks.begin(), clone2->tasks.end());
+			for (ReusableTask* t : clone2->tasks) {
+				current2->tasks.emplace_back(t->clone());
+			}
 		delete clone2;
 	}
 
@@ -1129,12 +1141,14 @@ int get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, map<size_t, i
 
 	// clear memory
 	delete current1;
+	delete current2;
 
 	return ret;
 }
 
 float calc_stage_proc(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 	list<PipelineComponentBase*>::iterator i = s.begin();
+	
 
 	for (; i!=s.end(); i++) {
 		PipelineComponentBase* current = (*i)->clone();
@@ -1393,7 +1407,7 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		// generate all tasks
 		int nrS = 0;
 		double max_nrS_mksp = 0;
-		for (list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!= current_stages.end(); ) {
+		for (list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!=current_stages.end(); ) {
 			// if the stage isn't composed of reusable tasks then 
 			(*s)->tasks = task_generator(ref->second->tasksDesc, *s, rt, expanded_args);
 			if ((*s)->tasks.size() == 0) {

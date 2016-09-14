@@ -42,6 +42,16 @@ PipelineComponentBase::~PipelineComponentBase() {
 		}
 	}
 	if(resultData != NULL) free(resultData);
+
+	for (std::map<std::string, std::list<ArgumentBase*> >::iterator p=tasksDesc.begin(); p!=tasksDesc.end(); p++) {
+		for (std::list<ArgumentBase*>::iterator a=p->second.begin(); a!=p->second.end(); a++) {
+			delete *a;
+		}
+	}
+
+	for (std::list<ReusableTask*>::iterator t=tasks.begin(); t!=tasks.end(); t++) {
+		delete *t;
+	}
 }
 
 void PipelineComponentBase::addArgument(ArgumentBase *arg)

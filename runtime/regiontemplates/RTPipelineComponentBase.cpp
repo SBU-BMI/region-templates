@@ -25,7 +25,7 @@ RTPipelineComponentBase::~RTPipelineComponentBase() {
 	// the same region templates
 	if(this->getLocation() == PipelineComponentBase::WORKER_SIDE){
 #ifdef DEBUG
-		std::cout << "~RTPipelineComponentBase: nRegionTemplates: " << this->regionTemplates.size() << std::endl;
+		// std::cout << "~RTPipelineComponentBase: nRegionTemplates: " << this->regionTemplates.size() << std::endl;
 #endif
 		std::map<std::string, RegionTemplate*>::iterator rtIt =  this->regionTemplates.begin();
 		for(; rtIt != this->regionTemplates.end(); rtIt++){
@@ -219,7 +219,7 @@ PipelineComponentBase* RTPipelineComponentBase::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
