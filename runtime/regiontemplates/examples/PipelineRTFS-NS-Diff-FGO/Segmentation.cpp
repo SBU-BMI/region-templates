@@ -207,8 +207,8 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 
 TaskSegmentation0::~TaskSegmentation0() {
 	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
-	delete bgr;
-	delete rbc;
+	// delete bgr;
+	// delete rbc;
 }
 
 bool TaskSegmentation0::run(int procType, int tid) {
@@ -455,9 +455,9 @@ TaskSegmentation1::TaskSegmentation1(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation1::~TaskSegmentation1() {
-	delete rc;
-	delete rc_recon;
-	delete rc_open;
+	// delete rc;
+	// delete rc_recon;
+	// delete rc_open;
 }
 
 bool TaskSegmentation1::run(int procType, int tid) {
@@ -629,8 +629,8 @@ TaskSegmentation2::TaskSegmentation2(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation2::~TaskSegmentation2() {
-	delete bw1;
-	delete diffIm;
+	// delete bw1;
+	// delete diffIm;
 }
 
 bool TaskSegmentation2::run(int procType, int tid) {
@@ -814,7 +814,7 @@ TaskSegmentation3::TaskSegmentation3(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation3::~TaskSegmentation3() {
-	delete bw1_t;
+	// delete bw1_t;
 }
 
 bool TaskSegmentation3::run(int procType, int tid) {
@@ -990,7 +990,7 @@ TaskSegmentation4::TaskSegmentation4(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation4::~TaskSegmentation4() {
-	delete seg_open;
+	// delete seg_open;
 }
 
 bool TaskSegmentation4::run(int procType, int tid) {
@@ -1172,7 +1172,7 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 TaskSegmentation5::~TaskSegmentation5() {
 	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
 
-	delete seg_nonoverlap;
+	// delete seg_nonoverlap;
 }
 
 bool TaskSegmentation5::run(int procType, int tid) {
@@ -1401,7 +1401,7 @@ TaskSegmentation6::TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation6::~TaskSegmentation6() {
-	delete segmented_rt_temp;
+	// delete segmented_rt_temp;
 }
 
 bool TaskSegmentation6::run(int procType, int tid) {

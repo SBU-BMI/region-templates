@@ -253,8 +253,8 @@ int main(int argc, char* argv[]) {
 
 	map<int, PipelineComponentBase*> merged_stages;
 	int size = 6;
-	// MPI_Comm_size(MPI_COMM_WORLD, &size);
-	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
 	cout << endl<< "merged-fine: " << endl;
 	for (pair<int, PipelineComponentBase*> p : merged_stages) {
@@ -291,6 +291,10 @@ int main(int argc, char* argv[]) {
 				cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
 					<< expanded_args[i]->toString() << endl;
 			((Task*)s.second)->setId(s.second->getId());
+
+			// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
+			s.second->setLocation(PipelineComponentBase::MANAGER_SIDE);
+
 			sysEnv.executeComponent(s.second);
 		}
 	}
@@ -593,6 +597,9 @@ void get_stages_from_file(FILE* workflow_descriptor,
 
 		PipelineComponentBase* stage = PipelineComponentBase::ComponentFactory::getComponentFactory(command)();
 		stage->setName(name);
+
+		// workaround to make sure that the RTs, if any, won't leak on the mearging part of the algorithm
+		stage->setLocation(PipelineComponentBase::WORKER_SIDE);
 
 		// get outputs and add them to the map of arguments
 		// list<string> inputs = get_workflow_ports(workflow_descriptor, "inputPorts");
@@ -1377,6 +1384,10 @@ list<list<PipelineComponentBase*>> recursive_cut(list<PipelineComponentBase*> re
 			if (mksp > current_mksp)
 				current_mksp = mksp;
 		}
+
+		for (int i=0; i<n-2; i++)
+			cout << "\t";
+		cout << "mksp: " << current_mksp << endl;
 
 		// cout << "merged state n=" << n << ":" << endl;
 		// for (list<PipelineComponentBase*> b : buckets) {

@@ -30,7 +30,7 @@ RTPipelineComponentBase::~RTPipelineComponentBase() {
 		std::map<std::string, RegionTemplate*>::iterator rtIt =  this->regionTemplates.begin();
 		for(; rtIt != this->regionTemplates.end(); rtIt++){
 			RegionTemplate *rt = rtIt->second;
-			delete rt;
+			// delete rt;
 		}
 	}
 }

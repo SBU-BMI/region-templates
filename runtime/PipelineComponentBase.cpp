@@ -139,6 +139,9 @@ int PipelineComponentBase::size()
 	// To store the size of the name
 	size_bytes += sizeof(int);
 
+	// To store the location
+	size_bytes += sizeof(int);
+
 	// The proper name of the component class
 	size_bytes += this->getComponentName().size() * sizeof(char);
 
@@ -194,6 +197,10 @@ int PipelineComponentBase::serialize(char *buff)
 	// Copy the actual name of the component to the buffer
 	memcpy(buff+serialized_bytes, this->getComponentName().c_str(), name_size*sizeof(char) );
 	serialized_bytes+=name_size*sizeof(char);
+
+	// Copy location to buffer
+	memcpy(buff+serialized_bytes, &location, sizeof(int));
+	serialized_bytes+=sizeof(int);
 
 	// Copy size of result data size
 	memcpy(buff+serialized_bytes, &resultDataSize, sizeof(int));
@@ -283,6 +290,10 @@ int PipelineComponentBase::deserialize(char *buff)
 
 	// set the component name
 	this->setComponentName(component_name);
+
+	// Extract the location
+	this->setLocation((((int*)(buff+deserialized_bytes))[0]));
+	deserialized_bytes+=sizeof(int);
 
 	// Deserialize result data size
 	this->resultDataSize = ((int*)(buff+deserialized_bytes))[0];
