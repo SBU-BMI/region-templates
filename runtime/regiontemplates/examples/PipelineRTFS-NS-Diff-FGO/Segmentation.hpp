@@ -27,9 +27,10 @@ private:
 	// IMPORTANT: this need to be set during the creation of this object
 	int workflow_id;
 
-	list<ReusableTask*> mergable_t1;
+	std::list<ReusableTask*> mergable_t1;
 
 public:
+
 	Segmentation();
 	virtual ~Segmentation();
 
@@ -53,13 +54,12 @@ private:
 	double T2;
 	
 	// intertask arguments
-	std::vector<cv::Mat> *bgr;
-	cv::Mat *rbc;
+	std::shared_ptr<std::vector<cv::Mat>> bgr;
+	std::shared_ptr<cv::Mat> rbc;
 
 public:
-
 	// data regions
-	DenseDataRegion2D* normalized_rt_temp;
+	std::shared_ptr<DenseDataRegion2D*> normalized_rt_temp;
 
 	TaskSegmentation0();
 	TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* inputRt);
@@ -90,16 +90,15 @@ private:
 	int reconConnectivity;
 	
 	// intertask arguments
-	std::vector<cv::Mat> *bgr;
-	cv::Mat* rc;
-	cv::Mat* rc_recon;
-	cv::Mat* rc_open;
+	std::shared_ptr<std::vector<cv::Mat>> bgr;
+	std::shared_ptr<cv::Mat> rc;
+	std::shared_ptr<cv::Mat> rc_recon;
+	std::shared_ptr<cv::Mat> rc_open;
 
 	// forward intertask arguments
-	cv::Mat *rbc_fw;
+	std::shared_ptr<cv::Mat> rbc_fw;
 
 public:
-
 	// data regions
 
 	TaskSegmentation1();
@@ -132,17 +131,16 @@ private:
 	unsigned char G1;
 	
 	// intertask arguments
-	cv::Mat* rc;
-	cv::Mat* rc_recon;
-	cv::Mat* rc_open;
-	cv::Mat* bw1;
-	cv::Mat* diffIm;
+	std::shared_ptr<cv::Mat> rc;
+	std::shared_ptr<cv::Mat> rc_recon;
+	std::shared_ptr<cv::Mat> rc_open;
+	std::shared_ptr<cv::Mat> bw1;
+	std::shared_ptr<cv::Mat> diffIm;
 
 	// forward intertask arguments
-	cv::Mat *rbc_fw;
+	std::shared_ptr<cv::Mat> rbc_fw;
 
 public:
-
 	// data regions
 
 	TaskSegmentation2();
@@ -175,15 +173,14 @@ private:
 	int maxSize;
 	
 	// intertask arguments
-	cv::Mat* bw1;
-	cv::Mat* bw1_t;
+	std::shared_ptr<cv::Mat> bw1;
+	std::shared_ptr<cv::Mat> bw1_t;
 
 	// forward intertask arguments
-	cv::Mat *rbc_fw;
-	cv::Mat *diffIm_fw;
+	std::shared_ptr<cv::Mat> rbc_fw;
+	std::shared_ptr<cv::Mat> diffIm_fw;
 
 public:
-
 	// data regions
 
 	TaskSegmentation3();
@@ -215,13 +212,12 @@ private:
 	unsigned char G2;
 	
 	// intertask arguments
-	cv::Mat* diffIm;
-	cv::Mat* bw1_t;
-	cv::Mat* rbc;
-	cv::Mat* seg_open;
+	std::shared_ptr<cv::Mat> diffIm;
+	std::shared_ptr<cv::Mat> bw1_t;
+	std::shared_ptr<cv::Mat> rbc;
+	std::shared_ptr<cv::Mat> seg_open;
 
 public:
-
 	// data regions
 
 	TaskSegmentation4();
@@ -254,16 +250,15 @@ private:
 	int watershedConnectivity;
 	
 	// intertask arguments
-	cv::Mat* seg_open;
-	cv::Mat* seg_nonoverlap;
+	std::shared_ptr<cv::Mat> seg_open;
+	std::shared_ptr<cv::Mat> seg_nonoverlap;
 
 	// forward intertask arguments
-	cv::Mat *seg_open_fw;
+	std::shared_ptr<cv::Mat> seg_open_fw;
 
 public:
-
 	// data regions
-	DenseDataRegion2D* normalized_rt_temp;
+	std::shared_ptr<DenseDataRegion2D*> normalized_rt_temp;
 
 	TaskSegmentation5();
 	TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* inputRt);
@@ -295,13 +290,12 @@ private:
 	int fillHolesConnectivity;
 	
 	// intertask arguments
-	cv::Mat* seg_open;
-	cv::Mat* seg_nonoverlap;
+	std::shared_ptr<cv::Mat> seg_open;
+	std::shared_ptr<cv::Mat> seg_nonoverlap;
 
 public:
-
 	// data regions
-	DenseDataRegion2D* segmented_rt_temp;
+	std::shared_ptr<DenseDataRegion2D*> segmented_rt_temp;
 
 	TaskSegmentation6();
 	TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* inputRt);

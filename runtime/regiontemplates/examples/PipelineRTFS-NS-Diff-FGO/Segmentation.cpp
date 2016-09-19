@@ -151,8 +151,8 @@ bool registeredSegmentation = PipelineComponentBase::ComponentFactory::component
 /**************************************************************************************/
 
 TaskSegmentation0::TaskSegmentation0() {
-	bgr = new std::vector<cv::Mat>;
-	rbc = new cv::Mat;
+	bgr = std::shared_ptr<std::vector<cv::Mat>>(new std::vector<cv::Mat>());
+	rbc = std::shared_ptr<cv::Mat>(new cv::Mat());
 
 }
 
@@ -163,10 +163,10 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 		if (a->getName().compare("normalized_rt") == 0) {
 			ArgumentRT* normalized_rt_arg;
 			normalized_rt_arg = (ArgumentRT*)a;
-			this->normalized_rt_temp = new DenseDataRegion2D();
-			this->normalized_rt_temp->setName(normalized_rt_arg->getName());
-			this->normalized_rt_temp->setId(std::to_string(normalized_rt_arg->getId()));
-			this->normalized_rt_temp->setVersion(normalized_rt_arg->getId());
+			this->normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());
+			(*this->normalized_rt_temp)->setName(normalized_rt_arg->getName());
+			(*this->normalized_rt_temp)->setId(std::to_string(normalized_rt_arg->getId()));
+			(*this->normalized_rt_temp)->setVersion(normalized_rt_arg->getId());
 			set_cout++;
 		}
 
@@ -200,29 +200,22 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	bgr = new std::vector<cv::Mat>;
-	rbc = new cv::Mat;
+	bgr = std::shared_ptr<std::vector<cv::Mat>>(new std::vector<cv::Mat>());
+	rbc = std::shared_ptr<cv::Mat>(new cv::Mat());
 	
 }
 
 TaskSegmentation0::~TaskSegmentation0() {
-	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
-	delete bgr;
-	delete rbc;
 }
 
 bool TaskSegmentation0::run(int procType, int tid) {
-	cv::Mat normalized_rt = this->normalized_rt_temp->getData();
-
-
-	std::vector<cv::Mat> bgr_temp;
-	cv::Mat rbc_temp;
+	cv::Mat normalized_rt = (*this->normalized_rt_temp)->getData();
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation0 executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNucleiStg1(normalized_rt, blue, green, red, T1, T2, bgr, rbc);
+	::nscale::HistologicalEntities::segmentNucleiStg1(normalized_rt, blue, green, red, T1, T2, &(*bgr), &(*rbc));
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
@@ -231,8 +224,9 @@ bool TaskSegmentation0::run(int procType, int tid) {
 }
 
 void TaskSegmentation0::updateDR(RegionTemplate* rt) {
-	normalized_rt_temp = dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(this->normalized_rt_temp->getName(),
-		this->normalized_rt_temp->getId(), 0, stoi(this->normalized_rt_temp->getId())));
+	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(
+		rt->getDataRegion((*this->normalized_rt_temp)->getName(),
+		(*this->normalized_rt_temp)->getId(), 0, stoi((*this->normalized_rt_temp)->getId()))));
 
 }
 
@@ -259,7 +253,7 @@ void TaskSegmentation0::resolveDependencies(ReusableTask* t) {
 bool TaskSegmentation0::reusable(ReusableTask* rt) {
 	TaskSegmentation0* t = (TaskSegmentation0*)(rt);
 	if (
-		this->normalized_rt_temp->getName() == t->normalized_rt_temp->getName() &&
+		(*this->normalized_rt_temp)->getName() == (*t->normalized_rt_temp)->getName() &&
 		this->blue == t->blue &&
 		this->green == t->green &&
 		this->red == t->red &&
@@ -278,7 +272,7 @@ bool TaskSegmentation0::reusable(ReusableTask* rt) {
 int TaskSegmentation0::size() {
 	return 
 		sizeof(int) + sizeof(int) +
-		sizeof(int) + normalized_rt_temp->getName().length()*sizeof(char) + sizeof(int) +
+		sizeof(int) + (*normalized_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
 		sizeof(unsigned char) +
 		sizeof(unsigned char) +
 		sizeof(unsigned char) +
@@ -301,17 +295,17 @@ int TaskSegmentation0::serialize(char *buff) {
 	serialized_bytes+=sizeof(int);
 
 	// copy normalized_rt id
-	int normalized_rt_id = stoi(normalized_rt_temp->getId());
+	int normalized_rt_id = stoi((*normalized_rt_temp)->getId());
 	memcpy(buff+serialized_bytes, &normalized_rt_id, sizeof(int));
 	serialized_bytes+=sizeof(int);
 
 	// copy normalized_rt name size
-	int normalized_rt_name_size = normalized_rt_temp->getName().length();
+	int normalized_rt_name_size = (*normalized_rt_temp)->getName().length();
 	memcpy(buff+serialized_bytes, &normalized_rt_name_size, sizeof(int));
 	serialized_bytes+=sizeof(int);
 
 	// copy normalized_rt name
-	memcpy(buff+serialized_bytes, normalized_rt_temp->getName().c_str(), normalized_rt_name_size*sizeof(char));
+	memcpy(buff+serialized_bytes, (*normalized_rt_temp)->getName().c_str(), normalized_rt_name_size*sizeof(char));
 	serialized_bytes+=normalized_rt_name_size*sizeof(char);
 
 	// copy field blue
@@ -350,12 +344,12 @@ int TaskSegmentation0::deserialize(char *buff) {
 	deserialized_bytes += sizeof(int);
 
 	// create the normalized_rt
-	this->normalized_rt_temp = new DenseDataRegion2D();
+	this->normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());
 
 	// extract normalized_rt id
 	int normalized_rt_id = ((int*)(buff+deserialized_bytes))[0];
-	this->normalized_rt_temp->setId(to_string(normalized_rt_id));
-	this->normalized_rt_temp->setVersion(normalized_rt_id);
+	(*this->normalized_rt_temp)->setId(to_string(normalized_rt_id));
+	(*this->normalized_rt_temp)->setVersion(normalized_rt_id);
 	deserialized_bytes += sizeof(int);
 
 	// extract normalized_rt name size
@@ -367,7 +361,7 @@ int TaskSegmentation0::deserialize(char *buff) {
 	normalized_rt_name[normalized_rt_name_size] = '\0';
 	memcpy(normalized_rt_name, buff+deserialized_bytes, sizeof(char)*normalized_rt_name_size);
 	deserialized_bytes += sizeof(char)*normalized_rt_name_size;
-	this->normalized_rt_temp->setName(normalized_rt_name);
+	(*this->normalized_rt_temp)->setName(normalized_rt_name);
 
 	// extract field blue
 	this->blue = ((unsigned char*)(buff+deserialized_bytes))[0];
@@ -428,9 +422,9 @@ bool registeredTaskSegmentation02 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation0Factory1, &Segmentation0Factory2);
 
 TaskSegmentation1::TaskSegmentation1() {
-	rc = new cv::Mat;
-	rc_recon = new cv::Mat;
-	rc_open = new cv::Mat;
+	rc = std::shared_ptr<cv::Mat>(new cv::Mat());
+	rc_recon = std::shared_ptr<cv::Mat>(new cv::Mat());
+	rc_open = std::shared_ptr<cv::Mat>(new cv::Mat());
 
 }
 
@@ -448,30 +442,22 @@ TaskSegmentation1::TaskSegmentation1(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	rc = new cv::Mat;
-	rc_recon = new cv::Mat;
-	rc_open = new cv::Mat;
+	rc = std::shared_ptr<cv::Mat>(new cv::Mat());
+	rc_recon = std::shared_ptr<cv::Mat>(new cv::Mat());
+	rc_open = std::shared_ptr<cv::Mat>(new cv::Mat());
 	
 }
 
 TaskSegmentation1::~TaskSegmentation1() {
-	delete rc;
-	delete rc_recon;
-	delete rc_open;
 }
 
 bool TaskSegmentation1::run(int procType, int tid) {
-
-
-	cv::Mat rc_temp;
-	cv::Mat rc_recon_temp;
-	cv::Mat rc_open_temp;
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation1 executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNucleiStg2(reconConnectivity, bgr, rc, rc_recon, rc_open);
+	::nscale::HistologicalEntities::segmentNucleiStg2(reconConnectivity, &*bgr, &*rc, &*rc_recon, &*rc_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
@@ -599,8 +585,8 @@ bool registeredTaskSegmentation12 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation1Factory1, &Segmentation1Factory2);
 
 TaskSegmentation2::TaskSegmentation2() {
-	bw1 = new cv::Mat;
-	diffIm = new cv::Mat;
+	bw1 = std::shared_ptr<cv::Mat>(new cv::Mat());
+	diffIm = std::shared_ptr<cv::Mat>(new cv::Mat());
 
 }
 
@@ -623,27 +609,21 @@ TaskSegmentation2::TaskSegmentation2(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	bw1 = new cv::Mat;
-	diffIm = new cv::Mat;
+	bw1 = std::shared_ptr<cv::Mat>(new cv::Mat());
+	diffIm = std::shared_ptr<cv::Mat>(new cv::Mat());
 	
 }
 
 TaskSegmentation2::~TaskSegmentation2() {
-	delete bw1;
-	delete diffIm;
 }
 
 bool TaskSegmentation2::run(int procType, int tid) {
-
-
-	cv::Mat bw1_temp;
-	cv::Mat diffIm_temp;
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation2 executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNucleiStg3(fillHolesConnectivity, G1, rc, rc_recon, rc_open, bw1, diffIm);
+	::nscale::HistologicalEntities::segmentNucleiStg3(fillHolesConnectivity, G1, &*rc, &*rc_recon, &*rc_open, &*bw1, &*diffIm);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
@@ -786,7 +766,7 @@ bool registeredTaskSegmentation22 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation2Factory1, &Segmentation2Factory2);
 
 TaskSegmentation3::TaskSegmentation3() {
-	bw1_t = new cv::Mat;
+	bw1_t = std::shared_ptr<cv::Mat>(new cv::Mat());
 
 }
 
@@ -809,12 +789,11 @@ TaskSegmentation3::TaskSegmentation3(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	bw1_t = new cv::Mat;
+	bw1_t = std::shared_ptr<cv::Mat>(new cv::Mat());
 	
 }
 
 TaskSegmentation3::~TaskSegmentation3() {
-	delete bw1_t;
 }
 
 bool TaskSegmentation3::run(int procType, int tid) {
@@ -826,7 +805,7 @@ bool TaskSegmentation3::run(int procType, int tid) {
 
 	std::cout << "\t\t\tTaskSegmentation3 executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNucleiStg4(minSize, maxSize, bw1, bw1_t);
+	::nscale::HistologicalEntities::segmentNucleiStg4(minSize, maxSize, &*bw1, &*bw1_t);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
@@ -967,7 +946,7 @@ bool registeredTaskSegmentation32 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation3Factory1, &Segmentation3Factory2);
 
 TaskSegmentation4::TaskSegmentation4() {
-	seg_open = new cv::Mat;
+	seg_open = std::shared_ptr<cv::Mat>(new cv::Mat());
 
 }
 
@@ -985,12 +964,11 @@ TaskSegmentation4::TaskSegmentation4(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	seg_open = new cv::Mat;
+	seg_open = std::shared_ptr<cv::Mat>(new cv::Mat());
 	
 }
 
 TaskSegmentation4::~TaskSegmentation4() {
-	delete seg_open;
 }
 
 bool TaskSegmentation4::run(int procType, int tid) {
@@ -1002,7 +980,7 @@ bool TaskSegmentation4::run(int procType, int tid) {
 
 	std::cout << "\t\t\tTaskSegmentation4 executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNucleiStg5(G2, diffIm, bw1_t, rbc, seg_open);
+	::nscale::HistologicalEntities::segmentNucleiStg5(G2, &*diffIm, &*bw1_t, &*rbc, &*seg_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
@@ -1132,7 +1110,7 @@ bool registeredTaskSegmentation42 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation4Factory1, &Segmentation4Factory2);
 
 TaskSegmentation5::TaskSegmentation5() {
-	seg_nonoverlap = new cv::Mat;
+	seg_nonoverlap = std::shared_ptr<cv::Mat>(new cv::Mat());
 
 }
 
@@ -1143,10 +1121,10 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 		if (a->getName().compare("normalized_rt") == 0) {
 			ArgumentRT* normalized_rt_arg;
 			normalized_rt_arg = (ArgumentRT*)a;
-			this->normalized_rt_temp = new DenseDataRegion2D();
-			this->normalized_rt_temp->setName(normalized_rt_arg->getName());
-			this->normalized_rt_temp->setId(std::to_string(normalized_rt_arg->getId()));
-			this->normalized_rt_temp->setVersion(normalized_rt_arg->getId());
+			this->normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());
+			(*this->normalized_rt_temp)->setName(normalized_rt_arg->getName());
+			(*this->normalized_rt_temp)->setId(std::to_string(normalized_rt_arg->getId()));
+			(*this->normalized_rt_temp)->setVersion(normalized_rt_arg->getId());
 			set_cout++;
 		}
 
@@ -1165,18 +1143,15 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	seg_nonoverlap = new cv::Mat;
+	seg_nonoverlap = std::shared_ptr<cv::Mat>(new cv::Mat());
 	
 }
 
 TaskSegmentation5::~TaskSegmentation5() {
-	if(normalized_rt_temp != NULL) delete normalized_rt_temp;
-
-	delete seg_nonoverlap;
 }
 
 bool TaskSegmentation5::run(int procType, int tid) {
-	cv::Mat normalized_rt = this->normalized_rt_temp->getData();
+	cv::Mat normalized_rt = (*this->normalized_rt_temp)->getData();
 
 
 	cv::Mat seg_nonoverlap_temp;
@@ -1185,7 +1160,7 @@ bool TaskSegmentation5::run(int procType, int tid) {
 
 	std::cout << "\t\t\tTaskSegmentation5 executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNucleiStg6(normalized_rt, minSizePl, watershedConnectivity, seg_open, seg_nonoverlap);
+	::nscale::HistologicalEntities::segmentNucleiStg6(normalized_rt, minSizePl, watershedConnectivity, &*seg_open, &*seg_nonoverlap);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
@@ -1194,8 +1169,9 @@ bool TaskSegmentation5::run(int procType, int tid) {
 }
 
 void TaskSegmentation5::updateDR(RegionTemplate* rt) {
-	normalized_rt_temp = dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(this->normalized_rt_temp->getName(),
-		this->normalized_rt_temp->getId(), 0, stoi(this->normalized_rt_temp->getId())));
+	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(
+		rt->getDataRegion((*this->normalized_rt_temp)->getName(),
+		(*this->normalized_rt_temp)->getId(), 0, stoi((*this->normalized_rt_temp)->getId()))));
 
 }
 
@@ -1224,7 +1200,7 @@ void TaskSegmentation5::resolveDependencies(ReusableTask* t) {
 bool TaskSegmentation5::reusable(ReusableTask* rt) {
 	TaskSegmentation5* t = (TaskSegmentation5*)(rt);
 	if (
-		this->normalized_rt_temp->getName() == t->normalized_rt_temp->getName() &&
+		(*this->normalized_rt_temp)->getName() == (*t->normalized_rt_temp)->getName() &&
 		this->minSizePl == t->minSizePl &&
 		this->watershedConnectivity == t->watershedConnectivity &&
 
@@ -1240,7 +1216,7 @@ bool TaskSegmentation5::reusable(ReusableTask* rt) {
 int TaskSegmentation5::size() {
 	return 
 		sizeof(int) + sizeof(int) +
-		sizeof(int) + normalized_rt_temp->getName().length()*sizeof(char) + sizeof(int) +
+		sizeof(int) + (*normalized_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
 		sizeof(int) +
 		sizeof(int) +
 
@@ -1260,17 +1236,17 @@ int TaskSegmentation5::serialize(char *buff) {
 	serialized_bytes+=sizeof(int);
 
 	// copy normalized_rt id
-	int normalized_rt_id = stoi(normalized_rt_temp->getId());
+	int normalized_rt_id = stoi((*normalized_rt_temp)->getId());
 	memcpy(buff+serialized_bytes, &normalized_rt_id, sizeof(int));
 	serialized_bytes+=sizeof(int);
 
 	// copy normalized_rt name size
-	int normalized_rt_name_size = normalized_rt_temp->getName().length();
+	int normalized_rt_name_size = (*normalized_rt_temp)->getName().length();
 	memcpy(buff+serialized_bytes, &normalized_rt_name_size, sizeof(int));
 	serialized_bytes+=sizeof(int);
 
 	// copy normalized_rt name
-	memcpy(buff+serialized_bytes, normalized_rt_temp->getName().c_str(), normalized_rt_name_size*sizeof(char));
+	memcpy(buff+serialized_bytes, (*normalized_rt_temp)->getName().c_str(), normalized_rt_name_size*sizeof(char));
 	serialized_bytes+=normalized_rt_name_size*sizeof(char);
 
 	// copy field minSizePl
@@ -1297,12 +1273,12 @@ int TaskSegmentation5::deserialize(char *buff) {
 	deserialized_bytes += sizeof(int);
 
 	// create the normalized_rt
-	this->normalized_rt_temp = new DenseDataRegion2D();
+	this->normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());
 
 	// extract normalized_rt id
 	int normalized_rt_id = ((int*)(buff+deserialized_bytes))[0];
-	this->normalized_rt_temp->setId(to_string(normalized_rt_id));
-	this->normalized_rt_temp->setVersion(normalized_rt_id);
+	(*this->normalized_rt_temp)->setId(to_string(normalized_rt_id));
+	(*this->normalized_rt_temp)->setVersion(normalized_rt_id);
 	deserialized_bytes += sizeof(int);
 
 	// extract normalized_rt name size
@@ -1314,7 +1290,7 @@ int TaskSegmentation5::deserialize(char *buff) {
 	normalized_rt_name[normalized_rt_name_size] = '\0';
 	memcpy(normalized_rt_name, buff+deserialized_bytes, sizeof(char)*normalized_rt_name_size);
 	deserialized_bytes += sizeof(char)*normalized_rt_name_size;
-	this->normalized_rt_temp->setName(normalized_rt_name);
+	(*this->normalized_rt_temp)->setName(normalized_rt_name);
 
 	// extract field minSizePl
 	this->minSizePl = ((int*)(buff+deserialized_bytes))[0];
@@ -1370,10 +1346,10 @@ TaskSegmentation6::TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* i
 		if (a->getName().compare("segmented_rt") == 0) {
 			ArgumentRT* segmented_rt_arg;
 			segmented_rt_arg = (ArgumentRT*)a;
-			this->segmented_rt_temp = new DenseDataRegion2D();
-			this->segmented_rt_temp->setName(segmented_rt_arg->getName());
-			this->segmented_rt_temp->setId(std::to_string(segmented_rt_arg->getId()));
-			this->segmented_rt_temp->setVersion(segmented_rt_arg->getId());
+			this->segmented_rt_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());
+			(*this->segmented_rt_temp)->setName(segmented_rt_arg->getName());
+			(*this->segmented_rt_temp)->setId(std::to_string(segmented_rt_arg->getId()));
+			(*this->segmented_rt_temp)->setVersion(segmented_rt_arg->getId());
 			set_cout++;
 		}
 
@@ -1401,7 +1377,6 @@ TaskSegmentation6::TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation6::~TaskSegmentation6() {
-	delete segmented_rt_temp;
 }
 
 bool TaskSegmentation6::run(int procType, int tid) {
@@ -1413,17 +1388,17 @@ bool TaskSegmentation6::run(int procType, int tid) {
 
 	std::cout << "\t\t\tTaskSegmentation6 executing." << std::endl;	
 
-	::nscale::HistologicalEntities::segmentNucleiStg7(&segmented_rt, minSizeSeg, maxSizeSeg, fillHolesConnectivity, seg_nonoverlap);
+	::nscale::HistologicalEntities::segmentNucleiStg7(&segmented_rt, minSizeSeg, maxSizeSeg, fillHolesConnectivity, &*seg_nonoverlap);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
-	this->segmented_rt_temp->setData(segmented_rt);
+	(*this->segmented_rt_temp)->setData(segmented_rt);
 
 	std::cout << "\t\t\tTask Segmentation6 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation6::updateDR(RegionTemplate* rt) {
-rt->insertDataRegion(this->segmented_rt_temp);
+rt->insertDataRegion(*this->segmented_rt_temp);
 
 }
 
@@ -1449,7 +1424,7 @@ void TaskSegmentation6::resolveDependencies(ReusableTask* t) {
 bool TaskSegmentation6::reusable(ReusableTask* rt) {
 	TaskSegmentation6* t = (TaskSegmentation6*)(rt);
 	if (
-		this->segmented_rt_temp->getName() == t->segmented_rt_temp->getName() &&
+		(*this->segmented_rt_temp)->getName() == (*t->segmented_rt_temp)->getName() &&
 		this->minSizeSeg == t->minSizeSeg &&
 		this->maxSizeSeg == t->maxSizeSeg &&
 		this->fillHolesConnectivity == t->fillHolesConnectivity &&
@@ -1466,7 +1441,7 @@ bool TaskSegmentation6::reusable(ReusableTask* rt) {
 int TaskSegmentation6::size() {
 	return 
 		sizeof(int) + sizeof(int) +
-		sizeof(int) + segmented_rt_temp->getName().length()*sizeof(char) + sizeof(int) +
+		sizeof(int) + (*segmented_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
 		sizeof(int) +
 		sizeof(int) +
 		sizeof(int) +
@@ -1487,17 +1462,17 @@ int TaskSegmentation6::serialize(char *buff) {
 	serialized_bytes+=sizeof(int);
 
 	// copy segmented_rt id
-	int segmented_rt_id = stoi(segmented_rt_temp->getId());
+	int segmented_rt_id = stoi((*segmented_rt_temp)->getId());
 	memcpy(buff+serialized_bytes, &segmented_rt_id, sizeof(int));
 	serialized_bytes+=sizeof(int);
 
 	// copy segmented_rt name size
-	int segmented_rt_name_size = segmented_rt_temp->getName().length();
+	int segmented_rt_name_size = (*segmented_rt_temp)->getName().length();
 	memcpy(buff+serialized_bytes, &segmented_rt_name_size, sizeof(int));
 	serialized_bytes+=sizeof(int);
 
 	// copy segmented_rt name
-	memcpy(buff+serialized_bytes, segmented_rt_temp->getName().c_str(), segmented_rt_name_size*sizeof(char));
+	memcpy(buff+serialized_bytes, (*segmented_rt_temp)->getName().c_str(), segmented_rt_name_size*sizeof(char));
 	serialized_bytes+=segmented_rt_name_size*sizeof(char);
 
 	// copy field minSizeSeg
@@ -1528,12 +1503,12 @@ int TaskSegmentation6::deserialize(char *buff) {
 	deserialized_bytes += sizeof(int);
 
 	// create the segmented_rt
-	this->segmented_rt_temp = new DenseDataRegion2D();
+	this->segmented_rt_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());
 
 	// extract segmented_rt id
 	int segmented_rt_id = ((int*)(buff+deserialized_bytes))[0];
-	this->segmented_rt_temp->setId(to_string(segmented_rt_id));
-	this->segmented_rt_temp->setVersion(segmented_rt_id);
+	(*this->segmented_rt_temp)->setId(to_string(segmented_rt_id));
+	(*this->segmented_rt_temp)->setVersion(segmented_rt_id);
 	deserialized_bytes += sizeof(int);
 
 	// extract segmented_rt name size
@@ -1545,7 +1520,7 @@ int TaskSegmentation6::deserialize(char *buff) {
 	segmented_rt_name[segmented_rt_name_size] = '\0';
 	memcpy(segmented_rt_name, buff+deserialized_bytes, sizeof(char)*segmented_rt_name_size);
 	deserialized_bytes += sizeof(char)*segmented_rt_name_size;
-	this->segmented_rt_temp->setName(segmented_rt_name);
+	(*this->segmented_rt_temp)->setName(segmented_rt_name);
 
 	// extract field minSizeSeg
 	this->minSizeSeg = ((int*)(buff+deserialized_bytes))[0];

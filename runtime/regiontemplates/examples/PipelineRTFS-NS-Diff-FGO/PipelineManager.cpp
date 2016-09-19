@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -253,7 +253,7 @@ int main(int argc, char* argv[]) {
 
 	map<int, PipelineComponentBase*> merged_stages;
 	int size = 9;
-	// MPI_Comm_size(MPI_COMM_WORLD, &size);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
 	cout << endl<< "merged-fine: " << endl;
@@ -792,6 +792,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 							// cout << "updating stage " << pt->getId() << ":" << pt->getName() << endl;
 							// clone pt basic infoinfoinfo
 							PipelineComponentBase* pt_cpy = pt->clone();
+							pt_cpy->setLocation(PipelineComponentBase::WORKER_SIDE);
 		
 							// set name and id
 							pt_cpy->setName(pt->getName());
@@ -970,8 +971,8 @@ void filter_stages(const map<int, PipelineComponentBase*> &all_stages,
 			filtered_stages.emplace_back(p.second);
 }
 
-list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, 
-	PipelineComponentBase* p, RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
+list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, PipelineComponentBase* p, 
+	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
 
 	list<ReusableTask*> tasks;
 	ReusableTask* prev_task = NULL;
@@ -1097,7 +1098,9 @@ mincut::weight_t get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBa
 		return 0;
 
 	PipelineComponentBase* s1_clone = s1->clone();
+	s1_clone->setLocation(PipelineComponentBase::WORKER_SIDE);
 	PipelineComponentBase* s2_clone = s2->clone();
+	s2_clone->setLocation(PipelineComponentBase::WORKER_SIDE);
 
 	merge_stages(s1_clone, s2_clone, ref);
 
@@ -1117,9 +1120,11 @@ mincut::weight_t get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, 
 	// get the first stage as a base stage
 	mincut::subgraph_t::iterator s1_it = s1.begin();
 	PipelineComponentBase* current1 = current_stages[id2task[*s1_it]]->clone();
+	current1->setLocation(PipelineComponentBase::WORKER_SIDE);
 	s1_it++;
 	for (; s1_it!=s1.end(); s1_it++) {
 		PipelineComponentBase* clone1 = current_stages[id2task[*s1_it]]->clone();
+		clone1->setLocation(PipelineComponentBase::WORKER_SIDE);
 		if (merging_condition(current1, clone1, args, ref))
 			merge_stages(current1, clone1, ref);
 		else {
@@ -1133,8 +1138,10 @@ mincut::weight_t get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, 
 	// get the first stage as a base stage
 	mincut::subgraph_t::iterator s2_it = s2.begin();
 	PipelineComponentBase* current2 = current_stages[id2task[(*s2_it)]]->clone();
+	current2->setLocation(PipelineComponentBase::WORKER_SIDE);
 	for (s2_it++; s2_it!=s2.end(); s2_it++) {
 		PipelineComponentBase* clone2 = current_stages[id2task[*s2_it]]->clone();
+		clone2->setLocation(PipelineComponentBase::WORKER_SIDE);
 		if (merging_condition(current2, clone2, args, ref))
 			merge_stages(current2, clone2, ref);
 		else 
@@ -1159,9 +1166,11 @@ float calc_stage_proc(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &a
 
 	for (; i!=s.end(); i++) {
 		PipelineComponentBase* current = (*i)->clone();
+		current->setLocation(PipelineComponentBase::WORKER_SIDE);
 		for (list<PipelineComponentBase*>::iterator j = next(i); j!=s.end();) {
 			if (merging_condition(*i, *j, args, ref)) {
 				PipelineComponentBase* j_clone = (*j)->clone();
+				j_clone->setLocation(PipelineComponentBase::WORKER_SIDE);
 				merge_stages(current, j_clone, ref);
 				delete j_clone;
 				j = s.erase(j);
@@ -1194,9 +1203,11 @@ float calc_stage_mem(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &ar
 
 	for (; i!=s.end(); i++) {
 		PipelineComponentBase* current = (*i)->clone();
+		current->setLocation(PipelineComponentBase::WORKER_SIDE);
 		for (list<PipelineComponentBase*>::iterator j = next(i); j!=s.end();) {
 			if (merging_condition(*i, *j, args, ref)) {
 				PipelineComponentBase* j_clone = (*j)->clone();
+				j_clone->setLocation(PipelineComponentBase::WORKER_SIDE);
 				merge_stages(current, j_clone, ref);
 				j = s.erase(j);
 				delete j_clone;

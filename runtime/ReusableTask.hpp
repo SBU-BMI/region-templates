@@ -13,11 +13,13 @@
 #include "Task.h"
 #include "Argument.h"
 #include "RegionTemplate.h"
+#include "PipelineComponentBase.h"
 
 
 // Define factory function type that creates objects of type ReusableTask and its subclasses
 class ReusableTask;
 class RegionTemplate;
+class PipelineComponentBase;
 typedef ReusableTask* (task_factory_t1)(list<ArgumentBase*> args, RegionTemplate* inputRt);
 typedef ReusableTask* (task_factory_t2)();
 
