@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <string.h>
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <map>
 #include <list>
@@ -102,6 +104,9 @@ void generate_drs(RegionTemplate* rt, const map<int, ArgumentBase*> &expanded_ar
 void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
 	map<int, ArgumentBase*> &merged_arguments,
 	RegionTemplate *rt);
+void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
+	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*> workflow_outputs, 
+	map<int, ArgumentBase*> expanded_args, map<int, PipelineComponentBase*> expanded_stages);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -122,11 +127,17 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
 	rt->setName("tile");
+
+	// get arguments
+	if (argc != 1 && argc != 3) {
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO [-i DAKOTA_OUTPUT_FILE]" << endl;
+		return 0;
+	}
 
 	// workflow file
 	FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
@@ -227,8 +238,11 @@ int main(int argc, char* argv[]) {
 	map<int, ArgumentBase*> expanded_args;
 	map<int, PipelineComponentBase*> expanded_stages;
 
-	expand_stages(args, parameters_values, expanded_args, 
-		base_stages, expanded_stages, workflow_outputs);
+	// expand_stages(args, parameters_values, expanded_args, 
+	// 	base_stages, expanded_stages, workflow_outputs);
+	FILE* parameters_values_file = fopen("dakota_nscale_ps_moat_600_32nodes.out", "r");
+	generate_pre_defined_stages(parameters_values_file, args, base_stages, workflow_outputs, 
+		expanded_args, expanded_stages);
 
 	cout << endl<< "merged: " << endl;
 	for (pair<int, PipelineComponentBase*> p : expanded_stages) {
@@ -718,6 +732,116 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 /***************************************************************/
 /********* Workflow merging and preparation functions **********/
 /***************************************************************/
+
+double str2d (string s) {
+	istringstream os(s);
+	double d;
+	os >> d;
+	return d;
+}
+
+void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
+	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*> workflow_outputs, 
+	map<int, ArgumentBase*> expanded_args, map<int, PipelineComponentBase*> expanded_stages) {
+
+	cout << "[generate_pre_defined_stages]" << endl;
+
+	string pe("Parameters for evaluation");
+
+	char* line = NULL;
+	size_t length=0;
+
+	// map of arguments, ordered by name, containing all values of each argument
+	map<string, list<ArgumentBase*>> input_arguments;
+
+	list<list<ArgumentBase*>> stages_arguments;
+
+	while(getline(&line, &length, parameters_values_file) != -1) {
+		// go to the first pe
+		while (string(line).find(pe) == string::npos)
+			getline(&line, &length, parameters_values_file);
+
+		list<ArgumentBase*> current_args;
+
+		// get all parameters of a workflow
+		while (string(line).compare("\r\n") != 0) {
+			getline(&line, &length, parameters_values_file);
+
+			cout << line << endl;
+
+			// get parameter name, value and token
+			char* token = strtok(line, " \t");
+			string value(token);
+			token = strtok(NULL, " \t");
+			string name(token);
+			token = strtok(NULL, " \t\n");
+			string type(token);
+
+			ArgumentBase* arg;
+
+			// verify if the argument is on the map and if it contains the current value
+			bool found = false;
+			for (ArgumentBase* a : input_arguments[name]) {
+				istringstream os(value);
+				double d;
+				os >> d;
+				if (a->getName().compare(name)==0 && a->toString().compare(to_string(d))==0) {
+					found = true;
+					arg = a;
+				}
+			}
+
+			char* token2;
+			if (!found) {
+				switch (get_port_type(type)) {
+					case parsing::int_t:
+						arg = new ArgumentInt((int)str2d(value));
+						break;
+					case parsing::string_t:
+						arg = new ArgumentString(value);
+						break;
+					case parsing::float_t:
+						arg = new ArgumentFloat((float)str2d(value));
+						break;
+					case parsing::float_array_t:
+						arg = new ArgumentFloatArray();
+						token2 = strtok(const_cast<char*>(value.c_str()), "[],");
+						while (token2 != NULL) {
+							// convert value
+							ArgumentFloat f((float)str2d(token2));
+							((ArgumentFloatArray*)arg)->addArgValue(f);
+							token2 = strtok(NULL, "[],");
+						}
+						break;
+					default:
+						exit(-4);
+				}
+				arg->setName(name);
+				arg->setId(new_uid());
+
+				input_arguments[name].emplace_back(arg);
+			}
+
+			current_args.emplace_back(arg);
+		}
+
+		stages_arguments.emplace_back(current_args);
+	}
+
+	for (list<ArgumentBase*> s : stages_arguments) {
+		cout << "got stage:" << endl;
+		for (ArgumentBase* a : s) {
+			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+		}
+	}
+
+	for (pair<string, list<ArgumentBase*>> p : input_arguments) {
+		cout << "Argument " << p.first << " with values:" << endl;
+		for (ArgumentBase* a : p.second) {
+			cout << "\t" << a->getId() << ": " << a->toString() << endl;
+		}
+	}
+}
 
 bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
 	for (int i : inps) {
