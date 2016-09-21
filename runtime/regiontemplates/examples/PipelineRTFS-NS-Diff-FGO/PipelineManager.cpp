@@ -9,6 +9,7 @@
 #include <vector>
 #include <regex>
 #include <cfloat>
+#include <algorithm>
 
 #include "json/json.h"
 
@@ -740,6 +741,45 @@ double str2d (string s) {
 	return d;
 }
 
+ArgumentBase* gen_arg(string value, string type) {
+	ArgumentBase* arg;
+	char* token2;
+	switch (get_port_type(type)) {
+		case parsing::int_t:
+			arg = new ArgumentInt((int)str2d(value));
+			break;
+		case parsing::string_t:
+			arg = new ArgumentString(value);
+			break;
+		case parsing::float_t:
+			arg = new ArgumentFloat((float)str2d(value));
+			break;
+		case parsing::float_array_t:
+			arg = new ArgumentFloatArray();
+			token2 = strtok(const_cast<char*>(value.c_str()), "[],");
+			while (token2 != NULL) {
+				// convert value
+				ArgumentFloat f((float)str2d(token2));
+				((ArgumentFloatArray*)arg)->addArgValue(f);
+				token2 = strtok(NULL, "[],");
+			}
+			break;
+		default:
+			exit(-4);
+	}
+	return arg;
+}
+
+all_inps_in(p.second->getInputs(), args, input_arguments)
+
+bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
+	for (int i : inps) {
+		if (ref.find(i) == ref.end())
+			return false;
+	}
+	return true;
+}
+
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
 	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*> workflow_outputs, 
 	map<int, ArgumentBase*> expanded_args, map<int, PipelineComponentBase*> expanded_stages) {
@@ -758,20 +798,30 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 
 	while(getline(&line, &length, parameters_values_file) != -1) {
 		// go to the first pe
-		while (string(line).find(pe) == string::npos)
-			getline(&line, &length, parameters_values_file);
+		int r = 0;
+		while (string(line).find(pe) == string::npos && r != -1)
+			r = getline(&line, &length, parameters_values_file);
+
+		// finishes loop when the eof is reached
+		if (r == -1)
+			break;
 
 		list<ArgumentBase*> current_args;
 
 		// get all parameters of a workflow
-		while (string(line).compare("\r\n") != 0) {
+		while (true) {
 			getline(&line, &length, parameters_values_file);
 
-			cout << line << endl;
+			cout << endl << line;
 
 			// get parameter name, value and token
 			char* token = strtok(line, " \t");
 			string value(token);
+
+			// break loop if the line is empty with only a '\n'
+			if (value.compare("\n")==0)
+				break;
+
 			token = strtok(NULL, " \t");
 			string name(token);
 			token = strtok(NULL, " \t\n");
@@ -782,40 +832,18 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 			// verify if the argument is on the map and if it contains the current value
 			bool found = false;
 			for (ArgumentBase* a : input_arguments[name]) {
-				istringstream os(value);
-				double d;
-				os >> d;
-				if (a->getName().compare(name)==0 && a->toString().compare(to_string(d))==0) {
+				ArgumentBase* aa = gen_arg(value, type);
+				// cout << "[---] comparing " << a->getName() << ":" << a->toString() << " with " << name << ":" << aa->toString() << endl;
+				if (a->getName().compare(name)==0 && a->toString().compare(aa->toString())==0) {
 					found = true;
 					arg = a;
+					break;
 				}
 			}
 
 			char* token2;
 			if (!found) {
-				switch (get_port_type(type)) {
-					case parsing::int_t:
-						arg = new ArgumentInt((int)str2d(value));
-						break;
-					case parsing::string_t:
-						arg = new ArgumentString(value);
-						break;
-					case parsing::float_t:
-						arg = new ArgumentFloat((float)str2d(value));
-						break;
-					case parsing::float_array_t:
-						arg = new ArgumentFloatArray();
-						token2 = strtok(const_cast<char*>(value.c_str()), "[],");
-						while (token2 != NULL) {
-							// convert value
-							ArgumentFloat f((float)str2d(token2));
-							((ArgumentFloatArray*)arg)->addArgValue(f);
-							token2 = strtok(NULL, "[],");
-						}
-						break;
-					default:
-						exit(-4);
-				}
+				arg = gen_arg(value, type);
 				arg->setName(name);
 				arg->setId(new_uid());
 
@@ -828,17 +856,65 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		stages_arguments.emplace_back(current_args);
 	}
 
-	for (list<ArgumentBase*> s : stages_arguments) {
-		cout << "got stage:" << endl;
-		for (ArgumentBase* a : s) {
-			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
-		}
-	}
-
+	// show all generated args
 	for (pair<string, list<ArgumentBase*>> p : input_arguments) {
 		cout << "Argument " << p.first << " with values:" << endl;
 		for (ArgumentBase* a : p.second) {
 			cout << "\t" << a->getId() << ": " << a->toString() << endl;
+		}
+	}
+
+	// keep expanding stages until there is no stage left
+	while (base_stages.size() != 0) {
+		// cout << "base_stages size: " << base_stages.size() << endl;
+		for (pair<int, PipelineComponentBase*> p : base_stages) {
+			// attempt to find a stage witch has all inputs expanded
+			if (all_inps_in(p.second->getInputs(), args, input_arguments)) {
+				cout << "stage " << p.second->getName() << " has all inputs" << endl;
+
+				// A list of concatenated arg values, used as a quick way to verify if a stage with
+				// the same args was already created.
+				list<string> arg_values_list;
+
+				// expands all input values of stage p
+				for (list<ArgumentBase*> as : stages_arguments) {
+					PipelineComponentBase* tmp = p.second->clone();
+					string arg_values = "";
+					// add all arguments from stages_arguments that belong to stage p.second
+					for (int inp_id : p.second->getInputs()) {
+						for (ArgumentBase* a : stages_arguments) {
+							if (args[inp_id]->getName().compare(a->getName())==0 && args[inp_id]->toString().compare(a->toString())) {
+								arg_values += aa->toString();
+								tmp->addArgument(aa);
+							}
+						}
+					}
+					// verify if there is no other stage with the same values
+					if (find(arg_values_list.begin(), arg_values_list.end(), arg_values) == arg_values_list.end()) {
+						arg_values_list.emplace_back(arg_values);
+						int id = new_uid();
+						tmp->setId(id);
+						expanded_stages[id] = tmp;
+					} else
+						delete tmp;
+				}
+
+				// remove stage descriptor since it was already solved
+				base_stages.erase(p.first);
+			}
+		}
+		for (map<int, PipelineComponentBase*> s : expanded_stages) {
+			cout << s.second->getName() << ":" endl;
+			for (ArgumentBase* a : s.second->getArguments()) {
+				cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+			}
+		}
+	}
+
+	for (list<ArgumentBase*> s : stages_arguments) {
+		cout << "got stage:" << endl;
+		for (ArgumentBase* a : s) {
+			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
 		}
 	}
 }
