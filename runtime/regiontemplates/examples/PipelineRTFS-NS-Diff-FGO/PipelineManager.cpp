@@ -770,12 +770,13 @@ ArgumentBase* gen_arg(string value, string type) {
 	return arg;
 }
 
-all_inps_in(p.second->getInputs(), args, input_arguments)
+bool all_inps_in(const list<int>& inps, const map<int, ArgumentBase*>& args, 
+	const map<string, list<ArgumentBase*>>& input_arguments) {
 
-bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
 	for (int i : inps) {
-		if (ref.find(i) == ref.end())
+		if (input_arguments.find(args.at(i)->getName()) == input_arguments.end()) {
 			return false;
+		}
 	}
 	return true;
 }
@@ -811,8 +812,6 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		// get all parameters of a workflow
 		while (true) {
 			getline(&line, &length, parameters_values_file);
-
-			cout << endl << line;
 
 			// get parameter name, value and token
 			char* token = strtok(line, " \t");
@@ -864,6 +863,13 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		}
 	}
 
+	for (list<ArgumentBase*> s : stages_arguments) {
+		cout << "got stage:" << endl;
+		for (ArgumentBase* a : s) {
+			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+		}
+	}
+
 	// keep expanding stages until there is no stage left
 	while (base_stages.size() != 0) {
 		// cout << "base_stages size: " << base_stages.size() << endl;
@@ -882,10 +888,10 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 					string arg_values = "";
 					// add all arguments from stages_arguments that belong to stage p.second
 					for (int inp_id : p.second->getInputs()) {
-						for (ArgumentBase* a : stages_arguments) {
-							if (args[inp_id]->getName().compare(a->getName())==0 && args[inp_id]->toString().compare(a->toString())) {
-								arg_values += aa->toString();
-								tmp->addArgument(aa);
+						for (ArgumentBase* a : as) {
+							if (args.at(inp_id)->getName().compare(a->getName())==0) {
+								arg_values += a->toString();
+								tmp->addArgument(a->clone());
 							}
 						}
 					}
@@ -894,6 +900,7 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 						arg_values_list.emplace_back(arg_values);
 						int id = new_uid();
 						tmp->setId(id);
+						tmp->setName(p.second->getName());
 						expanded_stages[id] = tmp;
 					} else
 						delete tmp;
@@ -903,8 +910,8 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 				base_stages.erase(p.first);
 			}
 		}
-		for (map<int, PipelineComponentBase*> s : expanded_stages) {
-			cout << s.second->getName() << ":" endl;
+		for (pair<int, PipelineComponentBase*> s : expanded_stages) {
+			cout << s.second->getName() << ":" << endl;
 			for (ArgumentBase* a : s.second->getArguments()) {
 				cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
 			}
