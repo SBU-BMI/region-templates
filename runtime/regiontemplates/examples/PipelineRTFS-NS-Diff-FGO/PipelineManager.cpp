@@ -106,8 +106,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 	map<int, ArgumentBase*> &merged_arguments,
 	RegionTemplate *rt);
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
-	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*> workflow_outputs, 
-	map<int, ArgumentBase*> expanded_args, map<int, PipelineComponentBase*> expanded_stages);
+	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
+	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -118,7 +118,9 @@ void get_workflow_arguments(FILE* workflow, list<ArgumentBase*> &output_argument
 vector<general_field_t> get_all_fields(FILE* workflow, string start, string end);
 PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, string name);
 int find_stage_id(map<int, PipelineComponentBase*> stages, string name);
-ArgumentBase* find_argument(const map<int, ArgumentBase*> arguments, string name);
+ArgumentBase* find_argument(const map<int, ArgumentBase*>& arguments, string name);
+ArgumentBase* find_argument(const list<ArgumentBase*>& arguments, int id);
+ArgumentBase* find_argument(const list<ArgumentBase*>& arguments, string name);
 ArgumentBase* new_typed_arg_base(string type);
 parsing::port_type_t get_port_type(string s);
 
@@ -178,19 +180,19 @@ int main(int argc, char* argv[]) {
 	map<int, PipelineComponentBase*> base_stages;
 	map<int, ArgumentBase*> interstage_arguments;
 	get_stages_from_file(workflow_descriptor, base_stages, interstage_arguments);
-	cout << endl << "base_stages:" << endl;
-	for (pair<int, PipelineComponentBase*> p : base_stages) {
-		cout << p.first << ":" << p.second->getName() << endl;
-		cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
-		for (int i : p.second->getOutputs())
-			cout << "\t\t" << i << ":" << interstage_arguments[i]->getName() << endl;
-		cout << "\t task descriptors:" << endl;
-		for (pair<string, list<ArgumentBase*>> d : p.second->tasksDesc) {
-			cout << "\t\ttask: " << d.first << endl;
-			for (ArgumentBase* a : d.second)
-				cout << "\t\t\t" << a->getName() << endl;
-		}
-	}
+	// cout << endl << "base_stages:" << endl;
+	// for (pair<int, PipelineComponentBase*> p : base_stages) {
+	// 	cout << p.first << ":" << p.second->getName() << endl;
+	// 	cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
+	// 	for (int i : p.second->getOutputs())
+	// 		cout << "\t\t" << i << ":" << interstage_arguments[i]->getName() << endl;
+	// 	cout << "\t task descriptors:" << endl;
+	// 	for (pair<string, list<ArgumentBase*>> d : p.second->tasksDesc) {
+	// 		cout << "\t\ttask: " << d.first << endl;
+	// 		for (ArgumentBase* a : d.second)
+	// 			cout << "\t\t\t" << a->getName() << endl;
+	// 	}
+	// }
 
 
 	// cout << endl << "interstage_arguments:" << endl;
@@ -218,10 +220,10 @@ int main(int argc, char* argv[]) {
 	// cout << endl << "connected base_stages:" << endl;
 	// for (pair<int, PipelineComponentBase*> p : base_stages) {
 	// 	cout << p.first << ":" << p.second->getName() << endl;
-	// 	cout << "\tinputs: " << p.second->getInputs().size() << endl << endl;
+	// 	cout << "\tinputs: " << p.second->getInputs().size() << endl;
 	// 	for (int i : p.second->getInputs())
 	// 		cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
-	// 	cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
+	// 	cout << "\toutputs: " << p.second->getOutputs().size() << endl;
 	// 	for (int i : p.second->getOutputs())
 	// 		cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
 	// }
@@ -267,7 +269,7 @@ int main(int argc, char* argv[]) {
 	add_arguments_to_stages(expanded_stages, expanded_args, rt);
 
 	map<int, PipelineComponentBase*> merged_stages;
-	int size = 9;
+	int size = 3;
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
@@ -771,10 +773,14 @@ ArgumentBase* gen_arg(string value, string type) {
 }
 
 bool all_inps_in(const list<int>& inps, const map<int, ArgumentBase*>& args, 
-	const map<string, list<ArgumentBase*>>& input_arguments) {
+	const map<string, list<ArgumentBase*>>& input_arguments, 
+	const list<ArgumentBase*>& args_values) {
 
 	for (int i : inps) {
-		if (input_arguments.find(args.at(i)->getName()) == input_arguments.end()) {
+		// cout << "checking arg " << args.at(i)->getId() << ":" << args.at(i)->getName() << endl;
+		if (input_arguments.find(args.at(i)->getName()) == input_arguments.end() &&
+			find_argument(args_values, args.at(i)->getName()) == NULL) {
+			// cout << "not here" << endl;
 			return false;
 		}
 	}
@@ -782,8 +788,8 @@ bool all_inps_in(const list<int>& inps, const map<int, ArgumentBase*>& args,
 }
 
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
-	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*> workflow_outputs, 
-	map<int, ArgumentBase*> expanded_args, map<int, PipelineComponentBase*> expanded_stages) {
+	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
+	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages) {
 
 	cout << "[generate_pre_defined_stages]" << endl;
 
@@ -795,7 +801,14 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 	// map of arguments, ordered by name, containing all values of each argument
 	map<string, list<ArgumentBase*>> input_arguments;
 
-	list<list<ArgumentBase*>> stages_arguments;
+	// list of the stages' arguments
+	map<int, list<ArgumentBase*>> stages_arguments;
+
+	// interstage args
+	list<ArgumentBase*> args_values;
+
+	// list of stages created here
+	list<PipelineComponentBase*> stages_iterative;
 
 	while(getline(&line, &length, parameters_values_file) != -1) {
 		// go to the first pe
@@ -852,7 +865,7 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 			current_args.emplace_back(arg);
 		}
 
-		stages_arguments.emplace_back(current_args);
+		stages_arguments[new_uid()] = current_args;
 	}
 
 	// show all generated args
@@ -863,67 +876,121 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		}
 	}
 
-	for (list<ArgumentBase*> s : stages_arguments) {
-		cout << "got stage:" << endl;
-		for (ArgumentBase* a : s) {
-			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
-		}
-	}
+	// for (list<ArgumentBase*> s : stages_arguments) {
+	// 	cout << "got stage:" << endl;
+	// 	for (ArgumentBase* a : s) {
+	// 		cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+	// 	}
+	// }
 
 	// keep expanding stages until there is no stage left
 	while (base_stages.size() != 0) {
 		// cout << "base_stages size: " << base_stages.size() << endl;
 		for (pair<int, PipelineComponentBase*> p : base_stages) {
-			// attempt to find a stage witch has all inputs expanded
-			if (all_inps_in(p.second->getInputs(), args, input_arguments)) {
-				cout << "stage " << p.second->getName() << " has all inputs" << endl;
+			// attempt to find a stage witch has all inputs expanded either on the workflow inputs or interstage ones
+			// cout << "checking stage " << p.second->getName() << endl;
+			if (all_inps_in(p.second->getInputs(), args, input_arguments, args_values)) {
+				// cout << "stage " << p.second->getName() << " has all inputs" << endl;
 
 				// A list of concatenated arg values, used as a quick way to verify if a stage with
 				// the same args was already created.
-				list<string> arg_values_list;
+				map<string, PipelineComponentBase*> arg_values_list;
 
 				// expands all input values of stage p
-				for (list<ArgumentBase*> as : stages_arguments) {
+				for (pair<int, list<ArgumentBase*>> as : stages_arguments) {
 					PipelineComponentBase* tmp = p.second->clone();
 					string arg_values = "";
 					// add all arguments from stages_arguments that belong to stage p.second
 					for (int inp_id : p.second->getInputs()) {
-						for (ArgumentBase* a : as) {
+						// cout << "checking input " << args[inp_id]->getName() << " of " << p.second->getName() << endl;
+						for (ArgumentBase* a : as.second) {
 							if (args.at(inp_id)->getName().compare(a->getName())==0) {
-								arg_values += a->toString();
-								tmp->addArgument(a->clone());
+								arg_values += to_string(a->getId());
+								tmp->addInput(a->getId());
+								break;
 							}
 						}
 					}
+					map<string, PipelineComponentBase*>::iterator it = arg_values_list.find(arg_values);
 					// verify if there is no other stage with the same values
-					if (find(arg_values_list.begin(), arg_values_list.end(), arg_values) == arg_values_list.end()) {
-						arg_values_list.emplace_back(arg_values);
+					if (it == arg_values_list.end()) {
+						// add current stage and args values to be compared later
+						arg_values_list[arg_values] = tmp;
+
+						// finishes to generate the stage
 						int id = new_uid();
 						tmp->setId(id);
 						tmp->setName(p.second->getName());
-						expanded_stages[id] = tmp;
-					} else
-						delete tmp;
+						tmp->setLocation(PipelineComponentBase::WORKER_SIDE);
+
+						// generate outputs
+						for (int out_id : p.second->getOutputs()) {
+							int new_id = new_uid();
+							ArgumentBase* ab_cpy = args.at(out_id)->clone();
+							ab_cpy->setName(args.at(out_id)->getName());
+							ab_cpy->setId(new_id);
+							ab_cpy->setParent(tmp->getId());
+							tmp->replaceOutput(out_id, new_id);						
+							
+							// add stage's output arguments to current workflow's argument list
+							stages_arguments[as.first].emplace_back(ab_cpy);
+
+							// add output to interstage args map
+							args_values.emplace_back(ab_cpy);
+						}
+						
+						// add stage to final stages list
+						expanded_stages[tmp->getId()] = tmp;
+					} else {
+						// if the stage already exists, reuse it
+						for (int out_id : it->second->getOutputs()) {
+							// add reused stage's output arguments to current workflow's argument list
+							// cout << "reusing stage " << out_id << " from workflow "
+							// 	<< it->second->getId() << endl;
+							stages_arguments[as.first].emplace_back(find_argument(args_values, out_id));
+						}
+
+						// TODO: solve mem leaking
+						// delete tmp;
+					}
 				}
 
-				// remove stage descriptor since it was already solved
+				// remove stage descriptor since it was already solved and break the loop
 				base_stages.erase(p.first);
+				break;
 			}
 		}
-		for (pair<int, PipelineComponentBase*> s : expanded_stages) {
-			cout << s.second->getName() << ":" << endl;
-			for (ArgumentBase* a : s.second->getArguments()) {
-				cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
-			}
+
+	}
+
+	// add stages_arguments inputs to expanded_args
+	for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
+		for (ArgumentBase* a : p.second) {
+			expanded_args[a->getId()] = a;
 		}
 	}
 
-	for (list<ArgumentBase*> s : stages_arguments) {
-		cout << "got stage:" << endl;
-		for (ArgumentBase* a : s) {
-			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
-		}
-	}
+	// // update the output arguments
+	// map<int, ArgumentBase*> workflow_outputs_cpy = workflow_outputs;
+	// while (workflow_outputs_cpy.size() != 0) {
+	// 	// get the first output argument
+	// 	ArgumentBase* old_arg = (workflow_outputs_cpy.begin())->second;
+
+	// 	// get the list of parameters (i.e the number of copies and the final ids) of the outputs
+	// 	list<ArgumentBase*> l = args_values[old_arg->getId()];
+
+	// 	// remove the current, outdated, argument from final map
+	// 	workflow_outputs.erase(old_arg->getId());
+	// 	workflow_outputs_cpy.erase(old_arg->getId());
+
+	// 	// add a copy of the old arg with the correct id to the final map for each repeated output
+	// 	for (ArgumentBase* a : l) {
+	// 		ArgumentBase* temp = old_arg->clone();
+	// 		temp->setParent(old_arg->getParent());
+	// 		temp->setId(a->getId());
+	// 		workflow_outputs[temp->getId()] = temp;
+	// 	}
+	// }
 }
 
 bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
@@ -2076,10 +2143,24 @@ int find_stage_id(map<int, PipelineComponentBase*> stages, string name) {
 	return -1;
 }
 
-ArgumentBase* find_argument(const map<int, ArgumentBase*> arguments, string name) {
+ArgumentBase* find_argument(const map<int, ArgumentBase*>& arguments, string name) {
 	for (pair<int, ArgumentBase*> p : arguments)
 		if (p.second->getName().compare(name) == 0)
 			return p.second;
+	return NULL;
+}
+
+ArgumentBase* find_argument(const list<ArgumentBase*>& arguments, int id) {
+	for (ArgumentBase* a : arguments)
+		if (a->getId() == id)
+			return a;
+	return NULL;
+}
+
+ArgumentBase* find_argument(const list<ArgumentBase*>& arguments, string name) {
+	for (ArgumentBase* a : arguments)
+		if (a->getName().compare(name) == 0)
+			return a;
 	return NULL;
 }
 
