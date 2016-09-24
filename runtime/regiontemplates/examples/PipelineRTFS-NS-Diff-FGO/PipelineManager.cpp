@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -766,6 +766,9 @@ ArgumentBase* gen_arg(string value, string type) {
 				token2 = strtok(NULL, "[],");
 			}
 			break;
+		case parsing::rt_t:
+			arg = new ArgumentRT(value);
+			break;
 		default:
 			exit(-4);
 	}
@@ -845,6 +848,7 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 			bool found = false;
 			for (ArgumentBase* a : input_arguments[name]) {
 				ArgumentBase* aa = gen_arg(value, type);
+
 				// cout << "[---] comparing " << a->getName() << ":" << a->toString() << " with " << name << ":" << aa->toString() << endl;
 				if (a->getName().compare(name)==0 && a->toString().compare(aa->toString())==0) {
 					found = true;
@@ -856,6 +860,12 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 			char* token2;
 			if (!found) {
 				arg = gen_arg(value, type);
+
+				// set RT arguments as file inputs
+				if (arg->getType() == ArgumentBase::RT)
+					((ArgumentRT*)arg)->isFileInput = true;
+
+				// set remaining atributes
 				arg->setName(name);
 				arg->setId(new_uid());
 
@@ -970,27 +980,26 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		}
 	}
 
-	// // update the output arguments
-	// map<int, ArgumentBase*> workflow_outputs_cpy = workflow_outputs;
-	// while (workflow_outputs_cpy.size() != 0) {
-	// 	// get the first output argument
-	// 	ArgumentBase* old_arg = (workflow_outputs_cpy.begin())->second;
+	// update the output arguments
+	map<int, ArgumentBase*> workflow_outputs_cpy = workflow_outputs;
+	while (workflow_outputs_cpy.size() != 0) {
+		// get the first output argument
+		ArgumentBase* old_arg = (workflow_outputs_cpy.begin())->second;
 
-	// 	// get the list of parameters (i.e the number of copies and the final ids) of the outputs
-	// 	list<ArgumentBase*> l = args_values[old_arg->getId()];
+		// remove the current, outdated, argument from final map
+		workflow_outputs.erase(old_arg->getId());
+		workflow_outputs_cpy.erase(old_arg->getId());
 
-	// 	// remove the current, outdated, argument from final map
-	// 	workflow_outputs.erase(old_arg->getId());
-	// 	workflow_outputs_cpy.erase(old_arg->getId());
-
-	// 	// add a copy of the old arg with the correct id to the final map for each repeated output
-	// 	for (ArgumentBase* a : l) {
-	// 		ArgumentBase* temp = old_arg->clone();
-	// 		temp->setParent(old_arg->getParent());
-	// 		temp->setId(a->getId());
-	// 		workflow_outputs[temp->getId()] = temp;
-	// 	}
-	// }
+		// add a copy of the old arg with the correct id to the final map for each repeated output
+		for (ArgumentBase* a : args_values) {
+			if (a->getName().compare(old_arg->getName()) == 0) {
+				ArgumentBase* temp = old_arg->clone();
+				temp->setParent(old_arg->getParent());
+				temp->setId(a->getId());
+				workflow_outputs[temp->getId()] = temp;
+			}
+		}
+	}
 }
 
 bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
@@ -1019,15 +1028,15 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 	// mapprint(args);
 	// cout << endl;
 
-	// cout << endl << "arg_values:" << endl;
-	for (pair<int, list<ArgumentBase*>> p : args_values) {
-		// cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
-		for (ArgumentBase* a : p.second) {
-			a->setId(new_uid());
-			a->setName(args.at(p.first)->getName());
-			// cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
-		}
-	}
+	// // cout << endl << "arg_values:" << endl;
+	// for (pair<int, list<ArgumentBase*>> p : args_values) {
+	// 	// cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
+	// 	for (ArgumentBase* a : p.second) {
+	// 		a->setId(new_uid());
+	// 		a->setName(args.at(p.first)->getName());
+	// 		// cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+	// 	}
+	// }
 
 	// cout << endl << "stages:" << endl;
 	// mapprint(stages);
@@ -1929,9 +1938,12 @@ void generate_drs(RegionTemplate* rt,
 
 	// verify every argument
 	for (pair<int, ArgumentBase*> p : expanded_args) {
+		cout << "------------checking arg" << p.first << ":" << p.second->getName() << endl;
 		// if an argument is a region template data region
 		if (p.second->getType() == ArgumentBase::RT) {
+			cout << "arg" << p.first << ":" << p.second->getName() << " is RT" << endl;
 			if (((ArgumentRT*)p.second)->isFileInput) {
+				cout << "arg" << p.first << ":" << p.second->getName() << " is file inptut" << endl;
 				// create the data region and add it to the input region template
 				DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
 				ddr2d->setName(p.second->getName());
@@ -1959,14 +1971,15 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 		for (int arg_id : stage.second->getInputs()) {
 			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
 			stage.second->addArgument(new_arg);
-			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
-				// cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
+			if (new_arg->getType() == ArgumentBase::RT) {
+				cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->
-						getRegionTemplateInstance(rt->getName()) == NULL)
+						getRegionTemplateInstance(rt->getName()) == NULL) {
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
+				}
 				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(
-					rt->getName(), merged_arguments[arg_id]->getName(), RTPipelineComponentBase::INPUT);
+					rt->getName(), new_arg->getName(), RTPipelineComponentBase::INPUT);
 			}
 			if (merged_arguments[arg_id]->getParent() != 0) {
 				// verify if the dependency stage was reused
@@ -1986,7 +1999,7 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
 			stage.second->addArgument(new_arg);
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
-				// cout << "output RT : " << merged_arguments[arg_id]->getName() << endl;
+				cout << "output RT : " << merged_arguments[arg_id]->getName() << endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
