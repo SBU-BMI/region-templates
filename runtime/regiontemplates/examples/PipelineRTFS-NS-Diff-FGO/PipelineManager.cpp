@@ -1271,6 +1271,10 @@ bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_
 	if (ref.size() == 0)
 		return false;
 
+	// if any of the stages were already reused they can't be merged
+	if (to_merge->reused != NULL)
+		return false;
+
 	// verify if the first task is reusable
 	if (!exists_reusable_task(merged, to_merge, ref.begin()->first))
 		return false;
