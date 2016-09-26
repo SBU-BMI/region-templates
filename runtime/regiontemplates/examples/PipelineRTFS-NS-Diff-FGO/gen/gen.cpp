@@ -225,7 +225,6 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 		string name_prev = data["name"].asString() + to_string(i-1);
 		string type_check = "";
 		string task_args;
-		string input_dr_delete;
 		string input_mat_dr;
 		string output_mat_dr;
 		string intertask_mat;
@@ -265,43 +264,45 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 					data["tasks"][i]["args"][j]["name"].asString() + "\") == 0) {\n\t\t\tArgumentRT* " + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_arg;\n\t\t\t" + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_arg = (ArgumentRT*)a;\n\t\t\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp = new DenseDataRegion2D();\n\t\t\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->setName(" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_arg->getName());\n\t\t\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->setId(std::to_string(" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_arg->getId()));\n\t\t\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->setVersion(" + 
+					data["tasks"][i]["args"][j]["name"].asString() + 
+					"_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());\n\t\t\t(*this->" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->setName(" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_arg->getName());\n\t\t\t(*this->" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->setId(std::to_string(" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_arg->getId()));\n\t\t\t(*this->" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->setVersion(" + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_arg->getId());\n\t\t\tset_cout++;\n\t\t}\n\n";
 
-				reusable_cond += "\t\tthis->" + data["tasks"][i]["args"][j]["name"].asString() + "_temp->getName() == t->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getName() &&\n";
+				reusable_cond += "\t\t(*this->" + data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getName() == (*t->" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getName() &&\n";
 
-				task_size += "\t\tsizeof(int) + " + data["tasks"][i]["args"][j]["name"].asString() + 
-					"_temp->getName().length()*sizeof(char) + sizeof(int) +\n";
+				task_size += "\t\tsizeof(int) + (*this->" + data["tasks"][i]["args"][j]["name"].asString() + 
+					"_temp)->getName().length()*sizeof(char) + sizeof(int) +\n";
 
 				task_serialize += "\t// copy " + data["tasks"][i]["args"][j]["name"].asString() + " id\n\tint " + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_id = stoi(" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getId());\n\tmemcpy(buff+serialized_bytes, &" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_id = stoi((*" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getId());\n\tmemcpy(buff+serialized_bytes, &" + 
 					data["tasks"][i]["args"][j]["name"].asString() + 
 					"_id, sizeof(int));\n\tserialized_bytes+=sizeof(int);\n\n\t// copy " + 
 					data["tasks"][i]["args"][j]["name"].asString() + " name size\n\tint " + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_name_size = " + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_name_size = (*" + 
 					data["tasks"][i]["args"][j]["name"].asString() + 
-					"_temp->getName().length();\n\tmemcpy(buff+serialized_bytes, &" + 
+					"_temp)->getName().length();\n\tmemcpy(buff+serialized_bytes, &" + 
 					data["tasks"][i]["args"][j]["name"].asString() + 
 					"_name_size, sizeof(int));\n\tserialized_bytes+=sizeof(int);\n\n\t// copy " + 
-					data["tasks"][i]["args"][j]["name"].asString() + " name\n\tmemcpy(buff+serialized_bytes, " + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->getName().c_str(), " + 
+					data["tasks"][i]["args"][j]["name"].asString() + " name\n\tmemcpy(buff+serialized_bytes, (*" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getName().c_str(), " + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_name_size*sizeof(char));\n\tserialized_bytes+=" + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_name_size*sizeof(char);\n\n";
 
 				task_deserialize += "\t// create the " + data["tasks"][i]["args"][j]["name"].asString() + "\n\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp = new DenseDataRegion2D();\n\n\t// extract " + 
+					data["tasks"][i]["args"][j]["name"].asString() + 
+					"_temp = std::make_shared<DenseDataRegion2D*>(new DenseDataRegion2D());\n\n\t// extract " + 
 					data["tasks"][i]["args"][j]["name"].asString() + " id\n\tint " + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_id = ((int*)(buff+deserialized_bytes))[0];\n\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->setId(to_string(" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_id));\n\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->setVersion(" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_id = ((int*)(buff+deserialized_bytes))[0];\n\t(*this->" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->setId(to_string(" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_id));\n\t(*this->" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->setVersion(" + 
 					data["tasks"][i]["args"][j]["name"].asString() + 
 					"_id);\n\tdeserialized_bytes += sizeof(int);\n\n\t// extract " + 
 					data["tasks"][i]["args"][j]["name"].asString() + " name size\n\tint " + 
@@ -315,33 +316,31 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 					data["tasks"][i]["args"][j]["name"].asString() + "_name_size] = \'\\0\';\n\tmemcpy(" + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_name, buff+deserialized_bytes, sizeof(char)*" + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_name_size);\n\tdeserialized_bytes += sizeof(char)*" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_name_size;\n\tthis->" + 
-					data["tasks"][i]["args"][j]["name"].asString() + "_temp->setName(" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_name_size;\n\t(*this->" + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp)->setName(" + 
 					data["tasks"][i]["args"][j]["name"].asString() + "_name);\n\n";
 
 				if (data["tasks"][i]["args"][j]["io"].asString().compare("input") == 0) {
 					call_args += data["tasks"][i]["args"][j]["name"].asString() + ", ";
 
-					input_dr_delete += "\tif(" + data["tasks"][i]["args"][j]["name"].asString() + "_temp != NULL) delete " + 
-						data["tasks"][i]["args"][j]["name"].asString() + "_temp;\n";
-
-					input_mat_dr += "\tcv::Mat " + data["tasks"][i]["args"][j]["name"].asString() + " = this->" + 
-						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getData();\n";
+					input_mat_dr += "\tcv::Mat " + data["tasks"][i]["args"][j]["name"].asString() + " = (*this->" + 
+						data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getData();\n";
 
 					update_mat_dr += "\t" + data["tasks"][i]["args"][j]["name"].asString() + 
-						"_temp = dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(this->" + 
-						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getName(),\n\t\tthis->" + 
-						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getId(), 0, stoi(this->" + 
-						data["tasks"][i]["args"][j]["name"].asString() + "_temp->getId())));\n";
+						"_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast" + 
+						"<DenseDataRegion2D*>(rt->getDataRegion((*this->" + 
+						data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getName(),\n\t\t(*this->" + 
+						data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getId(), 0, stoi((*this->" + 
+						data["tasks"][i]["args"][j]["name"].asString() + "_temp)->getId()))));\n";
 				} else {
 					call_args += "&" + data["tasks"][i]["args"][j]["name"].asString() + ", ";
 
 					output_mat_dr += "\tcv::Mat " + data["tasks"][i]["args"][j]["name"].asString() + ";\n";
 
-					output_dr_return += "\tthis->" + data["tasks"][i]["args"][j]["name"].asString() + 
-						"_temp->setData(" + data["tasks"][i]["args"][j]["name"].asString() + ");\n";
+					output_dr_return += "\t(*this->" + data["tasks"][i]["args"][j]["name"].asString() + 
+						"_temp)->setData(" + data["tasks"][i]["args"][j]["name"].asString() + ");\n";
 
-					update_mat_dr += "rt->insertDataRegion(this->" + 
+					update_mat_dr += "rt->insertDataRegion(*this->" + 
 						data["tasks"][i]["args"][j]["name"].asString() + "_temp);\n";
 				}
 			} else {
@@ -393,16 +392,17 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 						" = ((Task" + name_prev + "*)t)->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
 				}
 
-				call_args += data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
+				call_args += "&*" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
 			} else if (data["tasks"][i]["interstage_args"][j]["io"].asString().compare("output") == 0) {
-				call_args += data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
+				call_args += "&*" + data["tasks"][i]["interstage_args"][j]["name"].asString() + ", ";
 				fisrt_forward[data["tasks"][i]["interstage_args"][j]["name"].asString()] = false;
 
 				intertask_mat += "\t" + getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + " " + 
 					data["tasks"][i]["interstage_args"][j]["name"].asString() + "_temp;\n";
 
 				intertask_inst += "\t" + data["tasks"][i]["interstage_args"][j]["name"].asString() +
-					" = new " + getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + ";\n";
+					" = std::shared_ptr<" + getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) +
+					">(new " + getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) + ");\n";
 
 			} else {
 				update_ints_args += "\tthis->" + data["tasks"][i]["interstage_args"][j]["name"].asString() + 
@@ -437,9 +437,6 @@ string generate_tasks(Json::Value data, string &desc_decl, string &desc_def) {
 
 		// $TASK_ARGS$
 		replace_multiple_string(source, "$TASK_ARGS$", task_args);
-
-		// $INPUT_DR_DELETE$
-		replace_multiple_string(source, "$INPUT_DR_DELETE$", input_dr_delete);
 
 		// $INPUT_MAT_DR$
 		replace_multiple_string(source, "$INPUT_MAT_DR$", input_mat_dr);

@@ -14,9 +14,7 @@ $TASK_ARGS$
 $INTERTASK_INST$	
 }
 
-Task$NAME$::~Task$NAME$() {
-$INPUT_DR_DELETE$
-}
+Task$NAME$::~Task$NAME$() {}
 
 bool Task$NAME$::run(int procType, int tid) {
 $INPUT_MAT_DR$

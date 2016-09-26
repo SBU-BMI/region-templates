@@ -106,7 +106,7 @@ Segmentation::~Segmentation() {}
 int Segmentation::run() {
 
 	// Print name and id of the component instance
-	std::cout << "\t\t\tExecuting component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
+	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
 	this->addInputOutputDataRegion("tile", "normalized_rt", RTPipelineComponentBase::INPUT);
@@ -117,11 +117,10 @@ int Segmentation::run() {
 	map<int, ReusableTask*> prev_map;
 	list<ReusableTask*> ordered_tasks;
 	for (list<ReusableTask*>::reverse_iterator task=tasks.rbegin(); task!=tasks.rend(); task++) {
+		cout << "[Segmentation] sending task " << (*task)->getId() << endl;
 		// generate a task copy and update the DR, getting the actual data
 		ReusableTask* t = (*task)->clone();
 		t->updateDR(inputRt);
-
-		cout << "\t\t\t[Segmentation] sending task " << (*task)->getId() << endl;
 
 		// solve dependency if it isn't the first task
 		if (t->parentTask != -1) {
@@ -136,8 +135,10 @@ int Segmentation::run() {
 	}
 
 	// send all tasks to be executed
-	for (ReusableTask* t : ordered_tasks)
+	for (ReusableTask* t : ordered_tasks) {
+		cout << "\t\t\t[Segmentation] sending task " << t->getId() << endl;
 		this->executeTask(t);
+	}
 
 	return 0;
 }
@@ -156,8 +157,8 @@ bool registeredSegmentation = PipelineComponentBase::ComponentFactory::component
 /**************************************************************************************/
 
 TaskSegmentation0::TaskSegmentation0() {
-	bgr = std::shared_ptr<std::vector<cv::Mat>>(new std::vector<cv::Mat>());
-	rbc = std::shared_ptr<cv::Mat>(new cv::Mat());
+	bgr = std::shared_ptr<std::vector<cv::Mat>>(new std::vector<cv::Mat>);
+	rbc = std::shared_ptr<cv::Mat>(new cv::Mat);
 
 }
 
@@ -205,43 +206,34 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	bgr = std::shared_ptr<std::vector<cv::Mat>>(new std::vector<cv::Mat>());
-	rbc = std::shared_ptr<cv::Mat>(new cv::Mat());
+	bgr = std::shared_ptr<std::vector<cv::Mat>>(new std::vector<cv::Mat>);
+	rbc = std::shared_ptr<cv::Mat>(new cv::Mat);
 	
 }
 
-TaskSegmentation0::~TaskSegmentation0() {
-	//std::cout << "bgr: " << to_string(bgr.use_count()) << " = " << &*bgr << endl;
-	//std::cout << "rbc: " << to_string(rbc.use_count()) << " = " << &*rbc << endl;
-}
+TaskSegmentation0::~TaskSegmentation0() {}
 
 bool TaskSegmentation0::run(int procType, int tid) {
 	cv::Mat normalized_rt = (*this->normalized_rt_temp)->getData();
 
+
+	std::vector<cv::Mat> bgr_temp;
+	cv::Mat rbc_temp;
+
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "\t\t\tTaskSegmentation0 executing." << std::endl;	
+	std::cout << "TaskSegmentation0 executing." << std::endl;	
 
-	if (bgr.use_count() <= 0) {
-		std::cout << "bgr counter is " << bgr.use_count() << std::endl;
-		exit(-1);
-	}
-	if (rbc.use_count() <= 0) {
-		std::cout << "rbc counter is " << rbc.use_count() << std::endl;
-		exit(-1);
-	}
-
-	::nscale::HistologicalEntities::segmentNucleiStg1(normalized_rt, blue, green, red, T1, T2, &(*bgr), &(*rbc));
+	::nscale::HistologicalEntities::segmentNucleiStg1(normalized_rt, blue, green, red, T1, T2, &*bgr, &*rbc);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "\t\t\tTask Segmentation0 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "Task Segmentation0 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation0::updateDR(RegionTemplate* rt) {
-	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(
-		rt->getDataRegion((*this->normalized_rt_temp)->getName(),
+	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion((*this->normalized_rt_temp)->getName(),
 		(*this->normalized_rt_temp)->getId(), 0, stoi((*this->normalized_rt_temp)->getId()))));
 
 }
@@ -249,7 +241,7 @@ void TaskSegmentation0::updateDR(RegionTemplate* rt) {
 void TaskSegmentation0::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "\t\t\t[TaskSegmentation0] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation0] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -259,7 +251,7 @@ void TaskSegmentation0::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation0::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation1)) {
-		std::cout << "\t\t\t[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -288,7 +280,7 @@ bool TaskSegmentation0::reusable(ReusableTask* rt) {
 int TaskSegmentation0::size() {
 	return 
 		sizeof(int) + sizeof(int) +
-		sizeof(int) + (*normalized_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
+		sizeof(int) + (*this->normalized_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
 		sizeof(unsigned char) +
 		sizeof(unsigned char) +
 		sizeof(unsigned char) +
@@ -409,17 +401,17 @@ ReusableTask* TaskSegmentation0::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete[] buff;
+	delete buff;
 
 	return retValue;
 }
 
 void TaskSegmentation0::print() {
-	cout << "\t\t\tblue: " << blue << endl;
-	cout << "\t\t\tgreen: " << green << endl;
-	cout << "\t\t\tred: " << red << endl;
-	cout << "\t\t\tT1: " << T1 << endl;
-	cout << "\t\t\tT2: " << T2 << endl;
+	cout << "blue: " << blue << endl;
+	cout << "green: " << green << endl;
+	cout << "red: " << red << endl;
+	cout << "T1: " << T1 << endl;
+	cout << "T2: " << T2 << endl;
 
 }
 
@@ -438,9 +430,9 @@ bool registeredTaskSegmentation02 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation0Factory1, &Segmentation0Factory2);
 
 TaskSegmentation1::TaskSegmentation1() {
-	rc = std::shared_ptr<cv::Mat>(new cv::Mat());
-	rc_recon = std::shared_ptr<cv::Mat>(new cv::Mat());
-	rc_open = std::shared_ptr<cv::Mat>(new cv::Mat());
+	rc = std::shared_ptr<cv::Mat>(new cv::Mat);
+	rc_recon = std::shared_ptr<cv::Mat>(new cv::Mat);
+	rc_open = std::shared_ptr<cv::Mat>(new cv::Mat);
 
 }
 
@@ -458,56 +450,31 @@ TaskSegmentation1::TaskSegmentation1(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	rc = std::shared_ptr<cv::Mat>(new cv::Mat());
-	rc_recon = std::shared_ptr<cv::Mat>(new cv::Mat());
-	rc_open = std::shared_ptr<cv::Mat>(new cv::Mat());
+	rc = std::shared_ptr<cv::Mat>(new cv::Mat);
+	rc_recon = std::shared_ptr<cv::Mat>(new cv::Mat);
+	rc_open = std::shared_ptr<cv::Mat>(new cv::Mat);
 	
 }
 
-TaskSegmentation1::~TaskSegmentation1() {
-	//std::cout << "bgr: " << to_string(bgr.use_count()) << " = " << &*bgr << endl;
-	//std::cout << "rc: " << to_string(rc.use_count()) << " = " << &*rc << endl;
-	//std::cout << "rc_recon: " << to_string(rc_recon.use_count()) << " = " << &*rc_recon << endl;
-	//std::cout << "rc_open: " << to_string(rc_open.use_count()) << " = " << &*rc_open << endl;
-	//std::cout << "rbc_fw: " << to_string(rbc_fw.use_count()) << " = " << &*rbc_fw << endl;
-}
+TaskSegmentation1::~TaskSegmentation1() {}
 
 bool TaskSegmentation1::run(int procType, int tid) {
 
+
+	cv::Mat rc_temp;
+	cv::Mat rc_recon_temp;
+	cv::Mat rc_open_temp;
+
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "\t\t\tTaskSegmentation1 executing." << std::endl;	
-
-	if (bgr.use_count() <= 0) {
-		std::cout << "bgr counter is " 
-			<< bgr.use_count() << std::endl;
-		exit(-1);
-	}
-
-	if (rc.use_count() <= 0) {
-		std::cout << "rc counter is " 
-			<< rc.use_count() << std::endl;
-		exit(-1);
-	}
-
-	if (rc_recon.use_count() <= 0) {
-		std::cout << "rc_recon counter is " 
-			<< rc_recon.use_count() << std::endl;
-		exit(-1);
-	}
-
-	if (rc_open.use_count() <= 0) {
-		std::cout << "rc_open counter is " 
-			<< rc_open.use_count() << std::endl;
-		exit(-1);
-	}
+	std::cout << "TaskSegmentation1 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg2(reconConnectivity, &*bgr, &*rc, &*rc_recon, &*rc_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "\t\t\tTask Segmentation1 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "Task Segmentation1 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation1::updateDR(RegionTemplate* rt) {
@@ -517,7 +484,7 @@ void TaskSegmentation1::updateDR(RegionTemplate* rt) {
 void TaskSegmentation1::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "\t\t\t[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -529,7 +496,7 @@ void TaskSegmentation1::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation1::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation2)) {
-		std::cout << "\t\t\t[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -605,13 +572,13 @@ ReusableTask* TaskSegmentation1::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete[] buff;
+	delete buff;
 
 	return retValue;
 }
 
 void TaskSegmentation1::print() {
-	cout << "\t\t\treconConnectivity: " << reconConnectivity << endl;
+	cout << "reconConnectivity: " << reconConnectivity << endl;
 
 }
 
@@ -630,8 +597,8 @@ bool registeredTaskSegmentation12 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation1Factory1, &Segmentation1Factory2);
 
 TaskSegmentation2::TaskSegmentation2() {
-	bw1 = std::shared_ptr<cv::Mat>(new cv::Mat());
-	diffIm = std::shared_ptr<cv::Mat>(new cv::Mat());
+	bw1 = std::shared_ptr<cv::Mat>(new cv::Mat);
+	diffIm = std::shared_ptr<cv::Mat>(new cv::Mat);
 
 }
 
@@ -654,58 +621,29 @@ TaskSegmentation2::TaskSegmentation2(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	bw1 = std::shared_ptr<cv::Mat>(new cv::Mat());
-	diffIm = std::shared_ptr<cv::Mat>(new cv::Mat());
+	bw1 = std::shared_ptr<cv::Mat>(new cv::Mat);
+	diffIm = std::shared_ptr<cv::Mat>(new cv::Mat);
 	
 }
 
-TaskSegmentation2::~TaskSegmentation2() {
-	//std::cout << "rc: " << to_string(rc.use_count()) << " = " << &*rc << endl;
-	//std::cout << "rc_recon: " << to_string(rc_recon.use_count()) << " = " << &*rc_recon << endl;
-	//std::cout << "rc_open: " << to_string(rc_open.use_count()) << " = " << &*rc_open << endl;
-	//std::cout << "bw1: " << to_string(bw1.use_count()) << " = " << &*bw1 << endl;
-	//std::cout << "diffIm: " << to_string(diffIm.use_count()) << " = " << &*diffIm << endl;
-	//std::cout << "rbc_fw: " << to_string(rbc_fw.use_count()) << " = " << &*rbc_fw << endl;
-}
+TaskSegmentation2::~TaskSegmentation2() {}
 
 bool TaskSegmentation2::run(int procType, int tid) {
 
+
+	cv::Mat bw1_temp;
+	cv::Mat diffIm_temp;
+
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "\t\t\tTaskSegmentation2 executing." << std::endl;	
-
-	if (rc.use_count() <= 0) {
-		std::cout << "rc counter is " 
-			<< rc.use_count() << std::endl;
-		exit(-1);
-	}
-	if (rc_recon.use_count() <= 0) {
-		std::cout << "rc_recon counter is " 
-			<< rc_recon.use_count() << std::endl;
-		exit(-1);
-	}
-	if (rc_open.use_count() <= 0) {
-		std::cout << "rc_open counter is " 
-			<< rc_open.use_count() << std::endl;
-		exit(-1);
-	}
-	if (bw1.use_count() <= 0) {
-		std::cout << "bw1 counter is " 
-			<< bw1.use_count() << std::endl;
-		exit(-1);
-	}
-	if (diffIm.use_count() <= 0) {
-		std::cout << "diffIm counter is " 
-			<< diffIm.use_count() << std::endl;
-		exit(-1);
-	}
+	std::cout << "TaskSegmentation2 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg3(fillHolesConnectivity, G1, &*rc, &*rc_recon, &*rc_open, &*bw1, &*diffIm);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "\t\t\tTask Segmentation2 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "Task Segmentation2 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation2::updateDR(RegionTemplate* rt) {
@@ -715,7 +653,7 @@ void TaskSegmentation2::updateDR(RegionTemplate* rt) {
 void TaskSegmentation2::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "\t\t\t[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -729,7 +667,7 @@ void TaskSegmentation2::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation2::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation3)) {
-		std::cout << "\t\t\t[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -817,14 +755,14 @@ ReusableTask* TaskSegmentation2::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete[] buff;
+	delete buff;
 
 	return retValue;
 }
 
 void TaskSegmentation2::print() {
-	cout << "\t\t\tfillHolesConnectivity: " << fillHolesConnectivity << endl;
-	cout << "\t\t\tG1: " << G1 << endl;
+	cout << "fillHolesConnectivity: " << fillHolesConnectivity << endl;
+	cout << "G1: " << G1 << endl;
 
 }
 
@@ -843,7 +781,7 @@ bool registeredTaskSegmentation22 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation2Factory1, &Segmentation2Factory2);
 
 TaskSegmentation3::TaskSegmentation3() {
-	bw1_t = std::shared_ptr<cv::Mat>(new cv::Mat());
+	bw1_t = std::shared_ptr<cv::Mat>(new cv::Mat);
 
 }
 
@@ -866,16 +804,11 @@ TaskSegmentation3::TaskSegmentation3(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	bw1_t = std::shared_ptr<cv::Mat>(new cv::Mat());
+	bw1_t = std::shared_ptr<cv::Mat>(new cv::Mat);
 	
 }
 
-TaskSegmentation3::~TaskSegmentation3() {
-	//std::cout << "bw1: " << to_string(bw1.use_count()) << " = " << &*bw1 << endl;
-	//std::cout << "bw1_t: " << to_string(bw1_t.use_count()) << " = " << &*bw1_t << endl;
-	//std::cout << "rbc_fw: " << to_string(rbc_fw.use_count()) << " = " << &*rbc_fw << endl;
-	//std::cout << "diffIm_fw: " << to_string(diffIm_fw.use_count()) << " = " << &*diffIm_fw << endl;
-}
+TaskSegmentation3::~TaskSegmentation3() {}
 
 bool TaskSegmentation3::run(int procType, int tid) {
 
@@ -884,25 +817,14 @@ bool TaskSegmentation3::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "\t\t\tTaskSegmentation3 executing." << std::endl;	
-
-	if (bw1.use_count() <= 0) {
-		std::cout << "bw1 counter is " 
-			<< bw1.use_count() << std::endl;
-		exit(-1);
-	}
-	if (bw1_t.use_count() <= 0) {
-		std::cout << "bw1_t counter is " 
-			<< bw1_t.use_count() << std::endl;
-		exit(-1);
-	}
+	std::cout << "TaskSegmentation3 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg4(minSize, maxSize, &*bw1, &*bw1_t);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "\t\t\tTask Segmentation3 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "Task Segmentation3 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation3::updateDR(RegionTemplate* rt) {
@@ -912,7 +834,7 @@ void TaskSegmentation3::updateDR(RegionTemplate* rt) {
 void TaskSegmentation3::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "\t\t\t[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -925,7 +847,7 @@ void TaskSegmentation3::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation3::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation4)) {
-		std::cout << "\t\t\t[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -1012,14 +934,14 @@ ReusableTask* TaskSegmentation3::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete[] buff;
+	delete buff;
 
 	return retValue;
 }
 
 void TaskSegmentation3::print() {
-	cout << "\t\t\tminSize: " << minSize << endl;
-	cout << "\t\t\tmaxSize: " << maxSize << endl;
+	cout << "minSize: " << minSize << endl;
+	cout << "maxSize: " << maxSize << endl;
 
 }
 
@@ -1038,7 +960,7 @@ bool registeredTaskSegmentation32 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation3Factory1, &Segmentation3Factory2);
 
 TaskSegmentation4::TaskSegmentation4() {
-	seg_open = std::shared_ptr<cv::Mat>(new cv::Mat());
+	seg_open = std::shared_ptr<cv::Mat>(new cv::Mat);
 
 }
 
@@ -1056,16 +978,11 @@ TaskSegmentation4::TaskSegmentation4(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	seg_open = std::shared_ptr<cv::Mat>(new cv::Mat());
+	seg_open = std::shared_ptr<cv::Mat>(new cv::Mat);
 	
 }
 
-TaskSegmentation4::~TaskSegmentation4() {
-	//std::cout << "diffIm: " << to_string(diffIm.use_count()) << " = " << &*diffIm << endl;
-	//std::cout << "bw1_t: " << to_string(bw1_t.use_count()) << " = " << &*bw1_t << endl;
-	//std::cout << "rbc: " << to_string(rbc.use_count()) << " = " << &*rbc << endl;
-	//std::cout << "seg_open: " << to_string(seg_open.use_count()) << " = " << &*seg_open << endl;
-}
+TaskSegmentation4::~TaskSegmentation4() {}
 
 bool TaskSegmentation4::run(int procType, int tid) {
 
@@ -1074,35 +991,14 @@ bool TaskSegmentation4::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "\t\t\tTaskSegmentation4 executing." << std::endl;	
-
-	if (diffIm.use_count() <= 0) {
-		std::cout << "diffIm counter is " 
-			<< diffIm.use_count() << std::endl;
-		exit(-1);
-	}
-	if (bw1_t.use_count() <= 0) {
-		std::cout << "bw1_t counter is " 
-			<< bw1_t.use_count() << std::endl;
-		exit(-1);
-	}
-	if (rbc.use_count() <= 0) {
-		std::cout << "rbc counter is " 
-			<< rbc.use_count() << std::endl;
-		exit(-1);
-	}
-	if (seg_open.use_count() <= 0) {
-		std::cout << "seg_open counter is " 
-			<< seg_open.use_count() << std::endl;
-		exit(-1);
-	}
+	std::cout << "TaskSegmentation4 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg5(G2, &*diffIm, &*bw1_t, &*rbc, &*seg_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "\t\t\tTask Segmentation4 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "Task Segmentation4 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation4::updateDR(RegionTemplate* rt) {
@@ -1112,7 +1008,7 @@ void TaskSegmentation4::updateDR(RegionTemplate* rt) {
 void TaskSegmentation4::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "\t\t\t[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -1125,7 +1021,7 @@ void TaskSegmentation4::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation4::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation5)) {
-		std::cout << "\t\t\t[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -1202,13 +1098,13 @@ ReusableTask* TaskSegmentation4::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete[] buff;
+	delete buff;
 
 	return retValue;
 }
 
 void TaskSegmentation4::print() {
-	cout << "\t\t\tG2: " << G2 << endl;
+	cout << "G2: " << G2 << endl;
 
 }
 
@@ -1227,7 +1123,7 @@ bool registeredTaskSegmentation42 = ReusableTask::ReusableTaskFactory::taskRegis
 	&Segmentation4Factory1, &Segmentation4Factory2);
 
 TaskSegmentation5::TaskSegmentation5() {
-	seg_nonoverlap = std::shared_ptr<cv::Mat>(new cv::Mat());
+	seg_nonoverlap = std::shared_ptr<cv::Mat>(new cv::Mat);
 
 }
 
@@ -1260,14 +1156,11 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 	if (set_cout < args.size())
 		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
 
-	seg_nonoverlap = std::shared_ptr<cv::Mat>(new cv::Mat());
+	seg_nonoverlap = std::shared_ptr<cv::Mat>(new cv::Mat);
 	
 }
 
-TaskSegmentation5::~TaskSegmentation5() {
-	//std::cout << "seg_open: " << to_string(seg_open.use_count()) << " = " << &*seg_open << endl;
-	//std::cout << "seg_nonoverlap: " << to_string(seg_nonoverlap.use_count()) << " = " << &*seg_nonoverlap << endl;
-}
+TaskSegmentation5::~TaskSegmentation5() {}
 
 bool TaskSegmentation5::run(int procType, int tid) {
 	cv::Mat normalized_rt = (*this->normalized_rt_temp)->getData();
@@ -1277,30 +1170,18 @@ bool TaskSegmentation5::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "\t\t\tTaskSegmentation5 executing." << std::endl;	
-
-	if (seg_open.use_count() <= 0) {
-		std::cout << "seg_open counter is " 
-			<< seg_open.use_count() << std::endl;
-		exit(-1);
-	}
-	if (seg_nonoverlap.use_count() <= 0) {
-		std::cout << "seg_nonoverlap counter is " 
-			<< seg_nonoverlap.use_count() << std::endl;
-		exit(-1);
-	}
+	std::cout << "TaskSegmentation5 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg6(normalized_rt, minSizePl, watershedConnectivity, &*seg_open, &*seg_nonoverlap);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "\t\t\tTask Segmentation5 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "Task Segmentation5 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation5::updateDR(RegionTemplate* rt) {
-	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(
-		rt->getDataRegion((*this->normalized_rt_temp)->getName(),
+	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion((*this->normalized_rt_temp)->getName(),
 		(*this->normalized_rt_temp)->getId(), 0, stoi((*this->normalized_rt_temp)->getId()))));
 
 }
@@ -1308,7 +1189,7 @@ void TaskSegmentation5::updateDR(RegionTemplate* rt) {
 void TaskSegmentation5::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "\t\t\t[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -1319,7 +1200,7 @@ void TaskSegmentation5::updateInterStageArgs(ReusableTask* t) {
 void TaskSegmentation5::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
 	if (typeid(t) != typeid(TaskSegmentation6)) {
-		std::cout << "\t\t\t[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 	}
 
 	
@@ -1346,7 +1227,7 @@ bool TaskSegmentation5::reusable(ReusableTask* rt) {
 int TaskSegmentation5::size() {
 	return 
 		sizeof(int) + sizeof(int) +
-		sizeof(int) + (*normalized_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
+		sizeof(int) + (*this->normalized_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
 		sizeof(int) +
 		sizeof(int) +
 
@@ -1440,14 +1321,14 @@ ReusableTask* TaskSegmentation5::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete[] buff;
+	delete buff;
 
 	return retValue;
 }
 
 void TaskSegmentation5::print() {
-	cout << "\t\t\tminSizePl: " << minSizePl << endl;
-	cout << "\t\t\twatershedConnectivity: " << watershedConnectivity << endl;
+	cout << "minSizePl: " << minSizePl << endl;
+	cout << "watershedConnectivity: " << watershedConnectivity << endl;
 
 }
 
@@ -1506,10 +1387,7 @@ TaskSegmentation6::TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation6::~TaskSegmentation6() {
-	//std::cout << "seg_open: " << to_string(seg_open.use_count()) << " = " << &*seg_open << endl;
-	//std::cout << "seg_nonoverlap: " << to_string(seg_nonoverlap.use_count()) << " = " << &*seg_nonoverlap << endl;
-}
+TaskSegmentation6::~TaskSegmentation6() {}
 
 bool TaskSegmentation6::run(int procType, int tid) {
 
@@ -1518,14 +1396,7 @@ bool TaskSegmentation6::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "\t\t\tTaskSegmentation6 executing." << std::endl;	
-
-	if (seg_nonoverlap.use_count() <= 0) {
-		std::cout << "seg_nonoverlap counter is " 
-			<< seg_nonoverlap.use_count() << std::endl;
-		exit(-1);
-	}
-
+	std::cout << "TaskSegmentation6 executing." << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg7(&segmented_rt, minSizeSeg, maxSizeSeg, fillHolesConnectivity, &*seg_nonoverlap);
 	
@@ -1533,7 +1404,7 @@ bool TaskSegmentation6::run(int procType, int tid) {
 
 	(*this->segmented_rt_temp)->setData(segmented_rt);
 
-	std::cout << "\t\t\tTask Segmentation6 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "Task Segmentation6 time elapsed: "<< t2-t1 << std::endl;
 }
 
 void TaskSegmentation6::updateDR(RegionTemplate* rt) {
@@ -1544,7 +1415,7 @@ rt->insertDataRegion(*this->segmented_rt_temp);
 void TaskSegmentation6::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
 	if (typeid(t) != typeid(this)) {
-		std::cout << "\t\t\t[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
 		return;
 	}
 
@@ -1580,7 +1451,7 @@ bool TaskSegmentation6::reusable(ReusableTask* rt) {
 int TaskSegmentation6::size() {
 	return 
 		sizeof(int) + sizeof(int) +
-		sizeof(int) + (*segmented_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
+		sizeof(int) + (*this->segmented_rt_temp)->getName().length()*sizeof(char) + sizeof(int) +
 		sizeof(int) +
 		sizeof(int) +
 		sizeof(int) +
@@ -1683,15 +1554,15 @@ ReusableTask* TaskSegmentation6::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete[] buff;
+	delete buff;
 
 	return retValue;
 }
 
 void TaskSegmentation6::print() {
-	cout << "\t\t\tminSizeSeg: " << minSizeSeg << endl;
-	cout << "\t\t\tmaxSizeSeg: " << maxSizeSeg << endl;
-	cout << "\t\t\tfillHolesConnectivity: " << fillHolesConnectivity << endl;
+	cout << "minSizeSeg: " << minSizeSeg << endl;
+	cout << "maxSizeSeg: " << maxSizeSeg << endl;
+	cout << "fillHolesConnectivity: " << fillHolesConnectivity << endl;
 
 }
 
