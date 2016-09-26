@@ -115,6 +115,7 @@ int Segmentation::run() {
 
 
 	map<int, ReusableTask*> prev_map;
+	list<ReusableTask*> ordered_tasks;
 	for (list<ReusableTask*>::reverse_iterator task=tasks.rbegin(); task!=tasks.rend(); task++) {
 		// generate a task copy and update the DR, getting the actual data
 		ReusableTask* t = (*task)->clone();
@@ -131,12 +132,12 @@ int Segmentation::run() {
 
 		// add this task to parent list for future dependency resolution
 		prev_map[t->getId()] = t;
-		t->run();
+		ordered_tasks.emplace_back(t);
 	}
 
 	// send all tasks to be executed
-	// for (pair<int, ReusableTask*> p : prev_map)
-	// 	this->executeTask(p.second);
+	for (ReusableTask* t : ordered_tasks)
+		this->executeTask(t);
 
 	return 0;
 }
