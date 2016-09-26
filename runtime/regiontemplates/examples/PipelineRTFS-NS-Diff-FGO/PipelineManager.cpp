@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <map>
@@ -1988,14 +1989,21 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		list<list<PipelineComponentBase*>> solution = montecarlo_recursive_cut(current_stages, all_stages, 
 			n_workers, expanded_args, ref->second->tasksDesc);
 
+		// write merging solution
+		ofstream solution_file;
+		solution_file.open("fine-grain-merging-solution", ios::trunc);
 		cout << "solution:" << endl;
 		for (list<PipelineComponentBase*> b : solution) {
 			cout << "\tbucket with " << b.size() << " stages and cost "
 				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << endl;
+			solution_file << "\tbucket with " << b.size() << " stages and cost "
+				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << endl;
 			for (PipelineComponentBase* s : b) {
 				cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+				solution_file << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
 			}
 		}
+		solution_file.close();
 
 		// merge all stages in each bucket, given that they are mergable
 		for (list<PipelineComponentBase*> bucket : solution) {
