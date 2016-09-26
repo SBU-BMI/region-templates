@@ -253,9 +253,6 @@ private:
 	std::shared_ptr<cv::Mat> seg_open;
 	std::shared_ptr<cv::Mat> seg_nonoverlap;
 
-	// forward intertask arguments
-	std::shared_ptr<cv::Mat> seg_open_fw;
-
 public:
 	// data regions
 	std::shared_ptr<DenseDataRegion2D*> normalized_rt_temp;

@@ -115,6 +115,11 @@ public:
 	// instead of changing getArgument(int) for compatibility reasons
 	ArgumentBase *getArgumentById(int id);
 
+	// Retrieve an argument with 'id', if it exists, otherwise NULL is returned
+	// This is used by the fine-grain merging and was added here as a new function
+	// instead of changing getArgument(int) for compatibility reasons
+	ArgumentBase *getArgumentByName(std::string name);
+
 	// Get current number of arguments associated to this component.
 	int getArgumentsSize();
 
@@ -174,6 +179,9 @@ public:
 
 	// needed for inter stage dependency verification on task merging
 	std::vector<ArgumentBase*> getArguments() {return arguments;};
+
+	// needed to update an argument of a reused stage on fine-grain merging
+	void replaceArgument(int old_id, ArgumentBase* new_a);
 
 	void printTasks();
 

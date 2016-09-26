@@ -73,13 +73,22 @@ ArgumentBase *PipelineComponentBase::getArgument(int index)
 
 ArgumentBase *PipelineComponentBase::getArgumentById(int id) 
 {
-	ArgumentBase *retArg = NULL;
 	for (vector<ArgumentBase*>::iterator i = this->arguments.begin(); i != this->arguments.end(); i++) {
 		if ((*i)->getId() == id) {
-			retArg = *i;
+			return *i;
 		}
 	}
-	return retArg;
+	return NULL;
+}
+
+ArgumentBase *PipelineComponentBase::getArgumentByName(std::string name)
+{
+	for (vector<ArgumentBase*>::iterator i = this->arguments.begin(); i != this->arguments.end(); i++) {
+		if ((*i)->getName().compare(name) == 0) {
+			return *i;
+		}
+	}
+	return NULL;
 }
 
 std::string PipelineComponentBase::getComponentName() const
@@ -377,6 +386,16 @@ PipelineComponentBase* PipelineComponentBase::clone() {
 	retValue->deserialize(buff);
 	delete buff;
 	return retValue;
+}
+
+void PipelineComponentBase::replaceArgument(int old_id, ArgumentBase* new_a) {
+	for (std::vector<ArgumentBase*>::iterator i=arguments.begin(); i!=arguments.end(); i++) {
+		if ((*i)->getId() == old_id) {
+			arguments.erase(i);
+			arguments.push_back(new_a);
+			return;
+		}
+	}
 }
 
 void PipelineComponentBase::printTasks() {

@@ -116,23 +116,27 @@ int Segmentation::run() {
 
 	map<int, ReusableTask*> prev_map;
 	for (list<ReusableTask*>::reverse_iterator task=tasks.rbegin(); task!=tasks.rend(); task++) {
-		cout << "\t\t\t[Segmentation] sending task " << (*task)->getId() << endl;
 		// generate a task copy and update the DR, getting the actual data
 		ReusableTask* t = (*task)->clone();
 		t->updateDR(inputRt);
 
+		cout << "\t\t\t[Segmentation] sending task " << (*task)->getId() << endl;
+
 		// solve dependency if it isn't the first task
 		if (t->parentTask != -1) {
-			t->addDependency(prev_map[t->parentTask]);
+			cout << "\t\t\t[Segmentation] setting dep of " << t->getId() << " to " << prev_map[t->parentTask]->getId() << endl;
+			t->addDependency(prev_map[t->parentTask]->getId());
 			t->resolveDependencies(prev_map[t->parentTask]);
 		}
 
-		// send task to be executed
-		this->executeTask(t);
-
 		// add this task to parent list for future dependency resolution
 		prev_map[t->getId()] = t;
+		t->run();
 	}
+
+	// send all tasks to be executed
+	// for (pair<int, ReusableTask*> p : prev_map)
+	// 	this->executeTask(p.second);
 
 	return 0;
 }
@@ -206,6 +210,8 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation0::~TaskSegmentation0() {
+	//std::cout << "bgr: " << to_string(bgr.use_count()) << " = " << &*bgr << endl;
+	//std::cout << "rbc: " << to_string(rbc.use_count()) << " = " << &*rbc << endl;
 }
 
 bool TaskSegmentation0::run(int procType, int tid) {
@@ -214,6 +220,15 @@ bool TaskSegmentation0::run(int procType, int tid) {
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation0 executing." << std::endl;	
+
+	if (bgr.use_count() <= 0) {
+		std::cout << "bgr counter is " << bgr.use_count() << std::endl;
+		exit(-1);
+	}
+	if (rbc.use_count() <= 0) {
+		std::cout << "rbc counter is " << rbc.use_count() << std::endl;
+		exit(-1);
+	}
 
 	::nscale::HistologicalEntities::segmentNucleiStg1(normalized_rt, blue, green, red, T1, T2, &(*bgr), &(*rbc));
 	
@@ -449,6 +464,11 @@ TaskSegmentation1::TaskSegmentation1(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation1::~TaskSegmentation1() {
+	//std::cout << "bgr: " << to_string(bgr.use_count()) << " = " << &*bgr << endl;
+	//std::cout << "rc: " << to_string(rc.use_count()) << " = " << &*rc << endl;
+	//std::cout << "rc_recon: " << to_string(rc_recon.use_count()) << " = " << &*rc_recon << endl;
+	//std::cout << "rc_open: " << to_string(rc_open.use_count()) << " = " << &*rc_open << endl;
+	//std::cout << "rbc_fw: " << to_string(rbc_fw.use_count()) << " = " << &*rbc_fw << endl;
 }
 
 bool TaskSegmentation1::run(int procType, int tid) {
@@ -456,6 +476,30 @@ bool TaskSegmentation1::run(int procType, int tid) {
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation1 executing." << std::endl;	
+
+	if (bgr.use_count() <= 0) {
+		std::cout << "bgr counter is " 
+			<< bgr.use_count() << std::endl;
+		exit(-1);
+	}
+
+	if (rc.use_count() <= 0) {
+		std::cout << "rc counter is " 
+			<< rc.use_count() << std::endl;
+		exit(-1);
+	}
+
+	if (rc_recon.use_count() <= 0) {
+		std::cout << "rc_recon counter is " 
+			<< rc_recon.use_count() << std::endl;
+		exit(-1);
+	}
+
+	if (rc_open.use_count() <= 0) {
+		std::cout << "rc_open counter is " 
+			<< rc_open.use_count() << std::endl;
+		exit(-1);
+	}
 
 	::nscale::HistologicalEntities::segmentNucleiStg2(reconConnectivity, &*bgr, &*rc, &*rc_recon, &*rc_open);
 	
@@ -615,6 +659,12 @@ TaskSegmentation2::TaskSegmentation2(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation2::~TaskSegmentation2() {
+	//std::cout << "rc: " << to_string(rc.use_count()) << " = " << &*rc << endl;
+	//std::cout << "rc_recon: " << to_string(rc_recon.use_count()) << " = " << &*rc_recon << endl;
+	//std::cout << "rc_open: " << to_string(rc_open.use_count()) << " = " << &*rc_open << endl;
+	//std::cout << "bw1: " << to_string(bw1.use_count()) << " = " << &*bw1 << endl;
+	//std::cout << "diffIm: " << to_string(diffIm.use_count()) << " = " << &*diffIm << endl;
+	//std::cout << "rbc_fw: " << to_string(rbc_fw.use_count()) << " = " << &*rbc_fw << endl;
 }
 
 bool TaskSegmentation2::run(int procType, int tid) {
@@ -622,6 +672,32 @@ bool TaskSegmentation2::run(int procType, int tid) {
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation2 executing." << std::endl;	
+
+	if (rc.use_count() <= 0) {
+		std::cout << "rc counter is " 
+			<< rc.use_count() << std::endl;
+		exit(-1);
+	}
+	if (rc_recon.use_count() <= 0) {
+		std::cout << "rc_recon counter is " 
+			<< rc_recon.use_count() << std::endl;
+		exit(-1);
+	}
+	if (rc_open.use_count() <= 0) {
+		std::cout << "rc_open counter is " 
+			<< rc_open.use_count() << std::endl;
+		exit(-1);
+	}
+	if (bw1.use_count() <= 0) {
+		std::cout << "bw1 counter is " 
+			<< bw1.use_count() << std::endl;
+		exit(-1);
+	}
+	if (diffIm.use_count() <= 0) {
+		std::cout << "diffIm counter is " 
+			<< diffIm.use_count() << std::endl;
+		exit(-1);
+	}
 
 	::nscale::HistologicalEntities::segmentNucleiStg3(fillHolesConnectivity, G1, &*rc, &*rc_recon, &*rc_open, &*bw1, &*diffIm);
 	
@@ -794,6 +870,10 @@ TaskSegmentation3::TaskSegmentation3(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation3::~TaskSegmentation3() {
+	//std::cout << "bw1: " << to_string(bw1.use_count()) << " = " << &*bw1 << endl;
+	//std::cout << "bw1_t: " << to_string(bw1_t.use_count()) << " = " << &*bw1_t << endl;
+	//std::cout << "rbc_fw: " << to_string(rbc_fw.use_count()) << " = " << &*rbc_fw << endl;
+	//std::cout << "diffIm_fw: " << to_string(diffIm_fw.use_count()) << " = " << &*diffIm_fw << endl;
 }
 
 bool TaskSegmentation3::run(int procType, int tid) {
@@ -804,6 +884,17 @@ bool TaskSegmentation3::run(int procType, int tid) {
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation3 executing." << std::endl;	
+
+	if (bw1.use_count() <= 0) {
+		std::cout << "bw1 counter is " 
+			<< bw1.use_count() << std::endl;
+		exit(-1);
+	}
+	if (bw1_t.use_count() <= 0) {
+		std::cout << "bw1_t counter is " 
+			<< bw1_t.use_count() << std::endl;
+		exit(-1);
+	}
 
 	::nscale::HistologicalEntities::segmentNucleiStg4(minSize, maxSize, &*bw1, &*bw1_t);
 	
@@ -969,6 +1060,10 @@ TaskSegmentation4::TaskSegmentation4(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation4::~TaskSegmentation4() {
+	//std::cout << "diffIm: " << to_string(diffIm.use_count()) << " = " << &*diffIm << endl;
+	//std::cout << "bw1_t: " << to_string(bw1_t.use_count()) << " = " << &*bw1_t << endl;
+	//std::cout << "rbc: " << to_string(rbc.use_count()) << " = " << &*rbc << endl;
+	//std::cout << "seg_open: " << to_string(seg_open.use_count()) << " = " << &*seg_open << endl;
 }
 
 bool TaskSegmentation4::run(int procType, int tid) {
@@ -979,6 +1074,27 @@ bool TaskSegmentation4::run(int procType, int tid) {
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation4 executing." << std::endl;	
+
+	if (diffIm.use_count() <= 0) {
+		std::cout << "diffIm counter is " 
+			<< diffIm.use_count() << std::endl;
+		exit(-1);
+	}
+	if (bw1_t.use_count() <= 0) {
+		std::cout << "bw1_t counter is " 
+			<< bw1_t.use_count() << std::endl;
+		exit(-1);
+	}
+	if (rbc.use_count() <= 0) {
+		std::cout << "rbc counter is " 
+			<< rbc.use_count() << std::endl;
+		exit(-1);
+	}
+	if (seg_open.use_count() <= 0) {
+		std::cout << "seg_open counter is " 
+			<< seg_open.use_count() << std::endl;
+		exit(-1);
+	}
 
 	::nscale::HistologicalEntities::segmentNucleiStg5(G2, &*diffIm, &*bw1_t, &*rbc, &*seg_open);
 	
@@ -1148,6 +1264,8 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation5::~TaskSegmentation5() {
+	//std::cout << "seg_open: " << to_string(seg_open.use_count()) << " = " << &*seg_open << endl;
+	//std::cout << "seg_nonoverlap: " << to_string(seg_nonoverlap.use_count()) << " = " << &*seg_nonoverlap << endl;
 }
 
 bool TaskSegmentation5::run(int procType, int tid) {
@@ -1159,6 +1277,17 @@ bool TaskSegmentation5::run(int procType, int tid) {
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation5 executing." << std::endl;	
+
+	if (seg_open.use_count() <= 0) {
+		std::cout << "seg_open counter is " 
+			<< seg_open.use_count() << std::endl;
+		exit(-1);
+	}
+	if (seg_nonoverlap.use_count() <= 0) {
+		std::cout << "seg_nonoverlap counter is " 
+			<< seg_nonoverlap.use_count() << std::endl;
+		exit(-1);
+	}
 
 	::nscale::HistologicalEntities::segmentNucleiStg6(normalized_rt, minSizePl, watershedConnectivity, &*seg_open, &*seg_nonoverlap);
 	
@@ -1377,6 +1506,8 @@ TaskSegmentation6::TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation6::~TaskSegmentation6() {
+	//std::cout << "seg_open: " << to_string(seg_open.use_count()) << " = " << &*seg_open << endl;
+	//std::cout << "seg_nonoverlap: " << to_string(seg_nonoverlap.use_count()) << " = " << &*seg_nonoverlap << endl;
 }
 
 bool TaskSegmentation6::run(int procType, int tid) {
@@ -1387,6 +1518,13 @@ bool TaskSegmentation6::run(int procType, int tid) {
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
 	std::cout << "\t\t\tTaskSegmentation6 executing." << std::endl;	
+
+	if (seg_nonoverlap.use_count() <= 0) {
+		std::cout << "seg_nonoverlap counter is " 
+			<< seg_nonoverlap.use_count() << std::endl;
+		exit(-1);
+	}
+
 
 	::nscale::HistologicalEntities::segmentNucleiStg7(&segmented_rt, minSizeSeg, maxSizeSeg, fillHolesConnectivity, &*seg_nonoverlap);
 	

@@ -273,6 +273,44 @@ int main(int argc, char* argv[]) {
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
+	// resolve dependencies of reused stages
+	for (pair<int, PipelineComponentBase*> p : merged_stages) {
+		// add correct stage dependencies 
+		list<int> deps_tmp;
+		for (int i=0; i<p.second->getNumberDependencies(); i++) {
+			if (merged_stages.find(p.second->getDependency(i)) != merged_stages.end() && 
+					merged_stages[p.second->getDependency(i)]->reused != NULL) {
+				deps_tmp.emplace_back(merged_stages[p.second->getDependency(i)]->reused->getId());
+			}
+		}
+		for (int d : deps_tmp)
+			p.second->addDependency(d);
+
+		// connect correct output arguments
+		bool updated = true;
+		while (updated) {
+			updated = false;
+			for (ArgumentBase* a : p.second->getArguments()) {
+				if (a->getParent() != 0 && merged_stages[a->getParent()]->reused != NULL) {
+					updated = true;
+					p.second->replaceArgument(a->getId(), 
+						merged_stages[a->getParent()]->reused->getArgumentByName(a->getName()));
+					break;
+				}
+			}
+		}
+
+		// replace arguments with clones to avoid double free when stages are finished
+		// map<int, ArgumentBase*> args_clones;
+		// for (ArgumentBase* a : p.second->getArguments()) {
+		// 	ArgumentBase* cpy = a->clone();
+		// 	cpy->setId(new_uid());
+		// 	args_clones[a->getId()] = cpy;
+		// }
+		// for (pair<int, ArgumentBase*> a : args_clones) 
+		// 	p.second->replaceArgument(a.first, a.second);
+	}
+
 	cout << endl<< "merged-fine: " << endl;
 	for (pair<int, PipelineComponentBase*> p : merged_stages) {
 		string s = p.second->reused!=NULL?" - reused":"";
@@ -298,7 +336,11 @@ int main(int argc, char* argv[]) {
 	for (pair<int, PipelineComponentBase*> s : merged_stages) {
 		if (s.second->reused == NULL) {
 			cout << "sent component " << s.second->getId() << ":" 
-				<< s.second->getName() << " to execute with args:" << endl;
+				<< s.second->getName() << " sized " << s.second->size() << " to execute with args:" << endl;
+			cout << "\tall args: " << endl;
+			for (ArgumentBase* a : s.second->getArguments())
+				cout << "\t\t" << a->getId() << ":" << a->getName() << " = " 
+					<< a->toString() << " parent " << a->getParent() << endl;
 			cout << "\tinputs: " << endl;
 			for (int i : s.second->getInputs())
 				cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
@@ -898,9 +940,9 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		// cout << "base_stages size: " << base_stages.size() << endl;
 		for (pair<int, PipelineComponentBase*> p : base_stages) {
 			// attempt to find a stage witch has all inputs expanded either on the workflow inputs or interstage ones
-			// cout << "checking stage " << p.second->getName() << endl;
+			cout << "checking stage " << p.second->getName() << endl;
 			if (all_inps_in(p.second->getInputs(), args, input_arguments, args_values)) {
-				// cout << "stage " << p.second->getName() << " has all inputs" << endl;
+				cout << "stage " << p.second->getName() << " has all inputs" << endl;
 
 				// A list of concatenated arg values, used as a quick way to verify if a stage with
 				// the same args was already created.
@@ -917,6 +959,7 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 							if (args.at(inp_id)->getName().compare(a->getName())==0) {
 								arg_values += to_string(a->getId());
 								tmp->addInput(a->getId());
+								// tmp->addArgument(a->clone());
 								break;
 							}
 						}
@@ -991,8 +1034,11 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		workflow_outputs_cpy.erase(old_arg->getId());
 
 		// add a copy of the old arg with the correct id to the final map for each repeated output
+		cout << "checking output " << old_arg->getId() << ":" << old_arg->getName() << endl;
 		for (ArgumentBase* a : args_values) {
+			cout << "comparing with output " << a->getId() << ":" << a->getName() << endl;
 			if (a->getName().compare(old_arg->getName()) == 0) {
+				cout << "output found" << endl;
 				ArgumentBase* temp = old_arg->clone();
 				temp->setParent(old_arg->getParent());
 				temp->setId(a->getId());
@@ -1353,6 +1399,7 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 	s->tasks.clear();
 }
 
+// attempt to merge a list of PCB, returning the new list with only the merged PCBs
 list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages, 
 	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 
@@ -1368,6 +1415,29 @@ list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages,
 				j = stages.erase(j);
 			} else
 				j++;
+		}
+	}
+
+	return stages;
+}
+
+// Attempt to merge a list of PCB, returning a list of PCBs with the same size.
+// The new list will have the merged PCBs without any tasks and with the reuse
+// atribute set as true.
+list<PipelineComponentBase*> merge_stages_full(list<PipelineComponentBase*> stages, 
+	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
+
+	if (stages.size() == 1)
+		return stages;
+
+	list<PipelineComponentBase*>::iterator i = stages.begin();
+	
+	for (; i!=stages.end(); i++) {
+		for (list<PipelineComponentBase*>::iterator j = next(i); j!=stages.end(); j++) {
+			if (merging_condition(*i, *j, args, ref)) {
+				merge_stages(*i, *j, ref);
+				(*j)->reused = *i;
+			}
 		}
 	}
 
@@ -1925,7 +1995,7 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 
 		// merge all stages in each bucket, given that they are mergable
 		for (list<PipelineComponentBase*> bucket : solution) {
-			list<PipelineComponentBase*> curr = merge_stages(bucket, expanded_args, ref->second->tasksDesc);
+			list<PipelineComponentBase*> curr = merge_stages_full(bucket, expanded_args, ref->second->tasksDesc);
 			// send rem stages to merged_stages
 			for (PipelineComponentBase* s : curr)
 				merged_stages[s->getId()] = s;		
@@ -1938,12 +2008,9 @@ void generate_drs(RegionTemplate* rt,
 
 	// verify every argument
 	for (pair<int, ArgumentBase*> p : expanded_args) {
-		cout << "------------checking arg" << p.first << ":" << p.second->getName() << endl;
 		// if an argument is a region template data region
 		if (p.second->getType() == ArgumentBase::RT) {
-			cout << "arg" << p.first << ":" << p.second->getName() << " is RT" << endl;
 			if (((ArgumentRT*)p.second)->isFileInput) {
-				cout << "arg" << p.first << ":" << p.second->getName() << " is file inptut" << endl;
 				// create the data region and add it to the input region template
 				DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
 				ddr2d->setName(p.second->getName());
@@ -1970,6 +2037,7 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 		// add input arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getInputs()) {
 			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
+			new_arg->setParent(merged_arguments[arg_id]->getParent());
 			stage.second->addArgument(new_arg);
 			if (new_arg->getType() == ArgumentBase::RT) {
 				cout << "input RT : " << merged_arguments[arg_id]->getName() << endl;
@@ -1997,6 +2065,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 		// add output arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getOutputs()) {
 			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
+			new_arg->setParent(merged_arguments[arg_id]->getParent());
+			new_arg->setIo(ArgumentBase::output);
 			stage.second->addArgument(new_arg);
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
 				cout << "output RT : " << merged_arguments[arg_id]->getName() << endl;
