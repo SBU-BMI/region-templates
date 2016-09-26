@@ -27,10 +27,7 @@ private:
 	// IMPORTANT: this need to be set during the creation of this object
 	int workflow_id;
 
-	std::list<ReusableTask*> mergable_t1;
-
 public:
-
 	Segmentation();
 	virtual ~Segmentation();
 
@@ -41,9 +38,14 @@ public:
 	int run();
 };
 
-// Task1Segmentation header
+/**************************************************************************************/
+/*********************************** Task functions ***********************************/
+/**************************************************************************************/
+
+// TaskSegmentation0 header
 class TaskSegmentation0: public ReusableTask {
-friend class TaskSegmentation1;
+	friend class TaskSegmentation1;
+
 private:
 
 	// all parameters
@@ -52,7 +54,7 @@ private:
 	unsigned char red;
 	double T1;
 	double T2;
-	
+
 	// intertask arguments
 	std::shared_ptr<std::vector<cv::Mat>> bgr;
 	std::shared_ptr<cv::Mat> rbc;
@@ -80,23 +82,21 @@ public:
 
 	void print();
 };
-
-// Task2Segmentation header
+// TaskSegmentation1 header
 class TaskSegmentation1: public ReusableTask {
-friend class TaskSegmentation2;
+	friend class TaskSegmentation2;
+
 private:
 
 	// all parameters
 	int reconConnectivity;
-	
+
 	// intertask arguments
 	std::shared_ptr<std::vector<cv::Mat>> bgr;
+	std::shared_ptr<cv::Mat> rbc_fw;
 	std::shared_ptr<cv::Mat> rc;
 	std::shared_ptr<cv::Mat> rc_recon;
 	std::shared_ptr<cv::Mat> rc_open;
-
-	// forward intertask arguments
-	std::shared_ptr<cv::Mat> rbc_fw;
 
 public:
 	// data regions
@@ -120,25 +120,23 @@ public:
 
 	void print();
 };
-
 // TaskSegmentation2 header
 class TaskSegmentation2: public ReusableTask {
-friend class TaskSegmentation3;
+	friend class TaskSegmentation3;
+
 private:
 
 	// all parameters
 	int fillHolesConnectivity;
-	unsigned char G1;
-	
+	int G1;
+
 	// intertask arguments
 	std::shared_ptr<cv::Mat> rc;
 	std::shared_ptr<cv::Mat> rc_recon;
 	std::shared_ptr<cv::Mat> rc_open;
+	std::shared_ptr<cv::Mat> rbc_fw;
 	std::shared_ptr<cv::Mat> bw1;
 	std::shared_ptr<cv::Mat> diffIm;
-
-	// forward intertask arguments
-	std::shared_ptr<cv::Mat> rbc_fw;
 
 public:
 	// data regions
@@ -162,23 +160,21 @@ public:
 
 	void print();
 };
-
 // TaskSegmentation3 header
 class TaskSegmentation3: public ReusableTask {
-friend class TaskSegmentation4;
+	friend class TaskSegmentation4;
+
 private:
 
 	// all parameters
 	int minSize;
 	int maxSize;
-	
+
 	// intertask arguments
 	std::shared_ptr<cv::Mat> bw1;
-	std::shared_ptr<cv::Mat> bw1_t;
-
-	// forward intertask arguments
 	std::shared_ptr<cv::Mat> rbc_fw;
 	std::shared_ptr<cv::Mat> diffIm_fw;
+	std::shared_ptr<cv::Mat> bw1_t;
 
 public:
 	// data regions
@@ -202,15 +198,15 @@ public:
 
 	void print();
 };
-
 // TaskSegmentation4 header
 class TaskSegmentation4: public ReusableTask {
-friend class TaskSegmentation5;
+	friend class TaskSegmentation5;
+
 private:
 
 	// all parameters
-	unsigned char G2;
-	
+	int G2;
+
 	// intertask arguments
 	std::shared_ptr<cv::Mat> diffIm;
 	std::shared_ptr<cv::Mat> bw1_t;
@@ -239,16 +235,16 @@ public:
 
 	void print();
 };
-
-// Task5Segmentation5 header
+// TaskSegmentation5 header
 class TaskSegmentation5: public ReusableTask {
-friend class TaskSegmentation6;
+	friend class TaskSegmentation6;
+
 private:
 
 	// all parameters
 	int minSizePl;
 	int watershedConnectivity;
-	
+
 	// intertask arguments
 	std::shared_ptr<cv::Mat> seg_open;
 	std::shared_ptr<cv::Mat> seg_nonoverlap;
@@ -276,18 +272,18 @@ public:
 
 	void print();
 };
-
 // TaskSegmentation6 header
 class TaskSegmentation6: public ReusableTask {
+
+
 private:
 
 	// all parameters
 	int minSizeSeg;
 	int maxSizeSeg;
 	int fillHolesConnectivity;
-	
+
 	// intertask arguments
-	std::shared_ptr<cv::Mat> seg_open;
 	std::shared_ptr<cv::Mat> seg_nonoverlap;
 
 public:
@@ -313,5 +309,6 @@ public:
 
 	void print();
 };
+
 
 #endif /* Segmentation_H_ */

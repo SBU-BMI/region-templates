@@ -58,17 +58,15 @@ int main(int argc, char** argv) {
 
 	string name = data["name"].asString();
 
-	// string header = generate_header(data);
-	// std::ofstream header_file(string(name + ".hpp"));
-	// header_file << header;
-	// header_file.close();
+	string header = generate_header(data);
+	std::ofstream header_file(string(name + ".hpp"));
+	header_file << header;
+	header_file.close();
 
 	string source = generate_source(data);
 	std::ofstream source_file(string(name + ".cpp"));
 	source_file << source;
 	source_file.close();
-
-	// TODO: get descriptor from argv
 
 	// cout << source << endl;
 }
@@ -80,31 +78,59 @@ string generate_header(Json::Value data) {
 	// get includes string
 	string includes = data["includes"].asString();
 
-	// generate DataRegion variables string
-	string dataRegionVariables;
-	string dataRegionVariablesNames;
-	for (int i=0; i<data["args"].size(); i++)
-		if (data["args"][i]["type"].asString().compare("dr") == 0) {
-			dataRegionVariables += "\tDenseDataRegion2D* " + 
-				data["args"][i]["name"].asString() + "_temp;\n";
-			dataRegionVariablesNames += "DenseDataRegion2D* " + 
-				data["args"][i]["name"].asString() + "_temp, ";
+	// get all tasks
+	string tasks;
+	for (int i=0; i<data["tasks"].size(); i++) {
+		string task_friend;
+		if (i != data["tasks"].size()-1)
+			task_friend = "\tfriend class Task" + name + to_string(i+1) + ";";
+		
+		// set regular args
+		string args;
+		string dr_args;
+		for (int j=0; j<data["tasks"][i]["args"].size(); j++) {
+			if (data["tasks"][i]["args"][j]["type"].asString().compare("dr") != 0) {
+				args += "\t" + getTypeCast(data["tasks"][i]["args"][j]["type"].asString()) +
+					" " + data["tasks"][i]["args"][j]["name"].asString() + ";\n";
+			} else {
+				dr_args += "\tstd::shared_ptr<DenseDataRegion2D*> " + 
+					data["tasks"][i]["args"][j]["name"].asString() + "_temp;\n";
+			}
 		}
 
-	// generate all other variables string
-	string commonVariables;
-	string commonVariablesNames;
-	for (int i=0; i<data["args"].size(); i++)
-		if (data["args"][i]["type"].asString().compare("dr") != 0) {
-			commonVariables += "\t" + getTypeCast(data["args"][i]["type"].asString()) +
-				" " + data["args"][i]["name"].asString() + ";\n";
-			commonVariablesNames += getTypeCast(data["args"][i]["type"].asString()) +
-				" " + data["args"][i]["name"].asString() + ", ";
+		// set intertask arguments
+		string intertask_args;
+		for (int j=0; j<data["tasks"][i]["interstage_args"].size(); j++) {
+			if (data["tasks"][i]["interstage_args"][j]["io"].asString().compare("forward") == 0) {
+				intertask_args += "\tstd::shared_ptr<" + 
+					getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) +
+					"> " + data["tasks"][i]["interstage_args"][j]["name"].asString() + "_fw;\n";
+			} else {
+				intertask_args += "\tstd::shared_ptr<" + 
+					getMatDRType(data["tasks"][i]["interstage_args"][j]["type"].asString()) +
+					"> " + data["tasks"][i]["interstage_args"][j]["name"].asString() + ";\n";
+			}
 		}
 
-	// remove last comma from commonVariablesNames
-	size_t pos;
-	commonVariablesNames.erase(commonVariablesNames.length()-2, 2);
+		// open task_header_template file
+		char* line;
+		size_t length=0;
+		FILE* task_header_template = fopen("header_task_template", "r");
+
+		// concat all task_header_template lines
+		string task_header;
+		while(getline(&line, &length, task_header_template) != -1)
+			task_header += string(line);
+
+		replace_multiple_string(task_header, "$NAME$", name+to_string(i));
+		replace_multiple_string(task_header, "$FRIEND_TASK$", task_friend);
+		replace_multiple_string(task_header, "$ARGS$", args);
+		replace_multiple_string(task_header, "$INTERTASK_ARGS$", intertask_args);
+		replace_multiple_string(task_header, "$DR_ARGS$", dr_args);
+
+		tasks += task_header;
+
+	}
 
 	// open header file
 	char* line;
@@ -118,20 +144,13 @@ string generate_header(Json::Value data) {
 
 
 	// add includes
-	pos = header.find("$INCLUDES$");
-	header.erase(pos, 10);
-	header.insert(pos, includes);
+	replace_multiple_string(header, "$INCLUDES$", includes);
 
 	// add filename
 	replace_multiple_string(header, "$NAME$", name);
 
 	// add DataRegions
-	replace_multiple_string(header, "$DR_VARS$", dataRegionVariables);
-	replace_multiple_string(header, "$DR_VARS_NAMES$", dataRegionVariablesNames);
-
-	// add other variables
-	replace_multiple_string(header, "$COMMON_VARS$", commonVariables);
-	replace_multiple_string(header, "$COMMON_VARS_NAMES$", commonVariablesNames);
+	replace_multiple_string(header, "$TASKS$", tasks);
 	
 
 	return header;

@@ -38,7 +38,7 @@
 			],
 			"interstage_args":[
 				{"name":"rc", "type":"mat", "io":"input"}, 
-				{"name":"rc_recon", "type":"mxat", "io":"input"},
+				{"name":"rc_recon", "type":"mat", "io":"input"},
 				{"name":"rc_open", "type":"mat", "io":"input"},
 				{"name":"rbc", "type":"mat", "io":"forward"},
 				{"name":"bw1", "type":"mat", "io":"output"},

@@ -1,0 +1,32 @@
+// Task$NAME$ header
+class Task$NAME$: public ReusableTask {
+$FRIEND_TASK$
+
+private:
+
+	// all parameters
+$ARGS$
+	// intertask arguments
+$INTERTASK_ARGS$
+public:
+	// data regions
+$DR_ARGS$
+	Task$NAME$();
+	Task$NAME$(list<ArgumentBase*> args, RegionTemplate* inputRt);
+
+	virtual ~Task$NAME$();
+
+	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
+
+	bool reusable(ReusableTask* t);
+	void updateDR(RegionTemplate* rt);
+	void updateInterStageArgs(ReusableTask* t);
+	void resolveDependencies(ReusableTask* t);
+
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	ReusableTask* clone();
+	int size();
+
+	void print();
+};

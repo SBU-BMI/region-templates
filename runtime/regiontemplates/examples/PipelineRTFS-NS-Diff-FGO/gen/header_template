@@ -13,6 +13,7 @@
 #include "FileUtils.h"
 #include "Task.h"
 #include "DenseDataRegion2D.h"
+#include "ReusableTask.hpp"
 
 $INCLUDES$
 
@@ -30,25 +31,15 @@ public:
 
 	void set_workflow_id(int id) {workflow_id = id;};
 
+	void print();
+
 	int run();
 };
 
-// Task header
-class Task$NAME$: public Task {
-private:
+/**************************************************************************************/
+/*********************************** Task functions ***********************************/
+/**************************************************************************************/
 
-	// data regions
-$DR_VARS$
-
-	// all other variables
-$COMMON_VARS$
-
-public:
-	Task$NAME$($DR_VARS_NAMES$$COMMON_VARS_NAMES$);
-
-	virtual ~Task$NAME$();
-
-	bool run(int procType=ExecEngineConstants::CPU, int tid=0);
-};
+$TASKS$
 
 #endif /* $NAME$_H_ */
