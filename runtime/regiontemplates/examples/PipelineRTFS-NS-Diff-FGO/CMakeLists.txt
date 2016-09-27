@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(PipelineRTFS-NS-Diff-FGO)
 
-add_definitions( -std=c++11 -ggdb -gdwarf-2 )
+add_definitions( -std=c++11 -ggdb -gdwarf-2 -fopenmp)
 #add_definitions( -std=c++11 )
 
 find_package( OpenCV REQUIRED )

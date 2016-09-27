@@ -12,6 +12,8 @@
 #include <cfloat>
 #include <algorithm>
 
+#include <omp.h>
+
 #include "json/json.h"
 
 #include "SysEnv.h"
@@ -131,7 +133,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -270,7 +272,7 @@ int main(int argc, char* argv[]) {
 	add_arguments_to_stages(expanded_stages, expanded_args, rt);
 
 	map<int, PipelineComponentBase*> merged_stages;
-	int size = 30;
+	int size = 60;
 	// MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
@@ -365,10 +367,10 @@ int main(int argc, char* argv[]) {
 			// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
 			s.second->setLocation(PipelineComponentBase::MANAGER_SIDE);
 
-			sysEnv.executeComponent(s.second);
+			// sysEnv.executeComponent(s.second);
 		}
 	}
-	// return 0;
+	return 0;
 
 	// execute workflows
 	cout << endl << "startupExecution" << endl;
@@ -1874,6 +1876,10 @@ void montecarlo_dep(int n, list<PipelineComponentBase*> c1, list<PipelineCompone
 	cout << "with mksp=" << max_mksp << endl;
 	cout << "with var=" << var << endl;
 
+	// // maybe double if?
+	// if (max_mksp < best_mksp || (max_mksp == best_mksp && var < best_var)) {
+	#pragma omp critical
+	{
 	// updates best cut, if this is the case
 	if (max_mksp < best_mksp || (max_mksp == best_mksp && var < best_var)) {
 		best_mksp = max_mksp;
@@ -1883,16 +1889,19 @@ void montecarlo_dep(int n, list<PipelineComponentBase*> c1, list<PipelineCompone
 			flat_c.insert(flat_c.begin(), bucket.begin(), bucket.end());
 		best_cut = pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>(c1, flat_c);
 	}
+	}
+	// }
 }
 
 list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineComponentBase*> rem, 
 	const map<int, PipelineComponentBase*> &all_stages, int n, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
 
-	list<pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>> current_cuts;
+	// list<pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>> current_cuts;
 	pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>> best_cut;
 	list<list<PipelineComponentBase*>> final_cut;
 	float best_mksp = FLT_MAX;
 	float best_var = FLT_MAX;
+	int r_size = rem.size();
 
 	cout << "[montecarlo_recursive_cut] n=" << n << endl;
 
@@ -1906,6 +1915,10 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 		return final_cut;
 	}
 
+	#pragma omp parallel
+	{
+	#pragma omp single
+	{
 	// attempt all possible cuts on this level
 	list<PipelineComponentBase*> rest;
 	while (rem.size() > 1) {
@@ -1923,7 +1936,8 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 		// add rest to c2
 		c2.insert(c2.begin(), rest.begin(), rest.end());
 
-		current_cuts.emplace_back(pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>(c1, c2));
+		#pragma omp task
+		montecarlo_dep(n, c1, c2, all_stages, args, ref, best_mksp, best_var, best_cut);
 
 		cout << "[montecarlo_recursive_cut] n=" << n << " adding cut" << endl;
 		cout << "\tc1:" << endl;
@@ -1937,13 +1951,23 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 		rem = c1;
 		rest = c2;
 	}
-
-	// runs all dependencies a la montecarlo
-	for (list<pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>>::iterator i=current_cuts.begin();
-			i!=current_cuts.end(); i++) {
-		// WARNING: best cut is shared between all montecarlo_dep runs
-		montecarlo_dep(n, i->first, i->second, all_stages, args, ref, best_mksp, best_var, best_cut);
 	}
+	}
+
+	// cout << "---------------------------------------------------" << endl;
+
+	// #pragma omp parallel
+	// {
+	// #pragma omp single
+	// {
+	// // runs all dependencies a la montecarlo
+	// for (list<pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>>::iterator i=current_cuts.begin();
+	// 		i!=current_cuts.end(); i++) {
+	// 	// WARNING: best cut is shared between all montecarlo_dep runs
+	// 	#pragma omp task
+	// 	montecarlo_dep(n, i->first, i->second, all_stages, args, ref, best_mksp, best_var, best_cut);
+	// }
+	// }
 
 	cout << "[montecarlo_recursive_cut] n=" << n << " best cut of the stage with mksp=" << best_mksp << endl;
 		cout << "\tc1:" << endl;
