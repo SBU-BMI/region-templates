@@ -137,6 +137,7 @@ int Segmentation::run() {
 	// send all tasks to be executed
 	for (ReusableTask* t : ordered_tasks) {
 		cout << "\t\t\t[Segmentation] sending task " << t->getId() << endl;
+		t->mock = false;
 		this->executeTask(t);
 	}
 
@@ -211,7 +212,10 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation0::~TaskSegmentation0() {}
+TaskSegmentation0::~TaskSegmentation0() {
+	if (normalized_rt_temp.unique() && mock)
+		delete *normalized_rt_temp;
+}
 
 bool TaskSegmentation0::run(int procType, int tid) {
 	cv::Mat normalized_rt = (*this->normalized_rt_temp)->getData();
@@ -401,7 +405,7 @@ ReusableTask* TaskSegmentation0::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }
@@ -572,7 +576,7 @@ ReusableTask* TaskSegmentation1::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }
@@ -755,7 +759,7 @@ ReusableTask* TaskSegmentation2::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }
@@ -934,7 +938,7 @@ ReusableTask* TaskSegmentation3::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }
@@ -1098,7 +1102,7 @@ ReusableTask* TaskSegmentation4::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }
@@ -1160,7 +1164,10 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation5::~TaskSegmentation5() {}
+TaskSegmentation5::~TaskSegmentation5() {
+	if (normalized_rt_temp.unique() && mock)
+		delete *normalized_rt_temp;
+}
 
 bool TaskSegmentation5::run(int procType, int tid) {
 	cv::Mat normalized_rt = (*this->normalized_rt_temp)->getData();
@@ -1321,7 +1328,7 @@ ReusableTask* TaskSegmentation5::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }
@@ -1387,7 +1394,10 @@ TaskSegmentation6::TaskSegmentation6(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation6::~TaskSegmentation6() {}
+TaskSegmentation6::~TaskSegmentation6() {
+	if (segmented_rt_temp.unique() && mock)
+		delete *segmented_rt_temp;
+}
 
 bool TaskSegmentation6::run(int procType, int tid) {
 
@@ -1554,7 +1564,7 @@ ReusableTask* TaskSegmentation6::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }

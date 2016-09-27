@@ -22,6 +22,7 @@ PipelineComponentBase::PipelineComponentBase(){
 	this->resultData = NULL;
 
 	this->reused = NULL;
+	this->remove_outputs = false;
 	// this->input_arguments = new std::list<int>();
 	// this->output_arguments = new std::list<int>();
 }
@@ -37,7 +38,7 @@ PipelineComponentBase::~PipelineComponentBase() {
 	while(this->arguments.size()> 0){
 		ArgumentBase *aux = this->arguments.back();
 		this->arguments.pop_back();
-		if (aux->getIo() == ArgumentBase::input) {
+		if (remove_outputs || aux->getIo() == ArgumentBase::input) {
 			delete aux;
 		}
 	}

@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	// Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 	// region template used by all stages
 	RegionTemplate *rt = new RegionTemplate();
@@ -273,7 +273,7 @@ int main(int argc, char* argv[]) {
 
 	map<int, PipelineComponentBase*> merged_stages;
 	int size = 60;
-	// MPI_Comm_size(MPI_COMM_WORLD, &size);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
 
 	cout << endl<< "merged-fine before deps resolution: " << endl;
@@ -367,10 +367,10 @@ int main(int argc, char* argv[]) {
 			// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
 			s.second->setLocation(PipelineComponentBase::MANAGER_SIDE);
 
-			// sysEnv.executeComponent(s.second);
+			sysEnv.executeComponent(s.second);
 		}
 	}
-	return 0;
+	// return 0;
 
 	// execute workflows
 	cout << endl << "startupExecution" << endl;
@@ -1292,18 +1292,18 @@ bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_
 	if (!exists_reusable_task(merged, to_merge, ref.begin()->first))
 		return false;
 
-	// verify if the stage dependecy is the same
-	for (ArgumentBase* a1 : merged->getArguments()) {
-		ArgumentBase* arg1 = args[a1->getId()];
-		if (arg1->getParent() != 0) {
-			for (ArgumentBase* a2 : to_merge->getArguments()) {
-				ArgumentBase* arg2 = args[a2->getId()];
-				if (arg1->getParent() == arg2->getParent()) {
-					return true;
-				}
-			}
-		}
-	}
+	// // verify if the stage dependecy is the same
+	// for (ArgumentBase* a1 : merged->getArguments()) {
+	// 	ArgumentBase* arg1 = args[a1->getId()];
+	// 	if (arg1->getParent() != 0) {
+	// 		for (ArgumentBase* a2 : to_merge->getArguments()) {
+	// 			ArgumentBase* arg2 = args[a2->getId()];
+	// 			if (arg1->getParent() == arg2->getParent()) {
+	// 				return true;
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	return false;
 }
@@ -1477,7 +1477,9 @@ mincut::weight_t get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBa
 	mincut::weight_t ret = s1->tasks.size() + s2->tasks.size() - s1_clone->tasks.size();
 
 	// clean memory
+	s1_clone->remove_outputs = true;
 	delete s1_clone;
+	s2_clone->remove_outputs = true;
 	delete s2_clone;
 
 	return ret;
@@ -1501,7 +1503,8 @@ mincut::weight_t get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, 
 			for (ReusableTask* t : clone1->tasks) {
 				current1->tasks.emplace_back(t->clone());
 			}
-		} 
+		}
+		clone1->remove_outputs = true;
 		delete clone1;
 	}
 
@@ -1514,17 +1517,21 @@ mincut::weight_t get_reuse_factor(mincut::subgraph_t s1, mincut::subgraph_t s2, 
 		clone2->setLocation(PipelineComponentBase::WORKER_SIDE);
 		if (merging_condition(current2, clone2, args, ref))
 			merge_stages(current2, clone2, ref);
-		else 
+		else {
 			for (ReusableTask* t : clone2->tasks) {
 				current2->tasks.emplace_back(t->clone());
 			}
+		}
+		clone2->remove_outputs = true;
 		delete clone2;
 	}
 
 	int ret = current1->tasks.size()>current2->tasks.size()?current1->tasks.size():current2->tasks.size();
 
 	// clear memory
+	current1->remove_outputs = true;
 	delete current1;
+	current2->remove_outputs = true;
 	delete current2;
 
 	return ret;
@@ -1542,6 +1549,7 @@ float calc_stage_proc(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &a
 				PipelineComponentBase* j_clone = (*j)->clone();
 				j_clone->setLocation(PipelineComponentBase::WORKER_SIDE);
 				merge_stages(current, j_clone, ref);
+				j_clone->remove_outputs = true;
 				delete j_clone;
 				j = s.erase(j);
 			} else
@@ -1555,6 +1563,7 @@ float calc_stage_proc(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &a
 		for (ReusableTask* t : p->tasks)
 			// proc_cost += t->getProcCost();
 			proc_cost++;
+		p->remove_outputs = true;
 		delete p;
 	}
 
@@ -1580,6 +1589,7 @@ float calc_stage_mem(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &ar
 				j_clone->setLocation(PipelineComponentBase::WORKER_SIDE);
 				merge_stages(current, j_clone, ref);
 				j = s.erase(j);
+				j_clone->remove_outputs = true;
 				delete j_clone;
 			} else
 				j++;
@@ -1591,6 +1601,7 @@ float calc_stage_mem(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &ar
 		for (ReusableTask* t : p->tasks)
 			// mem_cost += t->getMemCost();
 			mem_cost+=0;
+		p->remove_outputs = true;
 		delete p;
 	}
 

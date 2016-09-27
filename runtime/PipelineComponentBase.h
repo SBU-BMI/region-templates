@@ -177,6 +177,9 @@ public:
 
 	PipelineComponentBase* reused;
 
+	// used to fix a memory leak when merging the PCBs
+	bool remove_outputs;
+
 	// needed for inter stage dependency verification on task merging
 	std::vector<ArgumentBase*> getArguments() {return arguments;};
 
