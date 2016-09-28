@@ -43,10 +43,23 @@ target_link_libraries(${libname} regiontemplates)
 
 # nscale libs
 target_link_libraries("${libname}" segment featuresAll ${OpenCV_LIBS})
-        
+       
+if(USE_ADIOS)
+    set(ADIOS_ROOT $ENV{ADIOS_DIR})
+    set(ADIOS_DIR $ENV{ADIOS_DIR})
+    set(ADIOS_USE_STATIC_LIBS OFF)
+    LIST(APPEND CMAKE_MODULE_PATH "${ADIOS_DIR}/etc")
+    LIST(APPEND CMAKE_FIND_ROOT_PATH "${ADIOS_DIR}")
+    find_package (ADIOS COMPONENTS REQUIRED)
+
+    include_directories(${ADIOS_DIR}/include/)
+endif(USE_ADIOS)
+
+ 
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-SF PipelineManager.cpp)
 
 # Link the executable to the runtime system library
 target_link_libraries(PipelineRTFS-SF runtimesystem "${libname}")
 target_link_libraries(PipelineRTFS-SF regiontemplates)
+target_link_libraries(PipelineRTFS-SF ${ADIOS_LIBRARIES})

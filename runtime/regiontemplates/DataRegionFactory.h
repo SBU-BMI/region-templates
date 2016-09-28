@@ -32,7 +32,7 @@ class DataRegionFactory {
 private:
 
 	static bool readDDR2DATASPACES(DenseDataRegion2D* dataRegion);
-		static bool writeDDR2DATASPACES(DenseDataRegion2D* dataRegion);
+	static bool writeDDR2DATASPACES(DenseDataRegion2D* dataRegion);
 
 	static bool createLockFile(DataRegion* dr, std::string outputFile);
 	static int lockFileExists(DataRegion* dr, std::string path);
@@ -46,6 +46,8 @@ private:
 public:
 	static bool readDDR2DFS(DataRegion **dataRegion, int chunkId=-1, std::string path="", bool ssd=false);
 	static bool writeDDR2DFS(DataRegion *dataRegion, std::string path="", bool ssd=false);
+	static bool readDDR2ADIOS(DataRegion **dataRegion, int chunkId=-1, std::string path="");
+	static bool writeDDR2ADIOS(DataRegion *dataRegion, std::string path="");
 
 
 	DataRegionFactory();

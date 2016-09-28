@@ -105,12 +105,16 @@ void Cache::parseConfFile(std::string confFile) {
 				if(device_str.compare("SSD") == 0){
 					device = Cache::SSD;
 				}else{
+				  if(device_str.compare("ADIOS") == 0){
+					  device = Cache::ADIOS;
+				  }else{
 					if(device_str.compare("HDD") == 0){
 						device = Cache::HDD;
 					}else{
-						std::cout << "Unknown device : "<< device_str << ". It Should be either: RAM, SSD or HDD."<< std::endl;
+						std::cout << "Unknown device : "<< device_str << ". It Should be either: RAM, SSD, ADIOS or HDD."<< std::endl;
 						exit(1);
 					}
+				  }
 				}
 			}
 			if(replacementPolicy_str.compare("FIFO") == 0){

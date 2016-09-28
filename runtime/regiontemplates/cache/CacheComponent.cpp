@@ -231,6 +231,8 @@ bool CacheComponent::insertDR(std::string rtName, std::string rtId, DataRegion* 
 //			std::cout << "ERROR: Unknown data region type: "<< dataRegion->getType() << std::endl;
 //			exit(1);
 //		}
+	} else if (this->getDevice() == Cache::ADIOS){
+		DataRegionFactory::writeDDR2ADIOS(dataRegion,this->getPath());
 	}
 
 	std::cout << "Inserting DR: " << dataRegion->getName() << " id: "<< dataRegion->getId() <<" "<< dataRegion->getTimestamp() << " "<<dataRegion->getVersion()<< std::endl;
@@ -270,6 +272,25 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 		}
 
 		break;
+	}
+    case Cache::ADIOS:
+	{
+        // Create generic data region to pass arguments.
+        retValue = new DataRegion();
+        retValue->setName(drName);
+        retValue->setId(drId);
+        retValue->setTimestamp(timestamp);
+        retValue->setVersion(version);
+
+        bool retDRF = DataRegionFactory::readDDR2ADIOS(&retValue, -1, this->getPath());
+
+        if(retDRF == false) {
+            delete retValue;
+            retValue = NULL;
+        }
+
+        break;
+
 	}
 	case Cache::RAM:
 	{

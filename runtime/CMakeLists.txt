@@ -39,6 +39,23 @@ else(USE_CUDA)
 	set(CUDA_FOUND 0)
 endif(USE_CUDA)
 
+
+#option(USE_ADIOS "Build with ADIOS support" off)
+set(USE_ADIOS 1)
+
+if(USE_ADIOS)
+    set(ADIOS_ROOT $ENV{ADIOS_DIR})
+    set(ADIOS_DIR $ENV{ADIOS_DIR})
+    set(ADIOS_USE_STATIC_LIBS OFF)
+    LIST(APPEND CMAKE_MODULE_PATH "${ADIOS_DIR}/etc")
+    LIST(APPEND CMAKE_FIND_ROOT_PATH "${ADIOS_DIR}")
+    find_package (ADIOS COMPONENTS REQUIRED)
+
+    include_directories(${ADIOS_DIR}/include/)
+endif(USE_ADIOS)
+
+
+
 # Source files used by the Runtime System
 set( libsyssrcs SysEnv.cpp Worker.cpp Manager.cpp Argument.cpp PipelineComponentBase.cpp CallBackComponentExecution.cpp ./util/Util.cpp ./util/DataPack.cpp )
 
@@ -86,6 +103,8 @@ include_directories(./regiontemplates/Utils)
 
 # Add rule to generate the Runtime System, as a shared library (.so)
 add_library("${libname}" SHARED ${libsyssrcs})
+
+target_link_libraries("${libname}" ${ADIOS_LIBRARIES})
 
 if(USE_ACTIVE_HARMONY)
 	add_custom_target(

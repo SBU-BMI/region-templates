@@ -18,6 +18,13 @@ include_directories(${MPI_INCLUDE_PATH})
 #### OpenCV
 find_package( OpenCV REQUIRED )
 
+find_package (ITK)
+if (ITK_FOUND)
+   include(${ITK_USE_FILE})
+endif(ITK_FOUND)
+
+
+
 # Source files used by the Runtime System
 set( librtemplates BasicDataSource.cpp BoundingBox.cpp DataRegion.cpp ParameterSet.cpp DataRegionFactory.cpp DenseDataRegion2D.cpp DataRegion2DUnaligned.cpp 
 	RegionTemplate.cpp ./Utils/FileUtils.cpp RTPipelineComponentBase.cpp RegionTemplateCollection.cpp TaskIO.cpp 
@@ -44,6 +51,7 @@ add_library("${libname}" SHARED ${librtemplates})
 
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" ${MPI_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries("${libname}" ${MPI_LIBRARIES} ${OpenCV_LIBS} ${ITK_LIBRARIES})
 
 #if(USE_DATA_SPACES)
 #	target_link_libraries("${libname}" -ldspacesAll -lrdmacm)

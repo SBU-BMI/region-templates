@@ -14,7 +14,7 @@
 #include <string>
 #include <cstring>
 
-
+#include "adios.h"
 #include "Util.h"
 #include "Manager.h"
 #include "Worker.h"
@@ -34,6 +34,11 @@ SysEnv::~SysEnv() {
 // initialize MPI
 MPI::Intracomm init_mpi(int argc, char **argv, int &size, int &rank, std::string &hostname) {
     MPI::Init(argc, argv);
+
+    // Initialize Adios for writing
+    adios_init_noxml (MPI_COMM_SELF);
+    adios_set_max_buffer_size(100);
+    //adios_allocate_buffer (ADIOS_BUFFER_ALLOC_NOW, 10); // Buffer size in MB
 
     char *temp = new char[256];
     gethostname(temp, 255);
@@ -139,6 +144,8 @@ int SysEnv::startupSystem(int argc, char **argv, std::string componentsLibName){
 
 	MPI::Intracomm comm_world = init_mpi(argc, argv, size, rank, hostname);
 
+std::cout << "MPI size is " << size << ", my rank is " << rank << std::endl;
+
 //	if(rank == 0){
 //
 ////		        int npapp = this->comm_world.Get_size() -1;
@@ -198,6 +205,9 @@ int SysEnv::startupSystem(int argc, char **argv, std::string componentsLibName){
 
 	// Shake hands and finalize MPI
 	comm_world.Barrier();
+
+    //Cleanup adios
+    adios_finalize(0);
 	MPI::Finalize();
 	exit(0);
 

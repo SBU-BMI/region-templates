@@ -77,6 +77,7 @@ public:
 	static const int RAM = 1;
 	static const int SSD = 2;
 	static const int HDD = 3;
+	static const int ADIOS = 4; //ADIOS File
 
 	// replacement policy
 	static const int FIFO = 1;
