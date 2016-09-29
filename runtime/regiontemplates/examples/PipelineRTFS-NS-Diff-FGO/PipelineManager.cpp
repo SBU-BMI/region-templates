@@ -129,266 +129,291 @@ parsing::port_type_t get_port_type(string s);
 
 int main(int argc, char* argv[]) {
 
+	int mpi_rank;
+	int mpi_size;
+	int mpi_val;
+
+	MPI_Init(&argc, &argv);
+
+	MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+	MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+
 	// Handler to the distributed execution system environment
 	SysEnv sysEnv;
 
-	// Tell the system which libraries should be used
-	sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	if (mpi_rank == mpi_size-1) {
+		// region template used by all stages
+		RegionTemplate *rt = new RegionTemplate();
+		rt->setName("tile");
 
-	// region template used by all stages
-	RegionTemplate *rt = new RegionTemplate();
-	rt->setName("tile");
-
-	// get arguments
-	if (argc != 1 && argc != 3) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO [-i DAKOTA_OUTPUT_FILE]" << endl;
-		return 0;
-	}
-
-	// workflow file
-	FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
-
-	//------------------------------------------------------------
-	// Parse pipeline file
-	//------------------------------------------------------------
-
-	// get all workflow inputs without their values, returning also the parameters 
-	// values (i.e list<ArgumentBase> values) on another map
-	map<int, ArgumentBase*> workflow_inputs;
-	map<int, list<ArgumentBase*>> parameters_values;
-	get_inputs_from_file(workflow_descriptor, workflow_inputs, parameters_values);
-
-	// cout << "workflow_inputs:" << endl;
-	// for (pair<int, ArgumentBase*> p : workflow_inputs)
-	// 	cout << p.first << ":" << p.second->getName() << endl;
-
-	// cout << endl << "parameters_values:" << endl;
-	// for (pair<int, list<ArgumentBase*>> p : parameters_values) {
-	// 	cout << "argument " << p.first << ":" << workflow_inputs[p.first]->getName() << ":" << endl;
-	// 	for (ArgumentBase* a : p.second)
-	// 		cout << "\t" << a->toString() << endl;
-	// }
-
-	// get all workflow outputs
-	map<int, ArgumentBase*> workflow_outputs;
-	get_outputs_from_file(workflow_descriptor, workflow_outputs);
-	// cout << endl << "workflow_outputs " << endl;
-	// mapprint(workflow_outputs);
-	// for (pair<int, ArgumentBase*> p : workflow_outputs)
-	// 	cout << p.second->getId() << ":" << p.second->getName() << endl;
-
-	// get all stages, also setting the uid from this context to Task (i.e Task::setId())
-	// also returns the list of arguments used
-	// the stages dependencies are also set here (i.e Task::addDependency())
-	map<int, PipelineComponentBase*> base_stages;
-	map<int, ArgumentBase*> interstage_arguments;
-	get_stages_from_file(workflow_descriptor, base_stages, interstage_arguments);
-	// cout << endl << "base_stages:" << endl;
-	// for (pair<int, PipelineComponentBase*> p : base_stages) {
-	// 	cout << p.first << ":" << p.second->getName() << endl;
-	// 	cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
-	// 	for (int i : p.second->getOutputs())
-	// 		cout << "\t\t" << i << ":" << interstage_arguments[i]->getName() << endl;
-	// 	cout << "\t task descriptors:" << endl;
-	// 	for (pair<string, list<ArgumentBase*>> d : p.second->tasksDesc) {
-	// 		cout << "\t\ttask: " << d.first << endl;
-	// 		for (ArgumentBase* a : d.second)
-	// 			cout << "\t\t\t" << a->getName() << endl;
-	// 	}
-	// }
-
-
-	// cout << endl << "interstage_arguments:" << endl;
-	// for (pair<int, ArgumentBase*> p : interstage_arguments)
-	// 	cout << p.first << ":" << p.second->getName() << endl;
-
-	// this map is a dependency structure: stage -> dependency_list
-	map<int, list<int>> deps;
-	
-	// connect the stages inputs/outputs 
-	connect_stages_from_file(workflow_descriptor, base_stages, 
-		interstage_arguments, workflow_inputs, deps, workflow_outputs);
-	map<int, ArgumentBase*> all_argument(workflow_inputs);
-	for (pair<int, ArgumentBase*> a : interstage_arguments)
-		all_argument[a.first] = a.second;
-
-	// mapprint(all_argument);
-
-	// cout << endl << "all_arguments:" << endl;
-	// for (pair<int, ArgumentBase*> p : all_argument) {
-	// 	cout << p.second->getId() << ":" << p.second->getName() 
-	// 		<< " parent " << p.second->getParent() << endl;
-	// }
-
-	// cout << endl << "connected base_stages:" << endl;
-	// for (pair<int, PipelineComponentBase*> p : base_stages) {
-	// 	cout << p.first << ":" << p.second->getName() << endl;
-	// 	cout << "\tinputs: " << p.second->getInputs().size() << endl;
-	// 	for (int i : p.second->getInputs())
-	// 		cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
-	// 	cout << "\toutputs: " << p.second->getOutputs().size() << endl;
-	// 	for (int i : p.second->getOutputs())
-	// 		cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
-	// }
-
-	//------------------------------------------------------------
-	// Iterative merging of stages
-	//------------------------------------------------------------
-
-	map<int, ArgumentBase*> args;
-	for (pair<int, ArgumentBase*> p : workflow_inputs)
-		args[p.first] = p.second;
-	for (pair<int, ArgumentBase*> p : interstage_arguments)
-		args[p.first] = p.second;
-
-	map<int, ArgumentBase*> expanded_args;
-	map<int, PipelineComponentBase*> expanded_stages;
-
-	// expand_stages(args, parameters_values, expanded_args, 
-	// 	base_stages, expanded_stages, workflow_outputs);
-	FILE* parameters_values_file = fopen("dakota_nscale_ps_moat_600_32nodes.out", "r");
-	generate_pre_defined_stages(parameters_values_file, args, base_stages, workflow_outputs, 
-		expanded_args, expanded_stages);
-
-	cout << endl<< "merged: " << endl;
-	for (pair<int, PipelineComponentBase*> p : expanded_stages) {
-		cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
-		cout << "\tinputs: " << endl;
-		for (int i : p.second->getInputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
-				<< expanded_args[i]->toString() << endl;
-		cout << "\toutputs: " << endl;
-		for (int i : p.second->getOutputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << endl;
-	}
-
-	// cout << endl << "merged args" << endl;
-	// for (pair<int, ArgumentBase*> p : expanded_args)
-	// 	cout << "\t" << p.first << ":" << p.second->getName() << " = " 
-	// 		<< p.second->toString() << " sized: " << p.second->size() << endl;
-
-	// add arguments to each stage
-	cout << endl << "add_arguments_to_stages" << endl;
-	add_arguments_to_stages(expanded_stages, expanded_args, rt);
-
-	map<int, PipelineComponentBase*> merged_stages;
-	int size = 60;
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
-
-	cout << endl<< "merged-fine before deps resolution: " << endl;
-	for (pair<int, PipelineComponentBase*> p : merged_stages) {
-		string s = p.second->reused!=NULL?" - reused":"";
-		cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
-		cout << "\ttasks: " << endl;
-		for (ReusableTask* t : p.second->tasks) {
-			cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
-			cout << "\t\t\tparent_task: " << t->parentTask << endl;
-		}
-	}
-
-	// resolve dependencies of reused stages
-	for (pair<int, PipelineComponentBase*> p : merged_stages) {
-		// add correct stage dependencies 
-		list<int> deps_tmp;
-		for (int i=0; i<p.second->getNumberDependencies(); i++) {
-			if (merged_stages.find(p.second->getDependency(i)) != merged_stages.end() && 
-					merged_stages[p.second->getDependency(i)]->reused != NULL) {
-				deps_tmp.emplace_back(merged_stages[p.second->getDependency(i)]->reused->getId());
-			}
-		}
-		for (int d : deps_tmp)
-			p.second->addDependency(d);
-
-		// connect correct output arguments
-		bool updated = true;
-		while (updated) {
-			updated = false;
-			for (ArgumentBase* a : p.second->getArguments()) {
-				if (a->getParent() != 0 && merged_stages[a->getParent()]->reused != NULL) {
-					updated = true;
-					p.second->replaceArgument(a->getId(), 
-						merged_stages[a->getParent()]->reused->getArgumentByName(a->getName()));
-					break;
-				}
-			}
+		// get arguments
+		if (argc != 1 && argc != 3) {
+			cout << "usage: ./PipelineRTFS-NS-Diff-FGO [-i DAKOTA_OUTPUT_FILE]" << endl;
+			return 0;
 		}
 
-		// replace arguments with clones to avoid double free when stages are finished
-		// map<int, ArgumentBase*> args_clones;
-		// for (ArgumentBase* a : p.second->getArguments()) {
-		// 	ArgumentBase* cpy = a->clone();
-		// 	cpy->setId(new_uid());
-		// 	args_clones[a->getId()] = cpy;
+		// workflow file
+		FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
+
+		//------------------------------------------------------------
+		// Parse pipeline file
+		//------------------------------------------------------------
+
+		// get all workflow inputs without their values, returning also the parameters 
+		// values (i.e list<ArgumentBase> values) on another map
+		map<int, ArgumentBase*> workflow_inputs;
+		map<int, list<ArgumentBase*>> parameters_values;
+		get_inputs_from_file(workflow_descriptor, workflow_inputs, parameters_values);
+
+		// cout << "workflow_inputs:" << endl;
+		// for (pair<int, ArgumentBase*> p : workflow_inputs)
+		// 	cout << p.first << ":" << p.second->getName() << endl;
+
+		// cout << endl << "parameters_values:" << endl;
+		// for (pair<int, list<ArgumentBase*>> p : parameters_values) {
+		// 	cout << "argument " << p.first << ":" << workflow_inputs[p.first]->getName() << ":" << endl;
+		// 	for (ArgumentBase* a : p.second)
+		// 		cout << "\t" << a->toString() << endl;
 		// }
-		// for (pair<int, ArgumentBase*> a : args_clones) 
-		// 	p.second->replaceArgument(a.first, a.second);
-	}
 
-	cout << endl<< "merged-fine: " << endl;
-	for (pair<int, PipelineComponentBase*> p : merged_stages) {
-		string s = p.second->reused!=NULL?" - reused":"";
-		cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
-		cout << "\ttasks: " << endl;
-		for (ReusableTask* t : p.second->tasks) {
-			cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
-			cout << "\t\t\tparent_task: " << t->parentTask << endl;
-		}
-	}
+		// get all workflow outputs
+		map<int, ArgumentBase*> workflow_outputs;
+		get_outputs_from_file(workflow_descriptor, workflow_outputs);
+		// cout << endl << "workflow_outputs " << endl;
+		// mapprint(workflow_outputs);
+		// for (pair<int, ArgumentBase*> p : workflow_outputs)
+		// 	cout << p.second->getId() << ":" << p.second->getName() << endl;
 
-	//------------------------------------------------------------
-	// Add workflows to Manager to be executed
-	//------------------------------------------------------------
+		// get all stages, also setting the uid from this context to Task (i.e Task::setId())
+		// also returns the list of arguments used
+		// the stages dependencies are also set here (i.e Task::addDependency())
+		map<int, PipelineComponentBase*> base_stages;
+		map<int, ArgumentBase*> interstage_arguments;
+		get_stages_from_file(workflow_descriptor, base_stages, interstage_arguments);
+		// cout << endl << "base_stages:" << endl;
+		// for (pair<int, PipelineComponentBase*> p : base_stages) {
+		// 	cout << p.first << ":" << p.second->getName() << endl;
+		// 	cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
+		// 	for (int i : p.second->getOutputs())
+		// 		cout << "\t\t" << i << ":" << interstage_arguments[i]->getName() << endl;
+		// 	cout << "\t task descriptors:" << endl;
+		// 	for (pair<string, list<ArgumentBase*>> d : p.second->tasksDesc) {
+		// 		cout << "\t\ttask: " << d.first << endl;
+		// 		for (ArgumentBase* a : d.second)
+		// 			cout << "\t\t\t" << a->getName() << endl;
+		// 	}
+		// }
 
-	string inputFolderPath = "~/Desktop/images15";
-	cout << endl << "generate_drs" << endl;
-	generate_drs(rt, expanded_args);
 
-	// add all stages to manager
-	cout << endl << "executeComponent" << endl;
-	for (pair<int, PipelineComponentBase*> s : merged_stages) {
-		if (s.second->reused == NULL) {
-			cout << "sent component " << s.second->getId() << ":" 
-				<< s.second->getName() << " sized " << s.second->size() << " to execute with args:" << endl;
-			cout << "\tall args: " << endl;
-			for (ArgumentBase* a : s.second->getArguments())
-				cout << "\t\t" << a->getId() << ":" << a->getName() << " = " 
-					<< a->toString() << " parent " << a->getParent() << endl;
+		// cout << endl << "interstage_arguments:" << endl;
+		// for (pair<int, ArgumentBase*> p : interstage_arguments)
+		// 	cout << p.first << ":" << p.second->getName() << endl;
+
+		// this map is a dependency structure: stage -> dependency_list
+		map<int, list<int>> deps;
+		
+		// connect the stages inputs/outputs 
+		connect_stages_from_file(workflow_descriptor, base_stages, 
+			interstage_arguments, workflow_inputs, deps, workflow_outputs);
+		map<int, ArgumentBase*> all_argument(workflow_inputs);
+		for (pair<int, ArgumentBase*> a : interstage_arguments)
+			all_argument[a.first] = a.second;
+
+		// mapprint(all_argument);
+
+		// cout << endl << "all_arguments:" << endl;
+		// for (pair<int, ArgumentBase*> p : all_argument) {
+		// 	cout << p.second->getId() << ":" << p.second->getName() 
+		// 		<< " parent " << p.second->getParent() << endl;
+		// }
+
+		// cout << endl << "connected base_stages:" << endl;
+		// for (pair<int, PipelineComponentBase*> p : base_stages) {
+		// 	cout << p.first << ":" << p.second->getName() << endl;
+		// 	cout << "\tinputs: " << p.second->getInputs().size() << endl;
+		// 	for (int i : p.second->getInputs())
+		// 		cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
+		// 	cout << "\toutputs: " << p.second->getOutputs().size() << endl;
+		// 	for (int i : p.second->getOutputs())
+		// 		cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
+		// }
+
+		//------------------------------------------------------------
+		// Iterative merging of stages
+		//------------------------------------------------------------
+
+		map<int, ArgumentBase*> args;
+		for (pair<int, ArgumentBase*> p : workflow_inputs)
+			args[p.first] = p.second;
+		for (pair<int, ArgumentBase*> p : interstage_arguments)
+			args[p.first] = p.second;
+
+		map<int, ArgumentBase*> expanded_args;
+		map<int, PipelineComponentBase*> expanded_stages;
+
+		// expand_stages(args, parameters_values, expanded_args, 
+		// 	base_stages, expanded_stages, workflow_outputs);
+		FILE* parameters_values_file = fopen("dakota_nscale_ps_moat_600_32nodes.out", "r");
+		generate_pre_defined_stages(parameters_values_file, args, base_stages, workflow_outputs, 
+			expanded_args, expanded_stages);
+
+		cout << endl<< "merged: " << endl;
+		for (pair<int, PipelineComponentBase*> p : expanded_stages) {
+			cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
 			cout << "\tinputs: " << endl;
-			for (int i : s.second->getInputs())
-				cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
-					<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
-			cout << "\toutputs: " << endl;
-			for (int i : s.second->getOutputs())
+			for (int i : p.second->getInputs())
 				cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
 					<< expanded_args[i]->toString() << endl;
-			((Task*)s.second)->setId(s.second->getId());
-
-			// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
-			s.second->setLocation(PipelineComponentBase::MANAGER_SIDE);
-
-			sysEnv.executeComponent(s.second);
+			cout << "\toutputs: " << endl;
+			for (int i : p.second->getOutputs())
+				cout << "\t\t" << i << ":" << expanded_args[i]->getName() << endl;
 		}
-	}
-	// return 0;
 
-	// execute workflows
-	cout << endl << "startupExecution" << endl;
-	sysEnv.startupExecution();
+		// cout << endl << "merged args" << endl;
+		// for (pair<int, ArgumentBase*> p : expanded_args)
+		// 	cout << "\t" << p.first << ":" << p.second->getName() << " = " 
+		// 		<< p.second->toString() << " sized: " << p.second->size() << endl;
 
-	// get results
-	cout << endl << "Results: " << endl;
-	for (pair<int, ArgumentBase*> output : workflow_outputs) {
-		// cout << "\t" << output.second->getName() << ":" << output.second->getId() << " = " << 
-		// 	sysEnv.getComponentResultData(output.second->getId()) << endl;
-		char *resultData = sysEnv.getComponentResultData(output.second->getId());
-        std::cout << "Diff Id: " << output.second->getId() << " resultData -  ";
-		if(resultData != NULL){
-            std::cout << "size: " << ((int *) resultData)[0] << " Diff: " << ((float *) resultData)[1] <<
-            " Secondary Metric: " << ((float *) resultData)[2] << std::endl;
-		}else{
-			std::cout << "NULL" << std::endl;
+		// add arguments to each stage
+		cout << endl << "add_arguments_to_stages" << endl;
+		add_arguments_to_stages(expanded_stages, expanded_args, rt);
+
+		map<int, PipelineComponentBase*> merged_stages;
+		int size = 60;
+		MPI_Comm_size(MPI_COMM_WORLD, &size);
+		merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
+
+		cout << endl<< "merged-fine before deps resolution: " << endl;
+		for (pair<int, PipelineComponentBase*> p : merged_stages) {
+			string s = p.second->reused!=NULL?" - reused":"";
+			cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
+			cout << "\ttasks: " << endl;
+			for (ReusableTask* t : p.second->tasks) {
+				cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
+				cout << "\t\t\tparent_task: " << t->parentTask << endl;
+			}
 		}
+
+		// resolve dependencies of reused stages
+		for (pair<int, PipelineComponentBase*> p : merged_stages) {
+			// add correct stage dependencies 
+			list<int> deps_tmp;
+			for (int i=0; i<p.second->getNumberDependencies(); i++) {
+				if (merged_stages.find(p.second->getDependency(i)) != merged_stages.end() && 
+						merged_stages[p.second->getDependency(i)]->reused != NULL) {
+					deps_tmp.emplace_back(merged_stages[p.second->getDependency(i)]->reused->getId());
+				}
+			}
+			for (int d : deps_tmp)
+				p.second->addDependency(d);
+
+			// connect correct output arguments
+			bool updated = true;
+			while (updated) {
+				updated = false;
+				for (ArgumentBase* a : p.second->getArguments()) {
+					if (a->getParent() != 0 && merged_stages[a->getParent()]->reused != NULL) {
+						updated = true;
+						p.second->replaceArgument(a->getId(), 
+							merged_stages[a->getParent()]->reused->getArgumentByName(a->getName()));
+						break;
+					}
+				}
+			}
+
+			// replace arguments with clones to avoid double free when stages are finished
+			// map<int, ArgumentBase*> args_clones;
+			// for (ArgumentBase* a : p.second->getArguments()) {
+			// 	ArgumentBase* cpy = a->clone();
+			// 	cpy->setId(new_uid());
+			// 	args_clones[a->getId()] = cpy;
+			// }
+			// for (pair<int, ArgumentBase*> a : args_clones) 
+			// 	p.second->replaceArgument(a.first, a.second);
+		}
+
+		cout << endl<< "merged-fine: " << endl;
+		for (pair<int, PipelineComponentBase*> p : merged_stages) {
+			string s = p.second->reused!=NULL?" - reused":"";
+			cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
+			cout << "\ttasks: " << endl;
+			for (ReusableTask* t : p.second->tasks) {
+				cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
+				cout << "\t\t\tparent_task: " << t->parentTask << endl;
+			}
+		}
+
+		//------------------------------------------------------------
+		// Add workflows to Manager to be executed
+		//------------------------------------------------------------
+
+		string inputFolderPath = "~/Desktop/images15";
+		cout << endl << "generate_drs" << endl;
+		generate_drs(rt, expanded_args);
+
+		// unlock all other mpi workers
+		for (int i=0; i<mpi_size-1; i++)
+			MPI_Send(&mpi_val, 1, MPI_INT, i, 99, MPI_COMM_WORLD);
+
+		// Tell the system which libraries should be used
+		sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+
+		// add all stages to manager
+		cout << endl << "executeComponent" << endl;
+		for (pair<int, PipelineComponentBase*> s : merged_stages) {
+			if (s.second->reused == NULL) {
+				cout << "sent component " << s.second->getId() << ":" 
+					<< s.second->getName() << " sized " << s.second->size() << " to execute with args:" << endl;
+				cout << "\tall args: " << endl;
+				for (ArgumentBase* a : s.second->getArguments())
+					cout << "\t\t" << a->getId() << ":" << a->getName() << " = " 
+						<< a->toString() << " parent " << a->getParent() << endl;
+				cout << "\tinputs: " << endl;
+				for (int i : s.second->getInputs())
+					cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+						<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
+				cout << "\toutputs: " << endl;
+				for (int i : s.second->getOutputs())
+					cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+						<< expanded_args[i]->toString() << endl;
+				((Task*)s.second)->setId(s.second->getId());
+
+				// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
+				s.second->setLocation(PipelineComponentBase::MANAGER_SIDE);
+
+				sysEnv.executeComponent(s.second);
+			}
+		}
+		// return 0;
+
+		// execute workflows
+		cout << endl << "startupExecution" << endl;
+		sysEnv.startupExecution();
+
+		// get results
+		cout << endl << "Results: " << endl;
+		for (pair<int, ArgumentBase*> output : workflow_outputs) {
+			// cout << "\t" << output.second->getName() << ":" << output.second->getId() << " = " << 
+			// 	sysEnv.getComponentResultData(output.second->getId()) << endl;
+			char *resultData = sysEnv.getComponentResultData(output.second->getId());
+	        std::cout << "Diff Id: " << output.second->getId() << " resultData -  ";
+			if(resultData != NULL){
+	            std::cout << "size: " << ((int *) resultData)[0] << " Diff: " << ((float *) resultData)[1] <<
+	            " Secondary Metric: " << ((float *) resultData)[2] << std::endl;
+			}else{
+				std::cout << "NULL" << std::endl;
+			}
+		}
+	} else {
+		int flag;
+		do {
+			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
+				&flag, MPI_STATUS_IGNORE);
+			usleep(2000000);
+		} while (!flag);
+		MPI_Recv(&mpi_val, 1, MPI_INT, MPI_ANY_SOURCE, 
+			MPI_ANY_TAG, MPI_COMM_WORLD,  MPI_STATUS_IGNORE);
+		sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 	}
 
 	sysEnv.finalizeSystem();
@@ -1292,18 +1317,18 @@ bool merging_condition(PipelineComponentBase* merged, PipelineComponentBase* to_
 	if (!exists_reusable_task(merged, to_merge, ref.begin()->first))
 		return false;
 
-	// // verify if the stage dependecy is the same
-	// for (ArgumentBase* a1 : merged->getArguments()) {
-	// 	ArgumentBase* arg1 = args[a1->getId()];
-	// 	if (arg1->getParent() != 0) {
-	// 		for (ArgumentBase* a2 : to_merge->getArguments()) {
-	// 			ArgumentBase* arg2 = args[a2->getId()];
-	// 			if (arg1->getParent() == arg2->getParent()) {
-	// 				return true;
-	// 			}
-	// 		}
-	// 	}
-	// }
+	// verify if the stage dependecy is the same
+	for (ArgumentBase* a1 : merged->getArguments()) {
+		ArgumentBase* arg1 = args[a1->getId()];
+		if (arg1->getParent() != 0) {
+			for (ArgumentBase* a2 : to_merge->getArguments()) {
+				ArgumentBase* arg2 = args[a2->getId()];
+				if (arg1->getParent() == arg2->getParent()) {
+					return true;
+				}
+			}
+		}
+	}
 
 	return false;
 }
@@ -1888,7 +1913,7 @@ void montecarlo_dep(int n, list<PipelineComponentBase*> c1, list<PipelineCompone
 	cout << "with var=" << var << endl;
 
 	// // maybe double if?
-	// if (max_mksp < best_mksp || (max_mksp == best_mksp && var < best_var)) {
+	if (max_mksp < best_mksp || (max_mksp == best_mksp && var < best_var)) {
 	#pragma omp critical
 	{
 	// updates best cut, if this is the case
@@ -1901,7 +1926,7 @@ void montecarlo_dep(int n, list<PipelineComponentBase*> c1, list<PipelineCompone
 		best_cut = pair<list<PipelineComponentBase*>, list<PipelineComponentBase*>>(c1, flat_c);
 	}
 	}
-	// }
+	}
 }
 
 list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineComponentBase*> rem, 

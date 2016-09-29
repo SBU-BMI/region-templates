@@ -33,7 +33,10 @@ SysEnv::~SysEnv() {
 
 // initialize MPI
 MPI::Intracomm init_mpi(int argc, char **argv, int &size, int &rank, std::string &hostname) {
-    MPI::Init(argc, argv);
+    int initialized;
+    MPI_Initialized(&initialized);
+    if (!initialized)
+    	MPI::Init(argc, argv);
 
     char *temp = new char[256];
     gethostname(temp, 255);
