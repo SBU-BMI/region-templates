@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include <iostream>
 #include <fstream>
@@ -147,10 +148,12 @@ int main(int argc, char* argv[]) {
 		rt->setName("tile");
 
 		// get arguments
-		if (argc != 1 && argc != 3) {
-			cout << "usage: ./PipelineRTFS-NS-Diff-FGO [-i DAKOTA_OUTPUT_FILE]" << endl;
+		if (argc != 2 && argc != 4) {
+			cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max_bucket_size> [-i DAKOTA_OUTPUT_FILE]" << endl;
 			return 0;
 		}
+
+		int max_bucket_size = atoi(argv[1]);
 
 		// workflow file
 		FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
@@ -279,9 +282,22 @@ int main(int argc, char* argv[]) {
 		add_arguments_to_stages(expanded_stages, expanded_args, rt);
 
 		map<int, PipelineComponentBase*> merged_stages;
-		int size = 60;
-		MPI_Comm_size(MPI_COMM_WORLD, &size);
-		merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, size-1);
+		// int max_bucket_size = 60;
+		// MPI_Comm_size(MPI_COMM_WORLD, &max_bucket_size);
+		cout << "breaking into " << floor(expanded_stages.size()/max_bucket_size) << " buckets sized " << max_bucket_size << endl;
+
+		// mesure merging exec time
+		struct timeval start, end;
+		gettimeofday(&start, NULL);
+
+		merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, 
+			floor(expanded_stages.size()/max_bucket_size));
+
+		gettimeofday(&end, NULL);
+
+		long merge_time = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
+		ofstream exec_time("exec_time.log", ios::app);
+		exec_time << "merge time: " << merge_time << endl;
 
 		cout << endl<< "merged-fine before deps resolution: " << endl;
 		for (pair<int, PipelineComponentBase*> p : merged_stages) {
@@ -332,16 +348,21 @@ int main(int argc, char* argv[]) {
 			// 	p.second->replaceArgument(a.first, a.second);
 		}
 
+		ofstream solution_file;
+		solution_file.open("fine-grain-merging-solution", ios::app);
 		cout << endl<< "merged-fine: " << endl;
+		solution_file << endl<< "merged-fine: " << endl;
 		for (pair<int, PipelineComponentBase*> p : merged_stages) {
-			string s = p.second->reused!=NULL?" - reused":"";
+			string s = p.second->reused!=NULL ? " - reused" : (" with " + to_string(p.second->tasks.size()) + " tasks");
 			cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
+			solution_file << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
 			cout << "\ttasks: " << endl;
 			for (ReusableTask* t : p.second->tasks) {
 				cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
-				cout << "\t\t\tparent_task: " << t->parentTask << endl;
+				cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
 			}
 		}
+		solution_file.close();
 
 		//------------------------------------------------------------
 		// Add workflows to Manager to be executed
@@ -355,6 +376,7 @@ int main(int argc, char* argv[]) {
 		for (int i=0; i<mpi_size-1; i++)
 			MPI_Send(&mpi_val, 1, MPI_INT, i, 99, MPI_COMM_WORLD);
 
+		// return 0;
 		// Tell the system which libraries should be used
 		sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
@@ -384,11 +406,18 @@ int main(int argc, char* argv[]) {
 				sysEnv.executeComponent(s.second);
 			}
 		}
-		// return 0;
 
 		// execute workflows
 		cout << endl << "startupExecution" << endl;
+		gettimeofday(&start, NULL);
+
 		sysEnv.startupExecution();
+
+		gettimeofday(&end, NULL);
+
+		long run_time = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
+		exec_time << "run time: " << run_time << endl << endl;
+		exec_time.close();
 
 		// get results
 		cout << endl << "Results: " << endl;
@@ -404,6 +433,7 @@ int main(int argc, char* argv[]) {
 				std::cout << "NULL" << std::endl;
 			}
 		}
+
 	} else {
 		int flag;
 		do {
@@ -413,6 +443,7 @@ int main(int argc, char* argv[]) {
 		} while (!flag);
 		MPI_Recv(&mpi_val, 1, MPI_INT, MPI_ANY_SOURCE, 
 			MPI_ANY_TAG, MPI_COMM_WORLD,  MPI_STATUS_IGNORE);
+		// return 0;
 		sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 	}
 
@@ -1988,6 +2019,7 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 		rest = c2;
 	}
 	}
+	#pragma barrier
 	}
 
 	// cout << "---------------------------------------------------" << endl;
@@ -2071,7 +2103,8 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		// write merging solution
 		ofstream solution_file;
 		solution_file.open("fine-grain-merging-solution", ios::trunc);
-		cout << "solution:" << endl;
+		cout << endl << "solution:" << endl;
+		solution_file << endl << "solution:" << endl;
 		for (list<PipelineComponentBase*> b : solution) {
 			cout << "\tbucket with " << b.size() << " stages and cost "
 				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << endl;
@@ -2079,7 +2112,7 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << endl;
 			for (PipelineComponentBase* s : b) {
 				cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
-				solution_file << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
+				// solution_file << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
 			}
 		}
 		solution_file.close();

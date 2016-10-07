@@ -30,9 +30,9 @@ public:
 
 	// if the task isn't going to be executed then it's a mock
 	// used to enable corect arguments delete, preventing mem leaking
-	bool mock = true;
+	bool mock;
 
-	ReusableTask() {parentTask = -1;};
+	ReusableTask() {parentTask = -1;mock = true;};
 	virtual ~ReusableTask() {};
 
 	virtual bool reusable(ReusableTask* t) = 0;
