@@ -16,7 +16,7 @@ class TuningInterface;
 class TuningInterface {
 
 protected:
-    long iteration;
+    int iteration;
     long maxNumberOfIterations;
     long amountOfParamSetsPerIteration; //Amount of param sets tested each iteration
     TuningParamSet **paramSet;
@@ -27,20 +27,25 @@ public:
 
     virtual bool hasConverged() = 0;
 
-    virtual int declareParam(std::string paramLabel, void *paramLowerBoundary, void *paramHigherBoundary,
-                             void *paramStepSize, int setId = 0) = 0;
+    virtual int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
+                             double paramStepSize,
+                             int setId = 0) = 0;
 
-    virtual TuningParamSet *fetchParamSet(int setId = 0) = 0;
+    virtual int configure() = 0;
 
-    virtual int reportScore(void *scoreValue, int setId) = 0;
+    virtual int fetchParams() = 0;
 
-    virtual int nextIteration() = 0;
+    virtual TuningParamSet *getParamSet(int setId = 0) = 0;
 
-    long getIteration();
+    virtual int reportScore(double scoreValue, int setId) = 0;
+
+    virtual void nextIteration() = 0;
+
+    int getIteration();
 
 };
 
-long TuningInterface::getIteration() {
+int TuningInterface::getIteration() {
     return this->iteration;
 }
 

@@ -4,11 +4,26 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <sstream>
 #include "NealderMeadTuning.h"
 
-NealderMeadTuning::NealderMeadTuning(int argc, char **argv) {
+NealderMeadTuning::NealderMeadTuning(int argc, char **argv, int strategy, int maxNumberOfIterations) {
     iteration = -1;
     harmonySessionStatus = initialize(argc, argv);
+
+    this->maxNumberOfIterations = maxNumberOfIterations;
+
+
+    switch (strategy) {
+        case 0:
+            harmony_strategy(hdesc[0], "nm.so");
+            AHpolicy.append("nm.so");
+            break;
+        default:
+            harmony_strategy(hdesc[0], "pro.so");
+            AHpolicy.append("pro.so");
+            break;
+    }
 }
 
 
@@ -35,37 +50,25 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
 
 }
 
-int NealderMeadTuning::declareParam(std::string paramLabel, void *paramLowerBoundary, void *paramHigherBoundary,
-                                    void *paramStepSize, int setId) {
+int NealderMeadTuning::declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
+                                    double paramStepSize, int setId) {
     //CHANCES DE BUG.
-    if (harmony_real(hdesc[0], paramLabel.c_str(), *((double *) paramLowerBoundary), *((double *) paramHigherBoundary),
-                     *((double *) paramStepSize)) != 0) {
+    if (harmony_real(hdesc[0], paramLabel.c_str(), paramLowerBoundary, paramHigherBoundary, paramStepSize) != 0) {
         fprintf(stderr, "Failed to define tuning session\n");
         return -1;
     }
     else {
-        void *newParam = (double *) malloc(sizeof(double));
-        *((double *) newParam) = *((double *) paramLowerBoundary);
-        tuningParamSet->addParam(paramLabel, ((double *) paramLowerBoundary));
+        //Initialiazes the params
+        double *newParam = (double *) malloc(sizeof(double));
+        *(newParam) = paramLowerBoundary;
+        tuningParamSet->addParam(paramLabel, newParam);
         return 0;
     }
 }
 
-int NealderMeadTuning::configure(int strategy, int maxNumberOfIterations) {
+int NealderMeadTuning::configure() {
 
-    this->maxNumberOfIterations = maxNumberOfIterations;
 
-    std::string AHpolicy;
-    switch (strategy) {
-        case 0:
-            harmony_strategy(hdesc[0], "nm.so");
-            AHpolicy.append("nm.so");
-            break;
-        default:
-            harmony_strategy(hdesc[0], "pro.so");
-            AHpolicy.append("pro.so");
-            break;
-    }
     std::cout << "AH configuration: " << AHpolicy << std::endl;
 //    if(initPercent.size()>0 ){
 //        harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
@@ -88,7 +91,7 @@ int NealderMeadTuning::configure(int strategy, int maxNumberOfIterations) {
 
     //bind params
 
-    typedef std::map<std::string, void *>::iterator it_type;
+    typedef std::map<std::string, double *>::iterator it_type;
     for (it_type iterator = tuningParamSet[0].paramSet.begin();
          iterator != tuningParamSet[0].paramSet.end(); iterator++) {
         //iterator.first key
@@ -121,7 +124,7 @@ int NealderMeadTuning::bindParam(std::string paramLabel, int setId) {
 
 
     //CHANCES DE BUG
-    if (harmony_bind_real(hdesc[0], paramLabel.c_str(), ((double *) tuningParamSet[setId].paramSet[paramLabel])) != 0) {
+    if (harmony_bind_real(hdesc[0], paramLabel.c_str(), &(*(tuningParamSet[setId].paramSet[paramLabel]))) != 0) {
         fprintf(stderr, "Failed to register variable\n");
         return -1;
     }
@@ -129,28 +132,37 @@ int NealderMeadTuning::bindParam(std::string paramLabel, int setId) {
 }
 
 
-int NealderMeadTuning::nextIteration() {
-
+void NealderMeadTuning::nextIteration() {
     iteration++;
+}
 
+int NealderMeadTuning::fetchParams() {
     for (int i = 0; i < numClients; i++) {
         int hresult;
         do {
             hresult = harmony_fetch(hdesc[i]);
         } while (hresult == 0);
+
+        if (hresult < 0) {
+            fprintf(stderr, "Failed to fetch values from server: %s\n",
+                    harmony_error_string(hdesc[i]));
+            harmony_fini(hdesc[i]);
+            return -1;
+        }
     }
+
 
 }
 
-
-TuningParamSet *NealderMeadTuning::fetchParamSet(int setId) {
+TuningParamSet *NealderMeadTuning::getParamSet(int setId) {
     return &tuningParamSet[setId];
 }
 
-int NealderMeadTuning::reportScore(void *scoreValue, int setId) {
-    tuningParamSet[setId].score = *((double *) scoreValue);
+int NealderMeadTuning::reportScore(double scoreValue, int setId) {
+    tuningParamSet[setId].score = scoreValue;
     // Report the performance we've just measured.
-    if (harmony_report(hdesc[setId], *((double *) scoreValue)) != 0) {
+    if (harmony_report(hdesc[setId], scoreValue) != 0) {
+
         fprintf(stderr, "Failed to report performance to server.\n");
         harmony_fini(hdesc[setId]);
         return -1;
@@ -158,5 +170,5 @@ int NealderMeadTuning::reportScore(void *scoreValue, int setId) {
 }
 
 bool NealderMeadTuning::hasConverged() {
-    return iteration >= maxNumberOfIterations;
+    return harmony_converged(hdesc[0]) && iteration >= maxNumberOfIterations;
 }

@@ -11,10 +11,10 @@
 
 class TuningParamSet {
 public:
-    std::map<std::string, void *> paramSet;
+    std::map<std::string, double *> paramSet;
     double score;
 
-    void addParam(std::string paramName, void *paramInitialValue);
+    void addParam(std::string paramName, double *paramInitialValue);
 
     void setScore(double score);
 
@@ -22,7 +22,7 @@ public:
 
 };
 
-void TuningParamSet::addParam(std::string paramName, void *paramInitialValue) {
+void TuningParamSet::addParam(std::string paramName, double *paramInitialValue) {
     //paramSet.insert(paramName, paramValue);
     paramSet[paramName] = paramInitialValue;
 }

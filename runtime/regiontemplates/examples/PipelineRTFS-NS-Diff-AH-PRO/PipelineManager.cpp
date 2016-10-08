@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <regiontemplates/autotuning/activeharmony/NealderMeadTuning.h>
 #include "FileUtils.h"
 #include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
@@ -189,9 +190,10 @@ int main (int argc, char **argv){
 	std::vector<RegionTemplate *> inputRegionTemplates;
 	RegionTemplateCollection *rtCollection;
 	std::vector<int> diffComponentIds[numClients];
-	std::map<std::string, double> perfDataBase;
+    std::map<std::string, double> perfDataBase; //Checks if a param has been tested already
 
-	std::vector<hdesc_t *> hdesc;
+
+    std::vector<hdesc_t *> hdesc;
 
 	parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
 
@@ -207,44 +209,51 @@ int main (int argc, char **argv){
 
 	// AH SETUP //
 	 /* Initialize a Harmony client. */
+    int max_number_of_iterations = 5;
 
-	for(int i = 0; i < numClients; i++){
-		hdesc.push_back(harmony_init(&argc, &argv));
-		if (hdesc[i] == NULL) {
-			fprintf(stderr, "Failed to initialize a harmony session.\n");
-			return -1;
-		}
-	}
+    TuningInterface *tuningClient = new NealderMeadTuning(argc, argv, 0, max_number_of_iterations);
 
-	char name[1024];
+//	for(int i = 0; i < numClients; i++){
+//		hdesc.push_back(harmony_init(&argc, &argv));
+//		if (hdesc[i] == NULL) {
+//			fprintf(stderr, "Failed to initialize a harmony session.\n");
+//			return -1;
+//		}
+//	}
+//
+//	char name[1024];
+//
+//	 snprintf(name, sizeof(name), "Pipeline-NS-AH-PRO.%d", getpid());
+//
+//
+//	 if (harmony_session_name(hdesc[0], name) != 0) {
+//		 fprintf(stderr, "Could not set session name.\n");
+//		 return -1;
+//	 }
 
-	 snprintf(name, sizeof(name), "Pipeline-NS-AH-PRO.%d", getpid());
+    tuningClient->declareParam("blue", 210, 240, 10, 0);
+    tuningClient->declareParam("green", 210, 240, 10, 0);
+    tuningClient->declareParam("red", 210, 240, 10, 0);
+    tuningClient->declareParam("T1", 2.5, 7.5, 0.5);
+    tuningClient->declareParam("T2", 2.5, 7.5, 0.5);
+    tuningClient->declareParam("G1", 5, 80, 5, 0);
+    tuningClient->declareParam("minSize", 2, 40, 2, 0);
+    tuningClient->declareParam("maxSize", 900, 1500, 50, 0);
+    tuningClient->declareParam("G2", 2, 40, 2, 0);
+    tuningClient->declareParam("minSizePl", 5, 80, 5, 0);
+    tuningClient->declareParam("minSizeSeg", 2, 40, 2, 0);
+    tuningClient->declareParam("maxSizeSeg", 900, 1500, 50, 0);
+    tuningClient->declareParam("fillHoles", 4, 8, 4, 0);
+    tuningClient->declareParam("recon", 4, 8, 4, 0);
+    tuningClient->declareParam("watershed", 4, 8, 4, 0);
 
 
-	 if (harmony_session_name(hdesc[0], name) != 0) {
-		 fprintf(stderr, "Could not set session name.\n");
-		 return -1;
-	 }
-
-	for (int i = 0; i < numClients; i++) {
-		if (harmony_int(hdesc[i], "blue", 210, 240, 10) != 0
-			|| harmony_int(hdesc[i], "green", 210, 240, 10) != 0
-			|| harmony_int(hdesc[i], "red", 210, 240, 10) != 0
-			|| harmony_real(hdesc[i], "T1", 2.5, 7.5, 0.5) != 0
-			|| harmony_real(hdesc[i], "T2", 2.5, 7.5, 0.5) != 0
-			|| harmony_int(hdesc[i], "G1", 5, 80, 5) != 0
-			|| harmony_int(hdesc[i], "minSize", 2, 40, 2) != 0
-			|| harmony_int(hdesc[i], "maxSize", 900, 1500, 50) != 0
-			|| harmony_int(hdesc[i], "G2", 2, 40, 2) != 0
-			|| harmony_int(hdesc[i], "minSizePl", 5, 80, 5) != 0
-			|| harmony_int(hdesc[i], "minSizeSeg", 2, 40, 2) != 0
-			|| harmony_int(hdesc[i], "maxSizeSeg", 900, 1500, 50) != 0
-			|| harmony_int(hdesc[i], "fillHoles", 4, 8, 4) != 0
-			|| harmony_int(hdesc[i], "recon", 4, 8, 4) != 0
-			|| harmony_int(hdesc[i], "watershed", 4, 8, 4) != 0
-				)
-//		if (harmony_real(hdesc[i], "T1", 2.5, 7.5, 0.5) != 0
-//			||harmony_real(hdesc[i], "T2", 2.5, 7.5, 0.5) != 0
+//	for (int i = 0; i < numClients; i++) {
+//		if (harmony_int(hdesc[i], "blue", 210, 240, 10) != 0
+//			|| harmony_int(hdesc[i], "green", 210, 240, 10) != 0
+//			|| harmony_int(hdesc[i], "red", 210, 240, 10) != 0
+//			|| harmony_real(hdesc[i], "T1", 2.5, 7.5, 0.5) != 0
+//			|| harmony_real(hdesc[i], "T2", 2.5, 7.5, 0.5) != 0
 //			|| harmony_int(hdesc[i], "G1", 5, 80, 5) != 0
 //			|| harmony_int(hdesc[i], "minSize", 2, 40, 2) != 0
 //			|| harmony_int(hdesc[i], "maxSize", 900, 1500, 50) != 0
@@ -252,78 +261,69 @@ int main (int argc, char **argv){
 //			|| harmony_int(hdesc[i], "minSizePl", 5, 80, 5) != 0
 //			|| harmony_int(hdesc[i], "minSizeSeg", 2, 40, 2) != 0
 //			|| harmony_int(hdesc[i], "maxSizeSeg", 900, 1500, 50) != 0
+//			|| harmony_int(hdesc[i], "fillHoles", 4, 8, 4) != 0
 //			|| harmony_int(hdesc[i], "recon", 4, 8, 4) != 0
 //			|| harmony_int(hdesc[i], "watershed", 4, 8, 4) != 0
 //				)
-		{
-			fprintf(stderr, "Failed to define tuning session\n");
-			return -1;
-		}
-	}
+//		{
+//			fprintf(stderr, "Failed to define tuning session\n");
+//			return -1;
+//		}
+//	}
 
-	 harmony_strategy(hdesc[0], "pro.so");
-	 if(initPercent.size()>0 ){
-		 harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
-		 std::cout << "AH configuration: "<< AHpolicy << " INIT_PERCENT: "<< initPercent << std::endl;
-	 }
-	 char numbuf[12];
-	 snprintf(numbuf, sizeof(numbuf), "%d", numClients);
 
-     	harmony_setcfg(hdesc[0], "CLIENT_COUNT", numbuf);
-
-	printf("Starting Harmony...\n");
-	 if (harmony_launch(hdesc[0], NULL, 0) != 0) {
-		 fprintf(stderr, "Could not launch tuning session: %s. E.g. export HARMONY_HOME=$HOME/region-templates/runtime/build/regiontemplates/external-src/activeharmony-4.5/\n",
-				 harmony_error_string(hdesc[0]));
-
-		 return -1;
-	 }
-
-	long blue[numClients], green[numClients], red[numClients];
-	double T1[numClients], T2[numClients];
-	long G1[numClients], G2[numClients];
-	long minSize[numClients], maxSize[numClients], fillHolesElement[numClients], morphElement[numClients], watershedElement[numClients];
-	long minSizePl[numClients];
-	long minSizeSeg[numClients], maxSizeSeg[numClients];
-
-	for (int i = 0; i < numClients; i++) {
-		blue[i] = 220;
-		green[i] = 220;
-		red[i] = 220;
-		T1[i] = 5.0;
-		T2[i] = 4.0;
-		G1[i] = 80;
-		G2[i] = 45;
-		minSize[i] = 11;
-		maxSize[i] = 1000;
-		fillHolesElement[i] = 4;
-		morphElement[i] = 8;
-		watershedElement[i] = 8;
-		minSizePl[i] = minSize[i] + 5;
-		minSizeSeg[i] = 21;
-		maxSizeSeg[i] = 1000;
-	}
-
-	for (int i = 0; i < numClients; i++) {
-		/* Bind the session variables to local variables. */
-		if (harmony_bind_int(hdesc[i], "blue", &blue[i]) != 0
-			|| harmony_bind_int(hdesc[i], "green", &green[i]) != 0
-			|| harmony_bind_int(hdesc[i], "red", &red[i]) != 0
-			|| harmony_bind_real(hdesc[i], "T1", &T1[i]) != 0
-			|| harmony_bind_real(hdesc[i], "T2", &T2[i]) != 0
-			|| harmony_bind_int(hdesc[i], "G1", &G1[i]) != 0
-			|| harmony_bind_int(hdesc[i], "minSize", &minSize[i]) != 0
-			|| harmony_bind_int(hdesc[i], "maxSize", &maxSize[i]) != 0
-			|| harmony_bind_int(hdesc[i], "G2", &G2[i]) != 0
-			|| harmony_bind_int(hdesc[i], "minSizePl", &minSizePl[i]) != 0
-			|| harmony_bind_int(hdesc[i], "minSizeSeg", &minSizeSeg[i]) != 0
-			|| harmony_bind_int(hdesc[i], "maxSizeSeg", &maxSizeSeg[i]) != 0
-			|| harmony_bind_int(hdesc[i], "fillHoles", &fillHolesElement[i]) != 0
-			|| harmony_bind_int(hdesc[i], "recon", &morphElement[i]) != 0
-			|| harmony_bind_int(hdesc[i], "watershed", &watershedElement[i]) != 0
-				)
-//		if (harmony_bind_real(hdesc[i], "T1", &T1[i]) != 0
-//		    || harmony_bind_real(hdesc[i], "T2", &T2[i]) != 0
+    tuningClient->configure();
+//
+//	 harmony_strategy(hdesc[0], "pro.so");
+//	 if(initPercent.size()>0 ){
+//		 harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
+//		 std::cout << "AH configuration: "<< AHpolicy << " INIT_PERCENT: "<< initPercent << std::endl;
+//	 }
+//	 char numbuf[12];
+//	 snprintf(numbuf, sizeof(numbuf), "%d", numClients);
+//
+//     	harmony_setcfg(hdesc[0], "CLIENT_COUNT", numbuf);
+//
+//	printf("Starting Harmony...\n");
+//	 if (harmony_launch(hdesc[0], NULL, 0) != 0) {
+//		 fprintf(stderr, "Could not launch tuning session: %s. E.g. export HARMONY_HOME=$HOME/region-templates/runtime/build/regiontemplates/external-src/activeharmony-4.5/\n",
+//				 harmony_error_string(hdesc[0]));
+//
+//		 return -1;
+//	 }
+//
+//	long blue[numClients], green[numClients], red[numClients];
+//	double T1[numClients], T2[numClients];
+//	long G1[numClients], G2[numClients];
+//	long minSize[numClients], maxSize[numClients], fillHolesElement[numClients], morphElement[numClients], watershedElement[numClients];
+//	long minSizePl[numClients];
+//	long minSizeSeg[numClients], maxSizeSeg[numClients];
+//
+//	for (int i = 0; i < numClients; i++) {
+//		blue[i] = 220;
+//		green[i] = 220;
+//		red[i] = 220;
+//		T1[i] = 5.0;
+//		T2[i] = 4.0;
+//		G1[i] = 80;
+//		G2[i] = 45;
+//		minSize[i] = 11;
+//		maxSize[i] = 1000;
+//		fillHolesElement[i] = 4;
+//		morphElement[i] = 8;
+//		watershedElement[i] = 8;
+//		minSizePl[i] = minSize[i] + 5;
+//		minSizeSeg[i] = 21;
+//		maxSizeSeg[i] = 1000;
+//	}
+//
+//	for (int i = 0; i < numClients; i++) {
+//		/* Bind the session variables to local variables. */
+//		if (harmony_bind_int(hdesc[i], "blue", &blue[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "green", &green[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "red", &red[i]) != 0
+//			|| harmony_bind_real(hdesc[i], "T1", &T1[i]) != 0
+//			|| harmony_bind_real(hdesc[i], "T2", &T2[i]) != 0
 //			|| harmony_bind_int(hdesc[i], "G1", &G1[i]) != 0
 //			|| harmony_bind_int(hdesc[i], "minSize", &minSize[i]) != 0
 //			|| harmony_bind_int(hdesc[i], "maxSize", &maxSize[i]) != 0
@@ -331,26 +331,27 @@ int main (int argc, char **argv){
 //			|| harmony_bind_int(hdesc[i], "minSizePl", &minSizePl[i]) != 0
 //			|| harmony_bind_int(hdesc[i], "minSizeSeg", &minSizeSeg[i]) != 0
 //			|| harmony_bind_int(hdesc[i], "maxSizeSeg", &maxSizeSeg[i]) != 0
+//			|| harmony_bind_int(hdesc[i], "fillHoles", &fillHolesElement[i]) != 0
 //			|| harmony_bind_int(hdesc[i], "recon", &morphElement[i]) != 0
 //			|| harmony_bind_int(hdesc[i], "watershed", &watershedElement[i]) != 0
 //				)
-		{
-			fprintf(stderr, "Failed to register variable\n");
-			harmony_fini(hdesc[i]);
-			return -1;
-		}
-		printf("Bind %d successful\n", i);
-	}
-
-	 /* Join this client to the tuning session we established above. */
-	 for(int i = 0; i < numClients; i++){
-		 if (harmony_join(hdesc[i], NULL, 0, name) != 0) {
-			 fprintf(stderr, "Could not connect to harmony server: %s\n",
-					 harmony_error_string(hdesc[i]));
-			 harmony_fini(hdesc[i]);
-			 return -1;
-		 }
-	 }
+//		{
+//			fprintf(stderr, "Failed to register variable\n");
+//			harmony_fini(hdesc[i]);
+//			return -1;
+//		}
+//		printf("Bind %d successful\n", i);
+//	}
+//
+//	 /* Join this client to the tuning session we established above. */
+//	 for(int i = 0; i < numClients; i++){
+//		 if (harmony_join(hdesc[i], NULL, 0, name) != 0) {
+//			 fprintf(stderr, "Could not connect to harmony server: %s\n",
+//					 harmony_error_string(hdesc[i]));
+//			 harmony_fini(hdesc[i]);
+//			 return -1;
+//		 }
+//	 }
 
 	// END AH SETUP //
 
@@ -358,7 +359,7 @@ int main (int argc, char **argv){
 
 	 double perf[numClients];//=100000;
 
-	int max_number_of_iterations = 20;
+
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
     float mindiff = std::numeric_limits<float>::infinity();;
 
@@ -366,35 +367,36 @@ int main (int argc, char **argv){
 	bool executedAlready[numClients];
 
 	/* main loop */
-    for (int loop = 0; !harmony_converged(hdesc[0]) && loop < max_number_of_iterations;) {
+    for (; !tuningClient->hasConverged();) {
+
+        tuningClient->fetchParams();
+
 
 		for(int i = 0; i < numClients; i++){
 			perf[i] = INF;
 
-			int hresult;
-			do{
-				hresult = harmony_fetch(hdesc[i]);
-			}while(hresult == 0);
-
-
-			if (hresult < 0) {
-				fprintf(stderr, "Failed to fetch values from server: %s\n",
-				harmony_error_string(hdesc[i]));
-				harmony_fini(hdesc[i]);
-				return -1;
-			}
 			// SOME PARAMS CAN BE A FUNCTION OF OTHER PARAMS!
 			//            T2[i] = T1[i] - 1.0;
 			//            G2[i] = G1[i] - 35;
 			//            minSizePl[i] = minSize[i] + 5;
 
+            std::ostringstream oss;
+            oss << "PARAMS";
+            typedef std::map<std::string, double *>::iterator it_type;
+            for (it_type iterator = tuningClient->getParamSet(i)->paramSet.begin();
+                 iterator != tuningClient->getParamSet(i)->paramSet.end(); iterator++) {
+                //iterator.first key
+                //iterator.second value
+                oss << " - " << iterator->first << *(iterator->second);
+            }
 
-			std::ostringstream oss;
-			oss << blue[i] << "-" << green[i] << "-" << red[i] << "-" << T1[i] << "-" << T2[i] << "-" << G1[i] << "-" <<
-			minSize[i] << "-" << maxSize[i] <<
-			"-" << G2[i] << "-" << minSizePl[i] << "-" << minSizeSeg[i] << "-" << maxSizeSeg[i] << "-" <<
-			fillHolesElement[i] << "-" << morphElement[i] << "-" << watershedElement[i];
-			// if not found in performance database
+//			std::ostringstream oss;
+//			oss << blue[i] << "-" << green[i] << "-" << red[i] << "-" << T1[i] << "-" << T2[i] << "-" << G1[i] << "-" <<
+//			minSize[i] << "-" << maxSize[i] <<
+//			"-" << G2[i] << "-" << minSizePl[i] << "-" << minSizeSeg[i] << "-" << maxSizeSeg[i] << "-" <<
+//			fillHolesElement[i] << "-" << morphElement[i] << "-" << watershedElement[i];
+
+            // / if not found in performance database
 			if(perfDataBase.find(oss.str()) != perfDataBase.end()){
 				perf[i] = perfDataBase.find(oss.str())->second;
 				std::cout << "Parameters already tested: "<< oss.str() << " perf: "<< perf<< std::endl;
@@ -441,14 +443,27 @@ int main (int argc, char **argv){
 			for(int j = 0; j < numClients; j++){
 
 				if(executedAlready[j] == false){
-                    std::cout << "BEGIN: LoopIdx: " << loop << " blue: " << blue[j] << " green: " << green[j] <<
-                    " red: " << red[j] <<
-                    " T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
-                    minSize[j] <<
-                    " maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg[j] <<
-                    " maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] <<
-                    " morphElement: " << morphElement[j] <<
-                    " watershedElement: " << watershedElement[j] << std::endl;
+
+                    std::cout << "BEGIN: LoopIdx: " << tuningClient->getIteration();
+
+                    typedef std::map<std::string, double *>::iterator it_type;
+                    for (it_type iterator = tuningClient->getParamSet(i)->paramSet.begin();
+                         iterator != tuningClient->getParamSet(i)->paramSet.end(); iterator++) {
+                        //iterator.first key
+                        //iterator.second value
+                        std::cout << " - " << iterator->first << *(iterator->second);
+                    }
+
+                    std::cout << std::endl;
+
+//                    std::cout << "BEGIN: LoopIdx: " << loop << " blue: " << blue[j] << " green: " << green[j] <<
+//                    " red: " << red[j] <<
+//                    " T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
+//                    minSize[j] <<
+//                    " maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg[j] <<
+//                    " maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] <<
+//                    " morphElement: " << morphElement[j] <<
+//                    " watershedElement: " << watershedElement[j] << std::endl;
 
 					Segmentation *seg = new Segmentation();
 
@@ -459,21 +474,54 @@ int main (int argc, char **argv){
 					seg->addArgument(new ArgumentInt(versionSeg));
 
 					// add remaining (application specific) parameters from the argSegInstance
-					seg->addArgument(new ArgumentInt(blue[j]));
-					seg->addArgument(new ArgumentInt(green[j]));
-					seg->addArgument(new ArgumentInt(red[j]));
-					seg->addArgument(new ArgumentFloat(T1[j]));
-					seg->addArgument(new ArgumentFloat(T2[j]));
-					seg->addArgument(new ArgumentInt(G1[j]));
-					seg->addArgument(new ArgumentInt(G2[j]));
-					seg->addArgument(new ArgumentInt(minSize[j]));
-					seg->addArgument(new ArgumentInt(maxSize[j]));
-					seg->addArgument(new ArgumentInt(minSizePl[j]));
-					seg->addArgument(new ArgumentInt(minSizeSeg[j]));
-					seg->addArgument(new ArgumentInt(maxSizeSeg[j]));
-					seg->addArgument(new ArgumentInt(fillHolesElement[j]));
-					seg->addArgument(new ArgumentInt(morphElement[j]));
-					seg->addArgument(new ArgumentInt(watershedElement[j]));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("blue")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("green")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("red")->second))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (*(tuningClient->getParamSet(j)->paramSet.find("T1")->second))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (*(tuningClient->getParamSet(j)->paramSet.find("T2")->second))));
+                    seg->addArgument(
+                            new ArgumentInt((int) round(*(tuningClient->getParamSet(j)->paramSet.find("G1")->second))));
+                    seg->addArgument(
+                            new ArgumentInt((int) round(*(tuningClient->getParamSet(j)->paramSet.find("G2")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("minSize")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("maxSize")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("minSizePl")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("minSizeSeg")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("maxSizeSeg")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("fillHoles")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("recon")->second))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("watershed")->second))));
+
+
+//
+//                    seg->addArgument(new ArgumentInt(blue[j]));
+//					seg->addArgument(new ArgumentInt(green[j]));
+//					seg->addArgument(new ArgumentInt(red[j]));
+//					seg->addArgument(new ArgumentFloat(T1[j]));
+//					seg->addArgument(new ArgumentFloat(T2[j]));
+//					seg->addArgument(new ArgumentInt(G1[j]));
+//					seg->addArgument(new ArgumentInt(G2[j]));
+//					seg->addArgument(new ArgumentInt(minSize[j]));
+//					seg->addArgument(new ArgumentInt(maxSize[j]));
+//					seg->addArgument(new ArgumentInt(minSizePl[j]));
+//					seg->addArgument(new ArgumentInt(minSizeSeg[j]));
+//					seg->addArgument(new ArgumentInt(maxSizeSeg[j]));
+//					seg->addArgument(new ArgumentInt(fillHolesElement[j]));
+//					seg->addArgument(new ArgumentInt(morphElement[j]));
+//					seg->addArgument(new ArgumentInt(watershedElement[j]));
 
 					seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
 					seg->addDependency(norm->getId());
@@ -528,36 +576,56 @@ int main (int argc, char **argv){
 				diffComponentIds[j].clear();
 				perf[j] = diff; //If using PixelCompare.
 
-				std::cout << "END: LoopIdx: " << loop << " blue: " << blue[j] << " green: " << green[j] <<
-				" red: " << red[j] <<
-				" T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
-				minSize[j] <<
-				" maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg[j] <<
-				" maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] << " morphElement: " <<
-				morphElement[j] <<
-				" watershedElement: " << watershedElement[j] <<
-				" total diff: " << diff << " secondaryMetric: " <<
-				secondaryMetric << " perf: " << perf[j] << std::endl;
+                std::cout << "END: LoopIdx: " << tuningClient->getIteration();
+                typedef std::map<std::string, double *>::iterator it_type;
+                for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
+                     iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
+                    //iterator.first key
+                    //iterator.second value
+                    std::cout << " - " << iterator->first << *(iterator->second);
+                }
 
-                totaldiffs[loop] = diff;
+                std::cout << " total diff: " << diff << " secondaryMetric: " <<
+                secondaryMetric << " perf: " << perf[j] << std::endl;
+
+//				std::cout << "END: LoopIdx: " << loop << " blue: " << blue[j] << " green: " << green[j] <<
+//				" red: " << red[j] <<
+//				" T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
+//				minSize[j] <<
+//				" maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg[j] <<
+//				" maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] << " morphElement: " <<
+//				morphElement[j] <<
+//				" watershedElement: " << watershedElement[j] <<
+//				" total diff: " << diff << " secondaryMetric: " <<
+//				secondaryMetric << " perf: " << perf[j] << std::endl;
+
+                totaldiffs[tuningClient->getIteration()] = diff;
                 (mindiff > diff) ? mindiff = diff : mindiff;
 
-				std::ostringstream oss;
-				oss << blue[j] << "-" << green[j] << "-" << red[j] << "-" << T1[j] << "-" << T2[j] << "-" << G1[j] <<
-				"-" << minSize[j] << "-" << maxSize[j] <<
-				"-" << G2[j] << "-" << minSizePl[j] << "-" << minSizeSeg[j] << "-" << maxSizeSeg[j] << "-" <<
-				fillHolesElement[j] << "-" << morphElement[j] << "-" << watershedElement[j];
+                std::ostringstream oss;
+                oss << "PARAMS";
+                typedef std::map<std::string, double *>::iterator it_type;
+                for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
+                     iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
+                    //iterator.first key
+                    //iterator.second value
+                    oss << " - " << iterator->first << *(iterator->second);
+                }
 
 				perfDataBase[oss.str()] = perf[j];
-				loop++;
+//				loop++;
+                tuningClient->nextIteration();
 			}
 
 			// Report the performance we've just measured.
-			if (harmony_report(hdesc[j], perf[j]) != 0) {
-				fprintf(stderr, "Failed to report performance to server.\n");
-				harmony_fini(hdesc[j]);
-				return -1;
-			}
+
+            tuningClient->reportScore(perf[j], j);
+
+//			if (harmony_report(hdesc[j], perf[j]) != 0) {
+//				fprintf(stderr, "Failed to report performance to server.\n");
+//				harmony_fini(hdesc[j]);
+//				return -1;
+//			}
 		}
 	}
 	sleep(2);

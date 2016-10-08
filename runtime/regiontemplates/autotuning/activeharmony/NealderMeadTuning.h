@@ -18,24 +18,28 @@ private:
     TuningParamSet tuningParamSet[numClients];
     std::vector<hdesc_t *> hdesc;
     char name[1024];
+    std::string AHpolicy;
 
     int initialize(int argc, char **argv);
 
     int bindParam(std::string paramLabel, int setId = 0);
 
 public:
-    NealderMeadTuning(int argc, char **argv);
+    NealderMeadTuning(int argc, char **argv, int strategy, int maxNumberOfIterations);
 
-    int declareParam(std::string paramLabel, void *paramLowerBoundary, void *paramHigherBoundary, void *paramStepSize,
+    int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
+                     double paramStepSize,
                      int setId = 0);
 
-    int configure(int strategy, int maxNumberOfIterations);
+    int configure();
 
-    int nextIteration();
+    void nextIteration();
 
-    TuningParamSet *fetchParamSet(int setId);
+    int fetchParams();
 
-    int reportScore(void *scoreValue, int setId);
+    TuningParamSet *getParamSet(int setId = 0);
+
+    int reportScore(double scoreValue, int setId);
 
     bool hasConverged();
 
