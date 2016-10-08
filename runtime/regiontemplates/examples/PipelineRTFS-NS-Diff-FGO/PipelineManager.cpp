@@ -104,7 +104,7 @@ void expand_stages(const map<int, ArgumentBase*> &args, map<int, list<ArgumentBa
 	map<int, PipelineComponentBase*> &expanded_stages, map<int, ArgumentBase*> &workflow_outputs);
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
 	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
-	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int n_workers);
+	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int max_bucket_size);
 void generate_drs(RegionTemplate* rt, const map<int, ArgumentBase*> &expanded_args);
 void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
 	map<int, ArgumentBase*> &merged_arguments,
@@ -296,7 +296,7 @@ int main(int argc, char* argv[]) {
 		gettimeofday(&end, NULL);
 
 		long merge_time = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
-		ofstream exec_time("exec_time.log", ios::app);
+		ofstream exec_time("exec_time_b" + to_string((int)floor(expanded_stages.size()/max_bucket_size)), ios::app);
 		exec_time << "merge time: " << merge_time << endl;
 
 		cout << endl<< "merged-fine before deps resolution: " << endl;
@@ -349,7 +349,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		ofstream solution_file;
-		solution_file.open("fine-grain-merging-solution", ios::app);
+		solution_file.open("fine-grain-merging-solution-b" + to_string((int)floor(expanded_stages.size()/max_bucket_size)), ios::app);
 		cout << endl<< "merged-fine: " << endl;
 		solution_file << endl<< "merged-fine: " << endl;
 		for (pair<int, PipelineComponentBase*> p : merged_stages) {
@@ -2062,7 +2062,7 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
 	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
-	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int n_workers) {
+	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int max_bucket_size) {
 
 	// attempt merging for each stage type
 	for (map<int, PipelineComponentBase*>::const_iterator ref=stages_ref.cbegin(); ref!=stages_ref.cend(); ref++) {
@@ -2098,11 +2098,11 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 		}
 
 		list<list<PipelineComponentBase*>> solution = montecarlo_recursive_cut(current_stages, all_stages, 
-			n_workers, expanded_args, ref->second->tasksDesc);
+			max_bucket_size, expanded_args, ref->second->tasksDesc);
 
 		// write merging solution
 		ofstream solution_file;
-		solution_file.open("fine-grain-merging-solution", ios::trunc);
+		solution_file.open("fine-grain-merging-solution-b" + to_string(max_bucket_size), ios::trunc);
 		cout << endl << "solution:" << endl;
 		solution_file << endl << "solution:" << endl;
 		for (list<PipelineComponentBase*> b : solution) {
