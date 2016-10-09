@@ -15,18 +15,16 @@ class NealderMeadTuning : public TuningInterface {
 private:
     int harmonySessionStatus;
     int strategyAHpolicy;
-    static const int numClients = 1;
-    TuningParamSet tuningParamSet[numClients];
+    int numClients;
+    TuningParamSet **tuningParamSet;
     std::vector<hdesc_t *> hdesc;
     char name[1024];
     std::string AHpolicy;
 
-
-
     int bindParam(std::string paramLabel, int setId = 0);
 
 public:
-    NealderMeadTuning(int strategy, int maxNumberOfIterations);
+    NealderMeadTuning(int strategy, int maxNumberOfIterations, int numClients);
 
     int initialize(int argc, char **argv);
     int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
@@ -44,10 +42,6 @@ public:
     int reportScore(double scoreValue, int setId);
 
     bool hasConverged();
-
-    int getHarmonySessionStatus() const {
-        return harmonySessionStatus;
-    }
 
 
 };

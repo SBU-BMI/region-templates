@@ -211,7 +211,7 @@ int main (int argc, char **argv){
 	 /* Initialize a Harmony client. */
     int max_number_of_iterations = 10;
 
-    TuningInterface *tuningClient = new NealderMeadTuning(0, max_number_of_iterations);
+    TuningInterface *tuningClient = new NealderMeadTuning(1, max_number_of_iterations, 1);
 
     if (tuningClient->initialize(argc, argv) != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
@@ -236,22 +236,23 @@ int main (int argc, char **argv){
 //		 return -1;
 //	 }
 
-    tuningClient->declareParam("blue", 210, 240, 10, 0);
-    tuningClient->declareParam("green", 210, 240, 10, 0);
-    tuningClient->declareParam("red", 210, 240, 10, 0);
-    tuningClient->declareParam("T1", 2.5, 7.5, 0.5);
-    tuningClient->declareParam("T2", 2.5, 7.5, 0.5);
-    tuningClient->declareParam("G1", 5, 80, 5, 0);
-    tuningClient->declareParam("minSize", 2, 40, 2, 0);
-    tuningClient->declareParam("maxSize", 900, 1500, 50, 0);
-    tuningClient->declareParam("G2", 2, 40, 2, 0);
-    tuningClient->declareParam("minSizePl", 5, 80, 5, 0);
-    tuningClient->declareParam("minSizeSeg", 2, 40, 2, 0);
-    tuningClient->declareParam("maxSizeSeg", 900, 1500, 50, 0);
-    tuningClient->declareParam("fillHoles", 4, 8, 4, 0);
-    tuningClient->declareParam("recon", 4, 8, 4, 0);
-    tuningClient->declareParam("watershed", 4, 8, 4, 0);
-
+    for (int i = 0; i < numClients; i++) {
+        tuningClient->declareParam("blue", 210, 240, 10, i);
+        tuningClient->declareParam("green", 210, 240, 10, i);
+        tuningClient->declareParam("red", 210, 240, 10, i);
+        tuningClient->declareParam("T1", 2.5, 7.5, 0.5, i);
+        tuningClient->declareParam("T2", 2.5, 7.5, 0.5, i);
+        tuningClient->declareParam("G1", 5, 80, 5, i);
+        tuningClient->declareParam("minSize", 2, 40, 2, i);
+        tuningClient->declareParam("maxSize", 900, 1500, 50, i);
+        tuningClient->declareParam("G2", 2, 40, 2, i);
+        tuningClient->declareParam("minSizePl", 5, 80, 5, i);
+        tuningClient->declareParam("minSizeSeg", 2, 40, 2, i);
+        tuningClient->declareParam("maxSizeSeg", 900, 1500, 50, i);
+        tuningClient->declareParam("fillHoles", 4, 8, 4, i);
+        tuningClient->declareParam("recon", 4, 8, 4, i);
+        tuningClient->declareParam("watershed", 4, 8, 4, i);
+    }
 
 //	for (int i = 0; i < numClients; i++) {
 //		if (harmony_int(hdesc[i], "blue", 210, 240, 10) != 0
@@ -641,21 +642,13 @@ int main (int argc, char **argv){
 	sleep(2);
 
 
-    if (tuningClient->hasConverged()) {
-        std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
-        for (int i = 0; i < max_number_of_iterations; ++i) {
+    std::cout << "\t\tResults:" << std::endl;
+    for (int i = 0; i < max_number_of_iterations; ++i) {
             std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
-        }
-        std::cout << "\tMinDiff: " << mindiff << std::endl;
-	}
-    else {
-        std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
-
-        for (int i = 0; i < max_number_of_iterations; ++i) {
-            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
-        }
-        std::cout << "\tMinDiff: " << mindiff << std::endl;
     }
+    std::cout << "\tMinDiff: " << mindiff << std::endl;
+
+
 	// Finalize all processes running and end execution
 	sysEnv.finalizeSystem();
 
