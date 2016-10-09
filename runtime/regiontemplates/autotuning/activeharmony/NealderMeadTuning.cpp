@@ -7,23 +7,12 @@
 #include <sstream>
 #include "NealderMeadTuning.h"
 
-NealderMeadTuning::NealderMeadTuning(int argc, char **argv, int strategy, int maxNumberOfIterations) {
+NealderMeadTuning::NealderMeadTuning(int strategy, int maxNumberOfIterations) {
     iteration = -1;
-    harmonySessionStatus = initialize(argc, argv);
+
 
     this->maxNumberOfIterations = maxNumberOfIterations;
-
-
-    switch (strategy) {
-        case 0:
-            harmony_strategy(hdesc[0], "nm.so");
-            AHpolicy.append("nm.so");
-            break;
-        default:
-            harmony_strategy(hdesc[0], "pro.so");
-            AHpolicy.append("pro.so");
-            break;
-    }
+    this->strategyAHpolicy = strategy;
 }
 
 
@@ -46,7 +35,21 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
         fprintf(stderr, "Could not set session name.\n");
         return -1;
     }
-    else return 0;
+    else {
+
+        switch (strategyAHpolicy) {
+            case 0:
+                harmony_strategy(hdesc[0], "nm.so");
+                AHpolicy.append("nm.so");
+                break;
+            default:
+                harmony_strategy(hdesc[0], "pro.so");
+                AHpolicy.append("pro.so");
+                break;
+        }
+
+        return 0;
+    }
 
 }
 
@@ -170,5 +173,5 @@ int NealderMeadTuning::reportScore(double scoreValue, int setId) {
 }
 
 bool NealderMeadTuning::hasConverged() {
-    return harmony_converged(hdesc[0]) && iteration >= maxNumberOfIterations;
+    return harmony_converged(hdesc[0]) || iteration >= maxNumberOfIterations;
 }

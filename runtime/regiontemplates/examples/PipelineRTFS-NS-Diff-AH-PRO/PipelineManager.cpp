@@ -209,9 +209,14 @@ int main (int argc, char **argv){
 
 	// AH SETUP //
 	 /* Initialize a Harmony client. */
-    int max_number_of_iterations = 5;
+    int max_number_of_iterations = 10;
 
-    TuningInterface *tuningClient = new NealderMeadTuning(argc, argv, 0, max_number_of_iterations);
+    TuningInterface *tuningClient = new NealderMeadTuning(0, max_number_of_iterations);
+
+    if (tuningClient->initialize(argc, argv) != 0) {
+        fprintf(stderr, "Failed to initialize tuning session.\n");
+        return -1;
+    };
 
 //	for(int i = 0; i < numClients; i++){
 //		hdesc.push_back(harmony_init(&argc, &argv));
@@ -271,8 +276,11 @@ int main (int argc, char **argv){
 //		}
 //	}
 
+    if (tuningClient->configure() != 0) {
+        fprintf(stderr, "Failed to initialize tuning session.\n");
+        return -1;
+    };
 
-    tuningClient->configure();
 //
 //	 harmony_strategy(hdesc[0], "pro.so");
 //	 if(initPercent.size()>0 ){
@@ -368,6 +376,8 @@ int main (int argc, char **argv){
 
 	/* main loop */
     for (; !tuningClient->hasConverged();) {
+
+        cout << "ITERATION: " << tuningClient->getIteration() << endl;
 
         tuningClient->fetchParams();
 
@@ -582,7 +592,7 @@ int main (int argc, char **argv){
                      iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
                     //iterator.first key
                     //iterator.second value
-                    std::cout << " - " << iterator->first << *(iterator->second);
+                    std::cout << " - " << iterator->first << ": " << *(iterator->second);
                 }
 
                 std::cout << " total diff: " << diff << " secondaryMetric: " <<
@@ -631,8 +641,7 @@ int main (int argc, char **argv){
 	sleep(2);
 
 
-
-	if(harmony_converged(hdesc[0])){
+    if (tuningClient->hasConverged()) {
         std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
         for (int i = 0; i < max_number_of_iterations; ++i) {
             std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;

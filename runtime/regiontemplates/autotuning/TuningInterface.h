@@ -31,6 +31,7 @@ public:
                              double paramStepSize,
                              int setId = 0) = 0;
 
+    virtual int initialize(int argc, char **argv) = 0;
     virtual int configure() = 0;
 
     virtual int fetchParams() = 0;
