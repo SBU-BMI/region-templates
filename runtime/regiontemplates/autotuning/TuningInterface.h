@@ -17,9 +17,9 @@ class TuningInterface {
 
 protected:
     int iteration;
-    long maxNumberOfIterations;
-    long amountOfParamSetsPerIteration; //Amount of param sets tested each iteration
-    TuningParamSet **paramSet;
+    int maxNumberOfIterations;
+    TuningParamSet **tuningParamSet;
+
 
     virtual int bindParam(std::string paramLabel, int setId = 0) = 0;
 

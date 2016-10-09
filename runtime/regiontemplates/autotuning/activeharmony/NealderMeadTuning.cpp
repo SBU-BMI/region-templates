@@ -8,7 +8,7 @@
 #include "NealderMeadTuning.h"
 
 NealderMeadTuning::NealderMeadTuning(int strategy, int maxNumberOfIterations, int numClients) {
-    iteration = -1;
+    iteration = 0;
 
     this->numClients = numClients;
     this->maxNumberOfIterations = maxNumberOfIterations;

@@ -209,9 +209,9 @@ int main (int argc, char **argv){
 
 	// AH SETUP //
 	 /* Initialize a Harmony client. */
-    int max_number_of_iterations = 10;
+    int max_number_of_iterations = 50;
 
-    TuningInterface *tuningClient = new NealderMeadTuning(1, max_number_of_iterations, 1);
+    TuningInterface *tuningClient = new NealderMeadTuning(0, max_number_of_iterations, 1);
 
     if (tuningClient->initialize(argc, argv) != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
@@ -237,21 +237,24 @@ int main (int argc, char **argv){
 //	 }
 
     for (int i = 0; i < numClients; i++) {
-        tuningClient->declareParam("blue", 210, 240, 10, i);
-        tuningClient->declareParam("green", 210, 240, 10, i);
-        tuningClient->declareParam("red", 210, 240, 10, i);
-        tuningClient->declareParam("T1", 2.5, 7.5, 0.5, i);
-        tuningClient->declareParam("T2", 2.5, 7.5, 0.5, i);
-        tuningClient->declareParam("G1", 5, 80, 5, i);
-        tuningClient->declareParam("minSize", 2, 40, 2, i);
-        tuningClient->declareParam("maxSize", 900, 1500, 50, i);
-        tuningClient->declareParam("G2", 2, 40, 2, i);
-        tuningClient->declareParam("minSizePl", 5, 80, 5, i);
-        tuningClient->declareParam("minSizeSeg", 2, 40, 2, i);
-        tuningClient->declareParam("maxSizeSeg", 900, 1500, 50, i);
-        tuningClient->declareParam("fillHoles", 4, 8, 4, i);
-        tuningClient->declareParam("recon", 4, 8, 4, i);
-        tuningClient->declareParam("watershed", 4, 8, 4, i);
+        if (tuningClient->declareParam("blue", 210, 240, 10, i) != 0 ||
+            tuningClient->declareParam("green", 210, 240, 10, i) != 0 ||
+            tuningClient->declareParam("red", 210, 240, 10, i) != 0 ||
+            tuningClient->declareParam("T1", 2.5, 7.5, 0.5, i) != 0 ||
+            tuningClient->declareParam("T2", 2.5, 7.5, 0.5, i) != 0 ||
+            tuningClient->declareParam("G1", 5, 80, 5, i) != 0 ||
+            tuningClient->declareParam("minSize", 2, 40, 2, i) != 0 ||
+            tuningClient->declareParam("maxSize", 900, 1500, 50, i) != 0 ||
+            tuningClient->declareParam("G2", 2, 40, 2, i) != 0 ||
+            tuningClient->declareParam("minSizePl", 5, 80, 5, i) != 0 ||
+            tuningClient->declareParam("minSizeSeg", 2, 40, 2, i) != 0 ||
+            tuningClient->declareParam("maxSizeSeg", 900, 1500, 50, i) != 0 ||
+            tuningClient->declareParam("fillHoles", 4, 8, 4, i) != 0 ||
+            tuningClient->declareParam("recon", 4, 8, 4, i) != 0 ||
+            tuningClient->declareParam("watershed", 4, 8, 4, i) != 0) {
+            fprintf(stderr, "Failed to define tuning session\n");
+            return -1;
+        }
     }
 
 //	for (int i = 0; i < numClients; i++) {

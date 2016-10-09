@@ -16,7 +16,6 @@ private:
     int harmonySessionStatus;
     int strategyAHpolicy;
     int numClients;
-    TuningParamSet **tuningParamSet;
     std::vector<hdesc_t *> hdesc;
     char name[1024];
     std::string AHpolicy;
