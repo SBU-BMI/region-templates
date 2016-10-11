@@ -19,6 +19,8 @@ private:
 public:
 	std::vector<std::vector<double> > data;
 
+    std::vector<std::string> featureLabels;
+
 	DataRegion2DUnaligned();
 	virtual ~DataRegion2DUnaligned();
 

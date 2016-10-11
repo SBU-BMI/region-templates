@@ -79,6 +79,136 @@ std::string DataRegionFactory::createOutputFileName(DataRegion* dr, std::string 
 	return outputFileName;
 }
 
+bool DataRegionFactory::writeDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string outputFile) {
+
+    // Create an adios file and write the vector of vectors
+
+    // Todo: populate featurelabels
+
+    const char* GRP_NAME = "obj_data";
+    int64_t ad_file;
+    int64_t ad_group;
+
+
+//    std::ostringstream oss;
+//    oss << outPrefix
+//        << "_mpp_" << mpp
+//        << "_x" << topLeftX
+//        << "_y" << topLeftY
+//        << "-feat.bp";
+
+    // Create group
+    adios_declare_group (&ad_group, GRP_NAME, "", adios_flag_yes);
+
+    // Use posix method
+    adios_select_method (ad_group, "POSIX", "have_metadata_file=0", "");
+
+
+// Define variables...
+
+    adios_define_var (ad_group, "obj_count", "", adios_integer, "", "", "");
+    for (uint i=0;i<dr->featureLabels.size()-1;i++) {
+        adios_define_var (ad_group, dr->featureLabels[i].c_str(), "", adios_double, "obj_count", "", "");
+    }
+
+    adios_define_var (ad_group, "poly_point_count", "", adios_unsigned_integer, "", "", "");
+    adios_define_var (ad_group, "poly_points", "", adios_unsigned_integer, "poly_point_count", "", "");
+    adios_define_var (ad_group, "poly_offsets", "", adios_unsigned_integer, "obj_count", "", "");
+    adios_define_var (ad_group, "poly_sizes", "", adios_unsigned_integer, "obj_count", "", "");
+
+
+    adios_open (&ad_file, GRP_NAME, outputFile.c_str(), "w", MPI_COMM_SELF);
+
+    int obj_count = dr->data.size();
+    adios_write(ad_file, "obj_count", &obj_count);
+    for (uint i=0;i<dr->featureLabels.size()-1;i++) {
+        // Pull all of this feature into an array and then write it.
+        std::vector<double> featureData(obj_count);
+        for (uint obj = 0; obj < obj_count; obj++) {
+            featureData[obj] = dr->data[obj][i];
+        }
+        adios_write(ad_file, dr->featureLabels[i].c_str(), featureData.data());
+    }
+
+    // Handle Polygon points separately
+    //
+    // *** NB: Here points refers to each coordinate of point, so num_poly_points and related
+    // will be twice the number of actual points. 
+
+    // First get a count of all points
+    unsigned int num_poly_points = 0;
+    for (uint obj = 0; obj < obj_count; obj++) {
+        num_poly_points += (dr->data[obj].size() - dr->featureLabels.size() + 1);
+    }
+    //std::cout << "Counted " << num_poly_points << " polygon points." << std::endl;
+
+
+    unsigned int *poly_points = (unsigned int*)malloc(num_poly_points*sizeof(unsigned int));
+    unsigned int *poly_offsets = (unsigned int*)malloc(sizeof(unsigned int)*obj_count);
+    unsigned int *poly_sizes = (unsigned int*)malloc(sizeof(unsigned int)*obj_count);
+
+    unsigned int currpp = 0;
+    unsigned int objppcount;
+    for (uint obj = 0; obj < obj_count; obj++) {
+        poly_offsets[obj] = currpp;
+        poly_sizes[obj] = 0;
+
+        objppcount = dr->data[obj].size() - dr->featureLabels.size() + 1;
+
+        for (uint i = 0; i < objppcount; i++) {
+            poly_sizes[obj]++;
+            poly_points[currpp++] = dr->data[obj][dr->featureLabels.size() - 1 + i];
+        }
+
+    }
+
+    // Write out the polygon points and associated index
+    adios_write (ad_file, "poly_point_count", &num_poly_points);
+    adios_write (ad_file, "poly_points", poly_points);
+    adios_write (ad_file, "poly_offsets", poly_offsets);
+    adios_write (ad_file, "poly_sizes", poly_sizes);
+
+    free (poly_points);
+    free (poly_offsets);
+    free (poly_sizes);
+
+    adios_close (ad_file);
+
+    //Free adios group
+    adios_free_group (ad_group);
+
+
+
+
+/*
+	// create file to write data region data.
+	FILE *pFile = fopen(outputFile.c_str(), "wb+");
+	if(pFile == NULL){
+		std::cout << "Error trying to create file: "<< outputFile << std::endl;
+		exit(1);
+	}
+	int numVecs = dr->data.size();
+
+	// write number of vectors that will be staged
+	int writtenSize = fwrite(&numVecs, sizeof(int), 1, pFile);
+	assert(writtenSize ==  sizeof(int));
+
+	for(int i = 0; i < numVecs; i++){
+		int size = dr->data[i].size();
+		// write number of elements in current vector
+		writtenSize = fwrite(&size, sizeof(int), 1, pFile);
+		assert(writtenSize ==  sizeof(int));
+
+		// write vector elements
+		int writtenSize2 = fwrite((dr->data[i].data()), sizeof(double), size, pFile);
+		assert(writtenSize2 ==  sizeof(double) * size);
+
+	}
+	fclose(pFile);
+*/
+	return true;
+}
+
 bool DataRegionFactory::writeDr2DUn(DataRegion2DUnaligned* dr, std::string outputFile) {
 	// create file to write data region data.
 	FILE *pFile = fopen(outputFile.c_str(), "wb+");
@@ -108,6 +238,39 @@ bool DataRegionFactory::writeDr2DUn(DataRegion2DUnaligned* dr, std::string outpu
 	return true;
 }
 
+bool DataRegionFactory::readDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string inputFile) {
+
+
+
+/*
+    // open file to read data region data.
+	FILE *pFile = fopen(inputFile.c_str(), "rb");
+	if(pFile == NULL){
+		std::cout << "Error trying to open file: "<< inputFile << std::endl;
+		exit(1);
+	}
+	// read number of vectors
+	int numVecs = 0;
+	int readSize = fread(&numVecs, sizeof(int), 1, pFile);
+	dr->data.resize(numVecs);
+	assert(readSize == sizeof(int));
+
+	for(int i = 0; i < numVecs; i++){
+		// read number of elements in this vector
+		int numberOfElements = 0;
+		readSize = fread(&numberOfElements, sizeof(int), 1, pFile);
+		dr->data[i].resize(numberOfElements);
+		assert(readSize == sizeof(int));
+
+		// read actual vector elements
+		int readSize2 = fread(dr->data[i].data(), sizeof(double), numberOfElements, pFile);
+		assert(readSize == sizeof(double)*numberOfElements);
+
+	}
+	fclose(pFile);
+*/
+	return true;
+}
 bool DataRegionFactory::readDr2DUn(DataRegion2DUnaligned* dr, std::string inputFile) {
 	// open file to read data region data.
 	FILE *pFile = fopen(inputFile.c_str(), "rb");
@@ -241,8 +404,7 @@ bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std:
 
 		std::string inputFileName = createOutputFileName(dr2DUn, path, ".vec");
 
-		// TODO: ADIOS this
-		readDr2DUn(dr2DUn, inputFileName);
+		readDr2DUnADIOS(dr2DUn, inputFileName);
 
 		// delete data region passed as a parameter and replace it with the actual data region with the data
 		delete (*dataRegion);
@@ -439,8 +601,7 @@ bool DataRegionFactory::writeDDR2ADIOS(DataRegion* dataRegion, std::string path)
 				std::string outputFile;
 				outputFile = createOutputFileName(dr2DUn, path, ".vec");
 
-				// TODO: ADIOS this
-				writeDr2DUn(dr2DUn, outputFile);
+				writeDr2DUnADIOS(dr2DUn, outputFile);
 
 				createLockFile(dr2DUn, path);
 				break;

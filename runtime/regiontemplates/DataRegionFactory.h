@@ -40,6 +40,8 @@ private:
 
 	static bool writeDr2DUn(DataRegion2DUnaligned* dr, std::string outputFile);
 	static bool readDr2DUn(DataRegion2DUnaligned* dr, std::string inputFile);
+    static bool writeDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string outputFile);
+    static bool readDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string inputFile);
 
 	friend class CacheComponent;
 	friend class Cache;
