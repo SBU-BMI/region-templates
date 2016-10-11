@@ -97,7 +97,8 @@ list<reuse_node_t*> generate_leafs_parent_list(reuse_node_t* reuse_node, int hei
 	} else {
 		// if it's another mid node, perform the recursive for all its children
 		for (reuse_node_t* n : reuse_node->children) {
-			list<reuse_node_t*> current_leafs_parent_list = generate_leafs_parent_list(n, height-1);
+			list<reuse_node_t*> current_leafs_parent_list = 
+				generate_leafs_parent_list(n, height-1);
 			leafs_parent_list.insert(leafs_parent_list.begin(), 
 				current_leafs_parent_list.begin(), current_leafs_parent_list.end());
 		}
@@ -121,16 +122,15 @@ list<reuse_node_t*> generate_leafs_parent_list(reuse_tree_t& reuse_tree) {
 
 // Remove the node from its parent and keep recurring until there is
 // a parent with at least one still usable node
-void recursive_update_parent(reuse_tree_t& t, reuse_node_t* n) {
+void recursive_remove_parent(reuse_tree_t& t, reuse_node_t* n) {
 	if (n->parent == NULL) {
 		t.parents.remove(n);
-		return;
+	} else {
+		n->parent->children.remove(n);
+
+		if (n->parent->children.size() == 0)
+			recursive_remove_parent(t, n->parent);
 	}
-
-	n->parent->children.remove(n);
-
-	if (n->parent->children.size() == 0)
-		recursive_update_parent(t, n->parent);
 }
 
 // Prunes the reuse tree based on the leafs_parent_list, returning a list of new buckets
@@ -142,31 +142,30 @@ list<list<PipelineComponentBase*>> prune_leaf_level(reuse_tree_t& reuse_tree,
 
 	// attempt to make buckets of every children's leaf list
 	for (reuse_node_t* n : leafs_parent_list) {
-		std::cout << "[prune_leaf_level] parent " << n->stage_ref->getId() 
-			<< " has " << n->children.size() << " children and mbs " 
-			<< max_bucket_size << std::endl;
+		// std::cout << "[prune_leaf_level] parent " << n->stage_ref->getId() 
+		// 	<< " has " << n->children.size() << " children and mbs " 
+		// 	<< max_bucket_size << std::endl;
 
 		// finishes the loop if we can't perform any more simple merging operations
 		if (n->children.size() < max_bucket_size)
 			continue;
 
-		std::cout << "[prune_leaf_level] parent " << n->stage_ref->getId() 
-			<< " has reuse" << std::endl;
+		// std::cout << "[prune_leaf_level] parent " << n->stage_ref->getId() 
+		// 	<< " has reuse" << std::endl;
 
 		// Keep making buckets until the remaining stages number 
 		// is less than max_bucket_size
-		int count;
 		for (list<reuse_node_t*>::iterator c=n->children.begin(); 
 			c!=n->children.end() && n->children.size() >= max_bucket_size;) {
 
 			while (n->children.size() >= max_bucket_size) {
 				list<PipelineComponentBase*> new_bucket;
-				count = 0;
-				std::cout << "[prune_leaf_level] starting bucket of "
-					<< n->stage_ref->getId() << " with size 0" << std::endl;
+				int count = 0;
+				// std::cout << "[prune_leaf_level] starting bucket of "
+				// 	<< n->stage_ref->getId() << " with size 0" << std::endl;
 				while (count < max_bucket_size) {
-					std::cout << "[prune_leaf_level]\tadding "
-						<< (*c)->stage_ref->getId() << " to the bucket" << std::endl;
+					// std::cout << "[prune_leaf_level]\tadding "
+					// 	<< (*c)->stage_ref->getId() << " to the bucket" << std::endl;
 					new_bucket.emplace_back((*c)->stage_ref);
 					c = n->children.erase(c);
 					count++;
@@ -178,9 +177,9 @@ list<list<PipelineComponentBase*>> prune_leaf_level(reuse_tree_t& reuse_tree,
 		// remove the parent node from its parent if there is no more leafs
 		// also, keep performing this recursively
 		if (n->children.size() == 0) {
-			std::cout << "[prune_leaf_level] performing recursive update on "
-				<< n->stage_ref->getId() << std::endl;
-			recursive_update_parent(reuse_tree, n);
+			// std::cout << "[prune_leaf_level] performing recursive update on "
+			// 	<< n->stage_ref->getId() << std::endl;
+			recursive_remove_parent(reuse_tree, n);
 		}
 	}
 
@@ -221,7 +220,7 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 
 	// keep prunning and rising the tree until the root height
 	while (reuse_tree.height > 2) {
-		print_reuse_tree(reuse_tree);
+		// print_reuse_tree(reuse_tree);
 		// perform current height merging iteration
 		list<reuse_node_t*> leafs_parent_list = generate_leafs_parent_list(reuse_tree);
 		// print_leafs_parent_list(leafs_parent_list);
@@ -233,7 +232,7 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 		solution.insert(solution.begin(), new_buckets.begin(), new_buckets.end());
 	}
 
-	print_reuse_tree(reuse_tree);
+	// print_reuse_tree(reuse_tree);
 
 	// add the remaining unmerged stages to the final solution as single stage buckets
 	if (reuse_tree.parents.size() > 0) {
@@ -266,15 +265,15 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 		}
 	}
 
-	std::cout << "FINAL SOLUTION" << std::endl;
-	for (list<PipelineComponentBase*> b : solution) {
-		std::cout << "bucket of size " << b.size() << " with cost " 
-			<< calc_stage_proc(b, args, ref) << std::endl;
-		for (PipelineComponentBase* s : b) {
-			std::cout << "\t" << s->getId() << std::endl;
-		}
-	}
-	std::cout << std::endl << std::endl << std::endl;
+	// std::cout << "FINAL SOLUTION" << std::endl;
+	// for (list<PipelineComponentBase*> b : solution) {
+	// 	std::cout << "bucket of size " << b.size() << " with cost " 
+	// 		<< calc_stage_proc(b, args, ref) << std::endl;
+	// 	for (PipelineComponentBase* s : b) {
+	// 		std::cout << "\t" << s->getId() << std::endl;
+	// 	}
+	// }
+	// std::cout << std::endl << std::endl << std::endl;
 
 	return solution;
 }
