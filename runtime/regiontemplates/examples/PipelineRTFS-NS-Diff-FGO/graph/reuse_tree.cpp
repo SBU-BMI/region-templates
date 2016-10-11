@@ -237,11 +237,31 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 
 	// add the remaining unmerged stages to the final solution as single stage buckets
 	if (reuse_tree.parents.size() > 0) {
+		// go through all parent nodes
 		for (reuse_node_t* n : reuse_tree.parents) {
-			for (reuse_node_t* nn : n->children) {
-				list<PipelineComponentBase*> single_stage;
-				single_stage.emplace_back(nn->stage_ref);
-				solution.emplace_back(single_stage);
+			// go though all parent child nodes
+			for (list<reuse_node_t*>::iterator nn=n->children.begin(); 
+				nn!=n->children.end() && n->children.size() >= max_bucket_size;) {
+
+				// keep creating buckets if possible
+				while (n->children.size() >= max_bucket_size) {
+					list<PipelineComponentBase*> new_bucket;
+					int count = 0;
+					while (count < max_bucket_size) {
+						new_bucket.emplace_back((*nn)->stage_ref);
+						nn = n->children.erase(nn);
+						count++;
+					}
+					solution.emplace_back(new_bucket);
+				}
+			}
+
+			// create a final bucket with all remaining stages, if there are any
+			if (n->children.size() > 0) {
+				list<PipelineComponentBase*> final_stage;
+				for (reuse_node_t* nn : n->children)
+					final_stage.emplace_back(nn->stage_ref);
+				solution.emplace_back(final_stage);
 			}
 		}
 	}
