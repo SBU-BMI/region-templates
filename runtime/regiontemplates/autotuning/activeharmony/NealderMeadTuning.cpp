@@ -7,15 +7,15 @@
 #include <sstream>
 #include "NealderMeadTuning.h"
 
-NealderMeadTuning::NealderMeadTuning(int strategy, int maxNumberOfIterations, int numClients) {
+NealderMeadTuning::NealderMeadTuning(int strategy, int maxNumberOfIterations, int numSets) {
     iteration = 0;
 
-    this->numClients = numClients;
+    this->numSets = numSets;
     this->maxNumberOfIterations = maxNumberOfIterations;
     this->strategyAHpolicy = strategy;
 
-    this->tuningParamSet = (TuningParamSet **) malloc(numClients * sizeof(TuningParamSet *));
-    for (int i = 0; i < numClients; ++i) {
+    this->tuningParamSet = (TuningParamSet **) malloc(numSets * sizeof(TuningParamSet *));
+    for (int i = 0; i < numSets; ++i) {
         this->tuningParamSet[i] = new TuningParamSet();
     }
 }
@@ -25,7 +25,7 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
 
     // AH SETUP //
     /* Initialize a Harmony client. */
-    for (int i = 0; i < numClients; i++) {
+    for (int i = 0; i < numSets; i++) {
         hdesc.push_back(harmony_init(&argc, &argv));
         if (hdesc[i] == NULL) {
             fprintf(stderr, "Failed to initialize a harmony session.\n");
@@ -44,7 +44,7 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
             break;
     }
 
-    for (int i = 0; i < numClients; i++) {
+    for (int i = 0; i < numSets; i++) {
         if (harmony_session_name(hdesc[i], name) != 0) {
             fprintf(stderr, "Could not set session name.\n");
             return -1;
@@ -91,9 +91,9 @@ int NealderMeadTuning::configure() {
 //        std::cout << "AH configuration: "<< AHpolicy << " INIT_PERCENT: "<< initPercent << std::endl;
 //    }
     char numbuf[12];
-    snprintf(numbuf, sizeof(numbuf), "%d", numClients);
+    snprintf(numbuf, sizeof(numbuf), "%d", numSets);
 
-    for (int i = 0; i < numClients; i++) {
+    for (int i = 0; i < numSets; i++) {
         harmony_setcfg(hdesc[i], "CLIENT_COUNT", numbuf);
 
         printf("Starting Harmony...\n");
@@ -126,7 +126,7 @@ int NealderMeadTuning::configure() {
 //================================================ END OF PARAM BINDING ================================================
 
     /* Join this client to the tuning session we established above. */
-    for (int i = 0; i < numClients; i++) {
+    for (int i = 0; i < numSets; i++) {
         if (harmony_join(hdesc[i], NULL, 0, name) != 0) {
             fprintf(stderr, "Could not connect to harmony server: %s\n",
                     harmony_error_string(hdesc[i]));
@@ -156,7 +156,7 @@ void NealderMeadTuning::nextIteration() {
 }
 
 int NealderMeadTuning::fetchParams() {
-    for (int i = 0; i < numClients; i++) {
+    for (int i = 0; i < numSets; i++) {
         int hresult;
         do {
             hresult = harmony_fetch(hdesc[i]);
@@ -191,7 +191,7 @@ int NealderMeadTuning::reportScore(double scoreValue, int setId) {
 bool NealderMeadTuning::hasConverged() {
 
     int hasConverged = harmony_converged(hdesc[0]);
-    for (int i = 1; i < numClients; i++) hasConverged += harmony_converged(hdesc[i]);
+    for (int i = 1; i < numSets; i++) hasConverged += harmony_converged(hdesc[i]);
 
     return hasConverged || iteration >= maxNumberOfIterations;
 }

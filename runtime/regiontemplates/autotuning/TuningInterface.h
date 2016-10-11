@@ -19,7 +19,7 @@ protected:
     int iteration;
     int maxNumberOfIterations;
     TuningParamSet **tuningParamSet;
-
+    int numSets;
 
     virtual int bindParam(std::string paramLabel, int setId = 0) = 0;
 
