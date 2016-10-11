@@ -181,7 +181,7 @@ public:
 	bool remove_outputs;
 
 	// needed for inter stage dependency verification on task merging
-	std::vector<ArgumentBase*> getArguments() {return arguments;};
+	std::vector<ArgumentBase*> getArguments() const {return arguments;};
 
 	// needed to update an argument of a reused stage on fine-grain merging
 	void replaceArgument(int old_id, ArgumentBase* new_a);
