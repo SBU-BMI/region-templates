@@ -2,6 +2,10 @@
 #define REUSE_TREE_HPP
 
 #include <list>
+#include <map>
+#include <set>
+#include <stack>
+#include <iterator>
 
 #include "../merging.hpp"
 

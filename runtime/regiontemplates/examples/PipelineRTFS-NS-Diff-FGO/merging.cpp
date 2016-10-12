@@ -134,6 +134,11 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 
 	s->reused = current;
 
+	if (s->tasks.size() != ref.size()) {
+		(s+134)->tasks.size();
+		// exit(-10);
+	}
+
 	ReusableTask* current_frontier_reusable_tasks;
 	map<std::string, std::list<ArgumentBase*>>::iterator p=ref.begin();
 	ReusableTask* prev_reusable_task = NULL;
