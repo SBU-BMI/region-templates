@@ -37,6 +37,8 @@ public:
 
     TuningParamSet *getParamSet(int setId = 0);
 
+    double getParamValue(std::string paramName, int setId = 0);
+
     int reportScore(double scoreValue, int setId);
 
     bool hasConverged();

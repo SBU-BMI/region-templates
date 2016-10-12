@@ -177,6 +177,10 @@ TuningParamSet *NealderMeadTuning::getParamSet(int setId) {
     return tuningParamSet[setId];
 }
 
+double NealderMeadTuning::getParamValue(std::string paramName, int setId) {
+    return *(tuningParamSet[setId]->paramSet.find(paramName)->second);
+}
+
 int NealderMeadTuning::reportScore(double scoreValue, int setId) {
     tuningParamSet[setId]->score = scoreValue;
     // Report the performance we've just measured.

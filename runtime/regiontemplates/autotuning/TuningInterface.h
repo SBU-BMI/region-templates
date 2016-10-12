@@ -21,8 +21,6 @@ protected:
     TuningParamSet **tuningParamSet;
     int numSets;
 
-    virtual int bindParam(std::string paramLabel, int setId = 0) = 0;
-
 public:
 
     virtual bool hasConverged() = 0;
@@ -37,6 +35,8 @@ public:
     virtual int fetchParams() = 0;
 
     virtual TuningParamSet *getParamSet(int setId = 0) = 0;
+
+    virtual double getParamValue(std::string paramName, int setId = 0) = 0;
 
     virtual int reportScore(double scoreValue, int setId) = 0;
 

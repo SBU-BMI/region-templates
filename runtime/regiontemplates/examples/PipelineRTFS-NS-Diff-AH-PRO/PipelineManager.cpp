@@ -489,35 +489,38 @@ int main (int argc, char **argv){
 
 					// add remaining (application specific) parameters from the argSegInstance
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("blue")->second))));
+                            (int) round(tuningClient->getParamValue("blue", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("green")->second))));
+                            (int) round(tuningClient->getParamValue("green", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("red")->second))));
+                            (int) round(tuningClient->getParamValue("red", j))));
+
                     seg->addArgument(
-                            new ArgumentFloat((float) (*(tuningClient->getParamSet(j)->paramSet.find("T1")->second))));
+                            new ArgumentFloat((float) (tuningClient->getParamValue("T1", j))));
                     seg->addArgument(
-                            new ArgumentFloat((float) (*(tuningClient->getParamSet(j)->paramSet.find("T2")->second))));
-                    seg->addArgument(
-                            new ArgumentInt((int) round(*(tuningClient->getParamSet(j)->paramSet.find("G1")->second))));
-                    seg->addArgument(
-                            new ArgumentInt((int) round(*(tuningClient->getParamSet(j)->paramSet.find("G2")->second))));
+                            new ArgumentFloat((float) (tuningClient->getParamValue("T2", j))));
+
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("minSize")->second))));
+                            (int) round(tuningClient->getParamValue("G1", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("maxSize")->second))));
+                            (int) round(tuningClient->getParamValue("G2", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("minSizePl")->second))));
+                            (int) round(tuningClient->getParamValue("minSize", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("minSizeSeg")->second))));
+                            (int) round(tuningClient->getParamValue("maxSize", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("maxSizeSeg")->second))));
+                            (int) round(tuningClient->getParamValue("minSizePl", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("fillHoles")->second))));
+                            (int) round(tuningClient->getParamValue("minSizeSeg", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("recon")->second))));
+                            (int) round(tuningClient->getParamValue("maxSizeSeg", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(*(tuningClient->getParamSet(j)->paramSet.find("watershed")->second))));
+                            (int) round(tuningClient->getParamValue("fillHoles", j))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(tuningClient->getParamValue("recon", j))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(tuningClient->getParamValue("watershed", j))));
+
 
 
 //
