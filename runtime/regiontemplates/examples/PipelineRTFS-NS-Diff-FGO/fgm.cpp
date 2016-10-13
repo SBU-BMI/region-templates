@@ -132,19 +132,15 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 			case 1:
 				// naive merging - ok
 				for (std::list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!=current_stages.end(); s++) {
-					// PipelineComponentBase* current = *s;
 					int i;
 					std::list<PipelineComponentBase*> bucket;
 					bucket.emplace_back(*s);
 					for (i=1; i<ceil(max_bucket_size); i++) {
 						if ((++s)==current_stages.end())
 							break;
-						// merge_stages(current, *s, ref->second->tasksDesc);
-						// merged_stages[(*s)->getId()] = *s;
 						bucket.emplace_back(*s);
 						std::cout << "\tadded " << (*s)->getId() << " to the bucket" << std::endl;
 					}
-					// merged_stages[current->getId()] = current;
 					solution.emplace_back(bucket);
 					if (s==current_stages.end())
 						break;
@@ -160,13 +156,13 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 			case 3:
 				// reuse-tree merging - ok
 				solution = reuse_tree_merging(current_stages, all_stages, 
-					max_bucket_size, expanded_args, ref->second->tasksDesc);
+					max_bucket_size, expanded_args, ref->second->tasksDesc, false);
 				break;
 			
 			case 4:
-				// reuse-tree merging - ok
+				// reuse-tree merging with double prunning
 				solution = reuse_tree_merging(current_stages, all_stages, 
-					max_bucket_size, expanded_args, ref->second->tasksDesc);
+					max_bucket_size, expanded_args, ref->second->tasksDesc, true);
 				break;
 		}
 

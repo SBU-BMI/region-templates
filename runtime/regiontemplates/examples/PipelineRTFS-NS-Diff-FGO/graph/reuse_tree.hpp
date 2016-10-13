@@ -23,7 +23,8 @@ typedef struct {
 // Performs the stage mearging using the reuse tree algorithm
 list<list<PipelineComponentBase*>> reuse_tree_merging(const list<PipelineComponentBase*>& stages_to_merge, 
 	const map<int, PipelineComponentBase*> &all_stages, int max_bucket_size, 
-	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref);
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref,
+	bool double_prunning);
 
 
 #endif

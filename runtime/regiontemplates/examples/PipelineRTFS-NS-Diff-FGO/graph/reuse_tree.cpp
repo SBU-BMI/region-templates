@@ -309,7 +309,7 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 // Prunes the reuse tree based on the leafs_parent_list, returning a list of new buckets
 // to be merged, and updates the tree internal structure
 list<list<PipelineComponentBase*>> prune_leaf_level(reuse_tree_t& reuse_tree, 
-	list<reuse_node_t*> leafs_parent_list, int max_bucket_size) {
+	list<reuse_node_t*> leafs_parent_list, int max_bucket_size, bool double_prunning) {
 	
 	list<list<PipelineComponentBase*>> new_buckets;
 
@@ -365,12 +365,9 @@ list<list<PipelineComponentBase*>> prune_leaf_level(reuse_tree_t& reuse_tree,
 	}
 
 	// pruning second pass -------------------
-	while (leafs_parent_list.size() > 0)
-		cluster_merging(reuse_tree, leafs_parent_list, new_buckets, max_bucket_size);
-
-
-	// TODO: keep merging until each child has at most one leaf
-	// this merging must attempt to keep the leafs of the same child together
+	if (double_prunning)
+		while (leafs_parent_list.size() > 0)
+			cluster_merging(reuse_tree, leafs_parent_list, new_buckets, max_bucket_size);
 
 	return new_buckets;
 }
@@ -399,7 +396,8 @@ void move_reuse_tree_up(reuse_tree_t& reuse_tree,
 list<list<PipelineComponentBase*>> reuse_tree_merging(
 	const list<PipelineComponentBase*>& stages_to_merge, 
 	const map<int, PipelineComponentBase*> &all_stages, int max_bucket_size, 
-	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref) {
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref,
+	bool double_prunning) {
 
 	list<list<PipelineComponentBase*>> solution;
 
@@ -414,7 +412,7 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 		list<reuse_node_t*> leafs_parent_list = generate_leafs_parent_list(reuse_tree);
 		// print_leafs_parent_list(leafs_parent_list);
 		list<list<PipelineComponentBase*>> new_buckets = prune_leaf_level(
-			reuse_tree, leafs_parent_list, max_bucket_size);
+			reuse_tree, leafs_parent_list, max_bucket_size, double_prunning);
 		std::cout << "after:" << std::endl;
 		print_reuse_tree(reuse_tree);
 		move_reuse_tree_up(reuse_tree, leafs_parent_list);
