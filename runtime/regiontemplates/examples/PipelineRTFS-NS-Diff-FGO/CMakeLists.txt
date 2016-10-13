@@ -39,7 +39,7 @@ set(libname componentnsdifffgo)
 # Source files used by the Runtime System
 set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp FeatureExtraction.cpp
          TaskFeatures.cpp DiffMaskComp.cpp jsoncpp.cpp graph/min_cut.cpp graph/reuse_tree.cpp
-         merging.cpp)
+         merging.cpp fgm.cpp cutting_algorithms.cpp)
 
 set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)
