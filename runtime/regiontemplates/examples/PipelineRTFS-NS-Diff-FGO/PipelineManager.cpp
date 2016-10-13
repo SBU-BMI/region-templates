@@ -102,7 +102,7 @@ void expand_stages(const map<int, ArgumentBase*> &args, map<int, list<ArgumentBa
 	map<int, PipelineComponentBase*> &expanded_stages, map<int, ArgumentBase*> &workflow_outputs);
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
 	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
-	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int max_bucket_size);
+	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int max_bucket_size, string dakota_filename);
 void generate_drs(RegionTemplate* rt, const map<int, ArgumentBase*> &expanded_args);
 void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
 	map<int, ArgumentBase*> &merged_arguments,
@@ -286,13 +286,14 @@ int main(int argc, char* argv[]) {
 		struct timeval start, end;
 		gettimeofday(&start, NULL);
 
-		merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, max_bucket_size);
+		merge_stages_fine_grain(expanded_stages, base_stages, merged_stages, rt, expanded_args, max_bucket_size, dakota_file);
 
 		gettimeofday(&end, NULL);
 
 		long merge_time = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
-		ofstream exec_time("exec_time_b" + to_string(max_bucket_size), ios::app);
-		exec_time << "merge time: " << merge_time << endl;
+		ofstream merge_time_f(dakota_file + "-b" + to_string(max_bucket_size) + "merge_time.log", ios::app);
+		merge_time_f << merge_time << "\t";
+		merge_time_f.close();
 
 		cout << endl<< "merged-fine before deps resolution: " << endl;
 		for (pair<int, PipelineComponentBase*> p : merged_stages) {
@@ -343,21 +344,21 @@ int main(int argc, char* argv[]) {
 			// 	p.second->replaceArgument(a.first, a.second);
 		}
 
-		ofstream solution_file;
-		solution_file.open("fine-grain-merging-solution-b" + to_string(max_bucket_size), ios::app);
-		cout << endl<< "merged-fine: " << endl;
-		solution_file << endl<< "merged-fine: " << endl;
-		for (pair<int, PipelineComponentBase*> p : merged_stages) {
-			string s = p.second->reused!=NULL ? " - reused" : (" with " + to_string(p.second->tasks.size()) + " tasks");
-			cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
-			solution_file << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
-			cout << "\ttasks: " << endl;
-			for (ReusableTask* t : p.second->tasks) {
-				cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
-				cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
-			}
-		}
-		solution_file.close();
+		// ofstream solution_file;
+		// solution_file.open("fine-grain-merging-solution-b" + to_string(max_bucket_size), ios::app);
+		// cout << endl<< "merged-fine: " << endl;
+		// solution_file << endl<< "merged-fine: " << endl;
+		// for (pair<int, PipelineComponentBase*> p : merged_stages) {
+		// 	string s = p.second->reused!=NULL ? " - reused" : (" with " + to_string(p.second->tasks.size()) + " tasks");
+		// 	cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
+		// 	solution_file << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
+		// 	cout << "\ttasks: " << endl;
+		// 	for (ReusableTask* t : p.second->tasks) {
+		// 		cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
+		// 		cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
+		// 	}
+		// }
+		// solution_file.close();
 
 		//------------------------------------------------------------
 		// Add workflows to Manager to be executed
@@ -409,8 +410,9 @@ int main(int argc, char* argv[]) {
 		gettimeofday(&end, NULL);
 
 		long run_time = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
-		exec_time << "run time: " << run_time << endl << endl;
-		exec_time.close();
+		ofstream run_time_f(dakota_file + "-b" + to_string(max_bucket_size) + "run_time.log", ios::app);
+		run_time_f << run_time << "\t";
+		run_time_f.close();
 
 		// get results
 		cout << endl << "Results: " << endl;
@@ -1739,7 +1741,7 @@ list<list<PipelineComponentBase*>> montecarlo_recursive_cut(list<PipelineCompone
 
 void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages, 
 	const map<int, PipelineComponentBase*> &stages_ref, map<int, PipelineComponentBase*> &merged_stages, 
-	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int max_bucket_size) {
+	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args, int max_bucket_size, string dakota_filename) {
 
 	// attempt merging for each stage type
 	for (map<int, PipelineComponentBase*>::const_iterator ref=stages_ref.cbegin(); ref!=stages_ref.cend(); ref++) {
@@ -1772,20 +1774,35 @@ void merge_stages_fine_grain(const map<int, PipelineComponentBase*> &all_stages,
 
 		// write merging solution
 		ofstream solution_file;
-		solution_file.open("fine-grain-merging-solution-b" + to_string(max_bucket_size), ios::trunc);
+		solution_file.open(dakota_filename + "-b" + to_string(max_bucket_size) + "merging_solution.log", ios::trunc);
+
 		cout << endl << "solution:" << endl;
-		solution_file << endl << "solution:" << endl;
+		solution_file << "solution:" << endl;
+		int total_tasks=0;
 		for (list<PipelineComponentBase*> b : solution) {
 			cout << "\tbucket with " << b.size() << " stages and cost "
 				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << endl;
 			solution_file << "\tbucket with " << b.size() << " stages and cost "
 				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << endl;
+			total_tasks += calc_stage_proc(b, expanded_args, ref->second->tasksDesc);
 			for (PipelineComponentBase* s : b) {
 				cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
 				// solution_file << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << endl;
 			}
 		}
 		solution_file.close();
+
+		// write some statistics abou the solution
+		ofstream statistics_file;
+		statistics_file.open(dakota_filename + "-b" + to_string(max_bucket_size) + "merging_statistics.log", ios::trunc);
+
+		statistics_file << current_stages.size() << "\t";
+		statistics_file << current_stages.size()*ref->second->tasksDesc.size() << "\t";
+		statistics_file << total_tasks << "\t";
+		statistics_file << solution.size() << "\t";
+		statistics_file << total_tasks/solution.size() << "\t";
+
+		statistics_file.close();
 
 		// merge all stages in each bucket, given that they are mergable
 		for (list<PipelineComponentBase*> bucket : solution) {
