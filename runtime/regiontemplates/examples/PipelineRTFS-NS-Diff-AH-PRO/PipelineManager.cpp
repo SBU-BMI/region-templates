@@ -236,26 +236,26 @@ int main (int argc, char **argv){
 //		 return -1;
 //	 }
 
-    for (int i = 0; i < numClients; i++) {
-        if (tuningClient->declareParam("blue", 210, 240, 10, i) != 0 ||
-            tuningClient->declareParam("green", 210, 240, 10, i) != 0 ||
-            tuningClient->declareParam("red", 210, 240, 10, i) != 0 ||
-            tuningClient->declareParam("T1", 2.5, 7.5, 0.5, i) != 0 ||
-            tuningClient->declareParam("T2", 2.5, 7.5, 0.5, i) != 0 ||
-            tuningClient->declareParam("G1", 5, 80, 5, i) != 0 ||
-            tuningClient->declareParam("minSize", 2, 40, 2, i) != 0 ||
-            tuningClient->declareParam("maxSize", 900, 1500, 50, i) != 0 ||
-            tuningClient->declareParam("G2", 2, 40, 2, i) != 0 ||
-            tuningClient->declareParam("minSizePl", 5, 80, 5, i) != 0 ||
-            tuningClient->declareParam("minSizeSeg", 2, 40, 2, i) != 0 ||
-            tuningClient->declareParam("maxSizeSeg", 900, 1500, 50, i) != 0 ||
-            tuningClient->declareParam("fillHoles", 4, 8, 4, i) != 0 ||
-            tuningClient->declareParam("recon", 4, 8, 4, i) != 0 ||
-            tuningClient->declareParam("watershed", 4, 8, 4, i) != 0) {
+
+	if (tuningClient->declareParam("blue", 210, 240, 10) != 0 ||
+		tuningClient->declareParam("green", 210, 240, 10) != 0 ||
+		tuningClient->declareParam("red", 210, 240, 10) != 0 ||
+		tuningClient->declareParam("T1", 2.5, 7.5, 0.5) != 0 ||
+		tuningClient->declareParam("T2", 2.5, 7.5, 0.5) != 0 ||
+		tuningClient->declareParam("G1", 5, 80, 5) != 0 ||
+		tuningClient->declareParam("minSize", 2, 40, 2) != 0 ||
+		tuningClient->declareParam("maxSize", 900, 1500, 50) != 0 ||
+		tuningClient->declareParam("G2", 2, 40, 2) != 0 ||
+		tuningClient->declareParam("minSizePl", 5, 80, 5) != 0 ||
+		tuningClient->declareParam("minSizeSeg", 2, 40, 2) != 0 ||
+		tuningClient->declareParam("maxSizeSeg", 900, 1500, 50) != 0 ||
+		tuningClient->declareParam("fillHoles", 4, 8, 4) != 0 ||
+		tuningClient->declareParam("recon", 4, 8, 4) != 0 ||
+		tuningClient->declareParam("watershed", 4, 8, 4) != 0) {
             fprintf(stderr, "Failed to define tuning session\n");
             return -1;
         }
-    }
+
 
 //	for (int i = 0; i < numClients; i++) {
 //		if (harmony_int(hdesc[i], "blue", 210, 240, 10) != 0
@@ -401,7 +401,7 @@ int main (int argc, char **argv){
                  iterator != tuningClient->getParamSet(i)->paramSet.end(); iterator++) {
                 //iterator.first key
                 //iterator.second value
-                oss << " - " << iterator->first << *(iterator->second);
+				oss << " - " << iterator->first << ": " << *(iterator->second);
             }
 
 //			std::ostringstream oss;
@@ -465,7 +465,7 @@ int main (int argc, char **argv){
                          iterator != tuningClient->getParamSet(i)->paramSet.end(); iterator++) {
                         //iterator.first key
                         //iterator.second value
-                        std::cout << " - " << iterator->first << *(iterator->second);
+						std::cout << " - " << iterator->first << ": " << *(iterator->second);
                     }
 
                     std::cout << std::endl;
@@ -626,7 +626,7 @@ int main (int argc, char **argv){
                      iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
                     //iterator.first key
                     //iterator.second value
-                    oss << " - " << iterator->first << *(iterator->second);
+					oss << " - " << iterator->first << ": " << *(iterator->second);
                 }
 
 				perfDataBase[oss.str()] = perf[j];

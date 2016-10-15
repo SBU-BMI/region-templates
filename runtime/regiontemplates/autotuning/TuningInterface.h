@@ -26,8 +26,7 @@ public:
     virtual bool hasConverged() = 0;
 
     virtual int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
-                             double paramStepSize,
-                             int setId = 0) = 0;
+                             double paramStepSize) = 0;
 
     virtual int initialize(int argc, char **argv) = 0;
     virtual int configure() = 0;

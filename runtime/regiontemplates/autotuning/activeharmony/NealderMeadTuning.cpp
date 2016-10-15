@@ -67,19 +67,24 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
 }
 
 int NealderMeadTuning::declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
-                                    double paramStepSize, int setId) {
-    //CHANCES DE BUG.
-    if (harmony_real(hdesc[setId], paramLabel.c_str(), paramLowerBoundary, paramHigherBoundary, paramStepSize) != 0) {
-        fprintf(stderr, "Failed to define tuning session\n");
-        return -1;
+                                    double paramStepSize) {
+
+    for (int setId = 0; setId < numSets; ++setId) {
+        if (harmony_real(hdesc[setId], paramLabel.c_str(), paramLowerBoundary, paramHigherBoundary, paramStepSize) !=
+            0) {
+            fprintf(stderr, "Failed to define tuning session\n");
+            return -1;
+        }
+        else {
+            //Initialiazes the params
+            double *newParam = (double *) malloc(sizeof(double));
+            *(newParam) = paramLowerBoundary;
+            tuningParamSet[setId]->addParam(paramLabel, newParam);
+
+        }
     }
-    else {
-        //Initialiazes the params
-        double *newParam = (double *) malloc(sizeof(double));
-        *(newParam) = paramLowerBoundary;
-        tuningParamSet[setId]->addParam(paramLabel, newParam);
-        return 0;
-    }
+
+    return 0;
 }
 
 int NealderMeadTuning::configure() {
@@ -142,7 +147,6 @@ int NealderMeadTuning::configure() {
 int NealderMeadTuning::bindParam(std::string paramLabel, int setId) {
 
 
-    //CHANCES DE BUG
     if (harmony_bind_real(hdesc[setId], paramLabel.c_str(), &(*(tuningParamSet[setId]->paramSet[paramLabel]))) != 0) {
         fprintf(stderr, "Failed to register variable\n");
         return -1;

@@ -26,8 +26,7 @@ public:
 
     int initialize(int argc, char **argv);
     int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
-                     double paramStepSize,
-                     int setId = 0);
+                     double paramStepSize);
 
     int configure();
 
