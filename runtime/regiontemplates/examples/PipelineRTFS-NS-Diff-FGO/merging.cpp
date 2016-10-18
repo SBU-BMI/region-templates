@@ -72,11 +72,26 @@ bool merging_condition(const PipelineComponentBase* merged, const PipelineCompon
 
 // filters all the stages from an input map by the stage's name
 void filter_stages(const map<int, PipelineComponentBase*> &all_stages, 
-	string stage_name, list<PipelineComponentBase*> &filtered_stages) {
+	string stage_name, list<PipelineComponentBase*> &filtered_stages, bool shuffle) {
+
+	vector<PipelineComponentBase*> temp;
 
 	for (pair<int, PipelineComponentBase*> p : all_stages)
 		if (p.second->getName().compare(stage_name) == 0)
-			filtered_stages.emplace_back(p.second);
+			temp.emplace_back(p.second);
+
+	if (shuffle) {
+		srand(945);
+		while (temp.size() > 1) {
+			int r = rand()%(temp.size()-1);
+			filtered_stages.emplace_back(temp[r]);
+			temp.erase(find(temp.begin(), temp.end(), temp[r]));
+		}
+		filtered_stages.emplace_back(temp.front());
+	} else {
+		for (PipelineComponentBase* s : temp)
+			filtered_stages.emplace_back(s);
+	}
 }
 
 list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, PipelineComponentBase* p, 

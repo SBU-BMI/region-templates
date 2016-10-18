@@ -1,6 +1,8 @@
 #ifndef MERGING_HPP
 #define MERGING_HPP
 
+#include <vector>
+
 #include "Argument.h"
 #include "PipelineComponentBase.h"
 
@@ -21,7 +23,7 @@ bool merging_condition(const PipelineComponentBase* merged, const PipelineCompon
 
 // filters all the stages from an input map by the stage's name
 void filter_stages(const map<int, PipelineComponentBase*> &all_stages, 
-	string stage_name, list<PipelineComponentBase*> &filtered_stages);
+	string stage_name, list<PipelineComponentBase*> &filtered_stages, bool shuffle);
 
 list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, PipelineComponentBase* p, 
 	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args);

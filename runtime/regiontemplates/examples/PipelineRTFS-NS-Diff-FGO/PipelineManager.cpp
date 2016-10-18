@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
 		cout << "4 - Double-prunning reuse-tree fine grain merging algorithm" << endl;
 		return 0;
 	}
-	if (argc != 4) {
+	if (argc < 4) {
 		cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max bucket size> <dakota output file> <merging algorithm>" << endl;
 		return 0;
 	}
@@ -164,6 +164,10 @@ int main(int argc, char* argv[]) {
 		int max_bucket_size = atoi(argv[1]);
 		string dakota_file = argv[2];
 		int merging_algorithm = atoi(argv[3]);
+		bool shuffle = false;
+		for (int i=1; i<argc; i++)
+			if (string(argv[i]).compare("s")==0)
+				shuffle = true;
 
 		// workflow file
 		FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
@@ -297,7 +301,8 @@ int main(int argc, char* argv[]) {
 		struct timeval start, end;
 		gettimeofday(&start, NULL);
 
-		fgm::merge_stages_fine_grain(merging_algorithm, expanded_stages, base_stages, merged_stages, rt, expanded_args, max_bucket_size, dakota_file);
+		fgm::merge_stages_fine_grain(merging_algorithm, expanded_stages, base_stages, merged_stages, 
+			rt, expanded_args, max_bucket_size, shuffle, dakota_file);
 
 		gettimeofday(&end, NULL);
 

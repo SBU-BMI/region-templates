@@ -79,13 +79,13 @@ void add_arguments_to_stages(std::map<int, PipelineComponentBase*> &merged_stage
 
 void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineComponentBase*> &all_stages, 
 	const std::map<int, PipelineComponentBase*> &stages_ref, std::map<int, PipelineComponentBase*> &merged_stages, 
-	RegionTemplate* rt, std::map<int, ArgumentBase*> expanded_args, int max_bucket_size, string dakota_filename) {
+	RegionTemplate* rt, std::map<int, ArgumentBase*> expanded_args, int max_bucket_size, bool shuffle, string dakota_filename) {
 
 	// attempt merging for each stage type
 	for (std::map<int, PipelineComponentBase*>::const_iterator ref=stages_ref.cbegin(); ref!=stages_ref.cend(); ref++) {
 		// get only the stages from the current stage_ref
 		std::list<PipelineComponentBase*> current_stages;
-		filter_stages(all_stages, ref->second->getName(), current_stages);
+		filter_stages(all_stages, ref->second->getName(), current_stages, shuffle);
 
 		std::cout << "[merge_stages_fine_grain] Generating tasks..." << std::endl;
 		

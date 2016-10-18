@@ -18,7 +18,7 @@ namespace fgm {
 
 	void merge_stages_fine_grain(int merging_algorithm, const std::map<int, PipelineComponentBase*> &all_stages, 
 		const std::map<int, PipelineComponentBase*> &stages_ref, std::map<int, PipelineComponentBase*> &merged_stages, 
-		RegionTemplate* rt, std::map<int, ArgumentBase*> expanded_args, int max_bucket_size, string dakota_filename);
+		RegionTemplate* rt, std::map<int, ArgumentBase*> expanded_args, int max_bucket_size, bool shuffle, string dakota_filename);
 }
 
 #endif
