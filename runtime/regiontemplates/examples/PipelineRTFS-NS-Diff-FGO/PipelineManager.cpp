@@ -108,7 +108,8 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 	RegionTemplate *rt);
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
 	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
-	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages);
+	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,
+	bool use_coarse_grain=true);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -129,7 +130,9 @@ int main(int argc, char* argv[]) {
 
 	// verify arguments
 	if (argc > 1 && string(argv[1]).compare("-h") == 0) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max bucket size> <dakota output file> <merging algorithm>" << endl;
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max bucket size> <dakota output file> <merging algorithm> [s] [ncg]" << endl;
+		cout << "   s - shuffle" << endl;
+		cout << "   ncg - don't do coarse grain merging" << endl;
 		cout << "avaiable algorithms:" << endl;
 		cout << "0 - No fine grain merging algorithm" << endl;
 		cout << "1 - naive fine grain merging algorithm" << endl;
@@ -139,7 +142,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	if (argc < 4) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max bucket size> <dakota output file> <merging algorithm>" << endl;
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max bucket size> <dakota output file> <merging algorithm> [s] [ncg]" << endl;
 		return 0;
 	}
 
@@ -168,6 +171,11 @@ int main(int argc, char* argv[]) {
 		for (int i=1; i<argc; i++)
 			if (string(argv[i]).compare("s")==0)
 				shuffle = true;
+
+		bool use_coarse_grain=true;
+		for (int i=1; i<argc; i++)
+			if (string(argv[i]).compare("ncg")==0)
+				use_coarse_grain = false;
 
 		// workflow file
 		FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
@@ -272,7 +280,7 @@ int main(int argc, char* argv[]) {
 		// 	base_stages, expanded_stages, workflow_outputs);
 		FILE* parameters_values_file = fopen(dakota_file.c_str(), "r");
 		generate_pre_defined_stages(parameters_values_file, args, base_stages, workflow_outputs, 
-			expanded_args, expanded_stages);
+			expanded_args, expanded_stages, use_coarse_grain);
 
 		cout << endl<< "merged: " << endl;
 		for (pair<int, PipelineComponentBase*> p : expanded_stages) {
@@ -912,7 +920,8 @@ bool all_inps_in(const list<int>& inps, const map<int, ArgumentBase*>& args,
 
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
 	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
-	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages) {
+	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,
+	bool use_coarse_grain) {
 
 	cout << "[generate_pre_defined_stages]" << endl;
 
@@ -1044,7 +1053,7 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 					}
 					map<string, PipelineComponentBase*>::iterator it = arg_values_list.find(arg_values);
 					// verify if there is no other stage with the same values
-					if (it == arg_values_list.end()) {
+					if (it == arg_values_list.end() || !use_coarse_grain) {
 						// add current stage and args values to be compared later
 						arg_values_list[arg_values] = tmp;
 
