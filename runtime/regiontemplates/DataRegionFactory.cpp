@@ -81,6 +81,8 @@ std::string DataRegionFactory::createOutputFileName(DataRegion* dr, std::string 
 
 bool DataRegionFactory::writeDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string outputFile) {
 
+std::cout << "Writing data using writeDr2DUnADIOS. OutputFile is " << outputFile << std::endl;
+
     // Create an adios file and write the vector of vectors
 
     // Todo: populate featurelabels
@@ -372,22 +374,24 @@ bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std:
             	itk::ItkAdiosIOFactory::RegisterOneFactory();
 
             	typedef itk::RGBPixel<unsigned char> RGBPixelType;
+                typedef unsigned char                PixelType;
             	typedef itk::Image<RGBPixelType, 2> itkRGBImageType;
+                typedef itk::Image<PixelType, 2>     ImageType;
 
-            	typedef itk::ImageFileReader<itkRGBImageType> ReaderType;
+            	typedef itk::ImageFileReader<ImageType> ReaderType;
 
             	typename ReaderType::Pointer reader = ReaderType::New();
             	reader->SetFileName (inputFile);
 
-            	chunkData = itk::OpenCVImageBridge::ITKImageToCVMat<itkRGBImageType>(reader->GetOutput());
+            	chunkData = itk::OpenCVImageBridge::ITKImageToCVMat<ImageType>(reader->GetOutput());
 
-				if(chunkData.empty()){
-					std::cout << "Failed to read image in readDDR2ADIOS" << inputFile << std::endl;
-				}else{
+				//if(chunkData.empty()){
+					//std::cout << "Failed to read image in readDDR2ADIOS " << inputFile << std::endl;
+				//}else{
 					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
 					dr2D->setData(chunkData);
 					dr2D->setBb(ROIBB);
-				}
+				//}
 			}
 		}
 		// delete father class instance and attribute the specific data region read
@@ -547,13 +551,17 @@ bool DataRegionFactory::writeDDR2ADIOS(DataRegion* dataRegion, std::string path)
 
 						itk::ItkAdiosIOFactory::RegisterOneFactory();
 
-                		typedef itk::RGBPixel<unsigned char> RGBPixelType;
-                		typedef itk::Image<RGBPixelType, 2> itkRGBImageType;
-                		typedef itk::ImageFileWriter<itkRGBImageType> WriterType;
+            	        typedef itk::RGBPixel<unsigned char> RGBPixelType;
+                        typedef unsigned char                PixelType;
+            	        typedef itk::Image<RGBPixelType, 2> itkRGBImageType;
+                        typedef itk::Image<PixelType, 2>     ImageType;
+                		//typedef itk::RGBPixel<unsigned char> RGBPixelType;
+                		//typedef itk::Image<RGBPixelType, 2> itkRGBImageType;
+                		typedef itk::ImageFileWriter<ImageType> WriterType;
 
                 		typename WriterType::Pointer writer = WriterType::New();
                 		writer->SetFileName(outputFile);
-						writer->SetInput(itk::OpenCVImageBridge::CVMatToITKImage<itkRGBImageType>(dr2D->getData()));
+						writer->SetInput(itk::OpenCVImageBridge::CVMatToITKImage<ImageType>(dr2D->getData()));
 						try
                 		{
                     		printf("PRE-UPDATE\n");
