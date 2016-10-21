@@ -22,7 +22,10 @@ find_package( OpenCV REQUIRED )
 set(librtemplates BasicDataSource.cpp BoundingBox.cpp DataRegion.cpp ParameterSet.cpp DataRegionFactory.cpp DenseDataRegion2D.cpp
 		RegionTemplate.cpp ./Utils/FileUtils.cpp RTPipelineComponentBase.cpp RegionTemplateCollection.cpp TaskIO.cpp
 		RTCInterface.cpp ./cache/Cache.cpp ./cache/CacheComponent.cpp ./cache/CachePolicy.cpp ./cache/CachePolicyLRU.cpp ./cache/TaskMoveDR2Global.cpp
-		./autotuning/activeharmony/NealderMeadTuning.cpp)
+		./autotuning/activeharmony/NealderMeadTuning.cpp ./autotuning/geneticalgorithm/GeneticAlgorithm.cpp ./autotuning/geneticalgorithm/Initialization/RandomInitialization.cpp
+		./autotuning/geneticalgorithm/Mating/CutSwapMating.cpp ./autotuning/geneticalgorithm/Mutation/RandomMutation.cpp ./autotuning/geneticalgorithm/Propagation/EliteMembersPropagation.cpp
+		./autotuning/geneticalgorithm/Selection/NaturalSelection.cpp ./autotuning/geneticalgorithm/Selection/ParentOffspringSelection.cpp
+		./autotuning/geneticalgorithm/Sorting/InsertionSorting.cpp ./autotuning/geneticalgorithm/Utilities/GAUtilities.cpp)
 
 set( libname regiontemplates )
 

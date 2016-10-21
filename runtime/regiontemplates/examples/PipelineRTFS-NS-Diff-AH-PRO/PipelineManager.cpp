@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <regiontemplates/autotuning/activeharmony/NealderMeadTuning.h>
+#include <regiontemplates/autotuning/geneticalgorithm/GeneticAlgorithm.h>
 #include "FileUtils.h"
 #include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
@@ -211,7 +212,8 @@ int main (int argc, char **argv){
 	 /* Initialize a Harmony client. */
     int max_number_of_iterations = 50;
 
-    TuningInterface *tuningClient = new NealderMeadTuning(0, max_number_of_iterations, 1);
+	//TuningInterface *tuningClient = new NealderMeadTuning(0, max_number_of_iterations, 1);
+	TuningInterface *tuningClient = new GeneticAlgorithm(50, 10, 30, 50, 2, 1);
 
     if (tuningClient->initialize(argc, argv) != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
