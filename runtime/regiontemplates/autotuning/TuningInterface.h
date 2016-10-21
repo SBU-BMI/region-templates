@@ -41,12 +41,11 @@ public:
 
     virtual void nextIteration() = 0;
 
-    int getIteration();
+    int getIteration() {
+        return this->iteration;
+    }
 
 };
 
-int TuningInterface::getIteration() {
-    return this->iteration;
-}
 
 #endif //RUNTIME_TUNINGINTERFACE_H

@@ -7,32 +7,35 @@
 
 #include "Util.h"
 #include <map>
-
+#include <string>
+#include <iostream>
 
 class TuningParamSet {
 public:
     std::map<std::string, double *> paramSet;
     double score;
 
-    void addParam(std::string paramName, double *paramInitialValue);
 
-    void setScore(double score);
+    void addParam(std::string paramName, double *paramInitialValue) {
+        //paramSet.insert(paramName, paramValue);
+        paramSet[paramName] = paramInitialValue;
+    }
 
-    double getScore();
+    void setScore(double score) {
+        this->score = score;
+    }
 
+    double getScore() {
+        return this->score;
+    }
+
+    void updateParamValue(std::string paramName, double newValue) {
+        //double * referenceValue = paramSet[paramName];
+
+        double *referenceValue = (paramSet.find(paramName)->second);
+        *referenceValue = newValue;
+    }
 };
 
-void TuningParamSet::addParam(std::string paramName, double *paramInitialValue) {
-    //paramSet.insert(paramName, paramValue);
-    paramSet[paramName] = paramInitialValue;
-}
-
-void TuningParamSet::setScore(double score) {
-    this->score = score;
-}
-
-double TuningParamSet::getScore() {
-    return this->score;
-}
 
 #endif //RUNTIME_TUNINGPARAMSET_H
