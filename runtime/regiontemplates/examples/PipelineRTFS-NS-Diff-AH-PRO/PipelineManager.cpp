@@ -192,25 +192,25 @@ int main (int argc, char **argv){
 	parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
 
 	int max_number_of_generations = 10;
-	int popsize = 10;
 	int mutationchance = 30;
 	int crossoverrate = 50;
 	int propagationamount = 2;
 
 	//USING GA
-//	int max_number_of_tests = max_number_of_generations * popsize;
-//	int numClients = popsize;
+	int numClients = 10; //popsize
+	int max_number_of_tests = max_number_of_generations * numClients;
+
 
 	//USING AH
-	int max_number_of_tests = 100;
-	int numClients = 1;
+//	int max_number_of_tests = 100;
+//	int numClients = 1;
 
 
-	TuningInterface *tuningClient = new NealderMeadTuning(1, max_number_of_tests, numClients);
-//	TuningInterface *tuningClient = new GeneticAlgorithm(max_number_of_generations, popsize, mutationchance,
-//														 crossoverrate,
-//														 propagationamount,
-//														 1);
+//	TuningInterface *tuningClient = new NealderMeadTuning(1, max_number_of_tests, numClients);
+	TuningInterface *tuningClient = new GeneticAlgorithm(max_number_of_generations, numClients, mutationchance,
+														 crossoverrate,
+														 propagationamount,
+														 1);
 
 
 	std::vector<int> diffComponentIds[numClients];
