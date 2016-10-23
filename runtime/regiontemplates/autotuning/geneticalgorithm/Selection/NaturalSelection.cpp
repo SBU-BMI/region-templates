@@ -16,6 +16,9 @@ void NaturalSelection::selection(GAIndividual *pop, GAIndividual *nextGenPop, lo
 #endif
     //GAIndividual* temp = new GAIndividual[popsize];
     std::vector<GAIndividual> temp(popsize);
+    for (int n = 0; n < popsize; ++n) {
+        temp[n].sol.param = new double[amountOfDeclaredParams];
+    }
 
     int k = 0;
     int i = 0;

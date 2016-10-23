@@ -184,19 +184,42 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 }
 
 int main (int argc, char **argv){
-	int numClients = 1;
 
-	// Folder when input data images are stored
-	std::string inputFolderPath, AHpolicy = "pro.so", initPercent;
+// Folder when input data images are stored
+	std::string inputFolderPath, AHpolicy = "nm.so", initPercent;
 	std::vector<RegionTemplate *> inputRegionTemplates;
 	RegionTemplateCollection *rtCollection;
+	parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
+
+	int max_number_of_generations = 10;
+	int popsize = 10;
+	int mutationchance = 30;
+	int crossoverrate = 50;
+	int propagationamount = 2;
+
+	//USING GA
+//	int max_number_of_tests = max_number_of_generations * popsize;
+//	int numClients = popsize;
+
+	//USING AH
+	int max_number_of_tests = 100;
+	int numClients = 1;
+
+
+	TuningInterface *tuningClient = new NealderMeadTuning(1, max_number_of_tests, numClients);
+//	TuningInterface *tuningClient = new GeneticAlgorithm(max_number_of_generations, popsize, mutationchance,
+//														 crossoverrate,
+//														 propagationamount,
+//														 1);
+
+
 	std::vector<int> diffComponentIds[numClients];
     std::map<std::string, double> perfDataBase; //Checks if a param has been tested already
 
 
     std::vector<hdesc_t *> hdesc;
 
-	parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
+
 
 	// Handler to the distributed execution system environment
 	SysEnv sysEnv;
@@ -210,34 +233,16 @@ int main (int argc, char **argv){
 
 	// AH SETUP //
 	 /* Initialize a Harmony client. */
-    int max_number_of_iterations = 50;
 
-	//TuningInterface *tuningClient = new NealderMeadTuning(0, max_number_of_iterations, 1);
-	TuningInterface *tuningClient = new GeneticAlgorithm(50, 10, 30, 50, 2, 1);
 
-    if (tuningClient->initialize(argc, argv) != 0) {
+
+
+
+
+	if (tuningClient->initialize(argc, argv) != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
         return -1;
     };
-
-//	for(int i = 0; i < numClients; i++){
-//		hdesc.push_back(harmony_init(&argc, &argv));
-//		if (hdesc[i] == NULL) {
-//			fprintf(stderr, "Failed to initialize a harmony session.\n");
-//			return -1;
-//		}
-//	}
-//
-//	char name[1024];
-//
-//	 snprintf(name, sizeof(name), "Pipeline-NS-AH-PRO.%d", getpid());
-//
-//
-//	 if (harmony_session_name(hdesc[0], name) != 0) {
-//		 fprintf(stderr, "Could not set session name.\n");
-//		 return -1;
-//	 }
-
 
 	if (tuningClient->declareParam("blue", 210, 240, 10) != 0 ||
 		tuningClient->declareParam("green", 210, 240, 10) != 0 ||
@@ -258,124 +263,17 @@ int main (int argc, char **argv){
             return -1;
         }
 
-
-//	for (int i = 0; i < numClients; i++) {
-//		if (harmony_int(hdesc[i], "blue", 210, 240, 10) != 0
-//			|| harmony_int(hdesc[i], "green", 210, 240, 10) != 0
-//			|| harmony_int(hdesc[i], "red", 210, 240, 10) != 0
-//			|| harmony_real(hdesc[i], "T1", 2.5, 7.5, 0.5) != 0
-//			|| harmony_real(hdesc[i], "T2", 2.5, 7.5, 0.5) != 0
-//			|| harmony_int(hdesc[i], "G1", 5, 80, 5) != 0
-//			|| harmony_int(hdesc[i], "minSize", 2, 40, 2) != 0
-//			|| harmony_int(hdesc[i], "maxSize", 900, 1500, 50) != 0
-//			|| harmony_int(hdesc[i], "G2", 2, 40, 2) != 0
-//			|| harmony_int(hdesc[i], "minSizePl", 5, 80, 5) != 0
-//			|| harmony_int(hdesc[i], "minSizeSeg", 2, 40, 2) != 0
-//			|| harmony_int(hdesc[i], "maxSizeSeg", 900, 1500, 50) != 0
-//			|| harmony_int(hdesc[i], "fillHoles", 4, 8, 4) != 0
-//			|| harmony_int(hdesc[i], "recon", 4, 8, 4) != 0
-//			|| harmony_int(hdesc[i], "watershed", 4, 8, 4) != 0
-//				)
-//		{
-//			fprintf(stderr, "Failed to define tuning session\n");
-//			return -1;
-//		}
-//	}
-
-    if (tuningClient->configure() != 0) {
+	if (tuningClient->configure() != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
         return -1;
     };
 
-//
-//	 harmony_strategy(hdesc[0], "pro.so");
-//	 if(initPercent.size()>0 ){
-//		 harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
-//		 std::cout << "AH configuration: "<< AHpolicy << " INIT_PERCENT: "<< initPercent << std::endl;
-//	 }
-//	 char numbuf[12];
-//	 snprintf(numbuf, sizeof(numbuf), "%d", numClients);
-//
-//     	harmony_setcfg(hdesc[0], "CLIENT_COUNT", numbuf);
-//
-//	printf("Starting Harmony...\n");
-//	 if (harmony_launch(hdesc[0], NULL, 0) != 0) {
-//		 fprintf(stderr, "Could not launch tuning session: %s. E.g. export HARMONY_HOME=$HOME/region-templates/runtime/build/regiontemplates/external-src/activeharmony-4.5/\n",
-//				 harmony_error_string(hdesc[0]));
-//
-//		 return -1;
-//	 }
-//
-//	long blue[numClients], green[numClients], red[numClients];
-//	double T1[numClients], T2[numClients];
-//	long G1[numClients], G2[numClients];
-//	long minSize[numClients], maxSize[numClients], fillHolesElement[numClients], morphElement[numClients], watershedElement[numClients];
-//	long minSizePl[numClients];
-//	long minSizeSeg[numClients], maxSizeSeg[numClients];
-//
-//	for (int i = 0; i < numClients; i++) {
-//		blue[i] = 220;
-//		green[i] = 220;
-//		red[i] = 220;
-//		T1[i] = 5.0;
-//		T2[i] = 4.0;
-//		G1[i] = 80;
-//		G2[i] = 45;
-//		minSize[i] = 11;
-//		maxSize[i] = 1000;
-//		fillHolesElement[i] = 4;
-//		morphElement[i] = 8;
-//		watershedElement[i] = 8;
-//		minSizePl[i] = minSize[i] + 5;
-//		minSizeSeg[i] = 21;
-//		maxSizeSeg[i] = 1000;
-//	}
-//
-//	for (int i = 0; i < numClients; i++) {
-//		/* Bind the session variables to local variables. */
-//		if (harmony_bind_int(hdesc[i], "blue", &blue[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "green", &green[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "red", &red[i]) != 0
-//			|| harmony_bind_real(hdesc[i], "T1", &T1[i]) != 0
-//			|| harmony_bind_real(hdesc[i], "T2", &T2[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "G1", &G1[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "minSize", &minSize[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "maxSize", &maxSize[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "G2", &G2[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "minSizePl", &minSizePl[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "minSizeSeg", &minSizeSeg[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "maxSizeSeg", &maxSizeSeg[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "fillHoles", &fillHolesElement[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "recon", &morphElement[i]) != 0
-//			|| harmony_bind_int(hdesc[i], "watershed", &watershedElement[i]) != 0
-//				)
-//		{
-//			fprintf(stderr, "Failed to register variable\n");
-//			harmony_fini(hdesc[i]);
-//			return -1;
-//		}
-//		printf("Bind %d successful\n", i);
-//	}
-//
-//	 /* Join this client to the tuning session we established above. */
-//	 for(int i = 0; i < numClients; i++){
-//		 if (harmony_join(hdesc[i], NULL, 0, name) != 0) {
-//			 fprintf(stderr, "Could not connect to harmony server: %s\n",
-//					 harmony_error_string(hdesc[i]));
-//			 harmony_fini(hdesc[i]);
-//			 return -1;
-//		 }
-//	 }
-
-	// END AH SETUP //
+	double perf[numClients];
 
 
-
-	 double perf[numClients];//=100000;
-
-
-    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
-    float mindiff = std::numeric_limits<float>::infinity();;
+	float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
+	float mindiff = std::numeric_limits<float>::infinity();;
+	float minperf = std::numeric_limits<float>::infinity();;
 
 	int versionNorm = 0, versionSeg = 0;
 	bool executedAlready[numClients];
@@ -385,16 +283,11 @@ int main (int argc, char **argv){
 
         cout << "ITERATION: " << tuningClient->getIteration() << endl;
 
-        tuningClient->fetchParams();
-
-
+		//Get new param suggestions from the tuning client
+		tuningClient->fetchParams();
+		//Apply fitness function for each individual
 		for(int i = 0; i < numClients; i++){
 			perf[i] = INF;
-
-			// SOME PARAMS CAN BE A FUNCTION OF OTHER PARAMS!
-			//            T2[i] = T1[i] - 1.0;
-			//            G2[i] = G1[i] - 35;
-			//            minSizePl[i] = minSize[i] + 5;
 
             std::ostringstream oss;
             oss << "PARAMS";
@@ -405,12 +298,6 @@ int main (int argc, char **argv){
                 //iterator.second value
 				oss << " - " << iterator->first << ": " << *(iterator->second);
             }
-
-//			std::ostringstream oss;
-//			oss << blue[i] << "-" << green[i] << "-" << red[i] << "-" << T1[i] << "-" << T2[i] << "-" << G1[i] << "-" <<
-//			minSize[i] << "-" << maxSize[i] <<
-//			"-" << G2[i] << "-" << minSizePl[i] << "-" << minSizeSeg[i] << "-" << maxSizeSeg[i] << "-" <<
-//			fillHolesElement[i] << "-" << morphElement[i] << "-" << watershedElement[i];
 
             // / if not found in performance database
 			if(perfDataBase.find(oss.str()) != perfDataBase.end()){
@@ -460,26 +347,17 @@ int main (int argc, char **argv){
 
 				if(executedAlready[j] == false){
 
-                    std::cout << "BEGIN: LoopIdx: " << tuningClient->getIteration();
+					std::cout << "BEGIN: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
 
-                    typedef std::map<std::string, double *>::iterator it_type;
-                    for (it_type iterator = tuningClient->getParamSet(i)->paramSet.begin();
-                         iterator != tuningClient->getParamSet(i)->paramSet.end(); iterator++) {
-                        //iterator.first key
-                        //iterator.second value
+					typedef std::map<std::string, double *>::iterator it_type;
+					for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
+						 iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
+						//iterator.first key
+						//iterator.second value
 						std::cout << " - " << iterator->first << ": " << *(iterator->second);
-                    }
+					}
 
-                    std::cout << std::endl;
-
-//                    std::cout << "BEGIN: LoopIdx: " << loop << " blue: " << blue[j] << " green: " << green[j] <<
-//                    " red: " << red[j] <<
-//                    " T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
-//                    minSize[j] <<
-//                    " maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg[j] <<
-//                    " maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] <<
-//                    " morphElement: " << morphElement[j] <<
-//                    " watershedElement: " << watershedElement[j] << std::endl;
+					std::cout << std::endl;
 
 					Segmentation *seg = new Segmentation();
 
@@ -523,25 +401,6 @@ int main (int argc, char **argv){
                     seg->addArgument(new ArgumentInt(
                             (int) round(tuningClient->getParamValue("watershed", j))));
 
-
-
-//
-//                    seg->addArgument(new ArgumentInt(blue[j]));
-//					seg->addArgument(new ArgumentInt(green[j]));
-//					seg->addArgument(new ArgumentInt(red[j]));
-//					seg->addArgument(new ArgumentFloat(T1[j]));
-//					seg->addArgument(new ArgumentFloat(T2[j]));
-//					seg->addArgument(new ArgumentInt(G1[j]));
-//					seg->addArgument(new ArgumentInt(G2[j]));
-//					seg->addArgument(new ArgumentInt(minSize[j]));
-//					seg->addArgument(new ArgumentInt(maxSize[j]));
-//					seg->addArgument(new ArgumentInt(minSizePl[j]));
-//					seg->addArgument(new ArgumentInt(minSizeSeg[j]));
-//					seg->addArgument(new ArgumentInt(maxSizeSeg[j]));
-//					seg->addArgument(new ArgumentInt(fillHolesElement[j]));
-//					seg->addArgument(new ArgumentInt(morphElement[j]));
-//					seg->addArgument(new ArgumentInt(watershedElement[j]));
-
 					seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
 					seg->addDependency(norm->getId());
 
@@ -577,7 +436,19 @@ int main (int argc, char **argv){
             float diff = 0;
             float secondaryMetric = 0;
 
+			std::ostringstream oss;
+			oss << "PARAMS";
+			typedef std::map<std::string, double *>::iterator it_type;
+			for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
+				 iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
+				//iterator.first key
+				//iterator.second value
+				oss << " - " << iterator->first << ": " << *(iterator->second);
+			}
+
 			if(executedAlready[j] ==  false){
+
+				//Read the values from the Diff Component stage
 				for(int i = 0; i < diffComponentIds[j].size(); i++){
 					char * resultData = sysEnv.getComponentResultData(diffComponentIds[j][i]);
 					std::cout << "Diff Id: "<< diffComponentIds[j][i] << " resultData: ";
@@ -594,8 +465,10 @@ int main (int argc, char **argv){
 				}
 				diffComponentIds[j].clear();
 				perf[j] = diff; //If using PixelCompare.
+				//perf[j] = 1/diff; //If using HadoopGIS
 
-                std::cout << "END: LoopIdx: " << tuningClient->getIteration();
+
+				std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
                 typedef std::map<std::string, double *>::iterator it_type;
                 for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
                      iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
@@ -607,54 +480,45 @@ int main (int argc, char **argv){
                 std::cout << " total diff: " << diff << " secondaryMetric: " <<
                 secondaryMetric << " perf: " << perf[j] << std::endl;
 
-//				std::cout << "END: LoopIdx: " << loop << " blue: " << blue[j] << " green: " << green[j] <<
-//				" red: " << red[j] <<
-//				" T1: " << T1[j] << " T2: " << T2[j] << " G1: " << G1[j] << " G2: " << G2[j] << " minSize: " <<
-//				minSize[j] <<
-//				" maxSize: " << maxSize[j] << " minSizePl: " << minSizePl[j] << " minSizeSeg: " << minSizeSeg[j] <<
-//				" maxSizeSeg: " << maxSizeSeg[j] << " fillHolesElement: " << fillHolesElement[j] << " morphElement: " <<
-//				morphElement[j] <<
-//				" watershedElement: " << watershedElement[j] <<
-//				" total diff: " << diff << " secondaryMetric: " <<
-//				secondaryMetric << " perf: " << perf[j] << std::endl;
 
-                totaldiffs[tuningClient->getIteration()] = diff;
-                (mindiff > diff) ? mindiff = diff : mindiff;
+				totaldiffs[tuningClient->getIteration() * numClients + (j)] = diff;
+				if (minperf > perf[j]) {
+					minperf = perf[j];
+					mindiff = diff;
+				}
 
-                std::ostringstream oss;
-                oss << "PARAMS";
-                typedef std::map<std::string, double *>::iterator it_type;
-                for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
-                     iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
-                    //iterator.first key
-                    //iterator.second value
-					oss << " - " << iterator->first << ": " << *(iterator->second);
-                }
 
 				perfDataBase[oss.str()] = perf[j];
-//				loop++;
-                tuningClient->nextIteration();
+
+			} else {
+				perf[j] = perfDataBase[oss.str()];
+
+				std::cout << "ATTENTION! Param set executed already:" << std::endl;
+				std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
+				std::cout << oss.str() << endl;
+
+				std::cout << " perf: " << perf[j] << std::endl;
 			}
 
 			// Report the performance we've just measured.
-
             tuningClient->reportScore(perf[j], j);
-
-//			if (harmony_report(hdesc[j], perf[j]) != 0) {
-//				fprintf(stderr, "Failed to report performance to server.\n");
-//				harmony_fini(hdesc[j]);
-//				return -1;
-//			}
 		}
+
+
+		bool shouldIterate = false;
+		for (int k = 0; k < numClients; ++k) {
+			shouldIterate |= !executedAlready[k];
+		}
+		if (shouldIterate == true) tuningClient->nextIteration();
 	}
 	sleep(2);
 
 
     std::cout << "\t\tResults:" << std::endl;
-    for (int i = 0; i < max_number_of_iterations; ++i) {
-            std::cout << "\t\tLoop: " << i << " Diff: " << totaldiffs[i] << std::endl;
+	for (int i = 0; i < max_number_of_tests; ++i) {
+		std::cout << "\t\tTest: " << i << " Diff: " << totaldiffs[i] << std::endl;
     }
-    std::cout << "\tMinDiff: " << mindiff << std::endl;
+	std::cout << "\tBest Diff: " << mindiff << std::endl;
 
 
 	// Finalize all processes running and end execution

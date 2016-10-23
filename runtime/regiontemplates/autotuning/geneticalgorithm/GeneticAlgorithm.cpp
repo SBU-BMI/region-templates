@@ -88,7 +88,7 @@ int GeneticAlgorithm::configure() {
     mut = new RandomMutation(amountOfDeclaredParams, minParamValues, maxParamValues, stepSizeValues);
     //fit = new DiceCoefficient();
     srt = new InsertionSorting(amountOfDeclaredParams);
-    sel = new ParentOffspringSelection(amountOfDeclaredParams);
+    sel = new NaturalSelection(srt, amountOfDeclaredParams);
     prop = new EliteMembersPropagation(amountOfDeclaredParams);
 
     init->initializePopulationAttributes(pop, nextGenPop, numSets);
