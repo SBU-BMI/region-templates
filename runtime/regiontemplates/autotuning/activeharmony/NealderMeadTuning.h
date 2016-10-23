@@ -14,7 +14,7 @@
 class NealderMeadTuning : public TuningInterface {
 private:
     int harmonySessionStatus;
-    int strategyAHpolicy;
+    std::string strategyAHpolicy;
     std::vector<hdesc_t *> hdesc;
     char name[1024];
     std::string AHpolicy;
@@ -22,7 +22,7 @@ private:
     int bindParam(std::string paramLabel, int setId = 0);
 
 public:
-    NealderMeadTuning(int strategy, int maxNumberOfIterations, int numSets);
+    NealderMeadTuning(std::string strategy, int maxNumberOfIterations, int numSets);
 
     int initialize(int argc, char **argv);
     int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,

@@ -186,7 +186,7 @@ void buildParameterSet(ParameterSet &normalization, ParameterSet &segmentation){
 int main (int argc, char **argv){
 
 // Folder when input data images are stored
-	std::string inputFolderPath, AHpolicy = "nm.so", initPercent;
+	std::string inputFolderPath, AHpolicy, initPercent;
 	std::vector<RegionTemplate *> inputRegionTemplates;
 	RegionTemplateCollection *rtCollection;
 	parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
@@ -197,20 +197,18 @@ int main (int argc, char **argv){
 	int propagationamount = 2;
 
 	//USING GA
-	int numClients = 10; //popsize
-	int max_number_of_tests = max_number_of_generations * numClients;
-
+//	int numClients = 10; //popsize
+//	int max_number_of_tests = max_number_of_generations * numClients;
+//	TuningInterface *tuningClient = new GeneticAlgorithm(max_number_of_generations, numClients, mutationchance,
+//														 crossoverrate,
+//														 propagationamount,
+//														 1);
 
 	//USING AH
-//	int max_number_of_tests = 100;
-//	int numClients = 1;
+	int max_number_of_tests = 100;
+	int numClients = 1;
+	TuningInterface *tuningClient = new NealderMeadTuning("nm", max_number_of_tests, numClients);
 
-
-//	TuningInterface *tuningClient = new NealderMeadTuning(1, max_number_of_tests, numClients);
-	TuningInterface *tuningClient = new GeneticAlgorithm(max_number_of_generations, numClients, mutationchance,
-														 crossoverrate,
-														 propagationamount,
-														 1);
 
 
 	std::vector<int> diffComponentIds[numClients];

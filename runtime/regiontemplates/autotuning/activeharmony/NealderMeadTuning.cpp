@@ -7,7 +7,7 @@
 #include <sstream>
 #include "NealderMeadTuning.h"
 
-NealderMeadTuning::NealderMeadTuning(int strategy, int maxNumberOfIterations, int numSets) {
+NealderMeadTuning::NealderMeadTuning(std::string strategy, int maxNumberOfIterations, int numSets) {
     iteration = 0;
 
     this->numSets = numSets;
@@ -35,14 +35,17 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
 
     snprintf(name, sizeof(name), "NealderMeadTuning.%d", getpid());
 
-    switch (strategyAHpolicy) {
-        case 0:
-            AHpolicy.append("nm.so");
-            break;
-        default:
-            AHpolicy.append("pro.so");
-            break;
+    //Choose policy
+    if (strategyAHpolicy.find("nm") != std::string::npos || strategyAHpolicy.find("NM") != std::string::npos) {
+        AHpolicy.append("nm.so");
     }
+    else if (strategyAHpolicy.find("pro") != std::string::npos || strategyAHpolicy.find("PRO") != std::string::npos) {
+        AHpolicy.append("pro.so");
+    }
+    else {
+        AHpolicy.append("nm.so");
+    }
+
 
     for (int i = 0; i < numSets; i++) {
         if (harmony_session_name(hdesc[i], name) != 0) {
@@ -50,15 +53,7 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
             return -1;
         }
         else {
-
-            switch (strategyAHpolicy) {
-                case 0:
-                    harmony_strategy(hdesc[i], "nm.so");
-                    break;
-                default:
-                    harmony_strategy(hdesc[i], "pro.so");
-                    break;
-            }
+            harmony_strategy(hdesc[i], AHpolicy.c_str());
 
         }
     }
