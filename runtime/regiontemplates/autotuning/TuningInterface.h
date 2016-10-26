@@ -5,29 +5,47 @@
 #ifndef RUNTIME_TUNINGINTERFACE_H
 #define RUNTIME_TUNINGINTERFACE_H
 
+#include "TuningParamSet.h"
+
+#include <unistd.h>
+#include <stddef.h>
+#include <iostream>
+#include <vector>
+
+class TuningInterface;
 class TuningInterface {
 
 protected:
-    long iteration;
-    long amountOfParamSetsPerIteration; //Amount of param sets tested each iteration
-    TuningParamSet **paramSet;
+    int iteration;
+    int maxNumberOfIterations;
+    TuningParamSet **tuningParamSet;
+    int numSets;
 
 public:
 
     virtual bool hasConverged() = 0;
 
-    virtual void reportParamSet(TuningParamSet paramSet, int setId = 0) = 0;
+    virtual int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
+                             double paramStepSize) = 0;
 
-    virtual TuningParamSet fetchNewParamSet(int setId = 0) = 0;
+    virtual int initialize(int argc, char **argv) = 0;
+    virtual int configure() = 0;
 
-    virtual nextIteration() = 0;
+    virtual int fetchParams() = 0;
 
-    long getIteration();
+    virtual TuningParamSet *getParamSet(int setId = 0) = 0;
+
+    virtual double getParamValue(std::string paramName, int setId = 0) = 0;
+
+    virtual int reportScore(double scoreValue, int setId) = 0;
+
+    virtual void nextIteration() = 0;
+
+    int getIteration() {
+        return this->iteration;
+    }
 
 };
 
-long TuningParamSet::getIteration() {
-    return this.iteration;
-}
 
 #endif //RUNTIME_TUNINGINTERFACE_H

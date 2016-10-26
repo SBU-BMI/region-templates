@@ -19,9 +19,13 @@ include_directories(${MPI_INCLUDE_PATH})
 find_package( OpenCV REQUIRED )
 
 # Source files used by the Runtime System
-set( librtemplates BasicDataSource.cpp BoundingBox.cpp DataRegion.cpp ParameterSet.cpp DataRegionFactory.cpp DenseDataRegion2D.cpp DataRegion2DUnaligned.cpp
-	RegionTemplate.cpp ./Utils/FileUtils.cpp RTPipelineComponentBase.cpp RegionTemplateCollection.cpp TaskIO.cpp 
-	RTCInterface.cpp ./cache/Cache.cpp ./cache/CacheComponent.cpp ./cache/CachePolicy.cpp ./cache/CachePolicyLRU.cpp ./cache/TaskMoveDR2Global.cpp)
+set(librtemplates BasicDataSource.cpp BoundingBox.cpp DataRegion.cpp ParameterSet.cpp DataRegionFactory.cpp DenseDataRegion2D.cpp DataRegion2DUnaligned.cpp
+		RegionTemplate.cpp ./Utils/FileUtils.cpp RTPipelineComponentBase.cpp RegionTemplateCollection.cpp TaskIO.cpp
+		RTCInterface.cpp ./cache/Cache.cpp ./cache/CacheComponent.cpp ./cache/CachePolicy.cpp ./cache/CachePolicyLRU.cpp ./cache/TaskMoveDR2Global.cpp
+		./autotuning/activeharmony/NealderMeadTuning.cpp ./autotuning/geneticalgorithm/GeneticAlgorithm.cpp ./autotuning/geneticalgorithm/Initialization/RandomInitialization.cpp
+		./autotuning/geneticalgorithm/Mating/CutSwapMating.cpp ./autotuning/geneticalgorithm/Mutation/RandomMutation.cpp ./autotuning/geneticalgorithm/Propagation/EliteMembersPropagation.cpp
+		./autotuning/geneticalgorithm/Selection/NaturalSelection.cpp ./autotuning/geneticalgorithm/Selection/ParentOffspringSelection.cpp
+		./autotuning/geneticalgorithm/Sorting/InsertionSorting.cpp ./autotuning/geneticalgorithm/Utilities/GAUtilities.cpp)
 
 set( libname regiontemplates )
 
@@ -34,6 +38,9 @@ include_directories(${Runtime_SOURCE_DIR}/regiontemplates/cache/)
 
 include_directories(${RegionTemplate_SOURCE_DIR}/external-src/dataspaces-ib-1.03beta/)
 
+if (USE_ACTIVE_HARMONY)
+	include_directories(${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/include/)
+endif (USE_ACTIVE_HARMONY)
 
 
 #data spaces path
@@ -44,7 +51,9 @@ add_library("${libname}" SHARED ${librtemplates})
 
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" ${MPI_LIBRARIES} ${OpenCV_LIBS})
-
+if (USE_ACTIVE_HARMONY)
+	target_link_libraries("${libname}" ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
+endif (USE_ACTIVE_HARMONY)
 #if(USE_DATA_SPACES)
 #	target_link_libraries("${libname}" -ldspacesAll -lrdmacm)
 #endif(USE_DATA_SPACES)
