@@ -31,6 +31,8 @@ private:
 	BoundingBox bb;   // bounding box surrounding the region
 	std::string id;   // this id identifies a given instance of the data region and
 					  // is used to read/write the data region
+	int storageLevel; // if set, the data will be written directly to a certain storage level.
+					  // Otherwise, its written in higher level in which it fits.
 
 	// this is used if the data region is created by the user from files. In this case,
 	// I'll used the file name provided by the uses, whereas in data regions created
@@ -131,7 +133,8 @@ public:
 	void setIsAppInput(bool isAppInput);
 	long getCachedDataSize() const;
 	void setCachedDataSize(long cachedDataSize);
-
+	int getStorageLevel() const;
+	void setStorageLevel(int storageLevel);
 };
 
 

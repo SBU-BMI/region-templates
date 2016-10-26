@@ -152,11 +152,26 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 	int insertedLevel = 0;
 	long long init = Util::ClockGetTime();
 
-	int i;
-	// find first layer in which data fits
-	for(i = startLayer; i < this->cacheLayers.size(); i++){
-		if(dataRegion->getDataSize() < this->cacheLayers[i]->getCapacity()){
-			break;
+	int i = dataRegion->getStorageLevel();
+
+	// store data in the level specified by the user.
+	if(i != -1){
+		i = dataRegion->getStorageLevel()-1;
+		// check if level specified is valid
+		if(i >= this->cacheLayers.size() || dataRegion->getDataSize() > this->cacheLayers[i]->getCapacity()){
+			std::cout << "User specified storage level: "<< i <<" that does not exists or has not enough space to store data region"<<std::endl;
+			i = -1;
+		}
+	}
+
+	// if data can be written in any level of the storage, find the first level in which
+	// data data will fit.
+	if(dataRegion->getStorageLevel() == -1){
+		// find first layer in which data fits
+		for(i = startLayer; i < this->cacheLayers.size(); i++){
+			if(dataRegion->getDataSize() < this->cacheLayers[i]->getCapacity()){
+				break;
+			}
 		}
 	}
 
@@ -308,15 +323,15 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 // it is local and metadata is not found the DR was not inserted into the cache. It's empty.
 // Otherwise, we will have to find it into a global storage.
 DataRegion* Cache::getDR(std::string rtName, std::string rtId,
-		std::string drName, std::string drId, int timestamp, int version, bool copyData, bool isInput, std::string inputPath) {
+		std::string drName, std::string drId, int timestamp, int version, int drType, bool copyData, bool isInput, std::string inputPath) {
 	DataRegion* retValue = NULL;
 	long long init = Util::ClockGetTime();
 	while(retValue == NULL){
+
 		// loop through cache layers and try to find the data region.
 		for(int i = 0; i < this->cacheLayers.size(); i++){
 			// if DR is local to this cache or if cache layer is global, try to read it
 			//			if(isLocal || this->cacheLayers[i]->getType() == Cache::GLOBAL){
-
 			//this->cacheLayers[i]->lock();
 			retValue = this->cacheLayers[i]->getDR(rtName, rtId, drName, drId, timestamp, version, copyData, isInput);
 			//this->cacheLayers[i]->unlock();
@@ -340,26 +355,35 @@ DataRegion* Cache::getDR(std::string rtName, std::string rtId,
 
 			// if it is not on any cache layer and is an input, lets read it
 			if(i+1 == this->cacheLayers.size() && isInput){
-				DenseDataRegion2D * ddr2D = new DenseDataRegion2D();
-				ddr2D->setName(drName);
-				ddr2D->setId(drId);
-				ddr2D->setTimestamp(timestamp);
-				ddr2D->setVersion(version);
-				ddr2D->setIsAppInput(isInput);
-				ddr2D->setInputFileName(inputPath);
-
-				retValue = ddr2D;
-				if(retValue->getType() == DataRegionType::DENSE_REGION_2D){
-					DataRegionFactory::readDDR2DFS(dynamic_cast<DenseDataRegion2D*>(retValue), -1);
-				//	std::cout << "READING INPUT DR. "<< retValue->getName() << " "<< retValue->getId() <<" "<< retValue->getTimestamp() << " "<< retValue->getVersion() << " inputFile: "<< inputPath<< std::endl;
-				}else{
-					std::cout << "Data region type: "<< retValue << " not supported"<< std::endl;
-					exit(1);
+				switch(drType){
+					case DataRegionType::DENSE_REGION_2D:{
+						retValue = new DenseDataRegion2D();
+						break;
+					}
+					case DataRegionType::REGION_2D_UNALIGNED:{
+						retValue = new DataRegion2DUnaligned();
+						break;
+					}
+					default:
+						std::cout << "Unknown data region type" << std::endl;
+						exit(1);
+						break;
 				}
+				//DenseDataRegion2D * ddr2D = new DenseDataRegion2D();
+				retValue->setName(drName);
+				retValue->setId(drId);
+				retValue->setTimestamp(timestamp);
+				retValue->setVersion(version);
+				retValue->setIsAppInput(isInput);
+				retValue->setInputFileName(inputPath);
+
+
+				DataRegionFactory::readDDR2DFS(&retValue, -1);
+
 				if(retValue->empty()){
-//					std::cout << "Empty input DR: " << retValue->getName() << " "<< retValue->getTimestamp() << " "<< retValue->getVersion() << std::endl;
 					delete retValue;
 					retValue = NULL;
+					usleep(1000);
 				}else{
 					pthread_mutex_lock(&this->cacheInstLock);
 					// time elapsed in read operation
@@ -393,7 +417,6 @@ DataRegion* Cache::getDR(std::string rtName, std::string rtId,
 				}
 
 			}
-			usleep(1000);
 		}
 	}
 	if(retValue->empty()){
@@ -401,7 +424,6 @@ DataRegion* Cache::getDR(std::string rtName, std::string rtId,
 		delete retValue;
 		retValue = NULL;
 	}
-
 	return retValue;
 }
 

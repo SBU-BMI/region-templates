@@ -19,9 +19,9 @@ include_directories(${MPI_INCLUDE_PATH})
 find_package( OpenCV REQUIRED )
 
 # Source files used by the Runtime System
-set(librtemplates BasicDataSource.cpp BoundingBox.cpp DataRegion.cpp ParameterSet.cpp DataRegionFactory.cpp DenseDataRegion2D.cpp
-		RegionTemplate.cpp ./Utils/FileUtils.cpp RTPipelineComponentBase.cpp RegionTemplateCollection.cpp TaskIO.cpp
-		RTCInterface.cpp ./cache/Cache.cpp ./cache/CacheComponent.cpp ./cache/CachePolicy.cpp ./cache/CachePolicyLRU.cpp ./cache/TaskMoveDR2Global.cpp)
+set( librtemplates BasicDataSource.cpp BoundingBox.cpp DataRegion.cpp ParameterSet.cpp DataRegionFactory.cpp DenseDataRegion2D.cpp DataRegion2DUnaligned.cpp
+	RegionTemplate.cpp ./Utils/FileUtils.cpp RTPipelineComponentBase.cpp RegionTemplateCollection.cpp TaskIO.cpp 
+	RTCInterface.cpp ./cache/Cache.cpp ./cache/CacheComponent.cpp ./cache/CachePolicy.cpp ./cache/CachePolicyLRU.cpp ./cache/TaskMoveDR2Global.cpp)
 
 set( libname regiontemplates )
 

@@ -8,7 +8,7 @@
 #include "DenseDataRegion2D.h"
 
 DenseDataRegion2D::DenseDataRegion2D() {
-	this->setType(RegionTemplateType::DENSE_REGION_2D);
+	this->setType(DataRegionType::DENSE_REGION_2D);
 }
 
 DenseDataRegion2D::~DenseDataRegion2D() {

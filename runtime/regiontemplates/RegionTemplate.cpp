@@ -123,7 +123,7 @@ DataRegion* RegionTemplate::getDataRegion(std::string drName, std::string drId, 
 		// try to find a region with same version and timestamp. This should be a happy matching
 		std::list<DataRegion*>::iterator listIt = (*it).second.begin();
 
-		// check if a region with same version and timestamp exist
+		// check if a region with same version and timestamp exists
 		for(; listIt != (*it).second.end(); listIt++){
 //			std::cout << " Number of data regions: "<< (*it).second.size() << std::endl;
 			// if found the specific region. If drId is empty, any id is accepted
@@ -144,7 +144,7 @@ DataRegion* RegionTemplate::getDataRegion(std::string drName, std::string drId, 
 						std::cout << "auxCache->getDR: " << this->getName() << ":"<< this->getId() << ":"<< retValue->getName() << ":"<<  retValue->getId() << ":"<<  retValue->getTimestamp() << ":"<<  retValue->getVersion() << ":"<<  true << ":"<<  auxCache->getWorkerId() << ":"<<  retValue->getWorkerId() << std::endl;
 #endif
 
-						retValue = auxCache->getDR(this->getName(), this->getId(), retValue->getName(), retValue->getId(), retValue->getTimestamp(), retValue->getVersion(), true, retValue->getIsAppInput(), retValue->getInputFileName());
+						retValue = auxCache->getDR(this->getName(), this->getId(), retValue->getName(), retValue->getId(), retValue->getTimestamp(), retValue->getVersion(), retValue->getType(), true, retValue->getIsAppInput(), retValue->getInputFileName());
 
 					}else{
 						std::cout << "RT::getDataRegion: CACHE is NULL. rtName: "<< this->getName() << std::endl;

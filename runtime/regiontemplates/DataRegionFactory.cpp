@@ -6,219 +6,308 @@
  */
 
 #include "DataRegionFactory.h"
-
-DataRegionFactory::DataRegionFactory() {
-}
-
-DataRegionFactory::~DataRegionFactory() {
-}
-
 std::string number2String(int x){
 	std::ostringstream ss;
 	ss<<x;
 	return ss.str();
 }
 
-bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, std::string path, bool ssd){
-	if(chunkId == -1){
+DataRegionFactory::DataRegionFactory() {
+}
+
+bool DataRegionFactory::createLockFile(DataRegion* dr, std::string path) {
+	std::string lockFileName = createOutputFileName(dr, path, "");
+	// create lock file name
+	lockFileName.append(".loc");
+	FILE *pFile = fopen(lockFileName.c_str(), "w");
+
+	if(pFile == NULL){
+#ifdef DEBUG
+		std::cout << "ERROR:::: could not write lock file" << std::endl;
+#endif
+		return false;
+	}
+	int drType = dr->getType();
+	// write out RT type to lock file
+	fwrite(&drType, sizeof(int), 1, pFile);
+	fclose(pFile);
+	return true;
+}
+
+
+int DataRegionFactory::lockFileExists(DataRegion* dr, std::string path) {
+	int retValue = -1;
+
+	std::string lockFileName = createOutputFileName(dr, path, "");
+	// create lock file name
+	lockFileName.append(".loc");
+
+	FILE *pFile = fopen(lockFileName.c_str(), "r");
+	if(pFile == NULL){
+#ifdef DEBUG
+		std::cout << "ERROR: lock file: "<< lockFile << std::endl;
+#endif
+	}else{
+		// Read region template type
+		int read = fread(&retValue, sizeof(int), 1, pFile);
+		assert(read = sizeof(int));
+		fclose(pFile);
+	}
+
+	return retValue;
+}
+
+std::string DataRegionFactory::createOutputFileName(DataRegion* dr, std::string path, std::string extension) {
+	std::string outputFileName;
+
+	if(!path.empty())outputFileName.append(path);
+
+	outputFileName.append(dr->getName());
+	outputFileName.append("-").append(dr->getId());
+	outputFileName.append("-").append(number2String(dr->getVersion()));
+	outputFileName.append("-").append(number2String(dr->getTimestamp()));
+	outputFileName.append(extension);
+
+	return outputFileName;
+}
+
+bool DataRegionFactory::writeDr2DUn(DataRegion2DUnaligned* dr, std::string outputFile) {
+	// create file to write data region data.
+	FILE *pFile = fopen(outputFile.c_str(), "wb+");
+	if(pFile == NULL){
+		std::cout << "Error trying to create file: "<< outputFile << std::endl;
+		exit(1);
+	}
+	int numVecs = dr->data.size();
+
+	// write number of vectors that will be staged
+	int writtenSize = fwrite(&numVecs, sizeof(int), 1, pFile);
+	assert(writtenSize ==  sizeof(int));
+
+	for(int i = 0; i < numVecs; i++){
+		int size = dr->data[i].size();
+		// write number of elements in current vector
+		writtenSize = fwrite(&size, sizeof(int), 1, pFile);
+		assert(writtenSize ==  sizeof(int));
+
+		// write vector elements
+		int writtenSize2 = fwrite((dr->data[i].data()), sizeof(double), size, pFile);
+		assert(writtenSize2 ==  sizeof(double) * size);
+
+	}
+	fclose(pFile);
+
+	return true;
+}
+
+bool DataRegionFactory::readDr2DUn(DataRegion2DUnaligned* dr, std::string inputFile) {
+	// open file to read data region data.
+	FILE *pFile = fopen(inputFile.c_str(), "rb");
+	if(pFile == NULL){
+		std::cout << "Error trying to open file: "<< inputFile << std::endl;
+		exit(1);
+	}
+	// read number of vectors
+	int numVecs = 0;
+	int readSize = fread(&numVecs, sizeof(int), 1, pFile);
+	dr->data.resize(numVecs);
+	assert(readSize == sizeof(int));
+
+	for(int i = 0; i < numVecs; i++){
+		// read number of elements in this vector
+		int numberOfElements = 0;
+		readSize = fread(&numberOfElements, sizeof(int), 1, pFile);
+		dr->data[i].resize(numberOfElements);
+		assert(readSize == sizeof(int));
+
+		// read actual vector elements
+		int readSize2 = fread(dr->data[i].data(), sizeof(double), numberOfElements, pFile);
+		assert(readSize == sizeof(double)*numberOfElements);
+
+	}
+	fclose(pFile);
+	return true;
+}
+
+
+DataRegionFactory::~DataRegionFactory() {
+
+}
+
+
+
+bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::string path, bool ssd){
+	int drType = -1;
+	// it is application input, the type is provide when user creates the
+	// data region. Otherwise, a .loc file exists and it stores the data region type
+	if((*dataRegion)->getIsAppInput() == true){
+		drType = (*dataRegion)->getType();
+	}else{
+		// returns -1 if lock file is not found
+		drType = DataRegionFactory::lockFileExists((*dataRegion), path);
+	}
+
+	if(drType == -1) return false; // means not an input and no lock file found
+
+
+	switch(drType){
+	case DataRegionType::DENSE_REGION_2D:{
+		DenseDataRegion2D* dr2D = new DenseDataRegion2D();//dynamic_cast<DenseDataRegion2D*>(dataRegion);
+		dr2D->setName((*dataRegion)->getName());
+		dr2D->setId((*dataRegion)->getId());
+		dr2D->setTimestamp((*dataRegion)->getTimestamp());
+		dr2D->setVersion((*dataRegion)->getVersion());
+		dr2D->setIsAppInput((*dataRegion)->getIsAppInput());
+		dr2D->setInputFileName((*dataRegion)->getInputFileName());
+
 		cv::Mat chunkData;
 #ifdef DEBUG
-		std::cout << "readDDR2DFS: dataRegion: "<<dataRegion->getName()<< " id: "<< dataRegion->getId()<< " version:" << dataRegion->getVersion() <<" outputExt: "<< dataRegion->getOutputExtension() << std::endl;
+		std::cout << "readDDR2DFS: dataRegion: "<< dr2D->getName()<< " id: "<< dr2D->getId()<< " version:" << dr2D->getVersion() <<" outputExt: "<< dr2D->getOutputExtension() << std::endl;
 #endif
-		if(dataRegion->getOutputExtension() == DataRegion::XML){
+		if(dr2D->getOutputExtension() == DataRegion::XML){
 			// if it is an Mat stored as a XML file
 			std::string inputFile;
 
-			if(dataRegion->getIsAppInput()){
-				inputFile = dataRegion->getInputFileName();
+			if(dr2D->getIsAppInput()){
+				inputFile = dr2D->getInputFileName();
 			}else{
-				if(!path.empty())inputFile.append(path);
-
-				inputFile.append(dataRegion->getName());
-				inputFile.append("-").append(dataRegion->getId());
-				inputFile.append("-").append(number2String(dataRegion->getVersion()));
-				inputFile.append("-").append(number2String(dataRegion->getTimestamp()));
-
-				inputFile.append(".xml");
-
-				// create lock.
-				std::string lockFile = inputFile;
-				lockFile.append(".loc");
-				FILE *pFile = fopen(lockFile.c_str(), "r");
-				if(pFile == NULL){
-#ifdef DEBUG
-					std::cout << "ERROR: lock file: "<< lockFile << std::endl;
-#endif
-					return false;
-				}
-
-				fclose(pFile);
-
+				inputFile = createOutputFileName(dr2D, path, ".xml");
 			}
 			cv::FileStorage fs2(inputFile, cv::FileStorage::READ);
 			if(fs2.isOpened()){
 				fs2["mat"] >> chunkData;
 				fs2.release();
-
 #ifdef DEBUG
 				std::cout << "LOADING XML input data: " << inputFile << " dataRegion: "<< dataRegion->getName() << " chunk.rows: "<< chunkData.rows<< " chunk.cols: "<< chunkData.cols<<std::endl;
 #endif
 			}else{
-
 #ifdef DEBUG
 				std::cout << "Failed to read Data region. Failed to open FILE: " << inputFile << std::endl;
 #endif
+				exit(1);
 			}
 		}else{
-			if(dataRegion->getOutputExtension() == DataRegion::PBM){
+			if(dr2D->getOutputExtension() == DataRegion::PBM){
 				std::string inputFile;
 
-				if(dataRegion->getIsAppInput()){
-					inputFile = dataRegion->getInputFileName();
+				if(dr2D->getIsAppInput()){
+					inputFile = dr2D->getInputFileName();
 				}else{
-					if(!path.empty())inputFile.append(path);
-
-					inputFile.append(dataRegion->getName());
-					inputFile.append("-").append(dataRegion->getId());
-					inputFile.append("-").append(number2String(dataRegion->getVersion()));
-					inputFile.append("-").append(number2String(dataRegion->getTimestamp()));
-
 					if(ssd){
-						inputFile.append(".pbm");
+						inputFile = createOutputFileName(dr2D, path, ".pbm");
 					}else{
-						inputFile.append(".tiff");
+						inputFile = createOutputFileName(dr2D, path, ".tiff");
 					}
-					// create lock.
-					std::string lockFile = inputFile;
-					lockFile.append(".loc");
-					FILE *pFile = fopen(lockFile.c_str(), "r");
-					if(pFile == NULL){
-
-#ifdef DEBUG
-						std::cout << "ERROR:::: could not read lock file:"<< lockFile << std::endl;
-#endif
-						return false;
-					}
-					fclose(pFile);
 				}
-
-				// It is stored as an image
-				chunkData = cv::imread(inputFile, -1);
-				//chunkData = cv::imread(dataRegion->getId(), -1);
+				chunkData = cv::imread(inputFile, -1); // read image
 				if(chunkData.empty()){
-
-#ifdef DEBUG
 					std::cout << "Failed to read image:" << inputFile << std::endl;
-#endif
-
 				}else{
 					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
-					dataRegion->setData(chunkData);
-					dataRegion->setBb(ROIBB);
+					dr2D->setData(chunkData);
+					dr2D->setBb(ROIBB);
 				}
 			}
 		}
-	}else{
-		// Get info about the Id of the file in which the data is stored
-		std::pair<BoundingBox, std::string> data_pair = dataRegion->getBB2IdElement(chunkId);
-		if(data_pair.second.size() > 0){
+		// delete father class instance and attribute the specific data region read
+		delete (*dataRegion);
+		(*dataRegion) = (DataRegion*)dr2D;
+		break;
+	}
+	case DataRegionType::REGION_2D_UNALIGNED:{
+		DataRegion2DUnaligned* dr2DUn = new DataRegion2DUnaligned();//dynamic_cast<DataRegion2DUnaligned*>(dataRegion);
+		dr2DUn->setName((*dataRegion)->getName());
+		dr2DUn->setId((*dataRegion)->getId());
+		dr2DUn->setTimestamp((*dataRegion)->getTimestamp());
+		dr2DUn->setVersion((*dataRegion)->getVersion());
 
-			// read the data file
-			cv::Mat data = cv::imread(data_pair.second, -1);
-			if(data.empty()){
+		std::string inputFileName = createOutputFileName(dr2DUn, path, ".vec");
 
-#ifdef DEBUG
-				std::cout << "Failed to read image:" << dataRegion->getId() << std::endl;
-#endif
-				return false;
-			}else{
-				// if it was successfully, insert data into the data region vector chunked data
-				dataRegion->insertChukedData(data_pair.first, data);
-			}
-		}else{
-			return false;
-		}
+		readDr2DUn(dr2DUn, inputFileName);
 
+		// delete data region passed as a parameter and replace it with the actual data region with the data
+		delete (*dataRegion);
+		(*dataRegion) = (DataRegion*)dr2DUn;
+
+		break;
+	}
+	default:
+		std::cout << "readDDR2DFS: ERROR: Unknown Region template type: "<< drType <<std::endl;
+		exit(1);
+		break;
 	}
 	return true;
 }
 
-bool DataRegionFactory::writeDDR2DFS(DenseDataRegion2D* dataRegion, std::string path, bool ssd) {
+bool DataRegionFactory::writeDDR2DFS(DataRegion* dataRegion, std::string path, bool ssd) {
 	bool retVal = true;
-//	if(dataRegion->getData().rows != 0 && dataRegion->getData().cols !=0){
 
 #ifdef DEBUG
 		std::cout << "DataRegion: "<< dataRegion->getName() << " extension: "<< dataRegion->getOutputExtension() << std::endl;
 #endif
-		if(dataRegion->getOutputExtension() == DataRegion::PBM){
-			std::string outputFile;
-			if(!path.empty())outputFile.append(path);
 
+		switch(dataRegion->getType()){
+			case DataRegionType::DENSE_REGION_2D:{
+				DenseDataRegion2D* dr2D = dynamic_cast<DenseDataRegion2D*>(dataRegion);
+				if(dr2D->getOutputExtension() == DataRegion::PBM){
+					std::string outputFile;
 
-			outputFile.append(dataRegion->getName());
-			outputFile.append("-").append(dataRegion->getId());
-			outputFile.append("-").append(number2String(dataRegion->getVersion()));
-			outputFile.append("-").append(number2String(dataRegion->getTimestamp()));
-
-			if(ssd){
-				outputFile.append(".pbm");
-			}else{
-				outputFile.append(".tiff");
-			}
+					if(ssd){
+						outputFile = createOutputFileName(dr2D, path, ".pbm");
+					}else{
+						outputFile = createOutputFileName(dr2D, path, ".tiff");
+					}
 
 #ifdef DEBUG
-			std::cout << "rows: "<< dataRegion->getData().rows << " cols: "<< dataRegion->getData().cols <<std::endl;
+					std::cout << "rows: "<< dr2D->getData().rows << " cols: "<< dr2D->getData().cols <<std::endl;
 #endif
-			if(dataRegion->getData().rows > 0 && dataRegion->getData().cols > 0){
-				retVal = cv::imwrite(outputFile, dataRegion->getData());
-			}
+					// check if there is any data to be written
+					if(dr2D->getData().rows > 0 && dr2D->getData().cols > 0){
+						retVal = cv::imwrite(outputFile, dr2D->getData());
+					}
 
+					createLockFile(dr2D, path);
 
-			// create lock.
-			outputFile.append(".loc");
-			FILE *pFile = fopen(outputFile.c_str(), "w");
-			if(pFile == NULL){
-#ifdef DEBUG
-				std::cout << "ERROR:::: could not write lock file" << std::endl;
-#endif
-			}
-
-			fclose(pFile);
-		}else{
-			if(dataRegion->getOutputExtension() == DataRegion::XML){
-				std::string outputFile;
-				if(!path.empty()) outputFile.append(path);
-
-				outputFile.append(dataRegion->getName());
-				outputFile.append("-").append(dataRegion->getId());
-				outputFile.append("-").append(number2String(dataRegion->getVersion()));
-				outputFile.append("-").append(number2String(dataRegion->getTimestamp()));
-				outputFile.append(".xml");
-
-				cv::FileStorage fs(outputFile, cv::FileStorage::WRITE);
-				// check if file has been opened correctly and write data
-				if(fs.isOpened()){
-					fs << "mat" << dataRegion->getData();
-					fs.release();
 				}else{
-					retVal =false;
-				}
-				// create lock.
-				outputFile.append(".loc");
-				FILE *pFile = fopen(outputFile.c_str(), "w");
-				if(pFile == NULL){
-#ifdef DEBUG
-					std::cout << "ERROR:::: could not write lock file" << std::endl;
-#endif
-				}
+					if(dr2D->getOutputExtension() == DataRegion::XML){
+						std::string outputFile;
 
-				fclose(pFile);
-			}else{
-				std::cout << "UNKNOW file extension: "<< dataRegion->getOutputExtension() << std::endl;
+						outputFile = createOutputFileName(dr2D, path, ".xml");
+
+						cv::FileStorage fs(outputFile, cv::FileStorage::WRITE);
+						// check if file has been opened correctly and write data
+						if(fs.isOpened()){
+							fs << "mat" << dr2D->getData();
+							fs.release();
+						}else{
+							retVal =false;
+						}
+						// create lock.
+						createLockFile(dr2D, path);
+
+					}else{
+						std::cout << "UNKNOWN file extension: "<< dataRegion->getOutputExtension() << std::endl;
+					}
+				}
+				break;
 			}
+			case DataRegionType::REGION_2D_UNALIGNED:{
+				DataRegion2DUnaligned* dr2DUn = dynamic_cast<DataRegion2DUnaligned*>(dataRegion);
+
+				std::string outputFile;
+				outputFile = createOutputFileName(dr2DUn, path, ".vec");
+
+				writeDr2DUn(dr2DUn, outputFile);
+
+				createLockFile(dr2DUn, path);
+				break;
+			}
+			default:
+				std::cout << "writeDDR2DFS: ERROR: Unknown Region template type: "<< dataRegion->getType() <<std::endl;
+				exit(1);
+				break;
 		}
-//	}
-	return retVal;
+		return retVal;
 }
 
 bool DataRegionFactory::readDDR2DATASPACES(DenseDataRegion2D *dataRegion) {
@@ -277,59 +366,3 @@ bool DataRegionFactory::writeDDR2DATASPACES(DenseDataRegion2D* dataRegion) {
 	return true;
 }
 
-
-bool DataRegionFactory::instantiateDataRegion(DataRegion* dr, int chunkId, std::string path) {
-	DenseDataRegion2D *dr2D = dynamic_cast<DenseDataRegion2D*>(dr);
-	
-	switch(dr->getType()){
-		case RegionTemplateType::DENSE_REGION_2D:
-
-			switch(dr->getInputType()){
-				case DataSourceType::FILE_SYSTEM:
-					readDDR2DFS(dr2D, chunkId, path);
-					break;
-				case DataSourceType::DATA_SPACES:
-					readDDR2DATASPACES(dr2D);
-//					std::cout << "Data Spaces data source not implemented yet" << std::endl;
-					break;
-				default:
-					std::cout << "Unknown data source type:" << dr->getInputType() << std::endl;
-					break;
-			}
-			break;
-		case RegionTemplateType::DENSE_REGION_3D:
-			std::cout << "Dense data region 3D instantiation to be implemented" << std::endl;
-			break;
-		default:
-			std::cout << "Unknown data region type:"<< dr->getType() << " name:" << dr->getName() <<std::endl;
-			break;
-	}
-	return true;
-}
-
-bool DataRegionFactory::stageDataRegion(DataRegion* dr) {
-	DenseDataRegion2D *dr2D = dynamic_cast<DenseDataRegion2D*>(dr);
-
-	switch(dr->getType()){
-		case RegionTemplateType::DENSE_REGION_2D:
-			switch(dr->getOutputType()){
-				case DataSourceType::FILE_SYSTEM:
-					writeDDR2DFS(dr2D);
-					break;
-				case DataSourceType::DATA_SPACES:
-					writeDDR2DATASPACES(dr2D);
-					break;
-				default:
-					std::cout << "Unknown data source type:" << dr->getOutputType() << std::endl;
-					break;
-			}
-			break;
-		case RegionTemplateType::DENSE_REGION_3D:
-			std::cout << "Dense data region 3D instantiation to be implemented" << std::endl;
-			break;
-		default:
-			std::cout << "Unknown data region type:"<< dr->getType() << std::endl;
-			break;
-	}
-	return true;
-}

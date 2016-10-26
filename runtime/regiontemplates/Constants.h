@@ -40,16 +40,17 @@ public:
 
 };
 
-class RegionTemplateType {
+/*class RegionTemplateType {
 private:
 	RegionTemplateType();
 	virtual ~RegionTemplateType();
 
 public:
 	static const int DENSE_REGION_2D 	= 1; // Dense matrix representation
+	static const int REGION_2D_UNALIGNED = 2;
 	static const int DENSE_REGION_3D 	= 2; // Dense (cube) array of matrices
 
-};
+};*/
 
 class DataRegionType{
 private:
@@ -58,7 +59,8 @@ private:
 
 public:
 	static const int DENSE_REGION_2D 	= 1; // Dense matrix representation
-	static const int DENSE_REGION_3D 	= 2; // Dense (cube) array of matrices
+	static const int REGION_2D_UNALIGNED = 2;
+	static const int DENSE_REGION_3D 	= 3; // Dense (cube) array of matrices
 };
 
 class DataSourceType{
