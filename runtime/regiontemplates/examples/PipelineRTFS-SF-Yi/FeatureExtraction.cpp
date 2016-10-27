@@ -21,11 +21,15 @@ FeatureExtraction::~FeatureExtraction() {
 
 int FeatureExtraction::run()
 {
+    std::cout << "Entering FeatureExtraction::run()" << std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 	if(inputRt != NULL){
 		std::cout << "\tfound RT named tile"<< std::endl;
+        inputRt->print();
 		DenseDataRegion2D *bgr = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("BGR"));
 		DenseDataRegion2D *mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("mask"));
+
+        std::cout << "bgr is " << bgr << " and mask is " << mask << std::endl;
 
 		if(bgr != NULL && mask != NULL){
 			std::cout << "Feature computation: compId: "<< this->getId() <<std::endl;
@@ -44,6 +48,9 @@ int FeatureExtraction::run()
 			// I will force the storage level 1 (defined in rtconf.xml) that must be a FS storage.
 			features->setStorageLevel(1);
 			inputRt->insertDataRegion(features);
+
+            std::cout << "Added data region for feature output." << std::endl;
+            inputRt->print();
 
 			// Create processing task
 			TaskFeatures * feaTask = new TaskFeatures(bgr, mask, features);

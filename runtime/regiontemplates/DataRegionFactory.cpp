@@ -53,7 +53,7 @@ int DataRegionFactory::lockFileExists(DataRegion* dr, std::string path) {
 	FILE *pFile = fopen(lockFileName.c_str(), "r");
 	if(pFile == NULL){
 #ifdef DEBUG
-		std::cout << "ERROR: lock file: "<< lockFile << std::endl;
+		std::cout << "ERROR: lock file: "<< lockFileName << std::endl;
 #endif
 	}else{
 		// Read region template type
@@ -335,7 +335,7 @@ bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std:
 
 		cv::Mat chunkData;
 #ifdef DEBUG
-		std::cout << "readDDR2DFS: dataRegion: "<< dr2D->getName()<< " id: "<< dr2D->getId()<< " version:" << dr2D->getVersion() <<" outputExt: "<< dr2D->getOutputExtension() << std::endl;
+		std::cout << "readDDR2ADIOS: dataRegion: "<< dr2D->getName()<< " id: "<< dr2D->getId()<< " version:" << dr2D->getVersion() <<" outputExt: "<< dr2D->getOutputExtension() << std::endl;
 #endif
 		if(dr2D->getOutputExtension() == DataRegion::XML){
 			// if it is an Mat stored as a XML file
@@ -351,7 +351,7 @@ bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std:
 				fs2["mat"] >> chunkData;
 				fs2.release();
 #ifdef DEBUG
-				std::cout << "LOADING XML input data: " << inputFile << " dataRegion: "<< dataRegion->getName() << " chunk.rows: "<< chunkData.rows<< " chunk.cols: "<< chunkData.cols<<std::endl;
+				std::cout << "LOADING XML input data: " << inputFile << " dataRegion: "<< dr2D->getName() << " chunk.rows: "<< chunkData.rows<< " chunk.cols: "<< chunkData.cols<<std::endl;
 #endif
 			}else{
 #ifdef DEBUG
@@ -382,6 +382,8 @@ bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std:
 
             	typename ReaderType::Pointer reader = ReaderType::New();
             	reader->SetFileName (inputFile);
+
+                std::cout << "Using ITK reader to read " << inputFile << std::endl;
 
             	chunkData = itk::OpenCVImageBridge::ITKImageToCVMat<ImageType>(reader->GetOutput());
 
@@ -465,7 +467,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 				fs2["mat"] >> chunkData;
 				fs2.release();
 #ifdef DEBUG
-				std::cout << "LOADING XML input data: " << inputFile << " dataRegion: "<< dataRegion->getName() << " chunk.rows: "<< chunkData.rows<< " chunk.cols: "<< chunkData.cols<<std::endl;
+				std::cout << "LOADING XML input data: " << inputFile << " dataRegion: "<< dr2D->getName() << " chunk.rows: "<< chunkData.rows<< " chunk.cols: "<< chunkData.cols<<std::endl;
 #endif
 			}else{
 #ifdef DEBUG
@@ -558,6 +560,7 @@ bool DataRegionFactory::writeDDR2ADIOS(DataRegion* dataRegion, std::string path)
                 		//typedef itk::RGBPixel<unsigned char> RGBPixelType;
                 		//typedef itk::Image<RGBPixelType, 2> itkRGBImageType;
                 		typedef itk::ImageFileWriter<ImageType> WriterType;
+
 
                 		typename WriterType::Pointer writer = WriterType::New();
                 		writer->SetFileName(outputFile);

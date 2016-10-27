@@ -283,9 +283,11 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
         retValue->setVersion(version);
 
         bool retDRF = DataRegionFactory::readDDR2ADIOS(&retValue, -1, this->getPath());
+        std::cout << "Tried to read " << this->getPath() << std::endl;
 
         if(retDRF == false) {
             delete retValue;
+            std::cout << "Read failed" << std::endl;
             retValue = NULL;
         }
 
