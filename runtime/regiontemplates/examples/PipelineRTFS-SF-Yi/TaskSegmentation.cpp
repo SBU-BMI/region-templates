@@ -33,6 +33,10 @@ bool TaskSegmentation::run(int procType, int tid) {
 	else
 		std::cout <<"Segmentation: input data NULL"<< std::endl;
 
+
+    imwrite ("/lustre/atlas/proj-shared/csc143/lot/u24/test/DB-rt-adios/masktest.png", outMask);
+
+
 	this->mask->setData(outMask);
 
 	uint64_t t2 = Util::ClockGetTimeProfile();

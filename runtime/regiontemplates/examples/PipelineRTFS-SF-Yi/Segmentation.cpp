@@ -26,6 +26,8 @@ int Segmentation::run()
 
 	if(inputRt != NULL){
 		DenseDataRegion2D *bgr = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("BGR"));
+        imwrite ("/lustre/atlas/proj-shared/csc143/lot/u24/test/DB-rt-adios/test.png", bgr->getData());
+
 		if(bgr != NULL){
 
 			//std::cout <<  "nDataRegions: " << inputRt->getNumDataRegions() << std::endl;

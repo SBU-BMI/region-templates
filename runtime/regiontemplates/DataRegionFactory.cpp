@@ -13,6 +13,7 @@
 #include "itkOpenCVImageBridge.h"
 #include "adios.h"
 #include "ItkAdiosIOFactory.h"
+#include "ItkAdiosIO.h"
 
 std::string number2String(int x){
 	std::ostringstream ss;
@@ -310,6 +311,11 @@ DataRegionFactory::~DataRegionFactory() {
 
 
 bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std::string path){
+
+#ifdef DEBUG
+    std::cout << "Entering readDDR2ADIOS" <<  path << std::endl;
+#endif
+
 	int drType = -1;
 	// it is application input, the type is provide when user creates the
 	// data region. Otherwise, a .loc file exists and it stores the data region type
@@ -381,19 +387,32 @@ bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std:
             	typedef itk::ImageFileReader<ImageType> ReaderType;
 
             	typename ReaderType::Pointer reader = ReaderType::New();
+
+                itk::ItkAdiosIO::Pointer io = itk::ItkAdiosIO::New();
+
+                reader->SetImageIO(io);
             	reader->SetFileName (inputFile);
 
                 std::cout << "Using ITK reader to read " << inputFile << std::endl;
 
-            	chunkData = itk::OpenCVImageBridge::ITKImageToCVMat<ImageType>(reader->GetOutput());
+                reader->Update();
 
-				//if(chunkData.empty()){
-					//std::cout << "Failed to read image in readDDR2ADIOS " << inputFile << std::endl;
-				//}else{
+                ImageType::Pointer itkImageFromFile = reader->GetOutput();
+
+                std::cout << "Finished Using ITK reader to read " << inputFile << std::endl;
+
+            	chunkData = itk::OpenCVImageBridge::ITKImageToCVMat<ImageType>(itkImageFromFile);
+
+                cv::imwrite ("/lustre/atlas/proj-shared/csc143/lot/u24/test/DB-rt-adios/test.png", chunkData);
+
+				if(chunkData.empty()){
+					std::cout << "Failed to read image in readDDR2ADIOS " << inputFile << std::endl;
+                    return false;
+				}else{
 					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
 					dr2D->setData(chunkData);
 					dr2D->setBb(ROIBB);
-				//}
+				}
 			}
 		}
 		// delete father class instance and attribute the specific data region read

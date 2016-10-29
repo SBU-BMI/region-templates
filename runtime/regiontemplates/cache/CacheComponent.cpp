@@ -243,6 +243,8 @@ bool CacheComponent::insertDR(std::string rtName, std::string rtId, DataRegion* 
 
 DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 		std::string drName, std::string drId, int timestamp, int version, bool copyData, bool isAppInput) {
+
+std::cout << "Entering CacheComponent::getDR (" << rtName << "," << drName << std::endl;
 	// cache iteration definition
 	std::map<std::string, std::list<DataRegion*> >::iterator cacheIt;
 	DataRegion* retValue = NULL;
@@ -275,6 +277,7 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 	}
     case Cache::ADIOS:
 	{
+std::cout << "Entering ADIOS case in getDr" << std::endl;
         // Create generic data region to pass arguments.
         retValue = new DataRegion();
         retValue->setName(drName);
