@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <regiontemplates/autotuning/TuningInterface.h>
+#include <regiontemplates/autotuning/activeharmony/NealderMeadTuning.h>
+#include <regiontemplates/autotuning/geneticalgorithm/GeneticAlgorithm.h>
 #include "FileUtils.h"
 #include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
@@ -103,18 +106,58 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
 }
 
 int main(int argc, char **argv) {
-    int numClients = 1;
 
     // Folder when input data images are stored
-    std::string inputFolderPath, AHpolicy = "nm.so", initPercent;
+    std::string inputFolderPath, AHpolicy, initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
-    std::vector<int> segComponentIds[numClients];
-    std::vector<int> diffComponentIds[numClients];
-    std::vector<int> diceNotCoolComponentIds[numClients];
-    std::map<std::string, double> perfDataBase;
+    parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
 
-    std::vector<hdesc_t *> hdesc;
+
+    int numClients;
+    TuningInterface *tuningClient;
+    int max_number_of_tests;
+
+    //Multi-Objective Tuning weights
+    double timeWeight = 0;
+    double metricWeight = 1;
+    //Multi-Objective Tuning normalization times
+    double tSlowest = 1000000; //Empirical Data
+    double tFastest = 1000; //Empirical Data
+
+    //USING AH
+    if (AHpolicy.find("nm") != std::string::npos || AHpolicy.find("NM") != std::string::npos ||
+        AHpolicy.find("pro") != std::string::npos || AHpolicy.find("PRO") != std::string::npos) {
+        max_number_of_tests = 100;
+        numClients = 1;
+        tuningClient = new NealderMeadTuning(AHpolicy, max_number_of_tests, numClients);
+    } else {
+
+        //USING GA
+        int max_number_of_generations = 10;
+        int mutationchance = 30;
+        int crossoverrate = 50;
+        int propagationamount = 2;
+
+        numClients = 10; //popsize
+        max_number_of_tests = max_number_of_generations * numClients;
+        tuningClient = new GeneticAlgorithm(max_number_of_generations, numClients, mutationchance,
+                                            crossoverrate,
+                                            propagationamount,
+                                            1);
+
+    }
+
+
+    std::vector<int> diffComponentIds[numClients];
+    std::vector<int> segComponentIds[numClients];
+    std::vector<int> diceNotCoolComponentIds[numClients];
+    std::map<std::string, double> perfDataBase; //Checks if a param has been tested already
+
+
+
+
+
 
     parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
 
@@ -128,148 +171,85 @@ int main(int argc, char **argv) {
     rtCollection = RTFromFiles(inputFolderPath);
 
 
-    // AH SETUP //
-    /* Initialize a Harmony client. */
+    // Tuning Client SETUP //
 
-    for (int i = 0; i < numClients; i++) {
-        hdesc.push_back(harmony_init(&argc, &argv));
-        if (hdesc[i] == NULL) {
-            fprintf(stderr, "Failed to initialize a harmony session.\n");
-            return -1;
-        }
-    }
-
-    char name[1024];
-
-    snprintf(name, sizeof(name), "Pipeline-NS-AH-PRO-YI-GIS.%d", getpid());
-
-
-    if (harmony_session_name(hdesc[0], name) != 0) {
-        fprintf(stderr, "Could not set session name.\n");
+    if (tuningClient->initialize(argc, argv) != 0) {
+        fprintf(stderr, "Failed to initialize tuning session.\n");
         return -1;
-    }
+    };
 
 
-    if (
-            harmony_real(hdesc[0], "otsuRatio", 0.1, 2.5, 0.1) != 0
-            || harmony_real(hdesc[0], "curvatureWeight", 0.0, 1.0, 0.05) != 0
-            || harmony_real(hdesc[0], "sizeThld", 1, 20, 1) != 0
-            || harmony_real(hdesc[0], "sizeUpperThld", 50, 400, 5) != 0
-            || harmony_real(hdesc[0], "mpp", 0.25, 0.25, 0.05) != 0
-            || harmony_real(hdesc[0], "mskernel", 5, 30, 1) != 0
-            || harmony_int(hdesc[0], "levelSetNumberOfIteration", 5, 150, 1) != 0
-            ) {
+    if (tuningClient->declareParam("otsuRatio", 0.1, 2.5, 0.1) != 0 ||
+        tuningClient->declareParam("curvatureWeight", 0.0, 1.0, 0.05) != 0 ||
+        tuningClient->declareParam("sizeThld", 1, 20, 1) != 0 ||
+        tuningClient->declareParam("sizeUpperThld", 50, 400, 5) != 0 ||
+        tuningClient->declareParam("mpp", 0.25, 0.25, 0.05) != 0 ||
+        tuningClient->declareParam("mskernel", 5, 30, 1) != 0 ||
+        tuningClient->declareParam("levelSetNumberOfIteration", 5, 150, 1) != 0) {
         fprintf(stderr, "Failed to define tuning session\n");
         return -1;
     }
 
-    harmony_strategy(hdesc[0], AHpolicy.c_str());
-    //harmony_strategy(hdesc[0], "pro.so");
-//	 harmony_strategy(hdesc[0], "nm.so");
-    if (initPercent.size() > 0) {
-        harmony_setcfg(hdesc[0], "INIT_PERCENT", initPercent.c_str());
-        std::cout << "AH configuration: " << AHpolicy << " INIT_PERCENT: " << initPercent << std::endl;
-    }
-    std::cout << endl << "-------------------------- AH configuration: " << AHpolicy <<
-    " -------------------------- " << std::endl;
-    char numbuf[12];
-    snprintf(numbuf, sizeof(numbuf), "%d", numClients);
-
-    harmony_setcfg(hdesc[0], "CLIENT_COUNT", numbuf);
-
-    printf("Starting Harmony...\n");
-    if (harmony_launch(hdesc[0], NULL, 0) != 0) {
-        fprintf(stderr,
-                "Could not launch tuning session: %s. E.g. export HARMONY_HOME=$HOME/region-templates/runtime/build/regiontemplates/external-src/activeharmony-4.5/\n",
-                harmony_error_string(hdesc[0]));
-
+    if (tuningClient->configure() != 0) {
+        fprintf(stderr, "Failed to initialize tuning session.\n");
         return -1;
-    }
-
-    double otsuRatio[numClients], curvatureWeight[numClients], sizeThld[numClients], sizeUpperThld[numClients], mpp[numClients], msKernel[numClients];
-    long levelSetNumberOfIteration[numClients];
-
-    for (int i = 0; i < numClients; i++) {
-        otsuRatio[i] = curvatureWeight[i] = sizeThld[i] = sizeUpperThld[i] = mpp[i] = msKernel[i] = 0.0;
-        levelSetNumberOfIteration[i] = 0;
-    }
-
-    for (int i = 0; i < numClients; i++) {
-        /* Bind the session variables to local variables. */
-        if (harmony_bind_real(hdesc[i], "otsuRatio", &otsuRatio[i]) != 0
-            || harmony_bind_real(hdesc[i], "curvatureWeight", &curvatureWeight[i]) != 0
-            || harmony_bind_real(hdesc[i], "sizeThld", &sizeThld[i]) != 0
-            || harmony_bind_real(hdesc[i], "sizeUpperThld", &sizeUpperThld[i]) != 0
-            || harmony_bind_real(hdesc[i], "mpp", &mpp[i]) != 0
-            || harmony_bind_real(hdesc[i], "mskernel", &msKernel[i]) != 0
-            || harmony_bind_int(hdesc[i], "levelSetNumberOfIteration", &levelSetNumberOfIteration[i]) != 0) {
-            fprintf(stderr, "Failed to register variable\n");
-            harmony_fini(hdesc[i]);
-            return -1;
-        }
-        printf("Bind %d successful\n", i);
-    }
-
-
-    /* Join this client to the tuning session we established above. */
-    for (int i = 0; i < numClients; i++) {
-        if (harmony_join(hdesc[i], NULL, 0, name) != 0) {
-            fprintf(stderr, "Could not connect to harmony server: %s\n",
-                    harmony_error_string(hdesc[i]));
-            harmony_fini(hdesc[i]);
-            return -1;
-        }
-    }
-    // END AH SETUP //
+    };
 
     double perf[numClients];
-
-    int max_number_of_iterations = 50;
-    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_iterations);
-    uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_iterations);
-    double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_iterations);
+    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
     float maxdiff = 0;
-    double minperf = INT_MAX;
+    float minperf = std::numeric_limits<float>::infinity();
 
-    double timeWeight = 1;
-    double metricWeight = 2;
 
-    int versionSeg = 0;
+    uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_tests);
+    double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_tests);
+
+    int versionNorm = 0, versionSeg = 0;
     bool executedAlready[numClients];
 
-    /* main loop */
-    for (int loop = 0; !harmony_converged(hdesc[0]) && loop < max_number_of_iterations;) {
 
+//    double otsuRatio[numClients], curvatureWeight[numClients], sizeThld[numClients], sizeUpperThld[numClients], mpp[numClients], msKernel[numClients];
+//    long levelSetNumberOfIteration[numClients];
+//
+//    for (int i = 0; i < numClients; i++) {
+//        otsuRatio[i] = curvatureWeight[i] = sizeThld[i] = sizeUpperThld[i] = mpp[i] = msKernel[i] = 0.0;
+//        levelSetNumberOfIteration[i] = 0;
+//    }
+
+
+    /* main loop */
+    for (; !tuningClient->hasConverged();) {
+        cout << "ITERATION: " << tuningClient->getIteration() << endl;
+
+
+        //Get new param suggestions from the tuning client
+        tuningClient->fetchParams();
+        //Apply fitness function for each individual
         for (int i = 0; i < numClients; i++) {
             perf[i] = INF;
 
-            int hresult;
-            do {
-                hresult = harmony_fetch(hdesc[i]);
-            } while (hresult == 0);
-
-
-            if (hresult < 0) {
-                fprintf(stderr, "Failed to fetch values from server: %s\n",
-                        harmony_error_string(hdesc[i]));
-                harmony_fini(hdesc[i]);
-                return -1;
+            std::ostringstream oss;
+            oss << "PARAMS";
+            typedef std::map<std::string, double *>::iterator it_type;
+            for (it_type iterator = tuningClient->getParamSet(i)->paramSet.begin();
+                 iterator != tuningClient->getParamSet(i)->paramSet.end(); iterator++) {
+                //iterator.first key
+                //iterator.second value
+                oss << " - " << iterator->first << ": " << *(iterator->second);
             }
 
-            std::ostringstream oss;
-            oss << otsuRatio[i] << "-" << curvatureWeight[i] << "-" << sizeThld[i] << "-" << sizeUpperThld[i] << "-" <<
-            mpp[i] << "-" << msKernel[i] << "-" << levelSetNumberOfIteration[i];
-
-            // if not found in performance database
+            // / if not found in performance database
             if (perfDataBase.find(oss.str()) != perfDataBase.end()) {
                 perf[i] = perfDataBase.find(oss.str())->second;
-                std::cout << "Parameters already tested: " << oss.str() << " perf: " << perf[i] << std::endl;
+                std::cout << "Parameters already tested: " << oss.str() << " perf: " << perf << std::endl;
+
                 executedAlready[i] = true;
             } else {
                 executedAlready[i] = false;
             }
 
         }
+
 
         int segCount = 0;
         // Build application dependency graph
@@ -282,9 +262,17 @@ int main(int argc, char **argv) {
 
                 if (executedAlready[j] == false) {
 
-                    std::cout << "BEGIN: LoopIdx: " << loop << "[" << otsuRatio[i] << "-" << curvatureWeight[i] <<
-                    "-" << sizeThld[i] << "-" << sizeUpperThld[i] << "-" << mpp[i] << "-" << msKernel[i] << "-" <<
-                    levelSetNumberOfIteration[i] << "]" << std::endl;
+                    std::cout << "BEGIN: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
+
+                    typedef std::map<std::string, double *>::iterator it_type;
+                    for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
+                         iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
+                        //iterator.first key
+                        //iterator.second value
+                        std::cout << " - " << iterator->first << ": " << *(iterator->second);
+                    }
+
+                    std::cout << std::endl;
 
                     // Creating segmentation component
                     Segmentation *seg = new Segmentation();
@@ -293,13 +281,20 @@ int main(int argc, char **argv) {
                     seg->addArgument(new ArgumentInt(versionSeg));
 
                     // add remaining (application specific) parameters from the argSegInstance
-                    seg->addArgument(new ArgumentFloat(otsuRatio[j]));
-                    seg->addArgument(new ArgumentFloat(curvatureWeight[j]));
-                    seg->addArgument(new ArgumentFloat(sizeThld[j]));
-                    seg->addArgument(new ArgumentFloat(sizeUpperThld[j]));
-                    seg->addArgument(new ArgumentFloat(mpp[j]));
-                    seg->addArgument(new ArgumentFloat(msKernel[j]));
-                    seg->addArgument(new ArgumentInt(levelSetNumberOfIteration[j]));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("otsuRatio", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("curvatureWeight", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("sizeThld", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("sizeUpperThld", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("mpp", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("mskernel", j))));
+                    seg->addArgument(new ArgumentInt(
+                            (int) round(tuningClient->getParamValue("levelSetNumberOfIteration", j))));
 
 
                     // and region template instance that it is suppose to process
@@ -345,6 +340,16 @@ int main(int argc, char **argv) {
             float secondaryMetric = 0;
             float diceNotCoolValue = 0;
 
+            std::ostringstream oss;
+            oss << "PARAMS";
+            typedef std::map<std::string, double *>::iterator it_type;
+            for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
+                 iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
+                //iterator.first key
+                //iterator.second value
+                oss << " - " << iterator->first << ": " << *(iterator->second);
+            }
+
             if (executedAlready[j] == false) {
                 for (int i = 0; i < diffComponentIds[j].size(); i++) {
                     char *resultData = sysEnv.getComponentResultData(diffComponentIds[j][i]);
@@ -363,9 +368,12 @@ int main(int argc, char **argv) {
                     }
                     char *segExecutionTime = sysEnv.getComponentResultData(segComponentIds[j][i]);
                     if (segExecutionTime != NULL) {
-                        totalexecutiontimes[loop] = ((int *) segExecutionTime)[1];
-                        cout << "Segmentation execution time:" << totalexecutiontimes[loop] << endl;
+                        totalexecutiontimes[tuningClient->getIteration() * numClients +
+                                            (j)] = ((int *) segExecutionTime)[1];
+                        cout << "Segmentation execution time:" <<
+                        totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << endl;
                     }
+                    sysEnv.eraseResultData(diceNotCoolComponentIds[j][i]);
                     sysEnv.eraseResultData(diffComponentIds[j][i]);
                     sysEnv.eraseResultData(segComponentIds[j][i]);
                 }
@@ -373,67 +381,87 @@ int main(int argc, char **argv) {
                 segComponentIds[j].clear();
                 diceNotCoolComponentIds[j].clear();
 
+//
+                //########################################################################################
+                //Single Objective Tuning
+                //########################################################################################
+//                perf[j] = (double) 1 / diff; //If using Hadoopgis
+//                perf[j] = diff; //If using PixelCompare.
+
+                //########################################################################################
+                //Multi Objective Tuning
+                //########################################################################################
 //                float dicePlusDiceNotCool = (4* diff + diceNotCoolValue);
 //                diff = dicePlusDiceNotCool/5;
 //                if (diff <= 0) diff = FLT_EPSILON;
-
-                //Multi Objective Tuning
-                double tSlowest = 750000; //Empirical Data
-                double tFastest = 10000; //Empirical Data
-                double timeNormalized = (tSlowest - (double) totalexecutiontimes[loop]) / (tSlowest - tFastest);
-//TODO Change here if using PixelCompare or Hadoopgis
-                perf[j] = (double) 1 / diff; //If using Hadoopgis
+                double timeNormalized =
+                        (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
+                        (tSlowest - tFastest);
+                //perf[j] = (double) 1 / diff; //If using Hadoopgis
                 //perf[j] = diff; //If using PixelCompare.
-                //perf[j] = (double) 1 / (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
-                cout << "$$$$$$$$$$$$$$$$ - Diff: " << diff << " Time Normalized: " << timeNormalized << " Time: " <<
-                totalexecutiontimes[loop] << " Perf: " << perf[j] << endl;
-                totaldiffs[loop] = diff;
+                perf[j] = (double) 1 /
+                          (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
+
                 if (perf[j] < 0) perf[j] = 0;
 
-                (maxdiff < diff) ? maxdiff = diff : maxdiff;
-                (minperf > perf[j]) ? minperf = perf[j] : minperf;
-                totalExecutionTimesNormalized[loop] = timeNormalized;
-                std::ostringstream oss;
-                oss << otsuRatio[j] << "-" << curvatureWeight[j] << "-" << sizeThld[j] << "-" << sizeUpperThld[j];
+                std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
+                typedef std::map<std::string, double *>::iterator it_type;
+                for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
+                     iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
+                    //iterator.first key
+                    //iterator.second value
+                    std::cout << " - " << iterator->first << ": " << *(iterator->second);
+                }
+
+                cout << endl << endl << "\tDiff: " << diff << " Secondary Metric: " << secondaryMetric <<
+                " Time Normalized: " << timeNormalized << " Segmentation Time: " <<
+                totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << " Perf: " << perf[j] << endl;
+
+                totaldiffs[tuningClient->getIteration() * numClients + (j)] = diff;
+                if (minperf > perf[j] && perf[j] != 0) {
+                    minperf = perf[j];
+                    maxdiff = diff;
+                }
 
                 perfDataBase[oss.str()] = perf[j];
+            } else {
+                perf[j] = perfDataBase[oss.str()];
 
-                std::cout << "END: LoopIdx: " << loop - numClients + 1 << " otsuRatio: " << otsuRatio[j] <<
-                " curvatureWeight: " << curvatureWeight[j]
-                << " sizeThld: " << sizeThld[j] << " sizeUpperThld: " << sizeUpperThld[j] << " mpp: " << mpp[j] <<
-                " msKernel: " << msKernel[j] << " levelSetNumberOfIteration: " << levelSetNumberOfIteration[j] <<
-                " total diff: " << diff <<
-                " secondaryMetric: " <<
-                secondaryMetric << " perf: " << perf[j] << std::endl;
-                loop++;
+                std::cout << "ATTENTION! Param set executed already:" << std::endl;
+                std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
+                std::cout << oss.str() << endl;
+
+                std::cout << " perf: " << perf[j] << std::endl;
             }
 
             // Report the performance we've just measured.
-            if (harmony_report(hdesc[j], perf[j]) != 0) {
-                fprintf(stderr, "Failed to report performance to server.\n");
-                harmony_fini(hdesc[j]);
-                return -1;
-            }
+            tuningClient->reportScore(perf[j], j);
         }
+
+        //Checks if at least one test in this iteration succeeded.
+        bool shouldIterate = false;
+        for (int k = 0; k < numClients; ++k) {
+            shouldIterate |= !executedAlready[k];
+        }
+        //Iterates the tuning algorithm
+        if (shouldIterate == true) tuningClient->nextIteration();
+
     }
 
-
-    if (harmony_converged(hdesc[0])) {
-        std::cout << "\t\tOptimization loop has converged!!!!" << std::endl;
-    }
-    else {
-        std::cout << "\t\tThe tuning algorithm did not converge" << std::endl;
-    }
-    for (int i = 0; i < max_number_of_iterations; ++i) {
+    std::cout << "\t\tResults:" << std::endl;
+    for (int i = 0; i < max_number_of_tests; ++i) {
         double perfWeighted =
                 (double) 1 / (double) (metricWeight * totaldiffs[i] + timeWeight * totalExecutionTimesNormalized[i]);
         if (perfWeighted < 0) perfWeighted = 0;
-        std::cout << "\t\tLoop: " << i << " \tDiff: " << totaldiffs[i] << "\tExecution Time: " <<
+
+        std::cout << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] << "\tExecution Time: " <<
         totalexecutiontimes[i] << "\tTime Normalized: " << totalExecutionTimesNormalized[i] << " \tPerf(weighted): " <<
         perfWeighted << std::endl;
     }
-    std::cout << "\tMaxDiff: " << maxdiff << std::endl;
-    std::cout << "\tBest answer - MinPerfWeighted: " << minperf << std::endl;
+    std::cout << "\tBest Diff: " << maxdiff << std::endl;
+    std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minperf << std::endl;
+
+
 
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
