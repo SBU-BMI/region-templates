@@ -46,6 +46,27 @@ int GeneticAlgorithm::initialize(int argc, char **argv) {
         cout << "\tMutation Rate: " << (mutationchance) << " % " << endl;
     }
 
+    if (fmod(numSets, 2)) {
+        cout << "\tThe GA was not configured properly: the population number must be an even number" << endl;
+        return -1;
+    }
+    if ((propagateamount >=
+         numSets / 2)) {
+        cout << "\tThe GA was not configured properly: the elite size must be smaller than half the population " <<
+        endl;
+        return -1;
+    }
+    if ((mutationchance < 0 || mutationchance > 100)) {
+        cout << "\tThe GA was not configured properly: the mutation chance must be an INT between 0 and 100" << endl;
+        return -1;
+    }
+
+
+    assert(!fmod(numSets, 2)); //Check if pop_size is an even number - Because of mating stage.
+    assert ((propagateamount <
+             numSets / 2)); //Check if the number of bad solutions are multiple of 2 and bigger than 2.
+    assert(mutationchance >= 0 && mutationchance <= 100); //Check if the mutation is a percentage number.
+
     return 0;
 }
 
@@ -71,10 +92,6 @@ int GeneticAlgorithm::declareParam(std::string paramLabel, double paramLowerBoun
 
 
 int GeneticAlgorithm::configure() {
-    assert(!fmod(numSets, 2)); //Check if pop_size is an even number - Because of mating stage.
-    assert ((propagateamount <
-             numSets / 2)); //Check if the number of bad solutions are multiple of 2 and bigger than 2.
-    assert(mutationchance >= 0 && mutationchance <= 100); //Check if the mutation is a percentage number.
 
 
     for (int i = 0; i < numSets; ++i) {
