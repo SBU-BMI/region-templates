@@ -9,6 +9,7 @@
 #include "FileUtils.h"
 #include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
+#include <iomanip>
 
 //#include "NormalizationComp.h"
 #include "Segmentation.h"
@@ -122,7 +123,7 @@ int main(int argc, char **argv) {
     double timeWeight = 0;
     double metricWeight = 1;
     //Multi-Objective Tuning normalization times
-    double tSlowest = 1000000; //Empirical Data
+    double tSlowest = 50000; //Empirical Data
     double tFastest = 1000; //Empirical Data
 
     //USING AH
@@ -197,6 +198,8 @@ int main(int argc, char **argv) {
 
     double perf[numClients];
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
+    float *dicePerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
+    float *diceNotCoolPerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
     float maxdiff = 0;
     float minperf = std::numeric_limits<float>::infinity();
 
@@ -206,15 +209,6 @@ int main(int argc, char **argv) {
 
     int versionNorm = 0, versionSeg = 0;
     bool executedAlready[numClients];
-
-
-//    double otsuRatio[numClients], curvatureWeight[numClients], sizeThld[numClients], sizeUpperThld[numClients], mpp[numClients], msKernel[numClients];
-//    long levelSetNumberOfIteration[numClients];
-//
-//    for (int i = 0; i < numClients; i++) {
-//        otsuRatio[i] = curvatureWeight[i] = sizeThld[i] = sizeUpperThld[i] = mpp[i] = msKernel[i] = 0.0;
-//        levelSetNumberOfIteration[i] = 0;
-//    }
 
 
     /* main loop */
@@ -267,8 +261,6 @@ int main(int argc, char **argv) {
                     typedef std::map<std::string, double *>::iterator it_type;
                     for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
                          iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
-                        //iterator.first key
-                        //iterator.second value
                         std::cout << " - " << iterator->first << ": " << *(iterator->second);
                     }
 
@@ -335,6 +327,10 @@ int main(int argc, char **argv) {
         // End Creating Dependency Graph
         sysEnv.startupExecution();
 
+
+        //==============================================================================================
+        //Fetch results from execution workflow
+        //==============================================================================================
         for (int j = 0; j < numClients; j++) {
             float diff = 0;
             float secondaryMetric = 0;
@@ -391,9 +387,11 @@ int main(int argc, char **argv) {
                 //########################################################################################
                 //Multi Objective Tuning
                 //########################################################################################
-//                float dicePlusDiceNotCool = (4* diff + diceNotCoolValue);
-//                diff = dicePlusDiceNotCool/5;
-//                if (diff <= 0) diff = FLT_EPSILON;
+                float dice = diff;
+                float dicePlusDiceNotCool = (dice + diceNotCoolValue);
+                diff = dicePlusDiceNotCool / 2;
+                if (diff <= 0) diff = FLT_EPSILON;
+
                 double timeNormalized =
                         (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
                         (tSlowest - tFastest);
@@ -402,6 +400,7 @@ int main(int argc, char **argv) {
                 perf[j] = (double) 1 /
                           (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
 
+                totalExecutionTimesNormalized[tuningClient->getIteration() * numClients + (j)] = timeNormalized;
                 if (perf[j] < 0) perf[j] = 0;
 
                 std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
@@ -418,6 +417,9 @@ int main(int argc, char **argv) {
                 totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << " Perf: " << perf[j] << endl;
 
                 totaldiffs[tuningClient->getIteration() * numClients + (j)] = diff;
+                dicePerIteration[tuningClient->getIteration() * numClients + (j)] = dice;
+                diceNotCoolPerIteration[tuningClient->getIteration() * numClients + (j)] = diceNotCoolValue;
+
                 if (minperf > perf[j] && perf[j] != 0) {
                     minperf = perf[j];
                     maxdiff = diff;
@@ -454,8 +456,10 @@ int main(int argc, char **argv) {
                 (double) 1 / (double) (metricWeight * totaldiffs[i] + timeWeight * totalExecutionTimesNormalized[i]);
         if (perfWeighted < 0) perfWeighted = 0;
 
-        std::cout << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] << "\tExecution Time: " <<
-        totalexecutiontimes[i] << "\tTime Normalized: " << totalExecutionTimesNormalized[i] << " \tPerf(weighted): " <<
+        std::cout << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
+        "  \tExecution Time: " <<
+        totalexecutiontimes[i] << " \tTime Normalized: " << totalExecutionTimesNormalized[i] << " \tDice: " <<
+        dicePerIteration[i] << " \tDiceNC: " << diceNotCoolPerIteration[i] << "  \tPerf(weighted): " <<
         perfWeighted << std::endl;
     }
     std::cout << "\tBest Diff: " << maxdiff << std::endl;

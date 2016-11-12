@@ -373,8 +373,8 @@ int main(int argc, char **argv) {
                 segComponentIds[j].clear();
                 diceNotCoolComponentIds[j].clear();
 
-//                float dicePlusDiceNotCool = (4* diff + diceNotCoolValue);
-//                diff = dicePlusDiceNotCool/5;
+//                float dicePlusDiceNotCool = ( diff + diceNotCoolValue);
+//                diff = dicePlusDiceNotCool/2;
 //                if (diff <= 0) diff = FLT_EPSILON;
 
                 //Multi Objective Tuning
