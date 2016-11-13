@@ -21,8 +21,8 @@ KnnBounded::KnnBounded(std::vector<std::vector<cv::Point> > *list1, std::vector<
 KnnBounded::KnnBounded(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *id, long k, float boundary) {
     this->dr1 = dr1;
     this->dr2 = dr2;
-    getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
-    getPolygonsFromMask(this->dr2->getData(), this->listOfPolygons[1]);
+    getPolygonsFromLabeledMask(this->dr1->getData(), this->listOfPolygons[0]);
+    getPolygonsFromLabeledMask(this->dr2->getData(), this->listOfPolygons[1]);
     this->k = k;
     this->boundary = boundary;
     this->diff = id;

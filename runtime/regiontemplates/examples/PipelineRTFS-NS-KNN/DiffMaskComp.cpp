@@ -39,8 +39,8 @@ int DiffMaskComp::run() {
 
             std::vector<std::vector<cv::Point> > *list1;
             std::vector<std::vector<cv::Point> > *list2;
-            Hadoopgis::getPolygonsFromMask(computed_mask->getData(), list1);
-            Hadoopgis::getPolygonsFromMask(reference_mask->getData(), list2);
+            Hadoopgis::getPolygonsFromLabeledMask(computed_mask->getData(), list1);
+            Hadoopgis::getPolygonsFromLabeledMask(reference_mask->getData(), list2);
             //cout << "Size of List 1" << list1->size() << endl;
             TaskDiffMask *tDiffMask = new KnnUnbounded(list1, list2, diffPixels, 3);
 

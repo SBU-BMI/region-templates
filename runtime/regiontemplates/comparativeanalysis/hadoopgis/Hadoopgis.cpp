@@ -5,7 +5,23 @@
 #include "Hadoopgis.h"
 
 
-void Hadoopgis::getPolygonsFromMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons) {
+void Hadoopgis::getPolygonsFromLabeledMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons) {
+
+
+    //Extract the polygons from the image. (Non-convex polygons can be returned)
+    std::vector<std::vector<cv::Point> > contours;
+    cv::Mat contourOutput = img.clone();
+    cv::findContours(contourOutput, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+
+    /// Find the convex hull object for each contour
+    listOfPolygons = new vector<vector<cv::Point> >(contours.size());
+    vector<vector<cv::Point> > *hull = listOfPolygons;
+    //vector<vector<cv::Point> > hull(contours.size());
+    for (int i = 0; i < contours.size(); i++) { convexHull(cv::Mat(contours[i]), (*hull)[i], false); }
+
+}
+
+void Hadoopgis::getPolygonsFromBinaryMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons) {
 
 
     //Extract the polygons from the image. (Non-convex polygons can be returned)
@@ -86,8 +102,8 @@ bool Hadoopgis::run(int procType, int tid) {
     string referenceMaskPath = tempPath + referenceMaskFileName;
     myMaskFile.open(myMaskPath.c_str());
     referenceMaskFile.open(referenceMaskPath.c_str());
-//    getPolygonsFromMask(image1, this->listOfPolygons[0]);
-//    getPolygonsFromMask(image2, this->listOfPolygons[1]);
+//    getPolygonsFromLabeledMask(image1, this->listOfPolygons[0]);
+//    getPolygonsFromLabeledMask(image2, this->listOfPolygons[1]);
     double area1 = 0;
     convertPolygonToHadoopgisInput(this->listOfPolygons[0], myMaskFile, area1);
     double area2 = 0;
