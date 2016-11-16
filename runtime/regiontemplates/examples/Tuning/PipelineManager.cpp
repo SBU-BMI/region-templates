@@ -21,6 +21,10 @@
 
 #define INF    100000
 
+#define DECLUMPING_TYPE_MEANSHIFT 0
+#define DECLUMPING_TYPE_NO_DECLUMPING 1
+#define DECLUMPING_TYPE_WATERSHED 2
+
 namespace patch {
     template<typename T>
     std::string to_string(const T &n) {
@@ -31,7 +35,7 @@ namespace patch {
 }
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent) {
+                         std::string &initPercent, int &declumpingType) {
     // Used for parameters parsing
     for (int i = 0; i < argc - 1; i++) {
         if (argv[i][0] == '-' && argv[i][1] == 'i') {
@@ -42,6 +46,9 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
         }
         if (argv[i][0] == '-' && argv[i][1] == 'f') {
             AHpolicy = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'd') {
+            declumpingType = atoi(argv[i + 1]);
         }
     }
 }
@@ -109,13 +116,6 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
 
 int main(int argc, char **argv) {
 
-    // Folder when input data images are stored
-    std::string inputFolderPath, AHpolicy, initPercent;
-    std::vector<RegionTemplate *> inputRegionTemplates;
-    RegionTemplateCollection *rtCollection;
-    parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
-
-
     int numClients;
     TuningInterface *tuningClient;
     int max_number_of_tests;
@@ -126,6 +126,23 @@ int main(int argc, char **argv) {
     //Multi-Objective Tuning normalization times
     double tSlowest = 50000; //Empirical Data
     double tFastest = 1000; //Empirical Data
+    //Yi's declumping type variable
+    int declumpingType = 0;
+
+    // Folder when input data images are stored
+    std::string inputFolderPath, AHpolicy, initPercent;
+    std::vector<RegionTemplate *> inputRegionTemplates;
+    RegionTemplateCollection *rtCollection;
+    parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent, declumpingType);
+
+    if (declumpingType != DECLUMPING_TYPE_MEANSHIFT && declumpingType != DECLUMPING_TYPE_NO_DECLUMPING &&
+        declumpingType != DECLUMPING_TYPE_WATERSHED) {
+        std::cout << "ERROR! Invalid declumping type: " << declumpingType << endl;
+        exit(-2);
+    } else {
+        std::cout << "Yi's Declumping Type: " << declumpingType << endl;
+    }
+
 
     //USING AH
     if (AHpolicy.find("nm") != std::string::npos || AHpolicy.find("NM") != std::string::npos ||
@@ -156,12 +173,6 @@ int main(int argc, char **argv) {
     std::vector<int> diceNotCoolComponentIds[numClients];
     std::map<std::string, double> perfDataBase; //Checks if a param has been tested already
 
-
-
-
-
-
-    parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent);
 
     // Handler to the distributed execution system environment
     SysEnv sysEnv;
@@ -288,6 +299,8 @@ int main(int argc, char **argv) {
                             new ArgumentFloat((float) (tuningClient->getParamValue("mskernel", j))));
                     seg->addArgument(new ArgumentInt(
                             (int) round(tuningClient->getParamValue("levelSetNumberOfIteration", j))));
+                    seg->addArgument(new ArgumentInt(
+                            declumpingType));
 
 
                     // and region template instance that it is suppose to process

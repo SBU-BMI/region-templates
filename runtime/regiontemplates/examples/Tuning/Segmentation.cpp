@@ -32,6 +32,7 @@ int Segmentation::run() {
     float mpp = (float) ((ArgumentFloat *) this->getArgument(5))->getArgValue();
     float mskernel = (float) ((ArgumentFloat *) this->getArgument(6))->getArgValue();
     int levelSetNumberOfIteration = ((ArgumentInt *) this->getArgument(7))->getArgValue();
+    int declumpingType = ((ArgumentInt *) this->getArgument(8))->getArgValue();
 
     uint64_t *executionTime = (uint64_t *) malloc(sizeof(uint64_t));
     executionTime[0] = 1;
@@ -62,6 +63,7 @@ int Segmentation::run() {
             // Create processing task
             TaskSegmentation *segTask = new TaskSegmentation(bgr, mask, otsuRatio, curvatureWeight, sizeThld,
                                                              sizeUpperThld, mpp, mskernel, levelSetNumberOfIteration,
+                                                             declumpingType,
                                                              executionTime);
 
             this->executeTask(segTask);

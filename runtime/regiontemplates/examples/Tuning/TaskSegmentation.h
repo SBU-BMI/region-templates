@@ -30,13 +30,18 @@ private:
     DenseDataRegion2D *mask;
 
     float otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, mpp, mskernel;
-    int levelSetNumberOfIteration;
+    int levelSetNumberOfIteration, declumpingType;
     uint64_t *executionTime;
 
 
 public:
+    //Declumping types
+    //0) mean-shift declumping
+    //1) no declumping
+    //2) watershed declumping
     TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, float otsuRatio, float curvatureWeight,
                      float sizeThld, float sizeUpperThld, float mpp, float mskernel, int levelSetNumberOfIteration,
+                     int declumpingType,
                      uint64_t *executionTime);
 
     virtual ~TaskSegmentation();

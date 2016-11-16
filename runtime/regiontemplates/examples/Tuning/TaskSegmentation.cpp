@@ -13,7 +13,8 @@
 
 TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, float otsuRatio,
                                    float curvatureWeight, float sizeThld, float sizeUpperThld, float mpp,
-                                   float mskernel, int levelSetNumberOfIteration, uint64_t *executionTime) {
+                                   float mskernel, int levelSetNumberOfIteration, int declumpingType,
+                                   uint64_t *executionTime) {
     this->bgr = bgr;
     this->mask = mask;
     this->otsuRatio = otsuRatio;
@@ -23,6 +24,7 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *ma
     this->mpp = mpp;
     this->mskernel = mskernel;
     this->levelSetNumberOfIteration = levelSetNumberOfIteration;
+    this->declumpingType = declumpingType;
     this->executionTime = executionTime;
 }
 
@@ -36,23 +38,17 @@ bool TaskSegmentation::run(int procType, int tid) {
 
     uint64_t t1 = Util::ClockGetTimeProfile();
 
-
 //	cv::Mat seg = processTile(thisTile, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, mpp);
     if (inputImage.rows > 0)
         outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld,
                                                                    sizeUpperThld, mpp, mskernel,
-                                                                   levelSetNumberOfIteration, 2);
+                                                                   levelSetNumberOfIteration, declumpingType);
 
-
+        //Declumping types
         //0) mean-shift declumping
         //1) no declumping
         //2) watershed declumping
 
-
-//        outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, 1.0, 0.8, 3,
-//                                                                   200, 0.25, 20.0,
-//                                                                   100);
-//		outMask = processTile(inputImage, otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, 0.25);
     else
         std::cout << "Segmentation: input data NULL" << std::endl;
     this->mask->setData(outMask);
