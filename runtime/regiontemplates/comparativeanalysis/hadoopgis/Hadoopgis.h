@@ -21,9 +21,13 @@
 
 class Hadoopgis : public TaskDiffMask {
 
+private:
+    static void extractPolygons(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons, int xOffset,
+                                int yOffset, bool shouldPolygonsBeConvex);
+
 protected:
 
-    std::vector<std::vector<cv::Point> > *listOfPolygons[2];
+    std::vector<std::vector<std::vector<cv::Point> > *> *listOfPolygons[2];
 
     virtual void parseOutput(std::string pathToMaskOutputtedByTheScript, double area1, double area2) = 0;
 
@@ -36,12 +40,13 @@ protected:
                                std::string maskFileName,
                                std::string referenceMaskFileName);
 
-    void convertPolygonToHadoopgisInput(std::vector<std::vector<cv::Point> > *hull, std::ofstream &ss, double &area);
+    void convertPolygonToHadoopgisInput(std::vector<std::vector<std::vector<cv::Point> > *> *hull, std::ofstream &ss,
+                                        double &area);
 
 public:
-    static void getPolygonsFromLabeledMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons);
+    static void getPolygonsFromMask(const cv::Mat &img,
+                                    std::vector<std::vector<std::vector<cv::Point> > *> *&listOfPolygons);
 
-    static void getPolygonsFromBinaryMask(const cv::Mat &img, std::vector<std::vector<cv::Point> > *&listOfPolygons);
     bool run(int procType = ExecEngineConstants::CPU, int tid = 0);
 };
 

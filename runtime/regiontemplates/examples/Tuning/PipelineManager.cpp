@@ -49,7 +49,7 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
 
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
     // Search for input files in folder path
-    FileUtils fileUtils(".mask.png");
+    FileUtils fileUtils("_mask.txt");
     std::vector<std::string> fileList;
     fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
     RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
@@ -71,16 +71,17 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
         ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
         ddr2d->setIsAppInput(true);
         ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-        std::string inputFileName = fileUtils.replaceExt(fileList[i], ".mask.png", ".tiff");
+        std::string inputFileName = fileUtils.replaceExt(fileList[i], "_mask.txt", ".tiff");
         ddr2d->setInputFileName(inputFileName);
 
         // Create reference mask data region
         DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
         ddr2dRefMask->setName("REF_MASK");
         ddr2dRefMask->setId(oss.str());
-        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM);
+        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
         ddr2dRefMask->setIsAppInput(true);
-        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM);
+        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
+        cout << endl << "MASK FILE: " << fileList[i] << endl;
         ddr2dRefMask->setInputFileName(fileList[i]);
 
         /*	// Create reference mask data region
@@ -456,11 +457,11 @@ int main(int argc, char **argv) {
                 (double) 1 / (double) (metricWeight * totaldiffs[i] + timeWeight * totalExecutionTimesNormalized[i]);
         if (perfWeighted < 0) perfWeighted = 0;
 
-        std::cout << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
+        std::cout << std::fixed << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
         "  \tExecution Time: " <<
         totalexecutiontimes[i] << " \tTime Normalized: " << totalExecutionTimesNormalized[i] << " \tDice: " <<
-        dicePerIteration[i] << " \tDiceNC: " << diceNotCoolPerIteration[i] << "  \tPerf(weighted): " <<
-        perfWeighted << std::endl;
+        dicePerIteration[i] << " \tDiceNC: " << diceNotCoolPerIteration[i];
+        std::cout << "  \tPerf(weighted): " << perfWeighted << std::endl;
     }
     std::cout << "\tBest Diff: " << maxdiff << std::endl;
     std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minperf << std::endl;

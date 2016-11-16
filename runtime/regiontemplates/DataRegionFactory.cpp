@@ -102,6 +102,7 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 					fclose(pFile);
 				}
 
+                //############### Binary Image ###############
 				// It is stored as an image
 				chunkData = cv::imread(inputFile, -1);
 				//chunkData = cv::imread(dataRegion->getId(), -1);
@@ -110,12 +111,38 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 #ifdef DEBUG
 					std::cout << "Failed to read image:" << inputFile << std::endl;
 #endif
+                    //############### Labeled Image ###############
+                    //Failed to read as an image.
+                    //Try to read as txt file (labeled image)
+                    std::cout << "Trying to read as text file:" << inputFile << std::endl;
+                    std::ifstream infile(inputFile.c_str());
+                    int columns, rows;
+                    int a;
+                    infile >> columns >> rows;
+                    chunkData = cv::Mat(rows, columns, CV_32S);
+
+                    //Read image from text file and find the bounding boxes
+                    for (int i = 0; i < rows; ++i) {
+                        for (int j = 0; j < columns; ++j) {
+                            infile >> a;
+                            chunkData.at<int>(i, j) = a;
+                        }
+                    }
+                    if (chunkData.empty()) {
+                        std::cout << "Failed to read labeled image as text file:" << inputFile << std::endl;
+
+                    }else{
+                        BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
+                        dataRegion->setData(chunkData);
+                        dataRegion->setBb(ROIBB);
+                    }
 
 				}else{
 					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
 					dataRegion->setData(chunkData);
 					dataRegion->setBb(ROIBB);
 				}
+                std::cout << "chuckData Image Type: " << chunkData.type() << std::endl;
 			}
 		}
 	}else{
@@ -130,7 +157,31 @@ bool DataRegionFactory::readDDR2DFS(DenseDataRegion2D *dataRegion, int chunkId, 
 #ifdef DEBUG
 				std::cout << "Failed to read image:" << dataRegion->getId() << std::endl;
 #endif
-				return false;
+
+
+                //############### Labeled Image ###############
+                //Failed to read as an image.
+                //Try to read as txt file (labeled image)
+                std::cout << "Trying to read as text file:" << data_pair.second << std::endl;
+                std::ifstream infile(data_pair.second.c_str());
+                int columns, rows;
+                int a;
+                infile >> columns >> rows;
+                data = cv::Mat(rows, columns, CV_32S);
+
+                //Read image from text file and find the bounding boxes
+                for (int i = 0; i < rows; ++i) {
+                    for (int j = 0; j < columns; ++j) {
+                        infile >> a;
+                        data.at<int>(i, j) = a;
+                    }
+                }
+                if (data.empty()) {
+                    std::cout << "Failed to read labeled image as text file:" << data_pair.second << std::endl;
+                    return false;
+                }else{
+                    dataRegion->insertChukedData(data_pair.first, data);
+                }
 			}else{
 				// if it was successfully, insert data into the data region vector chunked data
 				dataRegion->insertChukedData(data_pair.first, data);
@@ -160,18 +211,38 @@ bool DataRegionFactory::writeDDR2DFS(DenseDataRegion2D* dataRegion, std::string 
 			outputFile.append("-").append(number2String(dataRegion->getVersion()));
 			outputFile.append("-").append(number2String(dataRegion->getTimestamp()));
 
-			if(ssd){
-				outputFile.append(".pbm");
-			}else{
-				outputFile.append(".tiff");
-			}
+            //############### in case it is a Labeled Image in the form of a TXT file ###############
+            if (dataRegion->getData().type() == CV_32S){
+                outputFile.append(".txt");
+                std::cout<< "############## WRITING TXT FILE" << std::endl;
+                std::ofstream outfile(outputFile.c_str());
+                outfile << dataRegion->getData().cols << " " << dataRegion->getData().rows << std::endl;
+
+                //write image to text file
+                for (int i = 0; i < dataRegion->getData().rows; ++i) {
+                    for (int j = 0; j < dataRegion->getData().cols; ++j) {
+                        int  a = dataRegion->getData().at<int>(i, j);
+                        outfile << a << std::endl;
+                    }
+                    //cout<<endl;
+                }
+            }
+            else{//############### Binary Image ###############
+                if(ssd){
+                    outputFile.append(".pbm");
+                }else{
+                    outputFile.append(".tiff");
+                }
 
 #ifdef DEBUG
-			std::cout << "rows: "<< dataRegion->getData().rows << " cols: "<< dataRegion->getData().cols <<std::endl;
+                std::cout << "rows: "<< dataRegion->getData().rows << " cols: "<< dataRegion->getData().cols <<std::endl;
 #endif
-			if(dataRegion->getData().rows > 0 && dataRegion->getData().cols > 0){
-				retVal = cv::imwrite(outputFile, dataRegion->getData());
-			}
+
+                if(dataRegion->getData().rows > 0 && dataRegion->getData().cols > 0){
+                    retVal = cv::imwrite(outputFile, dataRegion->getData());
+                }
+            }
+
 
 
 			// create lock.

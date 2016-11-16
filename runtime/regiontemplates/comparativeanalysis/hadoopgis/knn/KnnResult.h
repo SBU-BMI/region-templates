@@ -13,7 +13,7 @@
 class KnnResult {
 
 public:
-    std::vector<std::vector<cv::Point> > *listOfPolygons[2];
+    std::vector<std::vector<std::vector<cv::Point> > *> *listOfPolygons[2];
     std::vector<long> polygonsRelationships[2];
     std::vector<double> distance;
 };

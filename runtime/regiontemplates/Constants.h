@@ -69,6 +69,7 @@ private:
 public:
 	static const int FILE_SYSTEM	= 1; // when data is coming from the file systems
 	static const int DATA_SPACES	= 2; // if data is coming from data spaces
+	static const int FILE_SYSTEM_TEXT_FILE	= 3; // if the image is coming from the file system inside a text file
 };
 
 #endif /* CONSTANTS_H_ */

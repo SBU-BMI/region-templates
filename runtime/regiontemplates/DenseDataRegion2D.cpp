@@ -145,21 +145,48 @@ bool DenseDataRegion2D::loadChunkToCache(int chunkIndex) {
 	std::pair<BoundingBox, std::string> data_pair = this->getBB2IdElement(chunkIndex);
 	if(data_pair.second.size() > 0){
 		switch(this->getInputType()){
-				case DataSourceType::FILE_SYSTEM:
-					// read the data file
-					data = cv::imread(data_pair.second, -1);
-					if(data.empty()){
-						std::cout << "Failed to read image:" << data_pair.second << std::endl;
-						return false;
-					}else{
-						// if it was successfully, insert data into the data region vector chunked data
-						this->insertChukedData(data_pair.first, data);
-						return true;
-					}
+				case DataSourceType::FILE_SYSTEM: {
+                    // read the data file
+                    data = cv::imread(data_pair.second, -1);
+                    if (data.empty()) {
+                        std::cout << "Failed to read image:" << data_pair.second << std::endl;
+                    } else {
+                        // if it was successfully, insert data into the data region vector chunked data
+                        this->insertChukedData(data_pair.first, data);
+                        return true;
+                    }
+                }
 					break;
 
-				default:
-					std::cout << "Unknown data source type:" << this->getInputType() << std::endl;
+				case DataSourceType::FILE_SYSTEM_TEXT_FILE: {
+                    // read the data file
+                    std::ifstream infile(data_pair.second.c_str());
+                    int columns, rows;
+                    int a;
+                    infile >> columns >> rows;
+                    data = cv::Mat(rows, columns, CV_32S);
+
+                    //Read image from text file and find the bounding boxes
+                    for (int i = 0; i < rows; ++i) {
+                        for (int j = 0; j < columns; ++j) {
+                            infile >> a;
+                            data.at<int>(i, j) = a;
+                        }
+                    }
+                    if (data.empty()) {
+                        std::cout << "Failed to read image:" << data_pair.second << std::endl;
+
+                    } else {
+                        // if it was successfully, insert data into the data region vector chunked data
+                        this->insertChukedData(data_pair.first, data);
+                        return true;
+                    }
+                }
+					break;
+
+				default: {
+                    std::cout << "Unknown data source type:" << this->getInputType() << std::endl;
+                }
 					break;
 		}
 

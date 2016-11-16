@@ -7,8 +7,8 @@
 JaccardIndex::JaccardIndex(DenseDataRegion2D *dr1, DenseDataRegion2D *dr2, float *diffPixels) {
     this->dr1 = dr1;
     this->dr2 = dr2;
-    getPolygonsFromLabeledMask(this->dr1->getData(), this->listOfPolygons[0]);
-    getPolygonsFromLabeledMask(this->dr2->getData(), this->listOfPolygons[1]);
+    getPolygonsFromMask(this->dr1->getData(), this->listOfPolygons[0]);
+    getPolygonsFromMask(this->dr2->getData(), this->listOfPolygons[1]);
     this->diff = diffPixels;
     this->scriptName = "SpatialQuery.sh";
 }
