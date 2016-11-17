@@ -1,109 +1,24 @@
 #include "SysEnv.h"
 #include <regiontemplates/autotuning/TuningInterface.h>
-#include <regiontemplates/autotuning/activeharmony/NealderMeadTuning.h>
 #include <regiontemplates/autotuning/geneticalgorithm/GeneticAlgorithm.h>
+#include <regiontemplates/autotuning/activeharmony/ActiveHarmonyTuning.h>
 #include "RegionTemplateCollection.h"
 #include "Segmentation.h"
 #include "DiceMaskComp.h"
 #include "DiceNotCoolMaskComp.h"
 #include "ParameterSet.h"
-
 #include "hclient.h"
 
 #define INF    100000
-
 #define DECLUMPING_TYPE_MEANSHIFT 0
 #define DECLUMPING_TYPE_NO_DECLUMPING 1
 #define DECLUMPING_TYPE_WATERSHED 2
 
-namespace patch {
-    template<typename T>
-    std::string to_string(const T &n) {
-        std::ostringstream stm;
-        stm << n;
-        return stm.str();
-    }
-}
-
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, int &declumpingType) {
-    // Used for parameters parsing
-    for (int i = 0; i < argc - 1; i++) {
-        if (argv[i][0] == '-' && argv[i][1] == 'i') {
-            inputFolder = argv[i + 1];
-        }
-        if (argv[i][0] == '-' && argv[i][1] == 'o') {
-            initPercent = argv[i + 1];
-        }
-        if (argv[i][0] == '-' && argv[i][1] == 'f') {
-            AHpolicy = argv[i + 1];
-        }
-        if (argv[i][0] == '-' && argv[i][1] == 'd') {
-            declumpingType = atoi(argv[i + 1]);
-        }
-    }
-}
+                         std::string &initPercent, int &declumpingType);
 
+RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
 
-RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
-    // Search for input files in folder path
-    FileUtils fileUtils("_mask.txt");
-    std::vector<std::string> fileList;
-    fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
-    RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
-    rtCollection->setName("inputimage");
-
-    std::cout << "Input Folder: " << inputFolderPath << std::endl;
-
-    std::string temp;
-    // Create one region template instance for each input data file
-    // (creates representations without instantiating them)
-    for (int i = 0; i < fileList.size(); i++) {
-
-        // Create input mask data region
-        DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-        ddr2d->setName("RAW");
-        std::ostringstream oss;
-        oss << i;
-        ddr2d->setId(oss.str());
-        ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
-        ddr2d->setIsAppInput(true);
-        ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-        std::string inputFileName = fileUtils.replaceExt(fileList[i], "_mask.txt", ".tiff");
-        ddr2d->setInputFileName(inputFileName);
-
-        // Create reference mask data region
-        DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
-        ddr2dRefMask->setName("REF_MASK");
-        ddr2dRefMask->setId(oss.str());
-        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
-        ddr2dRefMask->setIsAppInput(true);
-        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
-        cout << endl << "MASK FILE: " << fileList[i] << endl;
-        ddr2dRefMask->setInputFileName(fileList[i]);
-
-        /*	// Create reference mask data region
-            DenseDataRegion2D *ddr2dRefNorm = new DenseDataRegion2D();
-            ddr2dRefNorm->setName("NORM");
-            ddr2dRefNorm->setId(oss.str());
-            ddr2dRefNorm->setInputType(DataSourceType::FILE_SYSTEM);
-            ddr2dRefNorm->setIsAppInput(true);
-            ddr2dRefNorm->setOutputType(DataSourceType::FILE_SYSTEM);
-            ddr2dRefNorm->setInputFileName("/home/george/workspace/nscale-normalization/build/bin/normalized.tiff");*/
-
-        // Adding data regions to region template
-        RegionTemplate *rt = new RegionTemplate();
-        rt->setName("tile");
-        rt->insertDataRegion(ddr2d);
-        rt->insertDataRegion(ddr2dRefMask);
-        //rt->insertDataRegion(ddr2dRefNorm);
-
-        // Adding region template instance to collection
-        rtCollection->addRT(rt);
-    }
-
-    return rtCollection;
-}
 
 int main(int argc, char **argv) {
 
@@ -112,7 +27,7 @@ int main(int argc, char **argv) {
     int max_number_of_tests;
 
     //Multi-Objective Tuning weights
-    double timeWeight = 0;
+    double timeWeight = 1;
     double metricWeight = 1;
 
     //Multi-Objective Tuning normalization times
@@ -142,7 +57,7 @@ int main(int argc, char **argv) {
         AHpolicy.find("pro") != std::string::npos || AHpolicy.find("PRO") != std::string::npos) {
         max_number_of_tests = 20;
         numClients = 1;
-        tuningClient = new NealderMeadTuning(AHpolicy, max_number_of_tests, numClients);
+        tuningClient = new ActiveHarmonyTuning(AHpolicy, max_number_of_tests, numClients);
     } else {
 
         //USING GA
@@ -354,16 +269,16 @@ int main(int argc, char **argv) {
 
             if (executedAlready[j] == false) {
                 for (int i = 0; i < diceComponentIds[j].size(); i++) {
-                    char *resultData = sysEnv.getComponentResultData(diceComponentIds[j][i]);
+                    char *diceResultData = sysEnv.getComponentResultData(diceComponentIds[j][i]);
                     char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
-                    std::cout << "Diff Id: " << diceComponentIds[j][i] << " \tresultData: ";
-                    if (resultData != NULL) {
-                        std::cout << "size: " << ((int *) resultData)[0] << " \thadoopgis-metric: " <<
-                        ((float *) resultData)[1] <<
-                        " \tsecondary: " << ((float *) resultData)[2] << " \tdiceNotCool: " <<
+                    std::cout << "Diff Id: " << diceComponentIds[j][i] << " \tdiceResultData: ";
+                    if (diceResultData != NULL) {
+                        std::cout << "size: " << ((int *) diceResultData)[0] << " \thadoopgis-metric: " <<
+                        ((float *) diceResultData)[1] <<
+                        " \tsecondary: " << ((float *) diceResultData)[2] << " \tdiceNotCool: " <<
                         ((float *) diceNotCoolResultData)[1] << std::endl;
-                        dice += ((float *) resultData)[1];
-                        secondaryMetric += ((float *) resultData)[2];
+                        dice += ((float *) diceResultData)[1];
+                        secondaryMetric += ((float *) diceResultData)[2];
                         diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
                     } else {
                         std::cout << "NULL" << std::endl;
@@ -480,4 +395,84 @@ int main(int argc, char **argv) {
 }
 
 
+namespace patch {
+    template<typename T>
+    std::string to_string(const T &n) {
+        std::ostringstream stm;
+        stm << n;
+        return stm.str();
+    }
+}
 
+void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
+                         std::string &initPercent, int &declumpingType) {
+    // Used for parameters parsing
+    for (int i = 0; i < argc - 1; i++) {
+        if (argv[i][0] == '-' && argv[i][1] == 'i') {
+            inputFolder = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'o') {
+            initPercent = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'f') {
+            AHpolicy = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'd') {
+            declumpingType = atoi(argv[i + 1]);
+        }
+    }
+}
+
+
+RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
+    // Search for input files in folder path
+    std::string referenceMaskExtension = "_mask.txt"; //In case of labeled masks in text format;
+    //std::string referenceMaskExtension = ".mask.png"; //In case of binary mask in png format;
+
+
+    FileUtils fileUtils(referenceMaskExtension);
+    std::vector<std::string> fileList;
+    fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
+    RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
+    rtCollection->setName("inputimage");
+
+    std::cout << "Input Folder: " << inputFolderPath << std::endl;
+
+    // Create one region template instance for each input data file
+    // (creates representations without instantiating them)
+    for (int i = 0; i < fileList.size(); i++) {
+
+        // Create input mask data region
+        DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+        ddr2d->setName("RAW");
+        std::ostringstream oss;
+        oss << i;
+        ddr2d->setId(oss.str());
+        ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
+        ddr2d->setIsAppInput(true);
+        ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
+        std::string inputFileName = fileUtils.replaceExt(fileList[i], referenceMaskExtension, ".tiff");
+        ddr2d->setInputFileName(inputFileName);
+
+        // Create reference mask data region
+        DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
+        ddr2dRefMask->setName("REF_MASK");
+        ddr2dRefMask->setId(oss.str());
+        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
+        ddr2dRefMask->setIsAppInput(true);
+        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
+        cout << endl << "MASK FILE: " << fileList[i] << endl;
+        ddr2dRefMask->setInputFileName(fileList[i]);
+
+        // Adding data regions to region template
+        RegionTemplate *rt = new RegionTemplate();
+        rt->setName("tile");
+        rt->insertDataRegion(ddr2d);
+        rt->insertDataRegion(ddr2dRefMask);
+
+        // Adding region template instance to collection
+        rtCollection->addRT(rt);
+    }
+
+    return rtCollection;
+}

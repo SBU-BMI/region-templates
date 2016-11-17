@@ -11,7 +11,7 @@
 #include "hclient.h"
 #include <stdlib.h>
 
-class NealderMeadTuning : public TuningInterface {
+class ActiveHarmonyTuning : public TuningInterface {
 private:
     int harmonySessionStatus;
     std::string strategyAHpolicy;
@@ -22,7 +22,7 @@ private:
     int bindParam(std::string paramLabel, int setId = 0);
 
 public:
-    NealderMeadTuning(std::string strategy, int maxNumberOfIterations, int numSets);
+    ActiveHarmonyTuning(std::string strategy, int maxNumberOfIterations, int numSets);
 
     int initialize(int argc, char **argv);
     int declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,

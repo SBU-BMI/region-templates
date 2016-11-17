@@ -1,6 +1,6 @@
 #include "SysEnv.h"
-#include <regiontemplates/autotuning/activeharmony/NealderMeadTuning.h>
 #include <regiontemplates/autotuning/geneticalgorithm/GeneticAlgorithm.h>
+#include <regiontemplates/autotuning/activeharmony/ActiveHarmonyTuning.h>
 #include "RegionTemplateCollection.h"
 
 #include "NormalizationComp.h"
@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
         AHpolicy.find("pro") != std::string::npos || AHpolicy.find("PRO") != std::string::npos) {
         max_number_of_tests = 100;
         numClients = 1;
-        tuningClient = new NealderMeadTuning(AHpolicy, max_number_of_tests, numClients);
+        tuningClient = new ActiveHarmonyTuning(AHpolicy, max_number_of_tests, numClients);
     } else {
 
         //USING GA
