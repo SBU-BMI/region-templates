@@ -39,6 +39,7 @@ if (RT_TUNING_NSCALE_EXAMPLE)
         add_subdirectory("PipelineRTFS-NS-KNN-Bounded")
         if (USE_ACTIVE_HARMONY)
         add_subdirectory("PipelineRTFS-NS-Diff-AH-GIS")
+        add_subdirectory("Tuning-Nscale")
         add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS")
         endif (USE_ACTIVE_HARMONY)
 

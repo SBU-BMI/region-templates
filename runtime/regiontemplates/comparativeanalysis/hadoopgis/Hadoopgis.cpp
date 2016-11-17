@@ -29,7 +29,7 @@ void Hadoopgis::getPolygonsFromMask(const cv::Mat &imageLabeled,
         int columns = imageLabeled.cols;
         int a, k;
 
-        cout << "Rows: " << rows << " - Columns:" << columns << endl;
+//        cout << "Rows: " << rows << " - Columns:" << columns << endl;
 
         int amount_of_labels = 0;
 
