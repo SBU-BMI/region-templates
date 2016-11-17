@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
     SysEnv sysEnv;
 
     // Tell the system which libraries should be used
-    sysEnv.startupSystem(argc, argv, "libcomponenttuning.so");
+    sysEnv.startupSystem(argc, argv, "libcomponenttuningyi.so");
 
     // Create region templates description without instantiating data
     rtCollection = RTFromFiles(inputFolderPath);

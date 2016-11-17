@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(Tuning)
+project(Tuning-Yi)
 
 find_package(OpenCV REQUIRED)
 
@@ -38,7 +38,7 @@ link_directories(${Runtime_SOURCE_DIR})
 link_directories(${yibuilddir}/)
 
 # Create library with components implementation
-set(libname componenttuning)
+set(libname componenttuningyi)
 
 # Source files used by the Runtime System
 set(libcomponentssrcs Segmentation.cpp DiceMaskComp.cpp DiceNotCoolMaskComp.cpp TaskSegmentation.cpp)
@@ -83,12 +83,12 @@ target_link_libraries("${libname}" ${OpenCV_LIBS} ${ITK_LIBRARIES})
 add_custom_target(copyCacheConfToTuning COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
 
 # Create executable to be built from the files listed
-add_executable(Tuning PipelineManager.cpp)
+add_executable(Tuning-Yi PipelineManager.cpp)
 if (USE_ACTIVE_HARMONY)
-    target_link_libraries(Tuning ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
+    target_link_libraries(Tuning-Yi ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
 endif (USE_ACTIVE_HARMONY)
-add_dependencies(Tuning copyCacheConfToTuning)
+add_dependencies(Tuning-Yi copyCacheConfToTuning)
 
 # Link the executable to the runtime system library
-target_link_libraries(Tuning runtimesystem "${libname}")
-target_link_libraries(Tuning regiontemplates)
+target_link_libraries(Tuning-Yi runtimesystem "${libname}")
+target_link_libraries(Tuning-Yi regiontemplates)
