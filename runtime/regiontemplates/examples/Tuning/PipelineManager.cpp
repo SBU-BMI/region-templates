@@ -1,19 +1,10 @@
 #include "SysEnv.h"
-#include <sstream>
-#include <stdlib.h>
-#include <iostream>
-#include <string>
 #include <regiontemplates/autotuning/TuningInterface.h>
 #include <regiontemplates/autotuning/activeharmony/NealderMeadTuning.h>
 #include <regiontemplates/autotuning/geneticalgorithm/GeneticAlgorithm.h>
-#include "FileUtils.h"
-#include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
-#include <iomanip>
-
-//#include "NormalizationComp.h"
 #include "Segmentation.h"
-#include "DiffMaskComp.h"
+#include "DiceMaskComp.h"
 #include "DiceNotCoolMaskComp.h"
 #include "ParameterSet.h"
 
@@ -123,11 +114,13 @@ int main(int argc, char **argv) {
     //Multi-Objective Tuning weights
     double timeWeight = 0;
     double metricWeight = 1;
+
     //Multi-Objective Tuning normalization times
     double tSlowest = 50000; //Empirical Data
     double tFastest = 1000; //Empirical Data
-    //Yi's declumping type variable
-    int declumpingType = 0;
+
+    //Yi's default declumping type variable
+    int declumpingType = DECLUMPING_TYPE_MEANSHIFT;
 
     // Folder when input data images are stored
     std::string inputFolderPath, AHpolicy, initPercent;
@@ -168,8 +161,8 @@ int main(int argc, char **argv) {
     }
 
 
-    std::vector<int> diffComponentIds[numClients];
     std::vector<int> segComponentIds[numClients];
+    std::vector<int> diceComponentIds[numClients];
     std::vector<int> diceNotCoolComponentIds[numClients];
     std::map<std::string, double> perfDataBase; //Checks if a param has been tested already
 
@@ -307,29 +300,30 @@ int main(int argc, char **argv) {
                     seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
 
                     std::cout << "Creating DiffMask" << std::endl;
-                    DiffMaskComp *diff = new DiffMaskComp();
-                    DiceNotCoolMaskComp *diceNotCool = new DiceNotCoolMaskComp();
+                    DiceMaskComp *diceComp = new DiceMaskComp();
+                    DiceNotCoolMaskComp *diceNotCoolComp = new DiceNotCoolMaskComp();
 
                     // version of the data region that will be read. It is created during the segmentation.
-                    diff->addArgument(new ArgumentInt(versionSeg));
-                    diceNotCool->addArgument(new ArgumentInt(versionSeg));
+                    diceComp->addArgument(new ArgumentInt(versionSeg));
+                    diceNotCoolComp->addArgument(new ArgumentInt(versionSeg));
 
                     // region template name
-                    diff->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-                    diff->addDependency(seg->getId());
-                    diceNotCool->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-                    diceNotCool->addDependency(diff->getId());
+                    diceComp->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+                    diceComp->addDependency(seg->getId());
+                    diceNotCoolComp->addRegionTemplateInstance(rtCollection->getRT(i),
+                                                               rtCollection->getRT(i)->getName());
+                    diceNotCoolComp->addDependency(diceComp->getId());
 
                     // add to the list of diff component ids.
                     segComponentIds[j].push_back(seg->getId());
-                    diffComponentIds[j].push_back(diff->getId());
-                    diceNotCoolComponentIds[j].push_back(diceNotCool->getId());
+                    diceComponentIds[j].push_back(diceComp->getId());
+                    diceNotCoolComponentIds[j].push_back(diceNotCoolComp->getId());
 
                     sysEnv.executeComponent(seg);
-                    sysEnv.executeComponent(diff);
-                    sysEnv.executeComponent(diceNotCool);
+                    sysEnv.executeComponent(diceComp);
+                    sysEnv.executeComponent(diceNotCoolComp);
 
-                    std::cout << "Manager CompId: " << diff->getId() << " fileName: " <<
+                    std::cout << "Manager CompId: " << diceComp->getId() << " fileName: " <<
                     rtCollection->getRT(i)->getDataRegion(0)->getInputFileName() << std::endl;
                     segCount++;
                     versionSeg++;
@@ -346,7 +340,7 @@ int main(int argc, char **argv) {
         //Fetch results from execution workflow
         //==============================================================================================
         for (int j = 0; j < numClients; j++) {
-            float diff = 0;
+            float dice = 0;
             float secondaryMetric = 0;
             float diceNotCoolValue = 0;
 
@@ -355,22 +349,20 @@ int main(int argc, char **argv) {
             typedef std::map<std::string, double *>::iterator it_type;
             for (it_type iterator = tuningClient->getParamSet(j)->paramSet.begin();
                  iterator != tuningClient->getParamSet(j)->paramSet.end(); iterator++) {
-                //iterator.first key
-                //iterator.second value
                 oss << " - " << iterator->first << ": " << *(iterator->second);
             }
 
             if (executedAlready[j] == false) {
-                for (int i = 0; i < diffComponentIds[j].size(); i++) {
-                    char *resultData = sysEnv.getComponentResultData(diffComponentIds[j][i]);
+                for (int i = 0; i < diceComponentIds[j].size(); i++) {
+                    char *resultData = sysEnv.getComponentResultData(diceComponentIds[j][i]);
                     char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
-                    std::cout << "Diff Id: " << diffComponentIds[j][i] << " \tresultData: ";
+                    std::cout << "Diff Id: " << diceComponentIds[j][i] << " \tresultData: ";
                     if (resultData != NULL) {
                         std::cout << "size: " << ((int *) resultData)[0] << " \thadoopgis-metric: " <<
                         ((float *) resultData)[1] <<
                         " \tsecondary: " << ((float *) resultData)[2] << " \tdiceNotCool: " <<
                         ((float *) diceNotCoolResultData)[1] << std::endl;
-                        diff += ((float *) resultData)[1];
+                        dice += ((float *) resultData)[1];
                         secondaryMetric += ((float *) resultData)[2];
                         diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
                     } else {
@@ -384,33 +376,31 @@ int main(int argc, char **argv) {
                         totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << endl;
                     }
                     sysEnv.eraseResultData(diceNotCoolComponentIds[j][i]);
-                    sysEnv.eraseResultData(diffComponentIds[j][i]);
+                    sysEnv.eraseResultData(diceComponentIds[j][i]);
                     sysEnv.eraseResultData(segComponentIds[j][i]);
                 }
-                diffComponentIds[j].clear();
+                diceComponentIds[j].clear();
                 segComponentIds[j].clear();
                 diceNotCoolComponentIds[j].clear();
 
-//
+
                 //########################################################################################
                 //Single Objective Tuning
                 //########################################################################################
-//                perf[j] = (double) 1 / diff; //If using Hadoopgis
-//                perf[j] = diff; //If using PixelCompare.
+                // perf[j] = (double) 1 / diff; //If using Hadoopgis
+                // perf[j] = diff; //If using PixelCompare.
 
                 //########################################################################################
                 //Multi Objective Tuning
                 //########################################################################################
-                float dice = diff;
-                float dicePlusDiceNotCool = (dice + diceNotCoolValue);
-                diff = dicePlusDiceNotCool / 2;
+
+                float diff = (dice + diceNotCoolValue) / 2;
                 if (diff <= 0) diff = FLT_EPSILON;
 
                 double timeNormalized =
                         (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
                         (tSlowest - tFastest);
-                //perf[j] = (double) 1 / diff; //If using Hadoopgis
-                //perf[j] = diff; //If using PixelCompare.
+
                 perf[j] = (double) 1 /
                           (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
 

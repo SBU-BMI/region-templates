@@ -1,20 +1,20 @@
-#include "DiffMaskComp.h"
+#include "DiceMaskComp.h"
 #include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceCoefficient.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/JaccardIndex.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/MaskIntersection.h>
 #include <regiontemplates/comparativeanalysis/hadoopgis/predicates/DiceNotCoolCoefficient.h>
 
-DiffMaskComp::DiffMaskComp() {
-    this->setComponentName("DiffMaskComp");
+DiceMaskComp::DiceMaskComp() {
+    this->setComponentName("DiceMaskComp");
     this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::INPUT);
 }
 
-DiffMaskComp::~DiffMaskComp() {
+DiceMaskComp::~DiceMaskComp() {
 
 }
 
-int DiffMaskComp::run() {
+int DiceMaskComp::run() {
     int parameterSegId = ((ArgumentInt *) this->getArgument(0))->getArgValue();
 
     RegionTemplate *inputRt = this->getRegionTemplateInstance("tile");
@@ -40,11 +40,11 @@ int DiffMaskComp::run() {
 
             this->executeTask(tDiffMask);
         } else {
-            std::cout << "DiffMaskComp: did not find data regions: " << std::endl;
+            std::cout << "DiceMaskComp: did not find data regions: " << std::endl;
             inputRt->print();
         }
     } else {
-        std::cout << "\tTASK diff mask: Did not find RT named tile" << std::endl;
+        std::cout << "\tTASK dice mask: Did not find RT named tile" << std::endl;
     }
 
     return 0;
@@ -52,10 +52,10 @@ int DiffMaskComp::run() {
 
 // Create the component factory
 PipelineComponentBase *componentFactoryDF() {
-    return new DiffMaskComp();
+    return new DiceMaskComp();
 }
 
 // register factory with the runtime system
-bool registeredDF = PipelineComponentBase::ComponentFactory::componentRegister("DiffMaskComp", &componentFactoryDF);
+bool registeredDF = PipelineComponentBase::ComponentFactory::componentRegister("DiceMaskComp", &componentFactoryDF);
 
 

@@ -1,18 +1,18 @@
-#ifndef DIFF_MASK_COMP_H_
-#define DIFF_MASK_COMP_H_
+#ifndef DICE_MASK_COMP_H_
+#define DICE_MASK_COMP_H_
 
 #include "RTPipelineComponentBase.h"
 
 
-class DiffMaskComp : public RTPipelineComponentBase {
+class DiceMaskComp : public RTPipelineComponentBase {
 private:
     // Percentage of difference found in the mask
 //	float diffPercentage;
 
 public:
-    DiffMaskComp();
+    DiceMaskComp();
 
-    virtual ~DiffMaskComp();
+    virtual ~DiceMaskComp();
 
     int run();
 
