@@ -4,7 +4,7 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *ma
                                    unsigned char green, unsigned char red, double T1, double T2, unsigned char G1,
                                    unsigned char G2, int minSize, int maxSize, int minSizePl, int minSizeSeg,
                                    int maxSizeSeg, int fillHolesConnectivity, int reconConnectivity,
-                                   int watershedConnectivity) {
+                                   int watershedConnectivity, uint64_t *executionTime) {
     this->bgr = bgr;
     this->mask = mask;
 
@@ -24,6 +24,7 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *ma
     this->fillHolesConnectivity = fillHolesConnectivity;
     this->reconConnectivity = reconConnectivity;
     this->watershedConnectivity = watershedConnectivity;
+    this->executionTime = executionTime;
 }
 
 TaskSegmentation::~TaskSegmentation() {
@@ -53,5 +54,7 @@ bool TaskSegmentation::run(int procType, int tid) {
 
     uint64_t t2 = Util::ClockGetTimeProfile();
 
-    std::cout << "Task Segmentation time elapsed: " << t2 - t1 << std::endl;
+    this->executionTime[0] = t2 - t1;
+
+    std::cout << "Task Segmentation time elapsed: " << this->executionTime[0] << std::endl;
 }

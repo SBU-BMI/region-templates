@@ -42,6 +42,10 @@ int Segmentation::run() {
     int reconConnectivity = ((ArgumentInt *) this->getArgument(15))->getArgValue();
     int watershedConnectivity = ((ArgumentInt *) this->getArgument(16))->getArgValue();
 
+    uint64_t *executionTime = (uint64_t *) malloc(sizeof(uint64_t));
+    executionTime[0] = 1;
+    this->setResultData((char *) executionTime, sizeof(uint64_t));
+
     if (inputRt != NULL) {
         DenseDataRegion2D *bgr = NULL;
         try {
@@ -68,7 +72,7 @@ int Segmentation::run() {
             TaskSegmentation *segTask = new TaskSegmentation(bgr, mask, blue, green, red, T1, T2, G1, G2, minSize,
                                                              maxSize, minSizePl, minSizeSeg, maxSizeSeg,
                                                              fillHolesConnectivity, reconConnectivity,
-                                                             watershedConnectivity);
+                                                             watershedConnectivity, executionTime);
 
             this->executeTask(segTask);
 

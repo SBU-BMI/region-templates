@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
     //Multi-Objective Tuning normalization times
     double tSlowest = 50000; //Empirical Data
-    double tFastest = 1000; //Empirical Data
+    double tFastest = 300; //Empirical Data
 
     //Yi's default declumping type variable
     int declumpingType = DECLUMPING_TYPE_MEANSHIFT;

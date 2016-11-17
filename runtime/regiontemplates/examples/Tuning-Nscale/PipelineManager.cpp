@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 
     //Multi-Objective Tuning normalization times
     double tSlowest = 50000; //Empirical Data
-    double tFastest = 1000; //Empirical Data
+    double tFastest = 300; //Empirical Data
 
 
     // Folder when input data images are stored

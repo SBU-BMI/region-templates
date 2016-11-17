@@ -23,12 +23,12 @@ private:
     unsigned char G1, G2;
     int minSize, maxSize, minSizePl, minSizeSeg, maxSizeSeg;
     int fillHolesConnectivity, reconConnectivity, watershedConnectivity;
-
+    uint64_t *executionTime;
 public:
     TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, unsigned char blue, unsigned char green,
                      unsigned char red, double T1, double T2, unsigned char G1, unsigned char G2, int minSize,
                      int maxSize, int minSizePl, int minSizeSeg, int maxSizeSeg, int fillHolesConnectivity,
-                     int reconConnectivity, int watershedConnectivity);
+                     int reconConnectivity, int watershedConnectivity, uint64_t *executionTime);
 
     virtual ~TaskSegmentation();
 
