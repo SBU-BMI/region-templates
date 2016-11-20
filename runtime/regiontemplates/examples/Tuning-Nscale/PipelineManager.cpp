@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     double metricWeight = 1;
 
     //Multi-Objective Tuning normalization times
-    double tSlowest = 1000; //Empirical Data
+    double tSlowest = 350; //Empirical Data
     double tFastest = 100; //Empirical Data
 
 
@@ -136,7 +136,6 @@ int main(int argc, char **argv) {
         tuningClient->fetchParams();
         //Apply fitness function for each individual
         for (int i = 0; i < numClients; i++) {
-            perf[i] = INF;
 
             std::ostringstream oss;
             oss << "PARAMS";

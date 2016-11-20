@@ -140,7 +140,6 @@ int main(int argc, char **argv) {
         tuningClient->fetchParams();
         //Apply fitness function for each individual
         for (int i = 0; i < numClients; i++) {
-            perf[i] = INF;
 
             std::ostringstream oss;
             oss << "PARAMS";
