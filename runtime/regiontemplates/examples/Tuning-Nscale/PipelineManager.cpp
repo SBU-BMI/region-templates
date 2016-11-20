@@ -29,8 +29,8 @@ int main(int argc, char **argv) {
     double metricWeight = 1;
 
     //Multi-Objective Tuning normalization times
-    double tSlowest = 50000; //Empirical Data
-    double tFastest = 300; //Empirical Data
+    double tSlowest = 1000; //Empirical Data
+    double tFastest = 100; //Empirical Data
 
 
     // Folder when input data images are stored
@@ -43,18 +43,18 @@ int main(int argc, char **argv) {
     //USING AH
     if (AHpolicy.find("nm") != std::string::npos || AHpolicy.find("NM") != std::string::npos ||
         AHpolicy.find("pro") != std::string::npos || AHpolicy.find("PRO") != std::string::npos) {
-        max_number_of_tests = 20;
+        max_number_of_tests = 100;
         numClients = 1;
         tuningClient = new ActiveHarmonyTuning(AHpolicy, max_number_of_tests, numClients);
     } else {
 
         //USING GA
-        int max_number_of_generations = 5;
+        int max_number_of_generations = 10;
         int mutationchance = 30;
         int crossoverrate = 50;
         int propagationamount = 1;
 
-        numClients = 4; //popsize
+        numClients = 10; //popsize
         max_number_of_tests = max_number_of_generations * numClients;
         tuningClient = new GeneticAlgorithm(max_number_of_generations, numClients, mutationchance,
                                             crossoverrate,
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
         return -1;
     };
 
-    double perf[numClients];
+    float *perf = (float *) malloc(sizeof(float) * max_number_of_tests);;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
     float *dicePerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
     float *diceNotCoolPerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
@@ -332,8 +332,8 @@ int main(int argc, char **argv) {
                 //########################################################################################
                 //Single Objective Tuning
                 //########################################################################################
-                // perf[j] = (double) 1 / diff; //If using Hadoopgis
-                // perf[j] = diff; //If using PixelCompare.
+                // perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 / diff; //If using Hadoopgis
+                // perf[tuningClient->getIteration() * numClients + (j)] = diff; //If using PixelCompare.
 
                 //########################################################################################
                 //Multi Objective Tuning
@@ -346,11 +346,12 @@ int main(int argc, char **argv) {
                         (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
                         (tSlowest - tFastest);
 
-                perf[j] = (double) 1 /
-                          (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
+                perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 /
+                                                                        (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
 
                 totalExecutionTimesNormalized[tuningClient->getIteration() * numClients + (j)] = timeNormalized;
-                if (perf[j] < 0) perf[j] = 0;
+                if (perf[tuningClient->getIteration() * numClients + (j)] < 0)
+                    perf[tuningClient->getIteration() * numClients + (j)] = 0;
 
                 std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
                 typedef std::map<std::string, double *>::iterator it_type;
@@ -363,30 +364,32 @@ int main(int argc, char **argv) {
 
                 cout << endl << endl << "\tDiff: " << diff << " Secondary Metric: " << secondaryMetric <<
                 " Time Normalized: " << timeNormalized << " Segmentation Time: " <<
-                totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << " Perf: " << perf[j] << endl;
+                totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << " Perf: " <<
+                perf[tuningClient->getIteration() * numClients + (j)] << endl;
 
                 totaldiffs[tuningClient->getIteration() * numClients + (j)] = diff;
                 dicePerIteration[tuningClient->getIteration() * numClients + (j)] = dice;
                 diceNotCoolPerIteration[tuningClient->getIteration() * numClients + (j)] = diceNotCoolValue;
 
-                if (minperf > perf[j] && perf[j] != 0) {
-                    minperf = perf[j];
+                if (minperf > perf[tuningClient->getIteration() * numClients + (j)] &&
+                    perf[tuningClient->getIteration() * numClients + (j)] != 0) {
+                    minperf = perf[tuningClient->getIteration() * numClients + (j)];
                     maxdiff = diff;
                 }
 
-                perfDataBase[oss.str()] = perf[j];
+                perfDataBase[oss.str()] = perf[tuningClient->getIteration() * numClients + (j)];
             } else {
-                perf[j] = perfDataBase[oss.str()];
+                perf[tuningClient->getIteration() * numClients + (j)] = perfDataBase[oss.str()];
 
                 std::cout << "ATTENTION! Param set executed already:" << std::endl;
                 std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
                 std::cout << oss.str() << endl;
 
-                std::cout << " perf: " << perf[j] << std::endl;
+                std::cout << " perf: " << perf[tuningClient->getIteration() * numClients + (j)] << std::endl;
             }
 
             // Report the performance we've just measured.
-            tuningClient->reportScore(perf[j], j);
+            tuningClient->reportScore(perf[tuningClient->getIteration() * numClients + (j)], j);
         }
 
         //Checks if at least one test in this iteration succeeded.
@@ -401,20 +404,24 @@ int main(int argc, char **argv) {
 
     std::cout << "\t\tResults:" << std::endl;
     for (int i = 0; i < max_number_of_tests; ++i) {
-        double perfWeighted =
-                (double) 1 / (double) (metricWeight * totaldiffs[i] + timeWeight * totalExecutionTimesNormalized[i]);
-        if (perfWeighted < 0) perfWeighted = 0;
 
         std::cout << std::fixed << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
         "  \tExecution Time: " <<
         totalexecutiontimes[i] << " \tTime Normalized: " << totalExecutionTimesNormalized[i] << " \tDice: " <<
         dicePerIteration[i] << " \tDiceNC: " << diceNotCoolPerIteration[i];
-        std::cout << "  \tPerf(weighted): " << perfWeighted << std::endl;
+        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
     }
-    std::cout << "\tBest Diff: " << maxdiff << std::endl;
+
+
+    int minPerfIndex = 0;
+    for (int j = 0; j < max_number_of_tests; ++j) {
+        if (perf[j] == minperf) minPerfIndex = j;
+    }
+
     std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minperf << std::endl;
-
-
+    std::cout << "\tMetric of Best anwser: " << totaldiffs[minPerfIndex] << std::endl;
+    std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
+    std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
 
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();

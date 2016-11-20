@@ -55,18 +55,18 @@ int main(int argc, char **argv) {
     //USING AH
     if (AHpolicy.find("nm") != std::string::npos || AHpolicy.find("NM") != std::string::npos ||
         AHpolicy.find("pro") != std::string::npos || AHpolicy.find("PRO") != std::string::npos) {
-        max_number_of_tests = 20;
+        max_number_of_tests = 100;
         numClients = 1;
         tuningClient = new ActiveHarmonyTuning(AHpolicy, max_number_of_tests, numClients);
     } else {
 
         //USING GA
-        int max_number_of_generations = 5;
+        int max_number_of_generations = 10;
         int mutationchance = 30;
         int crossoverrate = 50;
         int propagationamount = 1;
 
-        numClients = 4; //popsize
+        numClients = 10; //popsize
         max_number_of_tests = max_number_of_generations * numClients;
         tuningClient = new GeneticAlgorithm(max_number_of_generations, numClients, mutationchance,
                                             crossoverrate,
