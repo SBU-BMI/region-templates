@@ -113,9 +113,9 @@ int main(int argc, char **argv) {
         }
     }
     std::cout << std::endl;
-    std::cout << "\t\tBest: " << minPerfIndex << " \tDiff: " << totaldiffs[minPerfIndex] <<
+    std::cout << "\t\tBEST: " << minPerfIndex << " \tDiff: " << totaldiffs[minPerfIndex] <<
     "  \tExecution Time: " << totalexecutiontimes[minPerfIndex] << " \tDice: " << dicePerIteration[minPerfIndex] <<
-    " \tDiceNC: " << diceNotCoolPerIteration[minPerfIndex];
+    " \tDiceNC: " << diceNotCoolPerIteration[minPerfIndex] << "  \tPerf(weighted): " << perf[minPerfIndex];
     std::cout << std::endl;
     std::cout << "  \tPerf(weighted): " << perf[minPerfIndex] << std::endl;
     std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minPerf << std::endl;
