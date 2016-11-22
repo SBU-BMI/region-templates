@@ -18,11 +18,18 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
 
 
-int multiObjectiveTuning(int argc, char **argv, int max_number_of_tests, double metricWeight, double timeWeight,
-                         double tSlowest, double tFastest, RegionTemplateCollection *rtCollection,
+int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests, double metricWeight,
+                         double timeWeight,
+                         double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                          std::string tuningPolicy,
                          float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
                          uint64_t *totalexecutiontimes);
+
+int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
+                               double &tFastest, RegionTemplateCollection *rtCollection,
+                               std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
+                               float *diceNotCoolPerIteration,
+                               uint64_t *totalexecutiontimes);
 
 
 int main(int argc, char **argv) {
@@ -35,8 +42,8 @@ int main(int argc, char **argv) {
 
 
     //Multi-Objective Tuning normalization times
-    double tSlowest = 350; //Empirical Data
-    double tFastest = 100; //Empirical Data
+    double tSlowest; //Empirical Data that will be obtained with profiling
+    double tFastest; //Empirical Data that will be obtained with profiling
 
     int max_number_of_tests = 100;
 
@@ -57,18 +64,33 @@ int main(int argc, char **argv) {
     // Create region templates description without instantiating data
     rtCollection = RTFromFiles(inputFolderPath);
 
+    // Handler to the distributed execution system environment
+    SysEnv sysEnv;
+    // Tell the system which libraries should be used
+    sysEnv.startupSystem(argc, argv, "libcomponenttuningnscale.so");
 
-    // Tuning Client SETUP //
+    // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
+    objectiveFunctionProfiling(argc, argv, sysEnv, 10, tSlowest, tFastest, rtCollection,
+                               "nm", perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                               totalexecutiontimes);
 
-    multiObjectiveTuning(argc, argv, max_number_of_tests, metricWeight, timeWeight, tSlowest, tFastest, rtCollection,
+    std::cout << "\t\tProfiling:" << std::endl;
+    for (int i = 0; i < 10; ++i) {
+
+        std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
+        "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
+        diceNotCoolPerIteration[i];
+        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+    }
+    std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest << std::endl;
+
+    // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
+    multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight, timeWeight, tSlowest, tFastest,
+                         rtCollection,
                          tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
                          totalexecutiontimes);
 
-
-
-    /* main loop */
-
-
+    // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
 
 
 
@@ -101,6 +123,8 @@ int main(int argc, char **argv) {
     std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
     std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
 
+    // Finalize all processes running and end execution
+    sysEnv.finalizeSystem();
 
     delete rtCollection;
 
@@ -187,14 +211,16 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
     return rtCollection;
 }
 
-int multiObjectiveTuning(int argc, char **argv, int max_number_of_tests, double metricWeight, double timeWeight,
-                         double tSlowest, double tFastest, RegionTemplateCollection *rtCollection,
+int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests, double metricWeight,
+                         double timeWeight,
+                         double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                          std::string tuningPolicy,
                          float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
                          uint64_t *totalexecutiontimes) {
 
     TuningInterface *tuningClient;
     int numClients;
+
 
     //USING AH
     if (tuningPolicy.find("nm") != std::string::npos || tuningPolicy.find("NM") != std::string::npos ||
@@ -231,11 +257,6 @@ int multiObjectiveTuning(int argc, char **argv, int max_number_of_tests, double 
     int versionNorm = 0, versionSeg = 0;
     bool executedAlready[numClients];
 
-    // Handler to the distributed execution system environment
-    SysEnv sysEnv;
-
-    // Tell the system which libraries should be used
-    sysEnv.startupSystem(argc, argv, "libcomponenttuningnscale.so");
 
     if (tuningClient->initialize(argc, argv) != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
@@ -479,12 +500,20 @@ int multiObjectiveTuning(int argc, char **argv, int max_number_of_tests, double 
                         (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
                         (tSlowest - tFastest);
 
-                perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 /
-                                                                        (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
+                double weightedSumOfMetricAndTime = (double) (metricWeight * diff + timeWeight * timeNormalized);
+                if (weightedSumOfMetricAndTime > 0) {
+                    perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 /
+                                                                            weightedSumOfMetricAndTime; //Multi Objective Tuning
+                } else {
+                    perf[tuningClient->getIteration() * numClients + (j)] = std::numeric_limits<double>::infinity();
+                }
+
+
 
                 totalExecutionTimesNormalized[tuningClient->getIteration() * numClients + (j)] = timeNormalized;
                 if (perf[tuningClient->getIteration() * numClients + (j)] < 0)
-                    perf[tuningClient->getIteration() * numClients + (j)] = 0;
+                    perf[tuningClient->getIteration() * numClients + (j)] = -perf[
+                            tuningClient->getIteration() * numClients + (j)];
 
                 std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
                 typedef std::map<std::string, double *>::iterator it_type;
@@ -530,7 +559,25 @@ int multiObjectiveTuning(int argc, char **argv, int max_number_of_tests, double 
 
     }
 
-    // Finalize all processes running and end execution
-    sysEnv.finalizeSystem();
+}
 
+int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
+                               double &tFastest, RegionTemplateCollection *rtCollection,
+                               std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
+                               float *diceNotCoolPerIteration,
+                               uint64_t *totalexecutiontimes) {
+
+    multiObjectiveTuning(argc, argv, sysEnv, number_of_profiling_tests, 1, 0, tSlowest, tFastest, rtCollection,
+                         tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                         totalexecutiontimes);
+
+    //Peform the profiling
+    //Get the slowest time for that objective function in the machine
+    //Get the fastest time for that objective function in the machine
+    tSlowest = 0;
+    tFastest = std::numeric_limits<double>::infinity();
+    for (int i = 0; i < number_of_profiling_tests; ++i) {
+        if (totalexecutiontimes[i] > tSlowest) tSlowest = totalexecutiontimes[i];
+        if (totalexecutiontimes[i] < tFastest) tFastest = totalexecutiontimes[i];
+    }
 }
