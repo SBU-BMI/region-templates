@@ -10,8 +10,6 @@
 #include "hclient.h"
 #include "NormalizationComp.h"
 
-#define INF    100000
-
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
                          std::string &initPercent);
 
@@ -83,6 +81,11 @@ int main(int argc, char **argv) {
         std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
     }
     std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest << std::endl;
+    double timeGap = tSlowest - tFastest;
+//    tSlowest = tSlowest + 2 * timeGap;
+//    tFastest = tFastest - 2 * timeGap;
+//    if (tFastest < 0) tFastest = timeGap;
+//    std::cout << std::endl << "\t\ttSlowest-modified: " << tSlowest << std::endl << "\t\ttFastest-modified: " << tFastest << std::endl;
 
     // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
     multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight, timeWeight, tSlowest, tFastest,
@@ -93,7 +96,7 @@ int main(int argc, char **argv) {
     // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
 
 
-
+    sleep(2);
     std::cout << "\t\tResults:" << std::endl;
     for (int i = 0; i < max_number_of_tests; ++i) {
 

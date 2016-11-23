@@ -9,7 +9,6 @@
 #include "ParameterSet.h"
 #include "hclient.h"
 
-#define INF    100000
 #define DECLUMPING_TYPE_MEANSHIFT 0
 #define DECLUMPING_TYPE_NO_DECLUMPING 1
 #define DECLUMPING_TYPE_WATERSHED 2
@@ -19,29 +18,41 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
 
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
 
+int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests, double metricWeight,
+                         double timeWeight,
+                         double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
+                         std::string tuningPolicy, int declumpingType,
+                         float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
+                         uint64_t *totalexecutiontimes);
+
+int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
+                               double &tFastest, RegionTemplateCollection *rtCollection,
+                               std::string tuningPolicy, int declumpingType, float *perf, float *totaldiffs,
+                               float *dicePerIteration,
+                               float *diceNotCoolPerIteration,
+                               uint64_t *totalexecutiontimes);
 
 int main(int argc, char **argv) {
 
-    int numClients;
-    TuningInterface *tuningClient;
-    int max_number_of_tests;
 
     //Multi-Objective Tuning weights
     double timeWeight = 1;
     double metricWeight = 1;
 
     //Multi-Objective Tuning normalization times
-    double tSlowest = 30000; //Empirical Data
-    double tFastest = 300; //Empirical Data
+    double tSlowest; //Empirical Data that will be obtained with profiling
+    double tFastest; //Empirical Data that will be obtained with profiling
+
+    int max_number_of_tests = 100;
 
     //Yi's default declumping type variable
     int declumpingType = DECLUMPING_TYPE_MEANSHIFT;
 
     // Folder when input data images are stored
-    std::string inputFolderPath, AHpolicy, initPercent;
+    std::string inputFolderPath, tuningPolicy, initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
-    parseInputArguments(argc, argv, inputFolderPath, AHpolicy, initPercent, declumpingType);
+    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, declumpingType);
 
     if (declumpingType != DECLUMPING_TYPE_MEANSHIFT && declumpingType != DECLUMPING_TYPE_NO_DECLUMPING &&
         declumpingType != DECLUMPING_TYPE_WATERSHED) {
@@ -52,47 +63,218 @@ int main(int argc, char **argv) {
     }
 
 
+    float *perf = (float *) malloc(sizeof(float) * max_number_of_tests);;
+    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
+    float *dicePerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
+    float *diceNotCoolPerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
+    uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_tests);
+
+
+    // Create region templates description without instantiating data
+    rtCollection = RTFromFiles(inputFolderPath);
+
+    // Handler to the distributed execution system environment
+    SysEnv sysEnv;
+    // Tell the system which libraries should be used
+    sysEnv.startupSystem(argc, argv, "libcomponenttuningyi.so");
+
+    // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
+    objectiveFunctionProfiling(argc, argv, sysEnv, 10, tSlowest, tFastest, rtCollection,
+                               "nm", declumpingType, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                               totalexecutiontimes);
+
+    std::cout << "\t\tProfiling:" << std::endl;
+    for (int i = 0; i < 10; ++i) {
+
+        std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
+        "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
+        diceNotCoolPerIteration[i];
+        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+    }
+    std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest << std::endl;
+    double timeGap = tSlowest - tFastest;
+//    tSlowest = tSlowest + 2 * timeGap;
+//    tFastest = tFastest - 2 * timeGap;
+//    if (tFastest < 0) tFastest = timeGap;
+//    std::cout << std::endl << "\t\ttSlowest-modified: " << tSlowest << std::endl << "\t\ttFastest-modified: " << tFastest << std::endl;
+
+    // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
+    multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight, timeWeight, tSlowest, tFastest,
+                         rtCollection,
+                         tuningPolicy, declumpingType, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                         totalexecutiontimes);
+
+    // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
+
+
+    sleep(2);
+    std::cout << "\t\tResults:" << std::endl;
+    for (int i = 0; i < max_number_of_tests; ++i) {
+
+        std::cout << std::fixed << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
+        "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
+        diceNotCoolPerIteration[i];
+        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+    }
+
+    float minPerf = std::numeric_limits<float>::infinity();
+    int minPerfIndex = 0;
+    for (int j = 0; j < max_number_of_tests; ++j) {
+
+        if (perf[j] < minPerf) {
+            minPerf = perf[j];
+            minPerfIndex = j;
+        }
+    }
+    std::cout << std::endl;
+    std::cout << "\t\tBEST: " << minPerfIndex << " \tDiff: " << totaldiffs[minPerfIndex] <<
+    "  \tExecution Time: " << totalexecutiontimes[minPerfIndex] << " \tDice: " << dicePerIteration[minPerfIndex] <<
+    " \tDiceNC: " << diceNotCoolPerIteration[minPerfIndex] << "  \tPerf(weighted): " << perf[minPerfIndex];
+    std::cout << std::endl;
+    std::cout << "  \tPerf(weighted): " << perf[minPerfIndex] << std::endl;
+    std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minPerf << std::endl;
+    std::cout << "\tMetric of Best anwser: " << totaldiffs[minPerfIndex] << std::endl;
+    std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
+    std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
+
+    // Finalize all processes running and end execution
+    sysEnv.finalizeSystem();
+
+    delete rtCollection;
+
+    return 0;
+}
+
+
+namespace patch {
+    template<typename T>
+    std::string to_string(const T &n) {
+        std::ostringstream stm;
+        stm << n;
+        return stm.str();
+    }
+}
+
+void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
+                         std::string &initPercent, int &declumpingType) {
+    // Used for parameters parsing
+    for (int i = 0; i < argc - 1; i++) {
+        if (argv[i][0] == '-' && argv[i][1] == 'i') {
+            inputFolder = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'o') {
+            initPercent = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'f') {
+            AHpolicy = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'd') {
+            declumpingType = atoi(argv[i + 1]);
+        }
+    }
+}
+
+
+RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
+    // Search for input files in folder path
+    std::string referenceMaskExtension = "_mask.txt"; //In case of labeled masks in text format;
+    //std::string referenceMaskExtension = ".mask.png"; //In case of binary mask in png format;
+
+
+    FileUtils fileUtils(referenceMaskExtension);
+    std::vector<std::string> fileList;
+    fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
+    RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
+    rtCollection->setName("inputimage");
+
+    std::cout << "Input Folder: " << inputFolderPath << std::endl;
+
+    // Create one region template instance for each input data file
+    // (creates representations without instantiating them)
+    for (int i = 0; i < fileList.size(); i++) {
+
+        // Create input mask data region
+        DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+        ddr2d->setName("RAW");
+        std::ostringstream oss;
+        oss << i;
+        ddr2d->setId(oss.str());
+        ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
+        ddr2d->setIsAppInput(true);
+        ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
+        std::string inputFileName = fileUtils.replaceExt(fileList[i], referenceMaskExtension, ".tiff");
+        ddr2d->setInputFileName(inputFileName);
+
+        // Create reference mask data region
+        DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
+        ddr2dRefMask->setName("REF_MASK");
+        ddr2dRefMask->setId(oss.str());
+        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
+        ddr2dRefMask->setIsAppInput(true);
+        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
+        cout << endl << "MASK FILE: " << fileList[i] << endl;
+        ddr2dRefMask->setInputFileName(fileList[i]);
+
+        // Adding data regions to region template
+        RegionTemplate *rt = new RegionTemplate();
+        rt->setName("tile");
+        rt->insertDataRegion(ddr2d);
+        rt->insertDataRegion(ddr2dRefMask);
+
+        // Adding region template instance to collection
+        rtCollection->addRT(rt);
+    }
+
+    return rtCollection;
+}
+
+
+int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests, double metricWeight,
+                         double timeWeight,
+                         double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
+                         std::string tuningPolicy, int declumpingType,
+                         float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
+                         uint64_t *totalexecutiontimes) {
+
+    TuningInterface *tuningClient;
+    int numClients;
+
+
     //USING AH
-    if (AHpolicy.find("nm") != std::string::npos || AHpolicy.find("NM") != std::string::npos ||
-        AHpolicy.find("pro") != std::string::npos || AHpolicy.find("PRO") != std::string::npos) {
-        max_number_of_tests = 100;
+    if (tuningPolicy.find("nm") != std::string::npos || tuningPolicy.find("NM") != std::string::npos ||
+        tuningPolicy.find("pro") != std::string::npos || tuningPolicy.find("PRO") != std::string::npos) {
         numClients = 1;
-        tuningClient = new ActiveHarmonyTuning(AHpolicy, max_number_of_tests, numClients);
+        tuningClient = new ActiveHarmonyTuning(tuningPolicy, max_number_of_tests, numClients);
     } else {
 
+
         //USING GA
-        int max_number_of_generations = 10;
+        int max_number_of_generations = (int) floor(sqrt(max_number_of_tests));
         int mutationchance = 30;
         int crossoverrate = 50;
-        int propagationamount = 1;
+        int propagationamount = 2;
 
-        numClients = 10; //popsize
-        max_number_of_tests = max_number_of_generations * numClients;
-        tuningClient = new GeneticAlgorithm(max_number_of_generations, numClients, mutationchance,
+        int popsize = (int) ceil(sqrt(max_number_of_tests));
+
+
+        numClients = popsize; //popsize
+        tuningClient = new GeneticAlgorithm(max_number_of_generations, popsize, mutationchance,
                                             crossoverrate,
                                             propagationamount,
                                             1);
 
     }
 
+    double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_tests);
 
     std::vector<int> segComponentIds[numClients];
     std::vector<int> diceComponentIds[numClients];
     std::vector<int> diceNotCoolComponentIds[numClients];
     std::map<std::string, double> perfDataBase; //Checks if a param has been tested already
 
+    int versionNorm = 0, versionSeg = 0;
+    bool executedAlready[numClients];
 
-    // Handler to the distributed execution system environment
-    SysEnv sysEnv;
-
-    // Tell the system which libraries should be used
-    sysEnv.startupSystem(argc, argv, "libcomponenttuningyi.so");
-
-    // Create region templates description without instantiating data
-    rtCollection = RTFromFiles(inputFolderPath);
-
-
-    // Tuning Client SETUP //
 
     if (tuningClient->initialize(argc, argv) != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
@@ -116,22 +298,6 @@ int main(int argc, char **argv) {
         return -1;
     };
 
-    float *perf = (float *) malloc(sizeof(float) * max_number_of_tests);;
-    float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
-    float *dicePerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
-    float *diceNotCoolPerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
-    float maxdiff = 0;
-    float minperf = std::numeric_limits<float>::infinity();
-
-
-    uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_tests);
-    double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_tests);
-
-    int versionNorm = 0, versionSeg = 0;
-    bool executedAlready[numClients];
-
-
-    /* main loop */
     for (; !tuningClient->hasConverged();) {
         cout << "ITERATION: " << tuningClient->getIteration() << endl;
 
@@ -153,7 +319,8 @@ int main(int argc, char **argv) {
 
             // / if not found in performance database
             if (perfDataBase.find(oss.str()) != perfDataBase.end()) {
-                perf[i] = perfDataBase.find(oss.str())->second;
+                perf[tuningClient->getIteration() * numClients +
+                     (i)] = perfDataBase.find(oss.str())->second;
                 std::cout << "Parameters already tested: " << oss.str() << " perf: " << perf << std::endl;
 
                 executedAlready[i] = true;
@@ -299,12 +466,6 @@ int main(int argc, char **argv) {
 
 
                 //########################################################################################
-                //Single Objective Tuning
-                //########################################################################################
-                // perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 / diff; //If using Hadoopgis
-                // perf[tuningClient->getIteration() * numClients + (j)] = diff; //If using PixelCompare.
-
-                //########################################################################################
                 //Multi Objective Tuning
                 //########################################################################################
 
@@ -315,12 +476,19 @@ int main(int argc, char **argv) {
                         (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
                         (tSlowest - tFastest);
 
-                perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 /
-                                                                        (double) (metricWeight * diff + timeWeight * timeNormalized); //Multi Objective Tuning
+                double weightedSumOfMetricAndTime = (double) (metricWeight * diff + timeWeight * timeNormalized);
+                if (weightedSumOfMetricAndTime > 0) {
+                    perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 /
+                                                                            weightedSumOfMetricAndTime; //Multi Objective Tuning
+                } else {
+                    perf[tuningClient->getIteration() * numClients + (j)] = std::numeric_limits<double>::infinity();
+                }
+
 
                 totalExecutionTimesNormalized[tuningClient->getIteration() * numClients + (j)] = timeNormalized;
                 if (perf[tuningClient->getIteration() * numClients + (j)] < 0)
-                    perf[tuningClient->getIteration() * numClients + (j)] = 0;
+                    perf[tuningClient->getIteration() * numClients + (j)] = -perf[
+                            tuningClient->getIteration() * numClients + (j)];
 
                 std::cout << "END: LoopIdx: " << tuningClient->getIteration() * numClients + (j);
                 typedef std::map<std::string, double *>::iterator it_type;
@@ -340,11 +508,6 @@ int main(int argc, char **argv) {
                 dicePerIteration[tuningClient->getIteration() * numClients + (j)] = dice;
                 diceNotCoolPerIteration[tuningClient->getIteration() * numClients + (j)] = diceNotCoolValue;
 
-                if (minperf > perf[tuningClient->getIteration() * numClients + (j)] &&
-                    perf[tuningClient->getIteration() * numClients + (j)] != 0) {
-                    minperf = perf[tuningClient->getIteration() * numClients + (j)];
-                    maxdiff = diff;
-                }
 
                 perfDataBase[oss.str()] = perf[tuningClient->getIteration() * numClients + (j)];
             } else {
@@ -371,115 +534,26 @@ int main(int argc, char **argv) {
 
     }
 
-    std::cout << "\t\tResults:" << std::endl;
-    for (int i = 0; i < max_number_of_tests; ++i) {
-
-        std::cout << std::fixed << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
-        "  \tExecution Time: " <<
-        totalexecutiontimes[i] << " \tTime Normalized: " << totalExecutionTimesNormalized[i] << " \tDice: " <<
-        dicePerIteration[i] << " \tDiceNC: " << diceNotCoolPerIteration[i];
-        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
-    }
-
-
-    int minPerfIndex = 0;
-    for (int j = 0; j < max_number_of_tests; ++j) {
-        if (perf[j] == minperf) minPerfIndex = j;
-    }
-
-    std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minperf << std::endl;
-    std::cout << "\tMetric of Best anwser: " << totaldiffs[minPerfIndex] << std::endl;
-    std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
-    std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
-
-
-    // Finalize all processes running and end execution
-    sysEnv.finalizeSystem();
-
-    delete rtCollection;
-
-    return 0;
 }
 
+int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
+                               double &tFastest, RegionTemplateCollection *rtCollection,
+                               std::string tuningPolicy, int declumpingType, float *perf, float *totaldiffs,
+                               float *dicePerIteration,
+                               float *diceNotCoolPerIteration,
+                               uint64_t *totalexecutiontimes) {
 
-namespace patch {
-    template<typename T>
-    std::string to_string(const T &n) {
-        std::ostringstream stm;
-        stm << n;
-        return stm.str();
+    multiObjectiveTuning(argc, argv, sysEnv, number_of_profiling_tests, 1, 0, tSlowest, tFastest, rtCollection,
+                         tuningPolicy, declumpingType, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                         totalexecutiontimes);
+
+    //Peform the profiling
+    //Get the slowest time for that objective function in the machine
+    //Get the fastest time for that objective function in the machine
+    tSlowest = 0;
+    tFastest = std::numeric_limits<double>::infinity();
+    for (int i = 0; i < number_of_profiling_tests; ++i) {
+        if (totalexecutiontimes[i] > tSlowest) tSlowest = totalexecutiontimes[i];
+        if (totalexecutiontimes[i] < tFastest) tFastest = totalexecutiontimes[i];
     }
-}
-
-void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, int &declumpingType) {
-    // Used for parameters parsing
-    for (int i = 0; i < argc - 1; i++) {
-        if (argv[i][0] == '-' && argv[i][1] == 'i') {
-            inputFolder = argv[i + 1];
-        }
-        if (argv[i][0] == '-' && argv[i][1] == 'o') {
-            initPercent = argv[i + 1];
-        }
-        if (argv[i][0] == '-' && argv[i][1] == 'f') {
-            AHpolicy = argv[i + 1];
-        }
-        if (argv[i][0] == '-' && argv[i][1] == 'd') {
-            declumpingType = atoi(argv[i + 1]);
-        }
-    }
-}
-
-
-RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
-    // Search for input files in folder path
-    std::string referenceMaskExtension = "_mask.txt"; //In case of labeled masks in text format;
-    //std::string referenceMaskExtension = ".mask.png"; //In case of binary mask in png format;
-
-
-    FileUtils fileUtils(referenceMaskExtension);
-    std::vector<std::string> fileList;
-    fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
-    RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
-    rtCollection->setName("inputimage");
-
-    std::cout << "Input Folder: " << inputFolderPath << std::endl;
-
-    // Create one region template instance for each input data file
-    // (creates representations without instantiating them)
-    for (int i = 0; i < fileList.size(); i++) {
-
-        // Create input mask data region
-        DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-        ddr2d->setName("RAW");
-        std::ostringstream oss;
-        oss << i;
-        ddr2d->setId(oss.str());
-        ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
-        ddr2d->setIsAppInput(true);
-        ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-        std::string inputFileName = fileUtils.replaceExt(fileList[i], referenceMaskExtension, ".tiff");
-        ddr2d->setInputFileName(inputFileName);
-
-        // Create reference mask data region
-        DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
-        ddr2dRefMask->setName("REF_MASK");
-        ddr2dRefMask->setId(oss.str());
-        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
-        ddr2dRefMask->setIsAppInput(true);
-        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
-        cout << endl << "MASK FILE: " << fileList[i] << endl;
-        ddr2dRefMask->setInputFileName(fileList[i]);
-
-        // Adding data regions to region template
-        RegionTemplate *rt = new RegionTemplate();
-        rt->setName("tile");
-        rt->insertDataRegion(ddr2d);
-        rt->insertDataRegion(ddr2dRefMask);
-
-        // Adding region template instance to collection
-        rtCollection->addRT(rt);
-    }
-
-    return rtCollection;
 }

@@ -29,23 +29,27 @@ fi
 echo "Starting Tests - 15 imgs"
 
 #Copying the cache rtconf.xml file
-cp Tuning-Nscale/rtconf.xml .
+cp Tuning-Yi/rtconf.xml .
 
 
-    echo "Testing Tuning Multiobjective Nscale - GA..."
+    echo "Testing Tuning Multiobjective Yi - GA..."
 
     IMG_COUNTER=1
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
-             program="Tuning-Nscale"
+             program="Tuning-Yi"
              programPath="${program}/${program}"
              algorithm="GA"
 
              cp ${inputPath}/image${IMG_COUNTER}_mask.txt ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
-
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
+             declumpingType="2"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
+             declumpingType="1"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
+             declumpingType="0"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*
@@ -58,20 +62,25 @@ cp Tuning-Nscale/rtconf.xml .
 
     START_TIME=$SECONDS
 
-    echo "Testing Tuning Multiobjective Nscale - NM..."
+    echo "Testing Tuning Multiobjective Yi - NM..."
 
      IMG_COUNTER=1
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
-             program="Tuning-Nscale"
+             program="Tuning-Yi"
              programPath="${program}/${program}"
              algorithm="NM"
 
              cp ${inputPath}/image${IMG_COUNTER}_mask.txt ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
+             declumpingType="2"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
+             declumpingType="1"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
+             declumpingType="0"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*
@@ -82,20 +91,25 @@ cp Tuning-Nscale/rtconf.xml .
              let IMG_COUNTER=IMG_COUNTER+1
          done
 
-echo "Testing Tuning Multiobjective Nscale - PRO..."
+echo "Testing Tuning Multiobjective Yi - PRO..."
 
 IMG_COUNTER=1
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
-             program="Tuning-Nscale"
+             program="Tuning-Yi"
              programPath="${program}/${program}"
              algorithm="PRO"
 
              cp ${inputPath}/image${IMG_COUNTER}_mask.txt ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
+             declumpingType="2"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
+             declumpingType="1"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
+             declumpingType="0"
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -d ${declumpingType} > ${outputPath}/${program}-${algorithm}-declumping_${declumpingType}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*
