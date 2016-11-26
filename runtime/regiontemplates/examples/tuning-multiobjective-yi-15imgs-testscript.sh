@@ -53,7 +53,7 @@ cp Tuning-Yi/rtconf.xml .
 
     echo "Testing Tuning Multiobjective Yi - GA..."
 
-    IMG_COUNTER=1
+    IMG_COUNTER=14
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
@@ -83,7 +83,7 @@ cp Tuning-Yi/rtconf.xml .
 
     echo "Testing Tuning Multiobjective Yi - NM..."
 
-     IMG_COUNTER=1
+     IMG_COUNTER=14
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
@@ -112,7 +112,7 @@ cp Tuning-Yi/rtconf.xml .
 
 echo "Testing Tuning Multiobjective Yi - PRO..."
 
-IMG_COUNTER=1
+IMG_COUNTER=14
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS

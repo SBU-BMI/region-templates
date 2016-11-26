@@ -53,7 +53,7 @@ cp Tuning-Nscale/rtconf.xml .
 
     echo "Testing Tuning Multiobjective Nscale - GA..."
 
-    IMG_COUNTER=1
+    IMG_COUNTER=14
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
@@ -79,7 +79,7 @@ cp Tuning-Nscale/rtconf.xml .
 
     echo "Testing Tuning Multiobjective Nscale - NM..."
 
-     IMG_COUNTER=1
+     IMG_COUNTER=14
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
@@ -103,7 +103,7 @@ cp Tuning-Nscale/rtconf.xml .
 
 echo "Testing Tuning Multiobjective Nscale - PRO..."
 
-IMG_COUNTER=1
+IMG_COUNTER=14
          while [  $IMG_COUNTER -lt 16 ]; do
              echo "Testing image${IMG_COUNTER}"
              START_TIME=$SECONDS
