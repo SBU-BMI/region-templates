@@ -8,6 +8,10 @@ algorithm="ga"
 
 outputPath="$2"
 
+metricWeight="$3"
+
+timeWeight="$4"
+
 mkdir ${outputPath}/inputImg
 
 imgPath="$outputPath/inputImg"
@@ -26,6 +30,21 @@ if [ "$HARMONY_HOME" == "" ]; then
 	echo "You need to export the Active HARMONY_HOME path to your system environment!"
 	exit
 fi
+
+if [ "$metricWeight" == "" ]; then
+	metricWeight=1
+	exit
+fi
+
+if [ "$timeWeight" == "" ]; then
+	timeWeight=1
+	exit
+fi
+
+echo "Metric Weight: "$metricWeight
+echo "Time Weight: "$timeWeight
+
+
 echo "Starting Tests - 15 imgs"
 
 #Copying the cache rtconf.xml file
@@ -45,7 +64,7 @@ cp Tuning-Nscale/rtconf.xml .
              cp ${inputPath}/image${IMG_COUNTER}_mask.txt ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -m ${metricWeight} -t ${timeWeight} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*
@@ -71,7 +90,7 @@ cp Tuning-Nscale/rtconf.xml .
              cp ${inputPath}/image${IMG_COUNTER}_mask.txt ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -m ${metricWeight} -t ${timeWeight} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*
@@ -95,7 +114,7 @@ IMG_COUNTER=1
              cp ${inputPath}/image${IMG_COUNTER}_mask.txt ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
+             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -m ${metricWeight} -t ${timeWeight} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
 
              rm ${imgPath}/*
              rm /tmp/BGR-*

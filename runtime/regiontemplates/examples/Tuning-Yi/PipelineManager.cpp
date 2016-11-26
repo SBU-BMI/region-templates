@@ -14,7 +14,7 @@
 #define DECLUMPING_TYPE_WATERSHED 2
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, int &declumpingType);
+                         std::string &initPercent, int &declumpingType, double &metricWeight, double &timeWeight);
 
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
 
@@ -36,8 +36,8 @@ int main(int argc, char **argv) {
 
 
     //Multi-Objective Tuning weights
-    double timeWeight = 1;
-    double metricWeight = 1;
+    double metricWeight = 1; //Default value, can be overrided by input params
+    double timeWeight = 1; //Default value, can be overrided by input params
 
     //Multi-Objective Tuning normalization times
     double tSlowest; //Empirical Data that will be obtained with profiling
@@ -52,7 +52,8 @@ int main(int argc, char **argv) {
     std::string inputFolderPath, tuningPolicy, initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
-    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, declumpingType);
+    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, declumpingType, metricWeight,
+                        timeWeight);
 
     if (declumpingType != DECLUMPING_TYPE_MEANSHIFT && declumpingType != DECLUMPING_TYPE_NO_DECLUMPING &&
         declumpingType != DECLUMPING_TYPE_WATERSHED) {
@@ -92,6 +93,10 @@ int main(int argc, char **argv) {
         std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
     }
     std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest << std::endl;
+
+    std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
+    timeWeight << std::endl;
+
     double timeGap = tSlowest - tFastest;
 //    tSlowest = tSlowest + 2 * timeGap;
 //    tFastest = tFastest - 2 * timeGap;
@@ -156,7 +161,7 @@ namespace patch {
 }
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, int &declumpingType) {
+                         std::string &initPercent, int &declumpingType, double &metricWeight, double &timeWeight) {
     // Used for parameters parsing
     for (int i = 0; i < argc - 1; i++) {
         if (argv[i][0] == '-' && argv[i][1] == 'i') {
@@ -170,6 +175,12 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
         }
         if (argv[i][0] == '-' && argv[i][1] == 'd') {
             declumpingType = atoi(argv[i + 1]);
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'm') {
+            metricWeight = atof(argv[i + 1]);
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 't') {
+            timeWeight = atof(argv[i + 1]);
         }
     }
 }
@@ -475,6 +486,8 @@ int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_o
                 double timeNormalized =
                         (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
                         (tSlowest - tFastest);
+//                double timeNormalized = (tSlowest)/
+//                                        ((double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) ;
 
                 double weightedSumOfMetricAndTime = (double) (metricWeight * diff + timeWeight * timeNormalized);
                 if (weightedSumOfMetricAndTime > 0) {
