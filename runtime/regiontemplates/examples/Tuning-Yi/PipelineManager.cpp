@@ -32,6 +32,8 @@ int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number
                                float *diceNotCoolPerIteration,
                                uint64_t *totalexecutiontimes);
 
+void resetPerf(float *perf, int max_number_of_tests);
+
 int main(int argc, char **argv) {
 
 
@@ -276,6 +278,7 @@ int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_o
 
     }
 
+    resetPerf(perf, max_number_of_tests);
     double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_tests);
 
     std::vector<int> segComponentIds[numClients];
@@ -490,7 +493,7 @@ int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_o
 //                                        ((double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) ;
 
                 double weightedSumOfMetricAndTime = (double) (metricWeight * diff + timeWeight * timeNormalized);
-                if (weightedSumOfMetricAndTime > 0) {
+                if ((weightedSumOfMetricAndTime > 0) && (diff > FLT_EPSILON)) {
                     perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 /
                                                                             weightedSumOfMetricAndTime; //Multi Objective Tuning
                 } else {
@@ -569,4 +572,11 @@ int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number
         if (totalexecutiontimes[i] > tSlowest) tSlowest = totalexecutiontimes[i];
         if (totalexecutiontimes[i] < tFastest) tFastest = totalexecutiontimes[i];
     }
+}
+
+void resetPerf(float *perf, int max_number_of_tests) {
+    for (int i = 0; i < max_number_of_tests; ++i) {
+        perf[i] = std::numeric_limits<float>::infinity();
+    }
+
 }
