@@ -4,6 +4,8 @@ inputPath="$1"
 
 numberOfProcs=8
 
+numberOfGATests=10
+
 algorithm="ga"
 
 outputPath="$2"
@@ -64,8 +66,11 @@ cp Tuning-Nscale/rtconf.xml .
              cp ${inputPath}/image${IMG_COUNTER}_mask.txt ${imgPath}
              cp ${inputPath}/image${IMG_COUNTER}.tiff ${imgPath}
 
-             mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -m ${metricWeight} -t ${timeWeight} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}.txt
-
+             TEST_NUM=0
+             while [  $TEST_NUM -lt $numberOfGATests ]; do
+                mpirun -n ${numberOfProcs} ${programPath} -i ${imgPath} -f ${algorithm} -m ${metricWeight} -t ${timeWeight} > ${outputPath}/${program}-${algorithm}-image${IMG_COUNTER}-test${TEST_NUM}.txt
+             let TEST_NUM=TEST_NUM+1
+             done
              rm ${imgPath}/*
              rm /tmp/BGR-*
              rm /tmp/MASK-*
