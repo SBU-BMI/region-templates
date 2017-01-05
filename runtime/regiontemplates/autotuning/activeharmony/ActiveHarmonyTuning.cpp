@@ -54,7 +54,7 @@ int ActiveHarmonyTuning::initialize(int argc, char **argv) {
         }
         else {
             harmony_strategy(hdesc[i], AHpolicy.c_str());
-
+            harmony_setcfg(hdesc[i], "INIT_METHOD", "random");
         }
     }
     return 0;
