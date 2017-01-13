@@ -572,7 +572,8 @@ int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_o
             shouldIterate |= !executedAlready[k];
         }
         //Iterates the tuning algorithm
-        if (shouldIterate == true) tuningClient->nextIteration();
+        //if (shouldIterate == true) tuningClient->nextIteration();
+        tuningClient->nextIteration(); //Always iterate - to be fair, all 3 algorithms may repeat values.
 
     }
 
