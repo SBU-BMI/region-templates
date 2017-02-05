@@ -10,6 +10,8 @@
 #include "hclient.h"
 #include "NormalizationComp.h"
 
+#define MAX_ITERATION_REPEAT 5
+
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
                          std::string &initPercent, double &metricWeight, double &timeWeight);
 
@@ -100,7 +102,7 @@ int main(int argc, char **argv) {
                                                    tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
                                                    totalexecutiontimes);
 
-    cout << "RESULTS: " << endl;
+    cout << "RESULTS: " << result->getBestParamSet()->getScore() << endl;
     typedef std::map<std::string, double *>::iterator it_type;
     for (it_type iterator = result->getBestParamSet()->paramSet.begin();
          iterator != result->getBestParamSet()->paramSet.end(); iterator++) {
@@ -283,6 +285,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
     int versionNorm = 0, versionSeg = 0;
     resetPerf(perf, max_number_of_tests);
     bool executedAlready[numClients];
+    int repeatCounter = 0;
 
 
     if (tuningClient->initialize(argc, argv) != 0) {
@@ -584,7 +587,12 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
             shouldIterate |= !executedAlready[k];
         }
         //Iterates the tuning algorithm
-        if (shouldIterate == true) tuningClient->nextIteration();
+        if (shouldIterate == true || (repeatCounter >= MAX_ITERATION_REPEAT)) {
+            tuningClient->nextIteration();
+            repeatCounter = 0;
+        } else {
+            repeatCounter++;
+        }
         //tuningClient->nextIteration(); //Always iterate - to be fair, all 3 algorithms may repeat values.
 
     }

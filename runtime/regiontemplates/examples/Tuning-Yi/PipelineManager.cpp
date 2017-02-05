@@ -13,6 +13,9 @@
 #define DECLUMPING_TYPE_NO_DECLUMPING 1
 #define DECLUMPING_TYPE_WATERSHED 2
 
+#define MAX_ITERATION_REPEAT 5
+
+
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
                          std::string &initPercent, int &declumpingType, double &metricWeight, double &timeWeight);
 
@@ -107,13 +110,21 @@ int main(int argc, char **argv) {
 //    std::cout << std::endl << "\t\ttSlowest-modified: " << tSlowest << std::endl << "\t\ttFastest-modified: " << tFastest << std::endl;
 
     // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
-    multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight, timeWeight, tSlowest, tFastest,
-                         rtCollection,
-                         tuningPolicy, declumpingType, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
-                         totalexecutiontimes);
+    TuningInterface *result = multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight, timeWeight,
+                                                   tSlowest, tFastest,
+                                                   rtCollection,
+                                                   tuningPolicy, declumpingType, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                                                   totalexecutiontimes);
 
     // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
 
+    cout << "RESULTS: " << result->getBestParamSet()->getScore() << endl;
+    typedef std::map<std::string, double *>::iterator it_type;
+    for (it_type iterator = result->getBestParamSet()->paramSet.begin();
+         iterator != result->getBestParamSet()->paramSet.end(); iterator++) {
+        cout << iterator->first << " - " << *(iterator->second) << endl;
+
+    }
 
     sleep(2);
     std::cout << "\t\tResults:" << std::endl;
@@ -290,6 +301,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
 
     int versionNorm = 0, versionSeg = 0;
     bool executedAlready[numClients];
+    int repeatCounter = 0;
 
 
     if (tuningClient->initialize(argc, argv) != 0) {
@@ -548,7 +560,13 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
             shouldIterate |= !executedAlready[k];
         }
         //Iterates the tuning algorithm
-        if (shouldIterate == true) tuningClient->nextIteration();
+        //Iterates the tuning algorithm
+        if (shouldIterate == true || (repeatCounter >= MAX_ITERATION_REPEAT)) {
+            tuningClient->nextIteration();
+            repeatCounter = 0;
+        } else {
+            repeatCounter++;
+        }
         //tuningClient->nextIteration(); //Always iterate - to be fair, all 3 algorithms may repeat values.
 
     }
