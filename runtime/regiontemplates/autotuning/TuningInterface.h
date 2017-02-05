@@ -21,6 +21,8 @@ protected:
     TuningParamSet **tuningParamSet;
     int numSets;
 
+    TuningParamSet bestSet;
+
 public:
 
     virtual bool hasConverged() = 0;
@@ -45,6 +47,9 @@ public:
         return this->iteration;
     }
 
+    TuningParamSet *getBestParamSet() {
+        return &bestSet;
+    }
 };
 
 

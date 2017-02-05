@@ -18,12 +18,13 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
 
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
 
-int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests, double metricWeight,
-                         double timeWeight,
-                         double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
-                         std::string tuningPolicy, int declumpingType,
-                         float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
-                         uint64_t *totalexecutiontimes);
+TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests,
+                                      double metricWeight,
+                                      double timeWeight,
+                                      double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
+                                      std::string tuningPolicy, int declumpingType,
+                                      float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
+                                      uint64_t *totalexecutiontimes);
 
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
@@ -242,12 +243,13 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
 }
 
 
-int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests, double metricWeight,
-                         double timeWeight,
-                         double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
-                         std::string tuningPolicy, int declumpingType,
-                         float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
-                         uint64_t *totalexecutiontimes) {
+TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests,
+                                      double metricWeight,
+                                      double timeWeight,
+                                      double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
+                                      std::string tuningPolicy, int declumpingType,
+                                      float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
+                                      uint64_t *totalexecutiontimes) {
 
     TuningInterface *tuningClient;
     int numClients;
@@ -292,7 +294,7 @@ int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_o
 
     if (tuningClient->initialize(argc, argv) != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
-        return -1;
+        return NULL;
     };
 
 
@@ -304,12 +306,12 @@ int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_o
         tuningClient->declareParam("mskernel", 5, 30, 1) != 0 ||
         tuningClient->declareParam("levelSetNumberOfIteration", 5, 150, 1) != 0) {
         fprintf(stderr, "Failed to define tuning session\n");
-        return -1;
+        return NULL;
     }
 
     if (tuningClient->configure() != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
-        return -1;
+        return NULL;
     };
 
     for (; !tuningClient->hasConverged();) {
@@ -546,11 +548,11 @@ int multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_o
             shouldIterate |= !executedAlready[k];
         }
         //Iterates the tuning algorithm
-        //if (shouldIterate == true) tuningClient->nextIteration();
-        tuningClient->nextIteration(); //Always iterate - to be fair, all 3 algorithms may repeat values.
+        if (shouldIterate == true) tuningClient->nextIteration();
+        //tuningClient->nextIteration(); //Always iterate - to be fair, all 3 algorithms may repeat values.
 
     }
-
+    return tuningClient;
 }
 
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,

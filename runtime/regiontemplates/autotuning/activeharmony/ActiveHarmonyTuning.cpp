@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sstream>
+#include <limits>
 #include "ActiveHarmonyTuning.h"
 
 ActiveHarmonyTuning::ActiveHarmonyTuning(std::string strategy, int maxNumberOfIterations, int numSets) {
@@ -18,6 +19,7 @@ ActiveHarmonyTuning::ActiveHarmonyTuning(std::string strategy, int maxNumberOfIt
     for (int i = 0; i < numSets; ++i) {
         this->tuningParamSet[i] = new TuningParamSet();
     }
+    this->bestSet.score = std::numeric_limits<double>::max();
 }
 
 
@@ -78,6 +80,13 @@ int ActiveHarmonyTuning::declareParam(std::string paramLabel, double paramLowerB
 
         }
     }
+
+    //Add param to best set as well
+    double *newParam = (double *) malloc(sizeof(double));
+    *(newParam) = paramLowerBoundary;
+    bestSet.addParam(paramLabel, newParam);
+
+
 
     return 0;
 }
@@ -152,6 +161,20 @@ int ActiveHarmonyTuning::bindParam(std::string paramLabel, int setId) {
 
 void ActiveHarmonyTuning::nextIteration() {
     iteration++;
+    //Update the best value of the tuning
+    for (int i = 0; i < numSets; i++) {
+        TuningParamSet *temp = tuningParamSet[i];
+        //Lower is better
+        if (temp->score < bestSet.score) {
+            typedef std::map<std::string, double *>::iterator it_type;
+            for (it_type iterator = temp->paramSet.begin();
+                 iterator != tuningParamSet[i]->paramSet.end(); iterator++) {
+                bestSet.updateParamValue(iterator->first, *(iterator->second));
+            }
+            bestSet.setScore(temp->getScore());
+        }
+
+    }
 }
 
 int ActiveHarmonyTuning::fetchParams() {

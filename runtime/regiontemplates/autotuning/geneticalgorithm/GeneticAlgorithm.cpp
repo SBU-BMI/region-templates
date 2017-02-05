@@ -35,6 +35,8 @@ GeneticAlgorithm::GeneticAlgorithm(int maxNumberOfIterations, int popsize, int m
         this->tuningParamSet[i] = new TuningParamSet();
     }
 
+    this->bestSet.score = std::numeric_limits<double>::max();
+
 }
 
 int GeneticAlgorithm::initialize(int argc, char **argv) {
@@ -79,6 +81,12 @@ int GeneticAlgorithm::declareParam(std::string paramLabel, double paramLowerBoun
         *(newParam) = paramLowerBoundary;
         tuningParamSet[i]->addParam(paramLabel, newParam);
     }
+    //Add param to best set as well
+    double *newParam = (double *) malloc(sizeof(double));
+    *(newParam) = paramLowerBoundary;
+    bestSet.addParam(paramLabel, newParam);
+
+
     mapParamLabelToVectorId[amountOfDeclaredParams] = paramLabel;
     minParamValues.push_back(paramLowerBoundary);
     maxParamValues.push_back(paramHigherBoundary);
@@ -190,6 +198,19 @@ void GeneticAlgorithm::nextIteration() {
 #endif
 
     iteration++;
+    //Update the best value of the tuning
+    for (int i = 0; i < numSets; i++) {
+        TuningParamSet *temp = tuningParamSet[i];
+        //Lower is better
+        if (temp->score < bestSet.score) {
+            typedef std::map<std::string, double *>::iterator it_type;
+            for (it_type iterator = temp->paramSet.begin();
+                 iterator != tuningParamSet[i]->paramSet.end(); iterator++) {
+                bestSet.updateParamValue(iterator->first, *(iterator->second));
+            }
+            bestSet.setScore(temp->getScore());
+        }
+    }
 }
 
 void GeneticAlgorithm::printGeneration(GAIndividual *pop, int gen) {
