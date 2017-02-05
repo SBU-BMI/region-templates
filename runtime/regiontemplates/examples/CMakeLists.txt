@@ -40,6 +40,7 @@ if (RT_TUNING_NSCALE_EXAMPLE)
         if (USE_ACTIVE_HARMONY)
         add_subdirectory("PipelineRTFS-NS-Diff-AH-GIS")
         add_subdirectory("Tuning-Nscale")
+        add_subdirectory("CrossValidation-Nscale")
         add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-GIS")
         endif (USE_ACTIVE_HARMONY)
 

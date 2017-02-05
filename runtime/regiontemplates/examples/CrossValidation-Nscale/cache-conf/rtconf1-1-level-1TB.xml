@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<opencv_storage>
+    <CacheConfig>
+        <_>
+            <type>GLOBAL</type>
+            <device>HDD</device>
+            <capacity>1000000</capacity>
+            <path>/scratch/02542/gteodoro/temp/</path>
+            <level>1</level>
+        </_>
+    </CacheConfig>
+</opencv_storage>
