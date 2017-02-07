@@ -94,6 +94,13 @@ int DiffMaskComp::run() {
 		std::cout << "\tTASK diff mask: Did not find RT named tile"<< std::endl;
 	}
 
+	// delete computed_mask_name;
+	// delete reference_mask_name;
+	// delete diffPixels;
+
+	long long t = Util::ClockGetTime();
+	cout << "[PROFILER] Diff (id | time in ms): " << this->getId() << " " << t << endl;
+
 	return 0;
 }
 

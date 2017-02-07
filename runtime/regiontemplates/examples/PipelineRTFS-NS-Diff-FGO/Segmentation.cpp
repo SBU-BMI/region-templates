@@ -141,6 +141,9 @@ int Segmentation::run() {
 		this->executeTask(t);
 	}
 
+	long long t = Util::ClockGetTime();
+	cout << "[PROFILER] Seg (id | time in ms): " << this->getId() << " " << t << endl;
+
 	return 0;
 }
 
