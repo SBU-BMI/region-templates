@@ -4,7 +4,7 @@ TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *ma
                                    unsigned char green, unsigned char red, double T1, double T2, unsigned char G1,
                                    unsigned char G2, int minSize, int maxSize, int minSizePl, int minSizeSeg,
                                    int maxSizeSeg, int fillHolesConnectivity, int reconConnectivity,
-                                   int watershedConnectivity, uint64_t *executionTime) {
+                                   int watershedConnectivity, int *executionTime) {
     this->bgr = bgr;
     this->mask = mask;
 
@@ -36,8 +36,10 @@ bool TaskSegmentation::run(int procType, int tid) {
     cv::Mat outMask;
 
     uint64_t t1 = Util::ClockGetTimeProfile();
-
-    std::cout << "TaskSegmentation: " << (int) blue << ":" << (int) green << ":" << (int) red << ":" << T1 << ":" <<
+    std::string imageName = this->bgr->getInputFileName();
+    std::cout << "TaskSegmentationFileName: " << imageName << std::endl;
+    std::cout << "TaskSegmentation to be executed: " << (int) blue << ":" << (int) green << ":" << (int) red << ":" <<
+    T1 << ":" <<
     T2 << ":" << (int) G1 << ":" << minSize << ":" << maxSize << ":" << (int) G2 << ":" << minSizePl << ":" <<
     minSizeSeg << ":" << maxSizeSeg << ":" << fillHolesConnectivity << ":" << reconConnectivity << ":" <<
     watershedConnectivity << std::endl;
@@ -54,7 +56,29 @@ bool TaskSegmentation::run(int procType, int tid) {
 
     uint64_t t2 = Util::ClockGetTimeProfile();
 
-    this->executionTime[0] = t2 - t1;
+    this->executionTime[0] = (int) t2 - t1; // Execution Time
+
+
+    //std::cout << "Task Segmentation image name: " << imageName << std::endl;
+    std::string key("image");
+    std::size_t found = imageName.rfind(key);
+
+    std::string lastPoint(".");
+    std::size_t lastPointFound = imageName.rfind(lastPoint);
+
+    std::string result;
+    if (found != std::string::npos)
+        result = imageName.substr(found + key.size(), lastPointFound - (found + key.size()));
+
+    //std::cout << "###IMAGE: " << result << endl;
+
+    this->executionTime[1] = atoi(result.c_str());
 
     std::cout << "Task Segmentation time elapsed: " << this->executionTime[0] << std::endl;
+    std::cout << "Task Segmentation image: " << this->executionTime[1] << std::endl;
+    std::cout << "Task Segmentation executed: " << (int) blue << ":" << (int) green << ":" << (int) red << ":" << T1 <<
+    ":" <<
+    T2 << ":" << (int) G1 << ":" << minSize << ":" << maxSize << ":" << (int) G2 << ":" << minSizePl << ":" <<
+    minSizeSeg << ":" << maxSizeSeg << ":" << fillHolesConnectivity << ":" << reconConnectivity << ":" <<
+    watershedConnectivity << std::endl;
 }

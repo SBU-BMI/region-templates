@@ -42,9 +42,11 @@ int Segmentation::run() {
     int reconConnectivity = ((ArgumentInt *) this->getArgument(15))->getArgValue();
     int watershedConnectivity = ((ArgumentInt *) this->getArgument(16))->getArgValue();
 
-    uint64_t *executionTime = (uint64_t *) malloc(sizeof(uint64_t));
-    executionTime[0] = 1;
-    this->setResultData((char *) executionTime, sizeof(uint64_t));
+    int *executionTime = (int *) malloc(2 * sizeof(int));
+    executionTime[0] = 1; //Execution Time
+    executionTime[1] = 1; //Image Number
+    this->setResultData((char *) executionTime, 2 * sizeof(int));
+
 
     if (inputRt != NULL) {
         DenseDataRegion2D *bgr = NULL;
@@ -56,14 +58,15 @@ int Segmentation::run() {
             bgr = NULL;
         }
         if (bgr != NULL) {
-            std::cout << "Segmentation. BGR input id: " << bgr->getId() << " paramenterId: " << parameterId <<
+            std::cout << "Segmentation. BGR input id: " << bgr->getId() << " InputName: " << bgr->getInputFileName() <<
+            " paramenterId: " << parameterId <<
             std::endl;
             // Create output data region
             DenseDataRegion2D *mask = new DenseDataRegion2D();
             mask->setName("MASK");
             mask->setId(bgr->getId());
             mask->setVersion(parameterSegId);
-
+            mask->setInputFileName(bgr->getInputFileName());
             inputRt->insertDataRegion(mask);
             std::cout << "nDataRegions: after:" << inputRt->getNumDataRegions() << std::endl;
 

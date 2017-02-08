@@ -26,11 +26,12 @@ int NormalizationComp::run() {
         if (raw != NULL) {
             // Create output data region
             DenseDataRegion2D *bgr = new DenseDataRegion2D();
+            String bgrName = raw->getInputFileName();
             // set outpu data region identifier
             bgr->setName("BGR");
             bgr->setId(raw->getId());
             bgr->setVersion(parameterId);
-
+            bgr->setInputFileName(bgrName);
             // insert data region into region template
             inputRt->insertDataRegion(bgr);
 
