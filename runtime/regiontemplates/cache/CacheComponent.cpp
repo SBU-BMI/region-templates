@@ -240,7 +240,8 @@ bool CacheComponent::insertDR(std::string rtName, std::string rtId, DataRegion* 
 }
 
 DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
-		std::string drName, std::string drId, int timestamp, int version, bool copyData, bool isAppInput) {
+								  std::string drName, std::string drId, std::string inputFileName, int timestamp,
+								  int version, bool copyData, bool isAppInput) {
 	// cache iteration definition
 	std::map<std::string, std::list<DataRegion*> >::iterator cacheIt;
 	DataRegion* retValue = NULL;
@@ -261,6 +262,7 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 		retValue->setId(drId);
 		retValue->setTimestamp(timestamp);
 		retValue->setVersion(version);
+		retValue->setInputFileName(inputFileName);
 
 		bool retDRF = DataRegionFactory::readDDR2DFS(dynamic_cast<DenseDataRegion2D*>(retValue), -1, this->getPath(), this->getDevice() == Cache::SSD);
 
@@ -413,8 +415,9 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 }
 
 DataRegion* CacheComponent::getAndDelete(std::string rtName, std::string rtId,
-		std::string drName, std::string drId, int timestamp, int version) {
-	DataRegion* dr = this->getDR(rtName, rtId, drName, drId, timestamp, version, true);
+										 std::string drName, std::string drId, std::string inputFileName, int timestamp,
+										 int version) {
+	DataRegion *dr = this->getDR(rtName, rtId, drName, drId, inputFileName, timestamp, version, true);
 	if(dr!=NULL){
 		//this->lock();
 		this->deleteDataRegion(rtName, rtId, drName, drId, timestamp, version);

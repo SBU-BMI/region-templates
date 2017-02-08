@@ -308,7 +308,8 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 // it is local and metadata is not found the DR was not inserted into the cache. It's empty.
 // Otherwise, we will have to find it into a global storage.
 DataRegion* Cache::getDR(std::string rtName, std::string rtId,
-		std::string drName, std::string drId, int timestamp, int version, bool copyData, bool isInput, std::string inputPath) {
+						 std::string drName, std::string drId, std::string inputFileName, int timestamp, int version,
+						 bool copyData, bool isInput, std::string inputPath) {
 	DataRegion* retValue = NULL;
 	long long init = Util::ClockGetTime();
 	while(retValue == NULL){
@@ -318,7 +319,8 @@ DataRegion* Cache::getDR(std::string rtName, std::string rtId,
 			//			if(isLocal || this->cacheLayers[i]->getType() == Cache::GLOBAL){
 
 			//this->cacheLayers[i]->lock();
-			retValue = this->cacheLayers[i]->getDR(rtName, rtId, drName, drId, timestamp, version, copyData, isInput);
+			retValue = this->cacheLayers[i]->getDR(rtName, rtId, drName, drId, inputFileName, timestamp, version,
+												   copyData, isInput);
 			//this->cacheLayers[i]->unlock();
 
 			// update instrumentation
@@ -430,7 +432,8 @@ void Cache::setWorkerId(int workerId) {
 }
 
 bool Cache::move2Global(std::string rtName, std::string rtId, std::string drName,
-		std::string drId, int timestamp, int version, int fromLevel, int toLevel) {
+						std::string drId, std::string inputName, int timestamp, int version, int fromLevel,
+						int toLevel) {
 	bool retValue = false;
 	int levelToStoreDR = toLevel;
 	if(levelToStoreDR == -1){
@@ -451,7 +454,8 @@ bool Cache::move2Global(std::string rtName, std::string rtId, std::string drName
 		}
 
 		// if data region is within this layer, get it from that cache layer
-		auxDR2Move = this->cacheLayers[i]->getDR(rtName, rtId, drName, drId, timestamp, version, true, false);
+		auxDR2Move = this->cacheLayers[i]->getDR(rtName, rtId, drName, drId, inputName, timestamp, version, true,
+												 false);
 
 		//auxDR2Move = this->cacheLayers[i]->getAndDelete(rtName, rtId, drName, drId, timestamp, version);
 

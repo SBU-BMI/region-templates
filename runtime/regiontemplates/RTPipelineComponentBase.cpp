@@ -330,6 +330,7 @@ void RTPipelineComponentBase::updateRegionTemplateInfo(RegionTemplate* rt) {
 				drCur->setTimestamp(dr->getTimestamp());
 				drCur->setVersion(dr->getVersion());
 				drCur->setOutputExtension(dr->getOutputExtension());
+				drCur->setInputFileName(dr->getInputFileName());
 				curRt->insertDataRegion(ddr2d);
 
 			}
@@ -337,6 +338,7 @@ void RTPipelineComponentBase::updateRegionTemplateInfo(RegionTemplate* rt) {
 			drCur->setInputType(dr->getInputType());
 			drCur->setOutputType(dr->getOutputType());
 			drCur->setId(dr->getId());
+			drCur->setInputFileName(dr->getInputFileName());
 			drCur->setOutputExtension(dr->getOutputExtension());
 			drCur->setWorkerId(dr->getWorkerId());
 			drCur->setCacheLevel(dr->getCacheLevel());

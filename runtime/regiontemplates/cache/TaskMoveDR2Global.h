@@ -11,12 +11,13 @@ class TaskMoveDR2Global : public Task{
 private:
 	// this is a pointer to the Cache w/ this Worker
 	Cache *curCache;
-	std::string rtName, rtId, drName, drId;
+	std::string rtName, rtId, drName, drId, inputFileName;
 	int timestamp, version;
 
 	TaskMoveDR2Global();
 public:
-	TaskMoveDR2Global(Cache *curCache, std::string rtName, std::string rtId, std::string drName, std::string drId, int timestamp, int version);
+	TaskMoveDR2Global(Cache *curCache, std::string rtName, std::string rtId, std::string drName, std::string drId,
+					  std::string inputFileName, int timestamp, int version);
 	virtual ~TaskMoveDR2Global();
 
 	//

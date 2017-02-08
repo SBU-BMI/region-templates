@@ -61,12 +61,17 @@ public:
 
 	// return the level in which it was stored.
 	int insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion, bool copyData=true,  int startLayer=0, bool isCacheOnRead=false);
-	DataRegion* getDR(std::string rtName, std::string rtId, std::string drName, std::string drId, int timestamp=0, int version=0, bool copyData=true, bool isLocal=true, std::string inputPath="");
+
+	DataRegion *getDR(std::string rtName, std::string rtId, std::string drName, std::string drId, std::string inputName,
+					  int timestamp = 0, int version = 0, bool copyData = true, bool isLocal = true,
+					  std::string inputPath = "");
 	bool deleteDR(std::string rtName, std::string rtId, std::string drName, std::string drId, int timestamp=0, int version=0);
 	int getCacheLevelType(int level); // is it global/local.
 
 	// move data region to a cache component of global scope. Level if a specific storage layer should be used
-	bool move2Global(std::string rtName, std::string rtId, std::string drName, std::string drId, int timestamp=0, int version=0, int fromLevel=0, int toLevel=-1);
+	bool move2Global(std::string rtName, std::string rtId, std::string drName, std::string drId,
+					 std::string inputFileName, int timestamp = 0, int version = 0, int fromLevel = 0,
+					 int toLevel = -1);
 
 
 	// type

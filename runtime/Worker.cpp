@@ -198,7 +198,7 @@ void Worker::receiveCacheInfoFromManager() {
 	this->comm_world.Recv(msg, message_size, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CACHE_INFO);
 
 	int deserialized_bytes = 0;
-	std::string rtName, rtId, drName, drId;
+	std::string rtName, rtId, drName, drId, inputFileName;
 	int timestamp, version;
 
 	// unpack information about the DR that should be moved to global storage
@@ -206,6 +206,7 @@ void Worker::receiveCacheInfoFromManager() {
 	DataPack::unpack(msg, deserialized_bytes, rtId);
 	DataPack::unpack(msg, deserialized_bytes, drName);
 	DataPack::unpack(msg, deserialized_bytes, drId);
+	DataPack::unpack(msg, deserialized_bytes, inputFileName);
 	DataPack::unpack(msg, deserialized_bytes, timestamp);
 	DataPack::unpack(msg, deserialized_bytes, version);
 
@@ -217,7 +218,7 @@ void Worker::receiveCacheInfoFromManager() {
 //#ifdef WITH_RT
 	//TaskMoveDR2Global *tMoveDr = new TaskMoveDR2Global(this->cache,  rtName,rtId, drName, drId, timestamp, version);
 	//this->resourceManager->insertTask(tMoveDr);
-	this->cache->move2Global(rtName, rtId, drName, drId, timestamp, version);
+	this->cache->move2Global(rtName, rtId, drName, drId, inputFileName, timestamp, version);
 //#endif
 
 	delete [] msg;
