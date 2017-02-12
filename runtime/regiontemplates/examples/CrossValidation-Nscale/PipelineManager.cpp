@@ -7,15 +7,16 @@
 #include "DiceMaskComp.h"
 #include "DiceNotCoolMaskComp.h"
 #include "ParameterSet.h"
-#include "hclient.h"
 #include "NormalizationComp.h"
 
 #define MAX_ITERATION_REPEAT 5
+#define FOLD_NUMBER 2
+#define HIGHEST_IMAGE_ID 15
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
                          std::string &initPercent, double &metricWeight, double &timeWeight);
 
-RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
+void RTFromFiles(std::string inputFolderPath, RegionTemplateCollection &trainRT, RegionTemplateCollection &testRT);
 
 
 TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests,
@@ -24,13 +25,13 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                                       std::string tuningPolicy,
                                       float *perf, float *totaldiffs, float *dicePerIteration,
-                                      float *diceNotCoolPerIteration,
+                                      float *diceNotCoolPerIteration, float *imageIdArray,
                                       uint64_t *totalexecutiontimes);
 
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
                                std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
-                               float *diceNotCoolPerIteration,
+                               float *diceNotCoolPerIteration, float *imageIdArray,
                                uint64_t *totalexecutiontimes);
 
 void resetPerf(float *perf, int max_number_of_tests);
@@ -53,7 +54,7 @@ int main(int argc, char **argv) {
     // Folder when input data images are stored
     std::string inputFolderPath, tuningPolicy, initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
-    RegionTemplateCollection *rtCollection;
+
     parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, metricWeight, timeWeight);
 
 
@@ -63,94 +64,119 @@ int main(int argc, char **argv) {
     float *diceNotCoolPerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
     uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_tests);
 
-
-    // Create region templates description without instantiating data
-    rtCollection = RTFromFiles(inputFolderPath);
-
     // Handler to the distributed execution system environment
     SysEnv sysEnv;
     // Tell the system which libraries should be used
     sysEnv.startupSystem(argc, argv, "libcomponentcrossvalidationnscale.so");
 
-    // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
-    objectiveFunctionProfiling(argc, argv, sysEnv, 10, tSlowest, tFastest, rtCollection,
-                               "nm", perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
-                               totalexecutiontimes);
+    float *imageIdArray = (float *) malloc(sizeof(float) * (HIGHEST_IMAGE_ID));
 
-    std::cout << "\t\tProfiling:" << std::endl;
-    for (int i = 0; i < 10; ++i) {
+    for (int k = 0; k < FOLD_NUMBER; ++k) {
+        // Create region templates description without instantiating data
+        RegionTemplateCollection trainRT;
+        RegionTemplateCollection testRT;
+        RTFromFiles(inputFolderPath, trainRT, testRT);
 
-        std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
-        "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
-        diceNotCoolPerIteration[i];
-        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
-    }
-    std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest << std::endl;
+        //int sizeOfImageIdArray = trainRT.getNumRTs() + testRT.getNumRTs();
 
-    std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
-    timeWeight << std::endl;
+        // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
+        objectiveFunctionProfiling(argc, argv, sysEnv, 10, tSlowest, tFastest, &trainRT,
+                                   "nm", perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration, imageIdArray,
+                                   totalexecutiontimes);
 
-    double timeGap = tSlowest - tFastest;
+//        cout << "Image ID Array after Profile: " << endl;
+//        for (int l = 0; l < HIGHEST_IMAGE_ID ; ++l) {
+//            cout << "Image" << l+1 << "\t" << imageIdArray[l]<<endl;
+//        }
+//
+//        cout<<endl;
+
+        for (int l = 0; l < HIGHEST_IMAGE_ID; ++l) {
+            imageIdArray[l] = 0;
+        }
+
+        std::cout << "\t\tProfiling:" << std::endl;
+        for (int i = 0; i < 10; ++i) {
+
+            std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
+            "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
+            diceNotCoolPerIteration[i];
+            std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+        }
+        std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest <<
+        std::endl;
+
+        std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
+        timeWeight << std::endl;
+
+        double timeGap = tSlowest - tFastest;
 //    tSlowest = tSlowest + 2 * timeGap;
 //    tFastest = tFastest - 2 * timeGap;
 //    if (tFastest < 0) tFastest = timeGap;
 //    std::cout << std::endl << "\t\ttSlowest-modified: " << tSlowest << std::endl << "\t\ttFastest-modified: " << tFastest << std::endl;
 
-    // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
-    TuningInterface *result = multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight, timeWeight,
-                                                   tSlowest, tFastest,
-                                                   rtCollection,
-                                                   tuningPolicy, perf, totaldiffs, dicePerIteration,
-                                                   diceNotCoolPerIteration,
-                                                   totalexecutiontimes);
+        // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
+        TuningInterface *result = multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight,
+                                                       timeWeight,
+                                                       tSlowest, tFastest,
+                                                       &trainRT,
+                                                       tuningPolicy, perf, totaldiffs, dicePerIteration,
+                                                       diceNotCoolPerIteration, imageIdArray,
+                                                       totalexecutiontimes);
 
-    cout << "RESULTS: " << result->getBestParamSet()->getScore() << endl;
-    typedef std::map<std::string, double *>::iterator it_type;
-    for (it_type iterator = result->getBestParamSet()->paramSet.begin();
-         iterator != result->getBestParamSet()->paramSet.end(); iterator++) {
-        cout << iterator->first << " - " << *(iterator->second) << endl;
-
-    }
-
-
-    // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
-
-
-    sleep(2);
-    std::cout << "\t\tResults:" << std::endl;
-    for (int i = 0; i < max_number_of_tests; ++i) {
-
-        std::cout << std::fixed << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
-        "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
-        diceNotCoolPerIteration[i];
-        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
-    }
-
-    float minPerf = std::numeric_limits<float>::infinity();
-    int minPerfIndex = 0;
-    for (int j = 0; j < max_number_of_tests; ++j) {
-
-        if (perf[j] < minPerf) {
-            minPerf = perf[j];
-            minPerfIndex = j;
+        if (result == NULL) {
+            exit(-1);
         }
-    }
-    std::cout << std::endl;
-    std::cout << "\t\tBEST: " << minPerfIndex << " \tDiff: " << totaldiffs[minPerfIndex] <<
-    "  \tExecution Time: " << totalexecutiontimes[minPerfIndex] << " \tDice: " << dicePerIteration[minPerfIndex] <<
-    " \tDiceNC: " << diceNotCoolPerIteration[minPerfIndex] << "  \tPerf(weighted): " << perf[minPerfIndex];
-    std::cout << std::endl;
-    std::cout << "  \tPerf(weighted): " << perf[minPerfIndex] << std::endl;
-    std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minPerf << std::endl;
-    std::cout << "\tMetric of Best anwser: " << totaldiffs[minPerfIndex] << std::endl;
-    std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
-    std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
+        cout << "RESULTS: " << result->getBestParamSet()->getScore() << endl;
+        typedef std::map<std::string, double *>::iterator it_type;
+        for (it_type iterator = result->getBestParamSet()->paramSet.begin();
+             iterator != result->getBestParamSet()->paramSet.end(); iterator++) {
+            cout << iterator->first << " - " << *(iterator->second) << endl;
 
+        }
+
+        cout << "Image ID Array after Train: " << endl;
+        for (int l = 0; l < HIGHEST_IMAGE_ID; ++l) {
+            cout << "Image" << l + 1 << "\t" << imageIdArray[l] << endl;
+        }
+
+        cout << endl;
+        // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
+
+
+        sleep(2);
+        std::cout << "\t\tResults:" << std::endl;
+        for (int i = 0; i < max_number_of_tests; ++i) {
+
+            std::cout << std::fixed << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
+            "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
+            diceNotCoolPerIteration[i];
+            std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+        }
+
+        float minPerf = std::numeric_limits<float>::infinity();
+        int minPerfIndex = 0;
+        for (int j = 0; j < max_number_of_tests; ++j) {
+
+            if (perf[j] < minPerf) {
+                minPerf = perf[j];
+                minPerfIndex = j;
+            }
+        }
+        std::cout << std::endl;
+        std::cout << "\t\tBEST: " << minPerfIndex << " \tDiff: " << totaldiffs[minPerfIndex] <<
+        "  \tExecution Time: " << totalexecutiontimes[minPerfIndex] << " \tDice: " << dicePerIteration[minPerfIndex] <<
+        " \tDiceNC: " << diceNotCoolPerIteration[minPerfIndex] << "  \tPerf(weighted): " << perf[minPerfIndex];
+        std::cout << std::endl;
+        std::cout << "  \tPerf(weighted): " << perf[minPerfIndex] << std::endl;
+        std::cout << "\tBest answer for MultiObjective Tuning has MinPerfWeighted: " << minPerf << std::endl;
+        std::cout << "\tMetric of Best anwser: " << totaldiffs[minPerfIndex] << std::endl;
+        std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
+        std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
+
+    }
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
-
-    delete rtCollection;
-
     return 0;
 }
 
@@ -187,7 +213,7 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
 }
 
 
-RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
+void RTFromFiles(std::string inputFolderPath, RegionTemplateCollection &trainRT, RegionTemplateCollection &testRT) {
     // Search for input files in folder path
     std::string referenceMaskExtension = "_mask.txt"; //In case of labeled masks in text format;
     //std::string referenceMaskExtension = ".mask.png"; //In case of binary mask in png format;
@@ -197,12 +223,22 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
     std::vector<std::string> fileList;
     fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
     RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
-    rtCollection->setName("inputimage");
+    trainRT.setName("inputimage");
 
     std::cout << "Input Folder: " << inputFolderPath << std::endl;
 
     // Create one region template instance for each input data file
     // (creates representations without instantiating them)
+    cout << "FILELIST SIZE = " << fileList.size() << endl;
+    srand(time(NULL));
+    int trainImg1, trainImg2, trainImg3;
+    trainImg1 = rand() % HIGHEST_IMAGE_ID;
+    if (fileList.size() > 3) {
+        trainImg2 = rand() % HIGHEST_IMAGE_ID;
+        while (trainImg1 == trainImg2) trainImg2 = rand() % HIGHEST_IMAGE_ID;
+        trainImg3 = rand() % HIGHEST_IMAGE_ID;
+        while (trainImg3 == trainImg2 || trainImg3 == trainImg1) trainImg3 = rand() % HIGHEST_IMAGE_ID;
+    }
     for (int i = 0; i < fileList.size(); i++) {
 
         // Create input mask data region
@@ -234,10 +270,15 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
         rt->insertDataRegion(ddr2dRefMask);
 
         // Adding region template instance to collection
-        rtCollection->addRT(rt);
+        if (i == trainImg1 || i == trainImg2 || i == trainImg3) {
+            trainRT.addRT(rt);
+            cout << "TRAIN IMAGE: " << fileList[i] << endl;
+        } else {
+            testRT.addRT(rt);
+        }
     }
 
-    return rtCollection;
+
 }
 
 TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests,
@@ -246,7 +287,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                                       std::string tuningPolicy,
                                       float *perf, float *totaldiffs, float *dicePerIteration,
-                                      float *diceNotCoolPerIteration,
+                                      float *diceNotCoolPerIteration, float *imageIdArray,
                                       uint64_t *totalexecutiontimes) {
 
     TuningInterface *tuningClient;
@@ -321,6 +362,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
         return NULL;
     };
 
+    float bestPerfSoFar = std::numeric_limits<float>::max();
     for (; !tuningClient->hasConverged();) {
         cout << "ITERATION: " << tuningClient->getIteration() << endl;
 
@@ -482,6 +524,13 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
             float secondaryMetric = 0;
             float diceNotCoolValue = 0;
 
+
+            float tempImageIdArray[HIGHEST_IMAGE_ID];
+
+            for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
+                tempImageIdArray[z] = 0;
+            }
+
             std::ostringstream oss;
             oss << "PARAMS";
             typedef std::map<std::string, double *>::iterator it_type;
@@ -495,14 +544,18 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                     char *diceResultData = sysEnv.getComponentResultData(diceComponentIds[j][i]);
                     char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
                     std::cout << "Diff Id: " << diceComponentIds[j][i] << " \tdiceResultData: ";
+                    float tempDice = 0;
+                    float tempDiceNotCool = 0;
                     if (diceResultData != NULL) {
                         std::cout << "size: " << ((int *) diceResultData)[0] << " \thadoopgis-metric: " <<
                         ((float *) diceResultData)[1] <<
                         " \tsecondary: " << ((float *) diceResultData)[2] << " \tdiceNotCool: " <<
                         ((float *) diceNotCoolResultData)[1] << std::endl;
-                        dice += ((float *) diceResultData)[1];
+                        tempDice = ((float *) diceResultData)[1];
+                        dice += tempDice;
                         secondaryMetric += ((float *) diceResultData)[2];
-                        diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
+                        tempDiceNotCool = ((float *) diceNotCoolResultData)[1];
+                        diceNotCoolValue += tempDiceNotCool;
                     } else {
                         std::cout << "NULL" << std::endl;
                     }
@@ -512,6 +565,14 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                             (j)] = ((int *) segExecutionTime)[1];
                         cout << "Segmentation execution time:" <<
                         totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << endl;
+
+                        int imageId = ((int *) segExecutionTime)[2];
+                        tempImageIdArray[imageId - 1] = (tempDice + tempDiceNotCool) / 2;
+                        cout << "Image ID:" <<
+                        imageId << endl;
+
+                        cout << "SIZE:" <<
+                        ((int *) segExecutionTime)[0] << endl;
                     }
                     sysEnv.eraseResultData(diceNotCoolComponentIds[j][i]);
                     sysEnv.eraseResultData(diceComponentIds[j][i]);
@@ -567,6 +628,14 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                 dicePerIteration[tuningClient->getIteration() * numClients + (j)] = dice;
                 diceNotCoolPerIteration[tuningClient->getIteration() * numClients + (j)] = diceNotCoolValue;
 
+                if (bestPerfSoFar > perf[tuningClient->getIteration() * numClients + (j)]) {
+                    bestPerfSoFar = perf[tuningClient->getIteration() * numClients + (j)];
+                    for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
+                        imageIdArray[z] = tempImageIdArray[z];
+                        cout << "TEMP-IMAGE" << z + 1 << " :" << tempImageIdArray[z] << endl;
+                    }
+
+                }
 
                 perfDataBase[oss.str()] = perf[tuningClient->getIteration() * numClients + (j)];
             } else {
@@ -605,11 +674,11 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
                                std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
-                               float *diceNotCoolPerIteration,
+                               float *diceNotCoolPerIteration, float *imageIdArray,
                                uint64_t *totalexecutiontimes) {
 
     multiObjectiveTuning(argc, argv, sysEnv, number_of_profiling_tests, 1, 0, tSlowest, tFastest, rtCollection,
-                         tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                         tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration, imageIdArray,
                          totalexecutiontimes);
 
     //Peform the profiling
