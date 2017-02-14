@@ -31,19 +31,19 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                                       std::string tuningPolicy,
                                       float *perf, float *totaldiffs, float *dicePerIteration,
-                                      float *diceNotCoolPerIteration, float *imageIdArray,
+                                      float *diceNotCoolPerIteration, float **imageIdArray,
                                       uint64_t *totalexecutiontimes);
 
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
                                std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
-                               float *diceNotCoolPerIteration, float *imageIdArray,
+                               float *diceNotCoolPerIteration, float **imageIdArray,
                                uint64_t *totalexecutiontimes);
 
 void resetPerf(float *perf, int max_number_of_tests);
 
 void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, TuningParamSet *result,
-                     float *imageIdArray);
+                     float **imageIdArray);
 
 int main(int argc, char **argv) {
 
@@ -78,7 +78,8 @@ int main(int argc, char **argv) {
     // Tell the system which libraries should be used
     sysEnv.startupSystem(argc, argv, "libcomponentcrossvalidationnscale.so");
 
-    float *imageIdArray = (float *) malloc(sizeof(float) * (HIGHEST_IMAGE_ID));
+    float **imageIdArray = (float **) malloc(sizeof(float *) * (HIGHEST_IMAGE_ID));
+
 
     for (int k = 0; k < FOLD_NUMBER; ++k) {
         // Create region templates description without instantiating data
@@ -100,10 +101,16 @@ int main(int argc, char **argv) {
 //
 //        cout<<endl;
 
-        for (int l = 0; l < HIGHEST_IMAGE_ID; ++l) {
-            imageIdArray[l] = 0;
-        }
+        for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
+            imageIdArray[z] = (float *) malloc(sizeof(float) * (4));
+            for (int i = 0; i < 4; ++i) {
+                imageIdArray[z][DIFF_COLUMN] = 0;
+                imageIdArray[z][EXEC_TIME_COLUMN] = 0;
+                imageIdArray[z][DICE_COLUMN] = 0;
+                imageIdArray[z][DICENC_COLUMN] = 0;
+            }
 
+        }
         std::cout << "\t\tProfiling:" << std::endl;
         for (int i = 0; i < 10; ++i) {
 
@@ -146,9 +153,10 @@ int main(int argc, char **argv) {
 
         cout << "Image ID Array after Train: " << endl;
         for (int l = 0; l < HIGHEST_IMAGE_ID; ++l) {
-            cout << "Image" << l + 1 << "\t" << imageIdArray[l] << endl;
+            cout << "Image" << l + 1 << "\t" << imageIdArray[l][DIFF_COLUMN] << "\t" <<
+            imageIdArray[l][EXEC_TIME_COLUMN] << "\t" << imageIdArray[l][DICE_COLUMN] << "\t" <<
+            imageIdArray[l][DICENC_COLUMN] << endl;
         }
-
         cout << endl;
         // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
 
@@ -186,6 +194,16 @@ int main(int argc, char **argv) {
 
         segmentFunction(sysEnv, &testRT, result->getBestParamSet(), imageIdArray);
 
+
+        for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
+            for (int i = 0; i < 4; ++i) {
+                imageIdArray[z][DIFF_COLUMN] = 0;
+                imageIdArray[z][EXEC_TIME_COLUMN] = 0;
+                imageIdArray[z][DICE_COLUMN] = 0;
+                imageIdArray[z][DICENC_COLUMN] = 0;
+            }
+
+        }
     }
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
@@ -299,7 +317,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                                       std::string tuningPolicy,
                                       float *perf, float *totaldiffs, float *dicePerIteration,
-                                      float *diceNotCoolPerIteration, float *imageIdArray,
+                                      float *diceNotCoolPerIteration, float **imageIdArray,
                                       uint64_t *totalexecutiontimes) {
 
     TuningInterface *tuningClient;
@@ -537,10 +555,16 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
             float diceNotCoolValue = 0;
 
 
-            float tempImageIdArray[HIGHEST_IMAGE_ID];
+            float tempImageIdArray[HIGHEST_IMAGE_ID][4];
 
             for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
-                tempImageIdArray[z] = 0;
+                for (int i = 0; i < 4; ++i) {
+                    tempImageIdArray[z][DIFF_COLUMN] = 0;
+                    tempImageIdArray[z][EXEC_TIME_COLUMN] = 0;
+                    tempImageIdArray[z][DICE_COLUMN] = 0;
+                    tempImageIdArray[z][DICENC_COLUMN] = 0;
+                }
+
             }
 
             std::ostringstream oss;
@@ -579,7 +603,14 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                         totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << endl;
 
                         int imageId = ((int *) segExecutionTime)[2];
-                        tempImageIdArray[imageId - 1] = (tempDice + tempDiceNotCool) / 2;
+                        tempImageIdArray[imageId - 1][DIFF_COLUMN] = (tempDice + tempDiceNotCool) / 2;
+                        tempImageIdArray[imageId - 1][EXEC_TIME_COLUMN] = totalexecutiontimes[
+                                tuningClient->getIteration() * numClients +
+                                (j)];
+                        tempImageIdArray[imageId - 1][DICE_COLUMN] = tempDice;
+                        tempImageIdArray[imageId - 1][DICENC_COLUMN] = tempDiceNotCool;
+
+
                         cout << "Image ID:" <<
                         imageId << endl;
 
@@ -643,8 +674,13 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                 if (bestPerfSoFar > perf[tuningClient->getIteration() * numClients + (j)]) {
                     bestPerfSoFar = perf[tuningClient->getIteration() * numClients + (j)];
                     for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
-                        imageIdArray[z] = tempImageIdArray[z];
-                        cout << "TEMP-IMAGE" << z + 1 << " :" << tempImageIdArray[z] << endl;
+
+                        imageIdArray[z][DIFF_COLUMN] = tempImageIdArray[z][DIFF_COLUMN];
+                        imageIdArray[z][EXEC_TIME_COLUMN] = tempImageIdArray[z][EXEC_TIME_COLUMN];
+                        imageIdArray[z][DICE_COLUMN] = tempImageIdArray[z][DICE_COLUMN];
+                        imageIdArray[z][DICENC_COLUMN] = tempImageIdArray[z][DICENC_COLUMN];
+
+                        cout << "TEMP-IMAGE" << z + 1 << " :" << tempImageIdArray[z][DIFF_COLUMN] << endl;
                     }
 
                 }
@@ -686,7 +722,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
                                std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
-                               float *diceNotCoolPerIteration, float *imageIdArray,
+                               float *diceNotCoolPerIteration, float **imageIdArray,
                                uint64_t *totalexecutiontimes) {
 
     multiObjectiveTuning(argc, argv, sysEnv, number_of_profiling_tests, 1, 0, tSlowest, tFastest, rtCollection,
@@ -712,7 +748,7 @@ void resetPerf(float *perf, int max_number_of_tests) {
 }
 
 void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, TuningParamSet *result,
-                     float *imageIdArray) {
+                     float **imageIdArray) {
 
     std::vector<int> segComponentIds;
     std::vector<int> diceComponentIds;
@@ -920,5 +956,29 @@ void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, Tun
         tempImageIdArray[l][DICENC_COLUMN] << endl;
     }
 
+    cout << "FINAL CROSSVALIDATION RESULTS: " << endl;
 
+    for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
+
+        if (imageIdArray[z][DIFF_COLUMN] != 0) {
+            cout << "Train\tIMAGE\t" << z + 1 << "\t" << imageIdArray[z][DIFF_COLUMN] << "\t" <<
+            imageIdArray[z][EXEC_TIME_COLUMN] << "\t" << imageIdArray[z][DICE_COLUMN] << "\t" <<
+            imageIdArray[z][DICENC_COLUMN] << endl;
+        }
+
+    }
+
+    for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
+
+        if (imageIdArray[z][DIFF_COLUMN] == 0) {
+            imageIdArray[z][DIFF_COLUMN] = tempImageIdArray[z][DIFF_COLUMN];
+            imageIdArray[z][EXEC_TIME_COLUMN] = tempImageIdArray[z][EXEC_TIME_COLUMN];
+            imageIdArray[z][DICE_COLUMN] = tempImageIdArray[z][DICE_COLUMN];
+            imageIdArray[z][DICENC_COLUMN] = tempImageIdArray[z][DICENC_COLUMN];
+            cout << "Test\tIMAGE\t" << z + 1 << "\t" << imageIdArray[z][DIFF_COLUMN] << "\t" <<
+            imageIdArray[z][EXEC_TIME_COLUMN] << "\t" << imageIdArray[z][DICE_COLUMN] << "\t" <<
+            imageIdArray[z][DICENC_COLUMN] << endl;
+        }
+
+    }
 }
