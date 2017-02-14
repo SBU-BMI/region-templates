@@ -10,7 +10,7 @@
 #include "NormalizationComp.h"
 
 #define MAX_ITERATION_REPEAT 5
-#define FOLD_NUMBER 2
+#define FOLD_NUMBER 10
 #define HIGHEST_IMAGE_ID 15
 
 #define DIFF_COLUMN 0
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     double tSlowest; //Empirical Data that will be obtained with profiling
     double tFastest; //Empirical Data that will be obtained with profiling
 
-    int max_number_of_tests = 9;
+    int max_number_of_tests = 100;
 
     // Folder when input data images are stored
     std::string inputFolderPath, tuningPolicy, initPercent;
@@ -302,7 +302,7 @@ void RTFromFiles(std::string inputFolderPath, RegionTemplateCollection &trainRT,
         // Adding region template instance to collection
         if (i == trainImg1 || i == trainImg2 || i == trainImg3) {
             trainRT.addRT(rt);
-            cout << "TRAIN IMAGE: " << fileList[i] << endl;
+            cout << "Train IMAGE: " << fileList[i] << endl;
         } else {
             testRT.addRT(rt);
         }
@@ -961,7 +961,7 @@ void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, Tun
     for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
 
         if (imageIdArray[z][DIFF_COLUMN] != 0) {
-            cout << "Train\tIMAGE\t" << z + 1 << "\t" << imageIdArray[z][DIFF_COLUMN] << "\t" <<
+            cout << "TRAIN\tIMAGE\t" << z + 1 << "\t" << imageIdArray[z][DIFF_COLUMN] << "\t" <<
             imageIdArray[z][EXEC_TIME_COLUMN] << "\t" << imageIdArray[z][DICE_COLUMN] << "\t" <<
             imageIdArray[z][DICENC_COLUMN] << endl;
         }
@@ -975,7 +975,7 @@ void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, Tun
             imageIdArray[z][EXEC_TIME_COLUMN] = tempImageIdArray[z][EXEC_TIME_COLUMN];
             imageIdArray[z][DICE_COLUMN] = tempImageIdArray[z][DICE_COLUMN];
             imageIdArray[z][DICENC_COLUMN] = tempImageIdArray[z][DICENC_COLUMN];
-            cout << "Test\tIMAGE\t" << z + 1 << "\t" << imageIdArray[z][DIFF_COLUMN] << "\t" <<
+            cout << "TEST\tIMAGE\t" << z + 1 << "\t" << imageIdArray[z][DIFF_COLUMN] << "\t" <<
             imageIdArray[z][EXEC_TIME_COLUMN] << "\t" << imageIdArray[z][DICE_COLUMN] << "\t" <<
             imageIdArray[z][DICENC_COLUMN] << endl;
         }
