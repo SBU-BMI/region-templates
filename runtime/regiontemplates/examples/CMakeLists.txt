@@ -57,6 +57,7 @@ if (RT_TUNING_YI_EXAMPLE)
     if (USE_HADOOPGIS)
         add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi-GIS")
         add_subdirectory("Tuning-Yi")
+        add_subdirectory("CrossValidation-Yi")
     endif (USE_HADOOPGIS)
 endif (RT_TUNING_YI_EXAMPLE)
 
