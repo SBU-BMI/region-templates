@@ -759,22 +759,19 @@ void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, Tun
         seg->addArgument(new ArgumentInt(versionSeg));
 
         // add remaining (application specific) parameters from the argSegInstance
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("otsuRatio")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("curvatureWeight")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("sizeThld")->second))));
+        seg->addArgument(new ArgumentFloat((float) (*(result->paramSet.find("otsuRatio")->second))));
+        seg->addArgument(new ArgumentFloat((float) (*(result->paramSet.find("curvatureWeight")->second))));
+        seg->addArgument(new ArgumentFloat((float) (*(result->paramSet.find("sizeThld")->second))));
         seg->addArgument(
                 new ArgumentFloat((float) (*(result->paramSet.find("sizeUpperThld")->second))));
         seg->addArgument(
                 new ArgumentFloat((float) (*(result->paramSet.find("mpp")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("mskernel")->second))));
+        seg->addArgument(new ArgumentFloat((float) (*(result->paramSet.find("mskernel")->second))));
         seg->addArgument(new ArgumentInt(
                 (int) round(*(result->paramSet.find("levelSetNumberOfIteration")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) (declumpingType)));
+        seg->addArgument(new ArgumentInt((declumpingType)));
+
+
 
         // and region template instance that it is suppose to process
         seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());

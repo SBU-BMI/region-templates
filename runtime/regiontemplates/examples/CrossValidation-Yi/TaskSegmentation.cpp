@@ -38,6 +38,9 @@ bool TaskSegmentation::run(int procType, int tid) {
     uint64_t t1 = Util::ClockGetTimeProfile();
     std::string imageName = this->bgr->getInputFileName();
     std::cout << "TaskSegmentationFileName: " << imageName << std::endl;
+    std::cout << "TaskSegmentation to be executed: " << otsuRatio << ":" << curvatureWeight << ":" << sizeThld << ":" <<
+    sizeUpperThld << ":" <<
+    mpp << ":" << mskernel << ":" << levelSetNumberOfIteration << ":" << declumpingType << std::endl;
 
     if (inputImage.rows > 0)
         outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld,
@@ -63,11 +66,14 @@ bool TaskSegmentation::run(int procType, int tid) {
     if (found != std::string::npos)
         result = imageName.substr(found + key.size(), lastPointFound - (found + key.size()));
 
-    //std::cout << "###IMAGE: " << result << endl;
+    std::cout << "###IMAGE: " << result << endl;
 
     this->executionTime[1] = atoi(result.c_str());
 
     std::cout << "Task Segmentation time elapsed: " << this->executionTime[0] << std::endl;
     std::cout << "Task Segmentation image: " << this->executionTime[1] << std::endl;
+    std::cout << "Task Segmentation executed: " << otsuRatio << ":" << curvatureWeight << ":" << sizeThld << ":" <<
+    sizeUpperThld << ":" <<
+    mpp << ":" << mskernel << ":" << levelSetNumberOfIteration << ":" << declumpingType << std::endl;
 
 }
