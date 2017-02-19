@@ -12,11 +12,11 @@
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/gpu/gpu.hpp"
-#include "HistologicalEntities.h"
-#include "PixelOperations.h"
-#include "MorphologicOperations.h"
-#include "Util.h"
-#include "FileUtils.h"
+//#include "HistologicalEntities.h"
+//#include "PixelOperations.h"
+//#include "MorphologicOperations.h"
+//#include "Util.h"
+//#include "FileUtils.h"
 
 
 #include "TaskSegmentation.h"

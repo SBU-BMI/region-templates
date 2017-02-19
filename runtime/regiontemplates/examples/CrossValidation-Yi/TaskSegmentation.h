@@ -6,29 +6,43 @@
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/gpu/gpu.hpp"
-#include "HistologicalEntities.h"
-#include "PixelOperations.h"
-#include "MorphologicOperations.h"
+//#include "HistologicalEntities.h"
+//#include "PixelOperations.h"
+//#include "MorphologicOperations.h"
 #include "Util.h"
-#include "FileUtils.h"
+//#include "FileUtils.h"
+//#include "ProcessTileUtils.h"
 
+//itk
+//#include "itkImage.h"
+//#include "itkRGBPixel.h"
+//#include "itkImageFileWriter.h"
+//#include "itkOtsuThresholdImageFilter.h"
+//#include "itkCastImageFilter.h"
+//#include "itkOpenCVImageBridge.h"
+//
+//
+//#include "utilityTileAnalysis.h"
 
 class TaskSegmentation : public Task {
 private:
     DenseDataRegion2D *bgr;
     DenseDataRegion2D *mask;
 
-    unsigned char blue, green, red;
-    double T1, T2;
-    unsigned char G1, G2;
-    int minSize, maxSize, minSizePl, minSizeSeg, maxSizeSeg;
-    int fillHolesConnectivity, reconConnectivity, watershedConnectivity;
+    float otsuRatio, curvatureWeight, sizeThld, sizeUpperThld, mpp, mskernel;
+    int levelSetNumberOfIteration, declumpingType;
     int *executionTime;
+
+
 public:
-    TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, unsigned char blue, unsigned char green,
-                     unsigned char red, double T1, double T2, unsigned char G1, unsigned char G2, int minSize,
-                     int maxSize, int minSizePl, int minSizeSeg, int maxSizeSeg, int fillHolesConnectivity,
-                     int reconConnectivity, int watershedConnectivity, int *executionTime);
+    //Declumping types
+    //0) mean-shift declumping
+    //1) no declumping
+    //2) watershed declumping
+    TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, float otsuRatio, float curvatureWeight,
+                     float sizeThld, float sizeUpperThld, float mpp, float mskernel, int levelSetNumberOfIteration,
+                     int declumpingType,
+                     int *executionTime);
 
     virtual ~TaskSegmentation();
 

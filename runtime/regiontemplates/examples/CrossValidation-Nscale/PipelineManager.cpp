@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     double tSlowest; //Empirical Data that will be obtained with profiling
     double tFastest; //Empirical Data that will be obtained with profiling
 
-    int max_number_of_tests = 100;
+    int max_number_of_tests = 9;
 
     // Folder when input data images are stored
     std::string inputFolderPath, tuningPolicy, initPercent;

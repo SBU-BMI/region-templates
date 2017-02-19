@@ -9,8 +9,12 @@
 #include "ParameterSet.h"
 #include "NormalizationComp.h"
 
+#define DECLUMPING_TYPE_MEANSHIFT 0
+#define DECLUMPING_TYPE_NO_DECLUMPING 1
+#define DECLUMPING_TYPE_WATERSHED 2
+
 #define MAX_ITERATION_REPEAT 5
-#define FOLD_NUMBER 10
+#define FOLD_NUMBER 1
 #define HIGHEST_IMAGE_ID 15
 
 #define DIFF_COLUMN 0
@@ -20,7 +24,7 @@
 
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, double &metricWeight, double &timeWeight);
+                         std::string &initPercent, int &declumpingType, double &metricWeight, double &timeWeight);
 
 void RTFromFiles(std::string inputFolderPath, RegionTemplateCollection &trainRT, RegionTemplateCollection &testRT);
 
@@ -29,20 +33,21 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                       double metricWeight,
                                       double timeWeight,
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
-                                      std::string tuningPolicy,
+                                      std::string tuningPolicy, int declumpingType,
                                       float *perf, float *totaldiffs, float *dicePerIteration,
                                       float *diceNotCoolPerIteration, float **imageIdArray,
                                       uint64_t *totalexecutiontimes);
 
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
-                               std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
+                               std::string tuningPolicy, int declumpingType, float *perf, float *totaldiffs,
+                               float *dicePerIteration,
                                float *diceNotCoolPerIteration, float **imageIdArray,
                                uint64_t *totalexecutiontimes);
 
 void resetPerf(float *perf, int max_number_of_tests);
 
-void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, TuningParamSet *result,
+void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, TuningParamSet *result, int declumpingType,
                      float **imageIdArray);
 
 int main(int argc, char **argv) {
@@ -59,13 +64,22 @@ int main(int argc, char **argv) {
     double tFastest; //Empirical Data that will be obtained with profiling
 
     int max_number_of_tests = 9;
-
+//Yi's default declumping type variable
+    int declumpingType = DECLUMPING_TYPE_MEANSHIFT;
     // Folder when input data images are stored
     std::string inputFolderPath, tuningPolicy, initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
 
-    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, metricWeight, timeWeight);
+    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, declumpingType, metricWeight,
+                        timeWeight);
 
+    if (declumpingType != DECLUMPING_TYPE_MEANSHIFT && declumpingType != DECLUMPING_TYPE_NO_DECLUMPING &&
+        declumpingType != DECLUMPING_TYPE_WATERSHED) {
+        std::cout << "ERROR! Invalid declumping type: " << declumpingType << endl;
+        exit(-2);
+    } else {
+        std::cout << "Yi's Declumping Type: " << declumpingType << endl;
+    }
 
     float *perf = (float *) malloc(sizeof(float) * max_number_of_tests);;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
@@ -91,7 +105,8 @@ int main(int argc, char **argv) {
 
         // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
         objectiveFunctionProfiling(argc, argv, sysEnv, 10, tSlowest, tFastest, &trainRT,
-                                   "nm", perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration, imageIdArray,
+                                   "nm", declumpingType, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                                   imageIdArray,
                                    totalexecutiontimes);
 
 //        cout << "Image ID Array after Profile: " << endl;
@@ -136,7 +151,7 @@ int main(int argc, char **argv) {
                                                        timeWeight,
                                                        tSlowest, tFastest,
                                                        &trainRT,
-                                                       tuningPolicy, perf, totaldiffs, dicePerIteration,
+                                                       tuningPolicy, declumpingType, perf, totaldiffs, dicePerIteration,
                                                        diceNotCoolPerIteration, imageIdArray,
                                                        totalexecutiontimes);
 
@@ -192,7 +207,7 @@ int main(int argc, char **argv) {
         std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
 
 
-        segmentFunction(sysEnv, &testRT, result->getBestParamSet(), imageIdArray);
+        segmentFunction(sysEnv, &testRT, result->getBestParamSet(), declumpingType, imageIdArray);
 
 
         for (int z = 0; z < HIGHEST_IMAGE_ID; z++) {
@@ -221,7 +236,7 @@ namespace patch {
 }
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, double &metricWeight, double &timeWeight) {
+                         std::string &initPercent, int &declumpingType, double &metricWeight, double &timeWeight) {
     // Used for parameters parsing
     for (int i = 0; i < argc - 1; i++) {
         if (argv[i][0] == '-' && argv[i][1] == 'i') {
@@ -232,6 +247,9 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
         }
         if (argv[i][0] == '-' && argv[i][1] == 'f') {
             AHpolicy = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'd') {
+            declumpingType = atoi(argv[i + 1]);
         }
         if (argv[i][0] == '-' && argv[i][1] == 'm') {
             metricWeight = atof(argv[i + 1]);
@@ -315,7 +333,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                       double metricWeight,
                                       double timeWeight,
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
-                                      std::string tuningPolicy,
+                                      std::string tuningPolicy, int declumpingType,
                                       float *perf, float *totaldiffs, float *dicePerIteration,
                                       float *diceNotCoolPerIteration, float **imageIdArray,
                                       uint64_t *totalexecutiontimes) {
@@ -348,7 +366,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                                             1);
 
     }
-
+    resetPerf(perf, max_number_of_tests);
     double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_tests);
 
     std::vector<int> segComponentIds[numClients];
@@ -368,25 +386,16 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
     };
 
 
-    if (tuningClient->declareParam("blue", 210, 240, 10) != 0 ||
-        tuningClient->declareParam("green", 210, 240, 10) != 0 ||
-        tuningClient->declareParam("red", 210, 240, 10) != 0 ||
-        tuningClient->declareParam("T1", 2.5, 7.5, 0.5) != 0 ||
-        tuningClient->declareParam("T2", 2.5, 7.5, 0.5) != 0 ||
-        tuningClient->declareParam("G1", 5, 80, 5) != 0 ||
-        tuningClient->declareParam("minSize", 2, 40, 2) != 0 ||
-        tuningClient->declareParam("maxSize", 900, 1500, 50) != 0 ||
-        tuningClient->declareParam("G2", 2, 40, 2) != 0 ||
-        tuningClient->declareParam("minSizePl", 5, 80, 5) != 0 ||
-        tuningClient->declareParam("minSizeSeg", 2, 40, 2) != 0 ||
-        tuningClient->declareParam("maxSizeSeg", 900, 1500, 50) != 0 ||
-        tuningClient->declareParam("fillHoles", 4, 8, 4) != 0 ||
-        tuningClient->declareParam("recon", 4, 8, 4) != 0 ||
-        tuningClient->declareParam("watershed", 4, 8, 4) != 0) {
+    if (tuningClient->declareParam("otsuRatio", 0.1, 2.5, 0.1) != 0 ||
+        tuningClient->declareParam("curvatureWeight", 0.0, 1.0, 0.05) != 0 ||
+        tuningClient->declareParam("sizeThld", 1, 20, 1) != 0 ||
+        tuningClient->declareParam("sizeUpperThld", 50, 400, 5) != 0 ||
+        tuningClient->declareParam("mpp", 0.25, 0.25, 0.05) != 0 ||
+        tuningClient->declareParam("mskernel", 5, 30, 1) != 0 ||
+        tuningClient->declareParam("levelSetNumberOfIteration", 5, 150, 1) != 0) {
         fprintf(stderr, "Failed to define tuning session\n");
         return NULL;
     }
-
     if (tuningClient->configure() != 0) {
         fprintf(stderr, "Failed to initialize tuning session.\n");
         return NULL;
@@ -432,22 +441,6 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
         for (int i = 0; i < rtCollection->getNumRTs(); i++) {
 
             int previousSegCompId = 0;
-            // CREATE NORMALIZATION STEP
-            ParameterSet parSetNormalization;
-            std::vector<ArgumentBase *> targetMeanOptions;
-            ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.632356));
-            targetMeanAux->addArgValue(ArgumentFloat(-0.0516004));
-            targetMeanAux->addArgValue(ArgumentFloat(0.0376543));
-            targetMeanOptions.push_back(targetMeanAux);
-            parSetNormalization.addArguments(targetMeanOptions);
-            parSetNormalization.resetIterator();
-            std::vector<ArgumentBase *> argSetInstanceNorm = parSetNormalization.getNextArgumentSetInstance();
-            NormalizationComp *norm = new NormalizationComp();
-            // normalization parameters
-            norm->addArgument(new ArgumentInt(versionNorm));
-            norm->addArgument(argSetInstanceNorm[0]);
-            norm->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-            sysEnv.executeComponent(norm);
 
             for (int j = 0; j < numClients; j++) {
 
@@ -466,47 +459,29 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                     // Creating segmentation component
                     Segmentation *seg = new Segmentation();
 
-                    // version of the data region red. Each parameter instance in norm creates a output w/ different version
-                    seg->addArgument(new ArgumentInt(versionNorm));
                     // version of the data region generated by the segmentation stage
                     seg->addArgument(new ArgumentInt(versionSeg));
 
                     // add remaining (application specific) parameters from the argSegInstance
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("blue", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("green", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("red", j))));
                     seg->addArgument(
-                            new ArgumentFloat((float) (tuningClient->getParamValue("T1", j))));
+                            new ArgumentFloat((float) (tuningClient->getParamValue("otsuRatio", j))));
                     seg->addArgument(
-                            new ArgumentFloat((float) (tuningClient->getParamValue("T2", j))));
+                            new ArgumentFloat((float) (tuningClient->getParamValue("curvatureWeight", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("sizeThld", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("sizeUpperThld", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("mpp", j))));
+                    seg->addArgument(
+                            new ArgumentFloat((float) (tuningClient->getParamValue("mskernel", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("G1", j))));
+                            (int) round(tuningClient->getParamValue("levelSetNumberOfIteration", j))));
                     seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("G2", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("minSize", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("maxSize", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("minSizePl", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("minSizeSeg", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("maxSizeSeg", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("fillHoles", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("recon", j))));
-                    seg->addArgument(new ArgumentInt(
-                            (int) round(tuningClient->getParamValue("watershed", j))));
-
+                            declumpingType));
 
                     // and region template instance that it is suppose to process
                     seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-                    seg->addDependency(norm->getId());
 
                     std::cout << "Creating DiffMask" << std::endl;
                     DiceMaskComp *diceComp = new DiceMaskComp();
@@ -539,7 +514,6 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
 
                 }
             }
-            versionNorm++;
         }
 
         // End Creating Dependency Graph
@@ -721,12 +695,14 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
 
 int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
-                               std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
+                               std::string tuningPolicy, int declumpingType, float *perf, float *totaldiffs,
+                               float *dicePerIteration,
                                float *diceNotCoolPerIteration, float **imageIdArray,
                                uint64_t *totalexecutiontimes) {
 
     multiObjectiveTuning(argc, argv, sysEnv, number_of_profiling_tests, 1, 0, tSlowest, tFastest, rtCollection,
-                         tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration, imageIdArray,
+                         tuningPolicy, declumpingType, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                         imageIdArray,
                          totalexecutiontimes);
 
     //Peform the profiling
@@ -747,7 +723,7 @@ void resetPerf(float *perf, int max_number_of_tests) {
 
 }
 
-void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, TuningParamSet *result,
+void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, TuningParamSet *result, int declumpingType,
                      float **imageIdArray) {
 
     std::vector<int> segComponentIds;
@@ -764,22 +740,7 @@ void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, Tun
     for (int i = 0; i < rtCollection->getNumRTs(); i++) {
 
         int previousSegCompId = 0;
-        // CREATE NORMALIZATION STEP
-        ParameterSet parSetNormalization;
-        std::vector<ArgumentBase *> targetMeanOptions;
-        ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.632356));
-        targetMeanAux->addArgValue(ArgumentFloat(-0.0516004));
-        targetMeanAux->addArgValue(ArgumentFloat(0.0376543));
-        targetMeanOptions.push_back(targetMeanAux);
-        parSetNormalization.addArguments(targetMeanOptions);
-        parSetNormalization.resetIterator();
-        std::vector<ArgumentBase *> argSetInstanceNorm = parSetNormalization.getNextArgumentSetInstance();
-        NormalizationComp *norm = new NormalizationComp();
-        // normalization parameters
-        norm->addArgument(new ArgumentInt(versionNorm));
-        norm->addArgument(argSetInstanceNorm[0]);
-        norm->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-        sysEnv.executeComponent(norm);
+
 
         std::cout << "BEGIN: IMAGE: " << i;
 
@@ -794,47 +755,29 @@ void segmentFunction(SysEnv &sysEnv, RegionTemplateCollection *rtCollection, Tun
         // Creating segmentation component
         Segmentation *seg = new Segmentation();
 
-        // version of the data region red. Each parameter instance in norm creates a output w/ different version
-        seg->addArgument(new ArgumentInt(versionNorm));
         // version of the data region generated by the segmentation stage
         seg->addArgument(new ArgumentInt(versionSeg));
 
         // add remaining (application specific) parameters from the argSegInstance
         seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("blue")->second))));
+                (int) round(*(result->paramSet.find("otsuRatio")->second))));
         seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("green")->second))));
+                (int) round(*(result->paramSet.find("curvatureWeight")->second))));
         seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("red")->second))));
+                (int) round(*(result->paramSet.find("sizeThld")->second))));
         seg->addArgument(
-                new ArgumentFloat((float) (*(result->paramSet.find("T1")->second))));
+                new ArgumentFloat((float) (*(result->paramSet.find("sizeUpperThld")->second))));
         seg->addArgument(
-                new ArgumentFloat((float) (*(result->paramSet.find("T2")->second))));
+                new ArgumentFloat((float) (*(result->paramSet.find("mpp")->second))));
         seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("G1")->second))));
+                (int) round(*(result->paramSet.find("mskernel")->second))));
         seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("G2")->second))));
+                (int) round(*(result->paramSet.find("levelSetNumberOfIteration")->second))));
         seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("minSize")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("maxSize")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("minSizePl")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("minSizeSeg")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("maxSizeSeg")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("fillHoles")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("recon")->second))));
-        seg->addArgument(new ArgumentInt(
-                (int) round(*(result->paramSet.find("watershed")->second))));
-
+                (int) (declumpingType)));
 
         // and region template instance that it is suppose to process
         seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-        seg->addDependency(norm->getId());
 
         std::cout << "Creating DiffMask" << std::endl;
         DiceMaskComp *diceComp = new DiceMaskComp();

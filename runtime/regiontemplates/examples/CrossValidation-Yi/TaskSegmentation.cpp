@@ -1,29 +1,29 @@
 #include "TaskSegmentation.h"
+//itk
+#include "itkImage.h"
+#include "itkRGBPixel.h"
+#include "itkImageFileWriter.h"
+#include "itkOtsuThresholdImageFilter.h"
+#include "itkCastImageFilter.h"
+#include "itkOpenCVImageBridge.h"
 
-TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, unsigned char blue,
-                                   unsigned char green, unsigned char red, double T1, double T2, unsigned char G1,
-                                   unsigned char G2, int minSize, int maxSize, int minSizePl, int minSizeSeg,
-                                   int maxSizeSeg, int fillHolesConnectivity, int reconConnectivity,
-                                   int watershedConnectivity, int *executionTime) {
+
+#include "utilityTileAnalysis.h"
+
+TaskSegmentation::TaskSegmentation(DenseDataRegion2D *bgr, DenseDataRegion2D *mask, float otsuRatio,
+                                   float curvatureWeight, float sizeThld, float sizeUpperThld, float mpp,
+                                   float mskernel, int levelSetNumberOfIteration, int declumpingType,
+                                   int *executionTime) {
     this->bgr = bgr;
     this->mask = mask;
-
-    this->blue = blue;
-    this->green = green;
-    this->red = red;
-
-    this->T1 = T1;
-    this->T2 = T2;
-    this->G1 = G1;
-    this->G2 = G2;
-    this->minSize = minSize;
-    this->maxSize = maxSize;
-    this->minSizePl = minSizePl;
-    this->minSizeSeg = minSizeSeg;
-    this->maxSizeSeg = maxSizeSeg;
-    this->fillHolesConnectivity = fillHolesConnectivity;
-    this->reconConnectivity = reconConnectivity;
-    this->watershedConnectivity = watershedConnectivity;
+    this->otsuRatio = otsuRatio;
+    this->curvatureWeight = curvatureWeight;
+    this->sizeThld = sizeThld;
+    this->sizeUpperThld = sizeUpperThld;
+    this->mpp = mpp;
+    this->mskernel = mskernel;
+    this->levelSetNumberOfIteration = levelSetNumberOfIteration;
+    this->declumpingType = declumpingType;
     this->executionTime = executionTime;
 }
 
@@ -38,18 +38,11 @@ bool TaskSegmentation::run(int procType, int tid) {
     uint64_t t1 = Util::ClockGetTimeProfile();
     std::string imageName = this->bgr->getInputFileName();
     std::cout << "TaskSegmentationFileName: " << imageName << std::endl;
-    std::cout << "TaskSegmentation to be executed: " << (int) blue << ":" << (int) green << ":" << (int) red << ":" <<
-    T1 << ":" <<
-    T2 << ":" << (int) G1 << ":" << minSize << ":" << maxSize << ":" << (int) G2 << ":" << minSizePl << ":" <<
-    minSizeSeg << ":" << maxSizeSeg << ":" << fillHolesConnectivity << ":" << reconConnectivity << ":" <<
-    watershedConnectivity << std::endl;
+
     if (inputImage.rows > 0)
-        int segmentationExecCode = ::nscale::HistologicalEntities::segmentNuclei(inputImage, outMask, blue, green, red,
-                                                                                 T1, T2, G1, minSize, maxSize, G2,
-                                                                                 minSizePl, minSizeSeg, maxSizeSeg,
-                                                                                 fillHolesConnectivity,
-                                                                                 reconConnectivity,
-                                                                                 watershedConnectivity);
+        outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld,
+                                                                   sizeUpperThld, mpp, mskernel,
+                                                                   levelSetNumberOfIteration, declumpingType);
     else
         std::cout << "Segmentation: input data NULL" << std::endl;
     this->mask->setData(outMask);
@@ -76,9 +69,5 @@ bool TaskSegmentation::run(int procType, int tid) {
 
     std::cout << "Task Segmentation time elapsed: " << this->executionTime[0] << std::endl;
     std::cout << "Task Segmentation image: " << this->executionTime[1] << std::endl;
-    std::cout << "Task Segmentation executed: " << (int) blue << ":" << (int) green << ":" << (int) red << ":" << T1 <<
-    ":" <<
-    T2 << ":" << (int) G1 << ":" << minSize << ":" << maxSize << ":" << (int) G2 << ":" << minSizePl << ":" <<
-    minSizeSeg << ":" << maxSizeSeg << ":" << fillHolesConnectivity << ":" << reconConnectivity << ":" <<
-    watershedConnectivity << std::endl;
+
 }
