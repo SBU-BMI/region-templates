@@ -14,7 +14,7 @@
 #define DECLUMPING_TYPE_WATERSHED 2
 
 #define MAX_ITERATION_REPEAT 5
-#define FOLD_NUMBER 1
+#define FOLD_NUMBER 10
 #define HIGHEST_IMAGE_ID 15
 
 #define DIFF_COLUMN 0
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     double tSlowest; //Empirical Data that will be obtained with profiling
     double tFastest; //Empirical Data that will be obtained with profiling
 
-    int max_number_of_tests = 9;
+    int max_number_of_tests = 100;
 //Yi's default declumping type variable
     int declumpingType = DECLUMPING_TYPE_MEANSHIFT;
     // Folder when input data images are stored
