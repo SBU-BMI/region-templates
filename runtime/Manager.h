@@ -14,10 +14,14 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <sstream>
+#include <string>
+
 #include "MessageTag.h"
 #include "DataPack.h"
 #include "PipelineComponentBase.h"
 #include "./regiontemplates/RTPipelineComponentBase.h"
+#include "Util.h"
 
 //class RTPipelineComponentBase;
 class PipelineComponentBase;

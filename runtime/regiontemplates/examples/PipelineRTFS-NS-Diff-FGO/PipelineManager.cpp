@@ -421,6 +421,10 @@ int main(int argc, char* argv[]) {
 				// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
 				s.second->setLocation(PipelineComponentBase::MANAGER_SIDE);
 
+				cout << "[dependency_test] stage " << s.second->getId() << " with " 
+					<< s.second->getNumberDependencies() << " dependencies and " 
+					<< s.second->getNumberDependenciesSolved() << " solved." << endl;
+
 				sysEnv.executeComponent(s.second);
 			}
 		}
