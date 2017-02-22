@@ -228,7 +228,13 @@ void Manager::manager_process()
 	std::cout << __FILE__ << ":" << __LINE__ << ". TasksToExecute="<<tasksToFinishTasks<<std::endl;
 
 	// Process all components instantiated for execution
-	while (componentsToExecute->getSize() != 0 || this->componentDependencies->getCountTasksPending() != 0 || this->getActiveComponentsSize()) {
+	while (true) {
+
+		long long t_0 = Util::ClockGetTime();
+
+		if (componentsToExecute->getSize() != 0 || this->componentDependencies->getCountTasksPending() != 0 || this->getActiveComponentsSize()){}
+		else
+			break;
 
 		if (comm_world.Iprobe(MPI_ANY_SOURCE, MessageTag::TAG_CONTROL, status)) {
 
@@ -242,7 +248,7 @@ void Manager::manager_process()
 
 			char *msg = new char[input_message_size];
 
-			long long t_0 = Util::ClockGetTime();
+			long long t_probe = Util::ClockGetTime();
 
 			// Read the
 			comm_world.Recv(msg, input_message_size, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
@@ -293,6 +299,8 @@ void Manager::manager_process()
 
 						std::stringstream t_0_ss;
 						t_0_ss << t_0;
+						std::stringstream t_probe_ss;
+						t_probe_ss << t_probe;
 						std::stringstream t_recv_ss;
 						t_recv_ss << t_recv;
 						std::stringstream t_data_aware_ss;
@@ -302,8 +310,8 @@ void Manager::manager_process()
 						std::stringstream t_end_ss;
 						t_end_ss << t_end;
 
-						std::cout << "[MANAGER_PROFILER] " << t_0_ss.str() << " " << t_recv_ss.str() << " " 
-							<< t_data_aware_ss.str() << " " << t_get_task_ss.str() << " " << t_end_ss.str() << std::endl;
+						// std::cout << "[MANAGER_PROFILER] " << t_0_ss.str() << " " <<  t_probe_ss.str() << " " << t_recv_ss.str() << " " 
+						// 	<< t_data_aware_ss.str() << " " << t_get_task_ss.str() << " " << t_end_ss.str() << std::endl;
 
 					}else{
 						// tell worker that manager queue is empty. Nothing else to do at this moment. Should ask again.
@@ -312,7 +320,10 @@ void Manager::manager_process()
 					break;
 				}
 				case MessageTag::WORKER_TASKS_COMPLETED:
-				{
+				{	
+
+					long long t_switch = Util::ClockGetTime();
+
 					std::vector<RTPipelineComponentBase*> components;
 
 					// Pointer to the message area where the information about the tasks is stored
@@ -343,6 +354,8 @@ void Manager::manager_process()
 #endif
 					extracted_size_bytes += sizeof(int);
 
+					long long t_extract = Util::ClockGetTime();
+
 					//int extracted_size_bytes = sizeof(char) + sizeof(int) + number_components_completed * sizeof(int) + sizeof(int);
 
 //#ifdef WITH_RT
@@ -365,6 +378,8 @@ void Manager::manager_process()
 						components.push_back(rtComp);
 					}
 
+					long long t_rt = Util::ClockGetTime();
+
 					// Do the magic and update the region templates
 					// for each component received
 					for(int i = 0; i < components.size(); i++){
@@ -384,6 +399,8 @@ void Manager::manager_process()
 						delete rtComp;
 					}
 					// END RT components only code section
+
+					long long t_delete = Util::ClockGetTime();
 //#endif
 
 					extracted_size_bytes = sizeof(char) + sizeof(int);
@@ -453,6 +470,29 @@ void Manager::manager_process()
 							std::cout << __FILE__ << ":"<< __LINE__ <<". Error: Component Id="<< compId << " not found!" <<std::endl;
 						}
 					}
+
+					long long t_end = Util::ClockGetTime();
+
+					std::stringstream t_0_ss;
+					t_0_ss << t_0;
+					std::stringstream t_probe_ss;
+					t_probe_ss << t_probe;
+					std::stringstream t_recv_ss;
+					t_recv_ss << t_recv;
+					std::stringstream t_switch_ss;
+					t_switch_ss << t_switch;
+					std::stringstream t_extract_ss;
+					t_extract_ss << t_extract;
+					std::stringstream t_rt_ss;
+					t_rt_ss << t_rt;
+					std::stringstream t_delete_ss;
+					t_delete_ss <<	t_delete;
+					std::stringstream t_end_ss;
+					t_end_ss << t_end;
+
+					std::cout << "[MANAGER_PROFILER] " << t_0_ss.str() << " " <<  t_probe_ss.str() << " " << t_recv_ss.str() << " " 
+						<< t_switch_ss.str() << " " << t_extract_ss.str() << " " << t_rt_ss.str() << " " << t_delete_ss.str() << " " 
+						<< t_end_ss.str() << std::endl;
 
 					break;
 				}
