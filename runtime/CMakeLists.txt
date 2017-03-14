@@ -88,10 +88,12 @@ include_directories(./regiontemplates/Utils)
 add_library("${libname}" SHARED ${libsyssrcs})
 
 if(USE_ACTIVE_HARMONY)
+	find_path(AH_SRC_DIR REQUIRED)
+	set(ahsrcdir ${AH_SRC_DIR})
 	add_custom_target(
 	active_harmony_lib
-	COMMAND make install PREFIX=${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/
-	WORKING_DIRECTORY ${RegionTemplate_SOURCE_DIR}/external-src/activeharmony-4.5/)
+	COMMAND make install PREFIX=${ahsrcdir}
+	WORKING_DIRECTORY ${ahsrcdir})
 	add_dependencies("${libname}" active_harmony_lib)
 endif(USE_ACTIVE_HARMONY)
 

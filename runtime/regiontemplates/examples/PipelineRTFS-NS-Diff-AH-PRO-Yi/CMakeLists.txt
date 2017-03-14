@@ -27,7 +27,9 @@ include_directories(${yisrcdir}/)
 
 
 if(USE_ACTIVE_HARMONY)
-	include_directories(${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/include/)
+	find_path(AH_SRC_DIR REQUIRED)
+	set(ahsrcdir ${AH_SRC_DIR})
+	include_directories(${ahsrcdir}/include/)
 endif(USE_ACTIVE_HARMONY)
 
 # Make sure the compiler can find the library in runtime system directory
@@ -68,7 +70,9 @@ add_custom_target(copyCacheConfToPipelineRTFS-NS-Diff-AH-PRO-Yi COMMAND ${CMAKE_
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-NS-Diff-AH-PRO-Yi PipelineManager.cpp)
 if(USE_ACTIVE_HARMONY)
-	target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO-Yi ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
+	find_path(AH_SRC_DIR REQUIRED)
+	set(ahsrcdir ${AH_SRC_DIR})
+	target_link_libraries(PipelineRTFS-NS-Diff-AH-PRO-Yi ${ahsrcdir}/lib/libharmony.a)
 endif(USE_ACTIVE_HARMONY)
 add_dependencies(PipelineRTFS-NS-Diff-AH-PRO-Yi copyCacheConfToPipelineRTFS-NS-Diff-AH-PRO-Yi)
 

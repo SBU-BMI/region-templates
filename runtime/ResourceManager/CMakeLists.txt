@@ -21,13 +21,13 @@ add_library("${libname}" SHARED ${libsrcs})
 target_link_libraries("${libname}" ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBS})
 
 # Check if the user want to build sample applications
-option (BUILD_SAMPLE_APPLICTIONS "Inform whether sample applications should be built" ON)
+option (BUILD_SAMPLE_APPLICATIONS "Inform whether sample applications should be built" ON)
 
 # if build same applications is set, than build them: currently just one
-if(BUILD_SAMPLE_APPLICTIONS)
+if(BUILD_SAMPLE_APPLICATIONS)
 	add_subdirectory("examples/hello/")
 	add_subdirectory("examples/taskDependency")
 	add_subdirectory("examples/abc")
 	add_subdirectory("examples/abcde")
 	add_subdirectory("tests")
-endif(BUILD_SAMPLE_APPLICTIONS)
+endif(BUILD_SAMPLE_APPLICATIONS)
