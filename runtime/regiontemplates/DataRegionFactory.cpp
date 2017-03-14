@@ -199,14 +199,50 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 						inputFile = createOutputFileName(dr2D, path, ".tiff");
 					}
 				}
+				//############### Binary Image ###############
 				chunkData = cv::imread(inputFile, -1); // read image
 				if(chunkData.empty()){
 					std::cout << "Failed to read image:" << inputFile << std::endl;
+
+                    inputFile = "";
+                    if(!path.empty())inputFile.append(path);
+                    inputFile.append(dataRegion->getName());
+					inputFile.append("-").append(dataRegion->getId());
+					inputFile.append("-").append(number2String(dataRegion->getVersion()));
+					inputFile.append("-").append(number2String(dataRegion->getTimestamp()));
+
+                    //############### Labeled Image ###############
+                    //Failed to read as an image.
+                    //Try to read as txt file (labeled image)
+                    std::cout << "###################### GEEEEEEEEORGE - Trying to read as text file:" << inputFile << std::endl;
+                    std::ifstream infile(inputFile.c_str());
+                    int columns, rows;
+                    int a;
+                    infile >> columns >> rows;
+                    chunkData = cv::Mat(rows, columns, CV_32S);
+
+                    //Read image from text file and find the bounding boxes
+                    for (int i = 0; i < rows; ++i) {
+                        for (int j = 0; j < columns; ++j) {
+                            infile >> a;
+                            chunkData.at<int>(i, j) = a;
+                        }
+                    }
+                    if (chunkData.empty()) {
+                        std::cout << "Failed to read labeled image as text file:" << inputFile << std::endl;
+
+                    }else{
+                        BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
+                        dataRegion->setData(chunkData);
+                        dataRegion->setBb(ROIBB);
+                    }
+
 				}else{
 					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
 					dr2D->setData(chunkData);
 					dr2D->setBb(ROIBB);
 				}
+                std::cout << "chuckData Image Type: " << chunkData.type() << std::endl;
 			}
 		}
 		// delete father class instance and attribute the specific data region read
@@ -252,14 +288,37 @@ bool DataRegionFactory::writeDDR2DFS(DataRegion* dataRegion, std::string path, b
 				if(dr2D->getOutputExtension() == DataRegion::PBM){
 					std::string outputFile;
 
-					if(ssd){
-						outputFile = createOutputFileName(dr2D, path, ".pbm");
-					}else{
-						outputFile = createOutputFileName(dr2D, path, ".tiff");
-					}
+            outputFile.append(dataRegion->getName());
+			outputFile.append("-").append(dataRegion->getId());
+			outputFile.append("-").append(number2String(dataRegion->getVersion()));
+			outputFile.append("-").append(number2String(dataRegion->getTimestamp()));
+
+            //############### in case it is a Labeled Image in the form of a TXT file ###############
+            if (dataRegion->getData().type() == CV_32S){
+                outputFile.append(".txt");
+                std::cout<< "############## WRITING TXT FILE" << std::endl;
+                std::ofstream outfile(outputFile.c_str());
+                outfile << dataRegion->getData().cols << " " << dataRegion->getData().rows << std::endl;
+
+                //write image to text file
+                for (int i = 0; i < dataRegion->getData().rows; ++i) {
+                    for (int j = 0; j < dataRegion->getData().cols; ++j) {
+                        int  a = dataRegion->getData().at<int>(i, j);
+                        outfile << a << std::endl;
+                    }
+                    //cout<<endl;
+                }
+            }
+            else{//############### Binary Image ###############
+                if(ssd){
+                    outputFile.append(".pbm");
+                }else{
+                    outputFile.append(".tiff");
+                }
 
 #ifdef DEBUG
 					std::cout << "rows: "<< dr2D->getData().rows << " cols: "<< dr2D->getData().cols <<std::endl;
+                //std::cout << "rows: "<< dataRegion->getData().rows << " cols: "<< dataRegion->getData().cols <<std::endl;
 #endif
 					// check if there is any data to be written
 					if(dr2D->getData().rows > 0 && dr2D->getData().cols > 0){

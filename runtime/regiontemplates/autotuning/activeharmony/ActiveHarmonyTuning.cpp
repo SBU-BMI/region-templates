@@ -5,9 +5,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sstream>
-#include "NealderMeadTuning.h"
+#include <limits>
+#include "ActiveHarmonyTuning.h"
 
-NealderMeadTuning::NealderMeadTuning(std::string strategy, int maxNumberOfIterations, int numSets) {
+ActiveHarmonyTuning::ActiveHarmonyTuning(std::string strategy, int maxNumberOfIterations, int numSets) {
     iteration = 0;
 
     this->numSets = numSets;
@@ -18,10 +19,11 @@ NealderMeadTuning::NealderMeadTuning(std::string strategy, int maxNumberOfIterat
     for (int i = 0; i < numSets; ++i) {
         this->tuningParamSet[i] = new TuningParamSet();
     }
+    this->bestSet.score = std::numeric_limits<double>::max();
 }
 
 
-int NealderMeadTuning::initialize(int argc, char **argv) {
+int ActiveHarmonyTuning::initialize(int argc, char **argv) {
 
     // AH SETUP //
     /* Initialize a Harmony client. */
@@ -33,7 +35,7 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
         }
     }
 
-    snprintf(name, sizeof(name), "NealderMeadTuning.%d", getpid());
+    snprintf(name, sizeof(name), "ActiveHarmonyTuning.%d", getpid());
 
     //Choose policy
     if (strategyAHpolicy.find("nm") != std::string::npos || strategyAHpolicy.find("NM") != std::string::npos) {
@@ -54,15 +56,15 @@ int NealderMeadTuning::initialize(int argc, char **argv) {
         }
         else {
             harmony_strategy(hdesc[i], AHpolicy.c_str());
-
+            harmony_setcfg(hdesc[i], "INIT_METHOD", "random");
         }
     }
     return 0;
 
 }
 
-int NealderMeadTuning::declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
-                                    double paramStepSize) {
+int ActiveHarmonyTuning::declareParam(std::string paramLabel, double paramLowerBoundary, double paramHigherBoundary,
+                                      double paramStepSize) {
 
     for (int setId = 0; setId < numSets; ++setId) {
         if (harmony_real(hdesc[setId], paramLabel.c_str(), paramLowerBoundary, paramHigherBoundary, paramStepSize) !=
@@ -79,10 +81,17 @@ int NealderMeadTuning::declareParam(std::string paramLabel, double paramLowerBou
         }
     }
 
+    //Add param to best set as well
+    double *newParam = (double *) malloc(sizeof(double));
+    *(newParam) = paramLowerBoundary;
+    bestSet.addParam(paramLabel, newParam);
+
+
+
     return 0;
 }
 
-int NealderMeadTuning::configure() {
+int ActiveHarmonyTuning::configure() {
 
 
     std::cout << "AH configuration: " << AHpolicy << std::endl;
@@ -139,7 +148,7 @@ int NealderMeadTuning::configure() {
 
 }
 
-int NealderMeadTuning::bindParam(std::string paramLabel, int setId) {
+int ActiveHarmonyTuning::bindParam(std::string paramLabel, int setId) {
 
 
     if (harmony_bind_real(hdesc[setId], paramLabel.c_str(), &(*(tuningParamSet[setId]->paramSet[paramLabel]))) != 0) {
@@ -150,11 +159,25 @@ int NealderMeadTuning::bindParam(std::string paramLabel, int setId) {
 }
 
 
-void NealderMeadTuning::nextIteration() {
+void ActiveHarmonyTuning::nextIteration() {
     iteration++;
+    //Update the best value of the tuning
+    for (int i = 0; i < numSets; i++) {
+        TuningParamSet *temp = tuningParamSet[i];
+        //Lower is better
+        if (temp->score < bestSet.score) {
+            typedef std::map<std::string, double *>::iterator it_type;
+            for (it_type iterator = temp->paramSet.begin();
+                 iterator != tuningParamSet[i]->paramSet.end(); iterator++) {
+                bestSet.updateParamValue(iterator->first, *(iterator->second));
+            }
+            bestSet.setScore(temp->getScore());
+        }
+
+    }
 }
 
-int NealderMeadTuning::fetchParams() {
+int ActiveHarmonyTuning::fetchParams() {
     for (int i = 0; i < numSets; i++) {
         int hresult;
         do {
@@ -172,15 +195,15 @@ int NealderMeadTuning::fetchParams() {
 
 }
 
-TuningParamSet *NealderMeadTuning::getParamSet(int setId) {
+TuningParamSet *ActiveHarmonyTuning::getParamSet(int setId) {
     return tuningParamSet[setId];
 }
 
-double NealderMeadTuning::getParamValue(std::string paramName, int setId) {
+double ActiveHarmonyTuning::getParamValue(std::string paramName, int setId) {
     return *(tuningParamSet[setId]->paramSet.find(paramName)->second);
 }
 
-int NealderMeadTuning::reportScore(double scoreValue, int setId) {
+int ActiveHarmonyTuning::reportScore(double scoreValue, int setId) {
     tuningParamSet[setId]->score = scoreValue;
     // Report the performance we've just measured.
     if (harmony_report(hdesc[setId], scoreValue) != 0) {
@@ -191,7 +214,7 @@ int NealderMeadTuning::reportScore(double scoreValue, int setId) {
     }
 }
 
-bool NealderMeadTuning::hasConverged() {
+bool ActiveHarmonyTuning::hasConverged() {
 
     int hasConverged = harmony_converged(hdesc[0]);
     for (int i = 1; i < numSets; i++) hasConverged += harmony_converged(hdesc[i]);

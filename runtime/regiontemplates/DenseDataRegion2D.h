@@ -11,6 +11,7 @@
 #include "DataRegion.h"
 #include <string>
 #include <iostream>
+#include <fstream>
 
 // OpenCV library includes
 #include "cv.hpp"

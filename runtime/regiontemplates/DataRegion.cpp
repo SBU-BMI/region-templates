@@ -140,7 +140,7 @@ int DataRegion::serialize(char* buff) {
 	memcpy(buff+serialized_bytes, &this->isAppInput, sizeof(bool));
 	serialized_bytes += sizeof(bool);
 
-	int inputFileNameSize = this->getInputFileName().size();
+	int inputFileNameSize = (int) this->getInputFileName().size();
 	// size of inputFileName
 	memcpy(buff+serialized_bytes, &inputFileNameSize, sizeof(int));
 	serialized_bytes += sizeof(int);

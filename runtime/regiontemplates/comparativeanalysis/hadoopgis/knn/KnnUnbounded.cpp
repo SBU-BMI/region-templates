@@ -4,7 +4,8 @@
 
 #include "KnnUnbounded.h"
 
-KnnUnbounded::KnnUnbounded(std::vector<std::vector<cv::Point> > *list1, std::vector<std::vector<cv::Point> > *list2,
+KnnUnbounded::KnnUnbounded(std::vector<std::vector<std::vector<cv::Point> > *> *list1,
+                           std::vector<std::vector<std::vector<cv::Point> > *> *list2,
                            float *id, long k) {
     this->dr1 = NULL;
     this->dr2 = NULL;

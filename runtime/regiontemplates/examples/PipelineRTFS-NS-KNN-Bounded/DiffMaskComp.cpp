@@ -39,8 +39,8 @@ int DiffMaskComp::run() {
             diffPixels[0] = this->getId();
             cout << "------------------------------------------------- Calling Task:" << endl;
 
-            std::vector<std::vector<cv::Point> > *list1;
-            std::vector<std::vector<cv::Point> > *list2;
+            std::vector<std::vector<std::vector<cv::Point> > *> *list1;
+            std::vector<std::vector<std::vector<cv::Point> > *> *list2;
             Hadoopgis::getPolygonsFromMask(computed_mask->getData(), list1);
             Hadoopgis::getPolygonsFromMask(reference_mask->getData(), list2);
             float boundary = 10;
