@@ -32,7 +32,7 @@ void parseInputArguments(int argc, char**argv, std::string &inputFolder){
 
 RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 	// Search for input files in folder path
-	FileUtils fileUtils("tif");
+	FileUtils fileUtils("tiff");
 	std::vector<std::string> fileList;
 	fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
 	RegionTemplateCollection* rtCollection = new RegionTemplateCollection();
@@ -40,17 +40,28 @@ RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 
 	std::cout << "Input Folder: "<< inputFolderPath <<std::endl;
 
+	cout << endl << " FILELIST SIZE: " << fileList.size() << endl;
 
 	// Create one region template instance for each input data file
 	// (creates representations without instantiating them)
 	for(int i = 0; i < fileList.size(); i++){
+		cout << endl << " FILE: " << fileList[i] << endl;
+
 		DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+
+		std::ostringstream oss;
+		oss << i;
+		ddr2d->setId(oss.str());
+
+
 		ddr2d->setName(std::string("BGR"));
 	//	ddr2d->setName("BGR");
 		ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
 //		ddr2d->setOutputType(-1);
 		ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-		ddr2d->setId(fileList[i]);
+		//ddr2d->setId(fileList[i]);
+		ddr2d->setIsAppInput(true);
+		ddr2d->setInputFileName(fileList[i]);
 //		ddr2d->setInBds(new FileSystemImageDataSource(fileList[i]));
 		RegionTemplate *rt = new RegionTemplate();
 		rt->setName("tile");

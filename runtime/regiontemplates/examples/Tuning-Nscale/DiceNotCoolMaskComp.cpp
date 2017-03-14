@@ -27,8 +27,9 @@ int DiceNotCoolMaskComp::run() {
     if (inputRt != NULL) {
 
         // Mask computed in segmentation using specific application parameter set
-        DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D *>(inputRt->getDataRegion("MASK", "", 0,
-                                                                                                    parameterSegId));
+
+        DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D *>(inputRt->getDataRegion("MASK", "", 0,  parameterSegId));
+
         // Mask used as a reference
         DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D *>(inputRt->getDataRegion("REF_MASK"));
 

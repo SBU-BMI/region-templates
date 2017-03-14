@@ -322,10 +322,12 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 // 2) is local(isLocal=true) or global. If it is local, than it's metadata most be found in at least one of the cache component layers, if
 // it is local and metadata is not found the DR was not inserted into the cache. It's empty.
 // Otherwise, we will have to find it into a global storage.
-DataRegion* Cache::getDR(std::string rtName, std::string rtId,
-		std::string drName, std::string drId, int timestamp, int version, int drType, bool copyData, bool isInput, std::string inputPath) {
-						 std::string drName, std::string drId, std::string inputFileName, int timestamp, int version,
-						 bool copyData, bool isInput, std::string inputPath) {
+
+
+DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drName, std::string drId,
+						 std::string inputFileName,
+						 int timestamp, int version, int drType, bool copyData, bool isInput, std::string inputPath) {
+
 	DataRegion* retValue = NULL;
 	long long init = Util::ClockGetTime();
 	while(retValue == NULL){

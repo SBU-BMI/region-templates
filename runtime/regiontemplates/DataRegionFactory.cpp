@@ -45,7 +45,7 @@ int DataRegionFactory::lockFileExists(DataRegion* dr, std::string path) {
 	FILE *pFile = fopen(lockFileName.c_str(), "r");
 	if(pFile == NULL){
 #ifdef DEBUG
-		std::cout << "ERROR: lock file: "<< lockFile << std::endl;
+		std::cout << "ERROR: lock file: " << lockFileName << std::endl;
 #endif
 	}else{
 		// Read region template type
@@ -142,6 +142,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 	// data region. Otherwise, a .loc file exists and it stores the data region type
 	if((*dataRegion)->getIsAppInput() == true){
 		drType = (*dataRegion)->getType();
+
 	}else{
 		// returns -1 if lock file is not found
 		drType = DataRegionFactory::lockFileExists((*dataRegion), path);
@@ -151,126 +152,130 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 
 
 	switch(drType){
-	case DataRegionType::DENSE_REGION_2D:{
-		DenseDataRegion2D* dr2D = new DenseDataRegion2D();//dynamic_cast<DenseDataRegion2D*>(dataRegion);
-		dr2D->setName((*dataRegion)->getName());
-		dr2D->setId((*dataRegion)->getId());
-		dr2D->setTimestamp((*dataRegion)->getTimestamp());
-		dr2D->setVersion((*dataRegion)->getVersion());
-		dr2D->setIsAppInput((*dataRegion)->getIsAppInput());
-		dr2D->setInputFileName((*dataRegion)->getInputFileName());
+		case DataRegionType::DENSE_REGION_2D: {
+			DenseDataRegion2D *dr2D = new DenseDataRegion2D();//dynamic_cast<DenseDataRegion2D*>(dataRegion);
+			dr2D->setName((*dataRegion)->getName());
+			dr2D->setId((*dataRegion)->getId());
+			dr2D->setTimestamp((*dataRegion)->getTimestamp());
+			dr2D->setVersion((*dataRegion)->getVersion());
+			dr2D->setIsAppInput((*dataRegion)->getIsAppInput());
+			dr2D->setInputFileName((*dataRegion)->getInputFileName());
 
-		cv::Mat chunkData;
-#ifdef DEBUG
-		std::cout << "readDDR2DFS: dataRegion: "<< dr2D->getName()<< " id: "<< dr2D->getId()<< " version:" << dr2D->getVersion() <<" outputExt: "<< dr2D->getOutputExtension() << std::endl;
-#endif
-		if(dr2D->getOutputExtension() == DataRegion::XML){
-			// if it is an Mat stored as a XML file
-			std::string inputFile;
 
-			if(dr2D->getIsAppInput()){
-				inputFile = dr2D->getInputFileName();
-			}else{
-				inputFile = createOutputFileName(dr2D, path, ".xml");
-			}
-			cv::FileStorage fs2(inputFile, cv::FileStorage::READ);
-			if(fs2.isOpened()){
-				fs2["mat"] >> chunkData;
-				fs2.release();
+			cv::Mat chunkData;
 #ifdef DEBUG
-				std::cout << "LOADING XML input data: " << inputFile << " dataRegion: "<< dataRegion->getName() << " chunk.rows: "<< chunkData.rows<< " chunk.cols: "<< chunkData.cols<<std::endl;
+			std::cout << "readDDR2DFS: dataRegion: " << dr2D->getName() << " id: " << dr2D->getId() << " version:" <<
+			dr2D->getVersion() << " outputExt: " << dr2D->getOutputExtension() << std::endl;
 #endif
-			}else{
-#ifdef DEBUG
-				std::cout << "Failed to read Data region. Failed to open FILE: " << inputFile << std::endl;
-#endif
-				exit(1);
-			}
-		}else{
-			if(dr2D->getOutputExtension() == DataRegion::PBM){
+			if (dr2D->getOutputExtension() == DataRegion::XML) {
+				// if it is an Mat stored as a XML file
 				std::string inputFile;
 
 				if(dr2D->getIsAppInput()){
 					inputFile = dr2D->getInputFileName();
 				}else{
-					if(ssd){
-						inputFile = createOutputFileName(dr2D, path, ".pbm");
+					inputFile = createOutputFileName(dr2D, path, ".xml");
+				}
+				cv::FileStorage fs2(inputFile, cv::FileStorage::READ);
+				if (fs2.isOpened()) {
+					fs2["mat"] >> chunkData;
+					fs2.release();
+#ifdef DEBUG
+					std::cout << "LOADING XML input data: " << inputFile << " dataRegion: " << dr2D->getName() <<
+					" chunk.rows: " << chunkData.rows << " chunk.cols: " << chunkData.cols << std::endl;
+#endif
+				} else {
+#ifdef DEBUG
+					std::cout << "Failed to read Data region. Failed to open FILE: " << inputFile << std::endl;
+#endif
+					exit(1);
+				}
+			} else {
+				if (dr2D->getOutputExtension() == DataRegion::PBM) {
+					std::string inputFile;
+
+					if (dr2D->getIsAppInput()) {
+						inputFile = dr2D->getInputFileName();
+						std::cout << "###inputFile:" << inputFile << std::endl;
 					}else{
-						inputFile = createOutputFileName(dr2D, path, ".tiff");
+						if (ssd) {
+							inputFile = createOutputFileName(dr2D, path, ".pbm");
+						} else {
+							inputFile = createOutputFileName(dr2D, path, ".tiff");
+						}
 					}
+					//############### Binary Image ###############
+					chunkData = cv::imread(inputFile, -1); // read image
+					if (chunkData.empty()) {
+						std::cout << "Failed to read image:" << inputFile << std::endl;
+
+//						inputFile = "";
+//						if(!path.empty())inputFile.append(path);
+//						inputFile.append(dr2D->getName());
+//						inputFile.append("-").append(dr2D->getId());
+//						inputFile.append("-").append(number2String(dr2D->getVersion()));
+//						inputFile.append("-").append(number2String(dr2D->getTimestamp()));
+
+						//############### Labeled Image ###############
+						//Failed to read as an image.
+						//Try to read as txt file (labeled image)
+						std::cout << "Trying to read as text file:" << inputFile << std::endl;
+						std::ifstream infile(inputFile.c_str());
+						int columns, rows;
+						int a;
+						infile >> columns >> rows;
+						chunkData = cv::Mat(rows, columns, CV_32S);
+
+						//Read image from text file and find the bounding boxes
+						for (int i = 0; i < rows; ++i) {
+							for (int j = 0; j < columns; ++j) {
+								infile >> a;
+								chunkData.at<int>(i, j) = a;
+							}
+						}
+						if (chunkData.empty()) {
+							std::cout << "Failed to read labeled image as text file:" << inputFile << std::endl;
+
+						} else {
+							BoundingBox ROIBB(Point(0, 0, 0), Point(chunkData.cols - 1, chunkData.rows - 1, 0));
+							dr2D->setData(chunkData);
+							dr2D->setBb(ROIBB);
+						}
+
+					} else {
+						BoundingBox ROIBB(Point(0, 0, 0), Point(chunkData.cols - 1, chunkData.rows - 1, 0));
+						dr2D->setData(chunkData);
+						dr2D->setBb(ROIBB);
+					}
+					std::cout << "chuckData Image Type: " << chunkData.type() << std::endl;
 				}
-				//############### Binary Image ###############
-				chunkData = cv::imread(inputFile, -1); // read image
-				if(chunkData.empty()){
-					std::cout << "Failed to read image:" << inputFile << std::endl;
-
-                    inputFile = "";
-                    if(!path.empty())inputFile.append(path);
-                    inputFile.append(dataRegion->getName());
-					inputFile.append("-").append(dataRegion->getId());
-					inputFile.append("-").append(number2String(dataRegion->getVersion()));
-					inputFile.append("-").append(number2String(dataRegion->getTimestamp()));
-
-                    //############### Labeled Image ###############
-                    //Failed to read as an image.
-                    //Try to read as txt file (labeled image)
-                    std::cout << "###################### GEEEEEEEEORGE - Trying to read as text file:" << inputFile << std::endl;
-                    std::ifstream infile(inputFile.c_str());
-                    int columns, rows;
-                    int a;
-                    infile >> columns >> rows;
-                    chunkData = cv::Mat(rows, columns, CV_32S);
-
-                    //Read image from text file and find the bounding boxes
-                    for (int i = 0; i < rows; ++i) {
-                        for (int j = 0; j < columns; ++j) {
-                            infile >> a;
-                            chunkData.at<int>(i, j) = a;
-                        }
-                    }
-                    if (chunkData.empty()) {
-                        std::cout << "Failed to read labeled image as text file:" << inputFile << std::endl;
-
-                    }else{
-                        BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
-                        dataRegion->setData(chunkData);
-                        dataRegion->setBb(ROIBB);
-                    }
-
-				}else{
-					BoundingBox ROIBB (Point(0, 0, 0), Point(chunkData.cols-1, chunkData.rows-1, 0));
-					dr2D->setData(chunkData);
-					dr2D->setBb(ROIBB);
-				}
-                std::cout << "chuckData Image Type: " << chunkData.type() << std::endl;
 			}
+			// delete father class instance and attribute the specific data region read
+			delete (*dataRegion);
+			(*dataRegion) = (DataRegion *) dr2D;
+			break;
 		}
-		// delete father class instance and attribute the specific data region read
-		delete (*dataRegion);
-		(*dataRegion) = (DataRegion*)dr2D;
-		break;
-	}
-	case DataRegionType::REGION_2D_UNALIGNED:{
-		DataRegion2DUnaligned* dr2DUn = new DataRegion2DUnaligned();//dynamic_cast<DataRegion2DUnaligned*>(dataRegion);
-		dr2DUn->setName((*dataRegion)->getName());
-		dr2DUn->setId((*dataRegion)->getId());
-		dr2DUn->setTimestamp((*dataRegion)->getTimestamp());
-		dr2DUn->setVersion((*dataRegion)->getVersion());
+		case DataRegionType::REGION_2D_UNALIGNED: {
+			DataRegion2DUnaligned *dr2DUn = new DataRegion2DUnaligned();//dynamic_cast<DataRegion2DUnaligned*>(dataRegion);
+			dr2DUn->setName((*dataRegion)->getName());
+			dr2DUn->setId((*dataRegion)->getId());
+			dr2DUn->setTimestamp((*dataRegion)->getTimestamp());
+			dr2DUn->setVersion((*dataRegion)->getVersion());
 
-		std::string inputFileName = createOutputFileName(dr2DUn, path, ".vec");
+			std::string inputFileName = createOutputFileName(dr2DUn, path, ".vec");
 
-		readDr2DUn(dr2DUn, inputFileName);
+			readDr2DUn(dr2DUn, inputFileName);
 
-		// delete data region passed as a parameter and replace it with the actual data region with the data
-		delete (*dataRegion);
-		(*dataRegion) = (DataRegion*)dr2DUn;
+			// delete data region passed as a parameter and replace it with the actual data region with the data
+			delete (*dataRegion);
+			(*dataRegion) = (DataRegion *) dr2DUn;
 
-		break;
-	}
-	default:
-		std::cout << "readDDR2DFS: ERROR: Unknown Region template type: "<< drType <<std::endl;
-		exit(1);
-		break;
+			break;
+		}
+		default:
+			std::cout << "readDDR2DFS: ERROR: Unknown Region template type: " << drType << std::endl;
+			exit(1);
+			break;
 	}
 	return true;
 }
@@ -279,46 +284,47 @@ bool DataRegionFactory::writeDDR2DFS(DataRegion* dataRegion, std::string path, b
 	bool retVal = true;
 
 #ifdef DEBUG
-		std::cout << "DataRegion: "<< dataRegion->getName() << " extension: "<< dataRegion->getOutputExtension() << std::endl;
+	std::cout << "DataRegion: " << dataRegion->getName() << " extension: " << dataRegion->getOutputExtension() <<
+	std::endl;
 #endif
 
-		switch(dataRegion->getType()){
-			case DataRegionType::DENSE_REGION_2D:{
-				DenseDataRegion2D* dr2D = dynamic_cast<DenseDataRegion2D*>(dataRegion);
-				if(dr2D->getOutputExtension() == DataRegion::PBM){
-					std::string outputFile;
+	switch (dataRegion->getType()) {
+		case DataRegionType::DENSE_REGION_2D: {
+			DenseDataRegion2D *dr2D = dynamic_cast<DenseDataRegion2D *>(dataRegion);
+			if (dr2D->getOutputExtension() == DataRegion::PBM) {
+				std::string outputFile;
 
-            outputFile.append(dataRegion->getName());
-			outputFile.append("-").append(dataRegion->getId());
-			outputFile.append("-").append(number2String(dataRegion->getVersion()));
-			outputFile.append("-").append(number2String(dataRegion->getTimestamp()));
 
-            //############### in case it is a Labeled Image in the form of a TXT file ###############
-            if (dataRegion->getData().type() == CV_32S){
-                outputFile.append(".txt");
-                std::cout<< "############## WRITING TXT FILE" << std::endl;
-                std::ofstream outfile(outputFile.c_str());
-                outfile << dataRegion->getData().cols << " " << dataRegion->getData().rows << std::endl;
 
-                //write image to text file
-                for (int i = 0; i < dataRegion->getData().rows; ++i) {
-                    for (int j = 0; j < dataRegion->getData().cols; ++j) {
-                        int  a = dataRegion->getData().at<int>(i, j);
-                        outfile << a << std::endl;
-                    }
-                    //cout<<endl;
-                }
-            }
-            else{//############### Binary Image ###############
-                if(ssd){
-                    outputFile.append(".pbm");
-                }else{
-                    outputFile.append(".tiff");
-                }
+				//############### in case it is a Labeled Image in the form of a TXT file ###############
+				if (dr2D->getData().type() == CV_32S) {
+					outputFile.append(dataRegion->getName());
+					outputFile.append("-").append(dataRegion->getId());
+					outputFile.append("-").append(number2String(dataRegion->getVersion()));
+					outputFile.append("-").append(number2String(dataRegion->getTimestamp()));
+					outputFile.append(".txt");
+					std::cout << "############## WRITING TXT FILE" << std::endl;
+					std::ofstream outfile(outputFile.c_str());
+					outfile << dr2D->getData().cols << " " << dr2D->getData().rows << std::endl;
 
+					//write image to text file
+					for (int i = 0; i < dr2D->getData().rows; ++i) {
+						for (int j = 0; j < dr2D->getData().cols; ++j) {
+							int a = dr2D->getData().at<int>(i, j);
+							outfile << a << std::endl;
+						}
+						//cout<<endl;
+					}
+				}
+				else {//############### Binary Image ###############
+					if (ssd) {
+						outputFile = createOutputFileName(dr2D, path, ".pbm");
+					} else {
+						outputFile = createOutputFileName(dr2D, path, ".tiff");
+					}
 #ifdef DEBUG
 					std::cout << "rows: "<< dr2D->getData().rows << " cols: "<< dr2D->getData().cols <<std::endl;
-                //std::cout << "rows: "<< dataRegion->getData().rows << " cols: "<< dataRegion->getData().cols <<std::endl;
+					//std::cout << "rows: "<< dataRegion->getData().rows << " cols: "<< dataRegion->getData().cols <<std::endl;
 #endif
 					// check if there is any data to be written
 					if(dr2D->getData().rows > 0 && dr2D->getData().cols > 0){
@@ -327,29 +333,31 @@ bool DataRegionFactory::writeDDR2DFS(DataRegion* dataRegion, std::string path, b
 
 					createLockFile(dr2D, path);
 
-				}else{
-					if(dr2D->getOutputExtension() == DataRegion::XML){
-						std::string outputFile;
-
-						outputFile = createOutputFileName(dr2D, path, ".xml");
-
-						cv::FileStorage fs(outputFile, cv::FileStorage::WRITE);
-						// check if file has been opened correctly and write data
-						if(fs.isOpened()){
-							fs << "mat" << dr2D->getData();
-							fs.release();
-						}else{
-							retVal =false;
-						}
-						// create lock.
-						createLockFile(dr2D, path);
-
-					}else{
-						std::cout << "UNKNOWN file extension: "<< dataRegion->getOutputExtension() << std::endl;
-					}
 				}
-				break;
+			} else {
+				if (dr2D->getOutputExtension() == DataRegion::XML) {
+					std::string outputFile;
+
+					outputFile = createOutputFileName(dr2D, path, ".xml");
+
+					cv::FileStorage fs(outputFile, cv::FileStorage::WRITE);
+					// check if file has been opened correctly and write data
+					if (fs.isOpened()) {
+						fs << "mat" << dr2D->getData();
+						fs.release();
+					}else{
+						retVal = false;
+					}
+					// create lock.
+					createLockFile(dr2D, path);
+
+				} else {
+					std::cout << "UNKNOWN file extension: " << dataRegion->getOutputExtension() << std::endl;
+				}
 			}
+			break;
+		}
+
 			case DataRegionType::REGION_2D_UNALIGNED:{
 				DataRegion2DUnaligned* dr2DUn = dynamic_cast<DataRegion2DUnaligned*>(dataRegion);
 
@@ -363,63 +371,62 @@ bool DataRegionFactory::writeDDR2DFS(DataRegion* dataRegion, std::string path, b
 			}
 			default:
 				std::cout << "writeDDR2DFS: ERROR: Unknown Region template type: "<< dataRegion->getType() <<std::endl;
-				exit(1);
-				break;
+			exit(1);
+			break;
 		}
-		return retVal;
+	return retVal;
 }
 
 bool DataRegionFactory::readDDR2DATASPACES(DenseDataRegion2D *dataRegion) {
 	int getReturn = 0;
 #ifdef	WITH_DATA_SPACES
 
-	std::cout << "ReadDDRDATASPACES: "<< dataRegion->getName() << std::endl; 
-	
-	if(dataRegion->getName().compare("BGR") == 0){
-		cv::Mat dataChunk(4096, 4096, CV_8UC3, 0.0);
-		char *matrix = dataChunk.ptr<char>(0);
-        std::cout << "DATASPACES get BGR: "<< dataRegion->getId() << std::endl;
-//                begin = Util::ClockGetTime();
-                getReturn = dspaces_get(dataRegion->getId().c_str(), 1, sizeof(char), 0, 0, 0, (4096*3)-1, 4095, 0, matrix);
-//                end = Util::ClockGetTime();
-		if(getReturn < 0) dataChunk.release();
-                std::cout << "DataSpaces Get return: "<< getReturn << std::endl;
-		dataRegion->setData(dataChunk);
-	}
+    std::cout << "ReadDDRDATASPACES: "<< dataRegion->getName() << std::endl;
 
-	if(dataRegion->getName().compare("mask") == 0){
-		cv::Mat dataChunk(4096, 4096, CV_8U);
-		char *matrix = dataChunk.ptr<char>(0);
-                std::cout << "DATASPACES get mask: "<< dataRegion->getId() << std::endl;
+if(dataRegion->getName().compare("BGR") == 0){
+    cv::Mat dataChunk(4096, 4096, CV_8UC3, 0.0);
+    char *matrix = dataChunk.ptr<char>(0);
+    std::cout << "DATASPACES get BGR: "<< dataRegion->getId() << std::endl;
 //                begin = Util::ClockGetTime();
-                getReturn = dspaces_get(dataRegion->getId().c_str(), 1, sizeof(char), 0, 0, 0, 4095, 4095, 0, matrix);
+            getReturn = dspaces_get(dataRegion->getId().c_str(), 1, sizeof(char), 0, 0, 0, (4096*3)-1, 4095, 0, matrix);
 //                end = Util::ClockGetTime();
-		if(getReturn < 0) dataChunk.release();
-                std::cout << "DataSpaces Get return: "<< getReturn << std::endl;
-		dataRegion->setData(dataChunk);
-	}
+    if(getReturn < 0) dataChunk.release();
+            std::cout << "DataSpaces Get return: "<< getReturn << std::endl;
+    dataRegion->setData(dataChunk);
+}
+
+if(dataRegion->getName().compare("mask") == 0){
+    cv::Mat dataChunk(4096, 4096, CV_8U);
+    char *matrix = dataChunk.ptr<char>(0);
+            std::cout << "DATASPACES get mask: "<< dataRegion->getId() << std::endl;
+//                begin = Util::ClockGetTime();
+            getReturn = dspaces_get(dataRegion->getId().c_str(), 1, sizeof(char), 0, 0, 0, 4095, 4095, 0, matrix);
+//                end = Util::ClockGetTime();
+    if(getReturn < 0) dataChunk.release();
+            std::cout << "DataSpaces Get return: "<< getReturn << std::endl;
+    dataRegion->setData(dataChunk);
+}
 
 #endif
 	return true;
 }
 
 
-
-bool DataRegionFactory::writeDDR2DATASPACES(DenseDataRegion2D* dataRegion) {
+bool DataRegionFactory::writeDDR2DATASPACES(DenseDataRegion2D *dataRegion) {
 #ifdef WITH_DATA_SPACES
-	std::cout << "Writing data region do DataSpaces: "<< dataRegion->getName() << std::endl;
+    std::cout << "Writing data region do DataSpaces: "<< dataRegion->getName() << std::endl;
 
 //	cv::imwrite(dataRegion->getId(), dataRegion->getData());
-	if(dataRegion->getData().cols > 0 && dataRegion->getData().rows > 0){
-		char *matrix = dataRegion->getData().ptr<char>(0);
+if(dataRegion->getData().cols > 0 && dataRegion->getData().rows > 0){
+    char *matrix = dataRegion->getData().ptr<char>(0);
 
-		std::cout << "dataSpaces put, dataregion: "<< dataRegion->getId() << std::endl;
+    std::cout << "dataSpaces put, dataregion: "<< dataRegion->getId() << std::endl;
 
-		dspaces_put(dataRegion->getId().c_str(), 1, sizeof(char), 0, 0, 0, (dataRegion->getData().cols * dataRegion->getData().channels())-1, dataRegion->getData().rows-1, 0, matrix);
-		dspaces_put_sync();
-	}else{
-		std::cout << "Data region: "<< dataRegion->getName() << " is empty. Not writing to DS!" << std::endl;
-	}
+    dspaces_put(dataRegion->getId().c_str(), 1, sizeof(char), 0, 0, 0, (dataRegion->getData().cols * dataRegion->getData().channels())-1, dataRegion->getData().rows-1, 0, matrix);
+    dspaces_put_sync();
+}else{
+    std::cout << "Data region: "<< dataRegion->getName() << " is empty. Not writing to DS!" << std::endl;
+}
 
 #endif
 	return true;

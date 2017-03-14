@@ -61,9 +61,11 @@ public:
 
 	// return the level in which it was stored.
 	int insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion, bool copyData=true,  int startLayer=0, bool isCacheOnRead=false);
+
 	DataRegion *getDR(std::string rtName, std::string rtId, std::string drName, std::string drId, std::string inputName,
 					  int timestamp = 0, int version = 0, int drType = DataRegionType::DENSE_REGION_2D, bool copyData = true, bool isLocal = true,
 					  std::string inputPath = "");
+
 	bool deleteDR(std::string rtName, std::string rtId, std::string drName, std::string drId, int timestamp=0, int version=0);
 	int getCacheLevelType(int level); // is it global/local.
 
