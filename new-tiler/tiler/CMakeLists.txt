@@ -1,0 +1,6 @@
+option(build_mainTiler "build mainTiler?" ON)
+if (build_mainTiler)
+    set(cexx mainTiler)
+    add_executable(${cexx} ${cexx}.cxx)
+    target_link_libraries(${cexx} ${Libraries})
+endif (build_mainTiler)
