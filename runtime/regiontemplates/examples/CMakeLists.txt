@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(ExamplesRT)
 
-add_subdirectory("PipelineRTFS-SF")
 #add_subdirectory("PipelineRTFS-NSF")
 
 #Difference analysis basic pipelines
@@ -10,8 +9,9 @@ option(USE_FINE_GRAIN_SEG_TASKS "Enable use of fine grain segmentation tasks of 
 option(USE_HADOOPGIS "Compile HadoopGIS examples (Requires Hadoopgis)" OFF)
 
 if (RT_TUNING_NSCALE_EXAMPLE)
-    add_subdirectory("PipelineRTFS-NS-Diff")
     if (USE_ACTIVE_HARMONY)
+        add_subdirectory("PipelineRTFS-NS-Diff")
+        add_subdirectory("PipelineRTFS-SF")
         add_subdirectory("PipelineRTFS-NS-Diff-AH")
         add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
     endif (USE_ACTIVE_HARMONY)
@@ -53,12 +53,14 @@ endif (RT_TUNING_NSCALE_EXAMPLE)
 option(RT_TUNING_YI_EXAMPLE "Enable compilation of Yi's examples with tuning" OFF)
 
 if (RT_TUNING_YI_EXAMPLE)
-    add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
-    if (USE_HADOOPGIS)
-        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi-GIS")
-        add_subdirectory("Tuning-Yi")
-        add_subdirectory("CrossValidation-Yi")
-    endif (USE_HADOOPGIS)
+    if (USE_ACTIVE_HARMONY)
+        add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi")
+        if (USE_HADOOPGIS)
+            add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO-Yi-GIS")
+            add_subdirectory("Tuning-Yi")
+            add_subdirectory("CrossValidation-Yi")
+        endif (USE_HADOOPGIS)
+    endif (USE_ACTIVE_HARMONY)
 endif (RT_TUNING_YI_EXAMPLE)
 
 option (RT_PARAMETER_STUDY_NSCALE_EXAMPLE "Enable compilation of NScale example with Parameter Study" OFF)

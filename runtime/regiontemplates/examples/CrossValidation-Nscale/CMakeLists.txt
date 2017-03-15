@@ -78,7 +78,9 @@ target_link_libraries("${libname}" segment normalization featuresAll ${OpenCV_LI
 # Create executable to be built from the files listed
 add_executable(CrossValidation-Nscale PipelineManager.cpp)
 if (USE_ACTIVE_HARMONY)
-    target_link_libraries(CrossValidation-Nscale ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
+	find_path(AH_SRC_DIR REQUIRED)
+	set(ahsrcdir ${AH_SRC_DIR})
+	target_link_libraries(CrossValidation-Nscale ${ahsrcdir}/lib/libharmony.a)
 endif (USE_ACTIVE_HARMONY)
 add_dependencies(CrossValidation-Nscale copyCacheConfToCrossValidation-Nscale)
 

@@ -171,6 +171,13 @@ cd activeharmony-4.6.0
 make install
 ```
 
+export full path to the /ah/activeharmony-4.6.0
+
+something like
+```
+export HARMONY_HOME=/home/$USER/Desktop/workspace/ah/activeharmony-4.6.0
+```
+
 ## Installing Hadoop-GIS
 
 inside `/workspace` folder

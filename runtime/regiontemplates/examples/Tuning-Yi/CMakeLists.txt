@@ -85,7 +85,9 @@ add_custom_target(copyCacheConfToTuning COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE
 # Create executable to be built from the files listed
 add_executable(Tuning-Yi PipelineManager.cpp)
 if (USE_ACTIVE_HARMONY)
-    target_link_libraries(Tuning-Yi ${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/lib/libharmony.a)
+    find_path(AH_SRC_DIR REQUIRED)
+	set(ahsrcdir ${AH_SRC_DIR})
+    target_link_libraries(Tuning-Yi ${ahsrcdir}/lib/libharmony.a)
 endif (USE_ACTIVE_HARMONY)
 add_dependencies(Tuning-Yi copyCacheConfToTuning)
 
