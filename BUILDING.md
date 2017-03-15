@@ -168,7 +168,7 @@ inside `/ah` folder
 ```
 tar -vxzf ah-4.6.0.tar.gz
 cd activeharmony-4.6.0 
-make install
+make CXXFLAGS=-fPIC CFLAGS=-fPIC install
 ```
 
 export full path to the /ah/activeharmony-4.6.0

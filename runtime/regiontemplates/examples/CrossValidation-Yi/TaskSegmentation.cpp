@@ -45,7 +45,8 @@ bool TaskSegmentation::run(int procType, int tid) {
     if (inputImage.rows > 0)
         outMask = ImagenomicAnalytics::TileAnalysis::processTileCV(inputImage, otsuRatio, curvatureWeight, sizeThld,
                                                                    sizeUpperThld, mpp, mskernel,
-                                                                   levelSetNumberOfIteration, declumpingType);
+                                                                   levelSetNumberOfIteration);
+                                                                 //levelSetNumberOfIteration, declumpingType);
     else
         std::cout << "Segmentation: input data NULL" << std::endl;
     this->mask->setData(outMask);
