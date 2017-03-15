@@ -46,7 +46,17 @@ RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
 		DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
 		ddr2d->setName("BGR");
 		std::ostringstream oss;
-		oss << i;
+		//oss << i;
+        
+        // extract filename from full path
+        std:string fn(fileList[i]);
+		size_t loc = fn.rfind('/');
+		fn.erase(0, loc+1);
+     
+        // remove .tif extension
+        fn.erase(fn.find_last_of("."), std::string::npos);
+
+		oss << fn;
 		ddr2d->setId(oss.str());
 		ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
 		ddr2d->setIsAppInput(true);

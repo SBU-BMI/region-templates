@@ -15,6 +15,8 @@
 #include "ItkAdiosIOFactory.h"
 #include "ItkAdiosIO.h"
 
+#include <sstream>
+
 std::string number2String(int x){
 	std::ostringstream ss;
 	ss<<x;
@@ -54,7 +56,7 @@ int DataRegionFactory::lockFileExists(DataRegion* dr, std::string path) {
 	FILE *pFile = fopen(lockFileName.c_str(), "r");
 	if(pFile == NULL){
 #ifdef DEBUG
-		std::cout << "ERROR: lock file: "<< lockFileName << std::endl;
+		std::cout << "WARNING (Cache miss?): lock file: "<< lockFileName << std::endl;
 #endif
 	}else{
 		// Read region template type
@@ -82,11 +84,9 @@ std::string DataRegionFactory::createOutputFileName(DataRegion* dr, std::string 
 
 bool DataRegionFactory::writeDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string outputFile) {
 
-std::cout << "Writing data using writeDr2DUnADIOS. OutputFile is " << outputFile << std::endl;
+//std::cout << "Writing data using writeDr2DUnADIOS. OutputFile is " << outputFile << std::endl;
 
     // Create an adios file and write the vector of vectors
-
-    // Todo: populate featurelabels
 
     const char* GRP_NAME = "obj_data";
     int64_t ad_file;
@@ -101,36 +101,56 @@ std::cout << "Writing data using writeDr2DUnADIOS. OutputFile is " << outputFile
 //        << "-feat.bp";
 
     // Create group
-    adios_declare_group (&ad_group, GRP_NAME, "", adios_flag_yes);
+    adios_declare_group (&ad_group, GRP_NAME, "", adios_stat_minmax);
 
     // Use posix method
     adios_select_method (ad_group, "POSIX", "have_metadata_file=0", "");
 
+    std::cout << "Set method to POSIX" << std::endl;
 
 // Define variables...
 
     adios_define_var (ad_group, "obj_count", "", adios_integer, "", "", "");
-    for (uint i=0;i<dr->featureLabels.size()-1;i++) {
-        adios_define_var (ad_group, dr->featureLabels[i].c_str(), "", adios_double, "obj_count", "", "");
+//    std::cout << "Defined obj_count" << std::endl;
+//    std::cout << "dr is " << dr << std::endl;
+//    std::cout << "dr->labels.size() is " << dr->labels.size() << std::endl;
+
+    for (uint i=0;i<dr->labels.size()-1;i++) {
+//        std::cout << "About to define " <<  dr->labels[i].c_str() << std::endl;
+        adios_define_var (ad_group, dr->labels[i].c_str(), "", adios_double, "obj_count", "", "");
     }
+
+//    std::cout << "Defined main variables" << std::endl;
 
     adios_define_var (ad_group, "poly_point_count", "", adios_unsigned_integer, "", "", "");
     adios_define_var (ad_group, "poly_points", "", adios_unsigned_integer, "poly_point_count", "", "");
     adios_define_var (ad_group, "poly_offsets", "", adios_unsigned_integer, "obj_count", "", "");
     adios_define_var (ad_group, "poly_sizes", "", adios_unsigned_integer, "obj_count", "", "");
 
+    // Tile md
+    adios_define_var (ad_group, "tilex", "", adios_unsigned_integer, "", "", "");
+    adios_define_var (ad_group, "tiley", "", adios_unsigned_integer, "", "", "");
+    adios_define_var (ad_group, "tilew", "", adios_unsigned_integer, "", "", "");
+    adios_define_var (ad_group, "tileh", "", adios_unsigned_integer, "", "", "");
+
+    // Image name
+    adios_define_var (ad_group, "image_name", "", adios_string, "", "", "");
+
+
+
+//std::cout << "Created group, opening adios file..." << std::endl;
 
     adios_open (&ad_file, GRP_NAME, outputFile.c_str(), "w", MPI_COMM_SELF);
 
     int obj_count = dr->data.size();
     adios_write(ad_file, "obj_count", &obj_count);
-    for (uint i=0;i<dr->featureLabels.size()-1;i++) {
+    for (uint i=0;i<dr->labels.size()-1;i++) {
         // Pull all of this feature into an array and then write it.
         std::vector<double> featureData(obj_count);
         for (uint obj = 0; obj < obj_count; obj++) {
             featureData[obj] = dr->data[obj][i];
         }
-        adios_write(ad_file, dr->featureLabels[i].c_str(), featureData.data());
+        adios_write(ad_file, dr->labels[i].c_str(), featureData.data());
     }
 
     // Handle Polygon points separately
@@ -141,9 +161,9 @@ std::cout << "Writing data using writeDr2DUnADIOS. OutputFile is " << outputFile
     // First get a count of all points
     unsigned int num_poly_points = 0;
     for (uint obj = 0; obj < obj_count; obj++) {
-        num_poly_points += (dr->data[obj].size() - dr->featureLabels.size() + 1);
+        num_poly_points += (dr->data[obj].size() - dr->labels.size() + 1);
     }
-    //std::cout << "Counted " << num_poly_points << " polygon points." << std::endl;
+    std::cout << "Counted " << num_poly_points << " polygon points." << std::endl;
 
 
     unsigned int *poly_points = (unsigned int*)malloc(num_poly_points*sizeof(unsigned int));
@@ -156,11 +176,11 @@ std::cout << "Writing data using writeDr2DUnADIOS. OutputFile is " << outputFile
         poly_offsets[obj] = currpp;
         poly_sizes[obj] = 0;
 
-        objppcount = dr->data[obj].size() - dr->featureLabels.size() + 1;
+        objppcount = dr->data[obj].size() - dr->labels.size() + 1;
 
         for (uint i = 0; i < objppcount; i++) {
             poly_sizes[obj]++;
-            poly_points[currpp++] = dr->data[obj][dr->featureLabels.size() - 1 + i];
+            poly_points[currpp++] = dr->data[obj][dr->labels.size() - 1 + i];
         }
 
     }
@@ -170,6 +190,29 @@ std::cout << "Writing data using writeDr2DUnADIOS. OutputFile is " << outputFile
     adios_write (ad_file, "poly_points", poly_points);
     adios_write (ad_file, "poly_offsets", poly_offsets);
     adios_write (ad_file, "poly_sizes", poly_sizes);
+
+    // Extract bbox info from id
+    std::string id = dr->getId(); // Format is "img-name_x_y_w_h"?
+
+    // get image name -- this is everything up to the first _
+    std::string img_name = id.substr(0, id.find("_") );
+    std::string the_rest = id.substr(id.find("_")+1);
+
+    // get bbox info
+    unsigned int tilex, tiley, tilew, tileh;
+    std::stringstream ss(the_rest);
+    char underscore; 
+    ss >> tilex >> underscore >> tiley >> underscore >> tilew >> underscore >> tileh;
+
+    // Write name
+    adios_write (ad_file, "image_name", img_name.c_str() );
+
+    // Write bbox info
+    adios_write (ad_file, "tilex", &tilex);
+    adios_write (ad_file, "tiley", &tiley);
+    adios_write (ad_file, "tilew", &tilew);
+    adios_write (ad_file, "tileh", &tileh);
+
 
     free (poly_points);
     free (poly_offsets);
@@ -393,17 +436,17 @@ bool DataRegionFactory::readDDR2ADIOS(DataRegion **dataRegion, int chunkId, std:
                 reader->SetImageIO(io);
             	reader->SetFileName (inputFile);
 
-                std::cout << "Using ITK reader to read " << inputFile << std::endl;
+                //std::cout << "Using ITK reader to read " << inputFile << std::endl;
 
                 reader->Update();
 
                 ImageType::Pointer itkImageFromFile = reader->GetOutput();
 
-                std::cout << "Finished Using ITK reader to read " << inputFile << std::endl;
+                //std::cout << "Finished Using ITK reader to read " << inputFile << std::endl;
 
             	chunkData = itk::OpenCVImageBridge::ITKImageToCVMat<ImageType>(itkImageFromFile);
 
-                cv::imwrite ("/lustre/atlas/proj-shared/csc143/lot/u24/test/DB-rt-adios/test.png", chunkData);
+                //cv::imwrite ("/lustre/atlas/proj-shared/csc143/lot/u24/test/DB-rt-adios/test.png", chunkData);
 
 				if(chunkData.empty()){
 					std::cout << "Failed to read image in readDDR2ADIOS " << inputFile << std::endl;

@@ -16,6 +16,9 @@
 
 
 
+
+
+
 class TaskSegmentation: public Task {
 private:
 	DenseDataRegion2D* bgr;

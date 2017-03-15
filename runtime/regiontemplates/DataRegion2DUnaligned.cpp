@@ -39,6 +39,8 @@ DataRegion* DataRegion2DUnaligned::clone(bool copyData) {
 	// copy data as well if copyData is set
 	if(copyData){
 		clonedDataRegion->data = this->data;
+        clonedDataRegion->labels = this->labels;
+std::cout << "There are " << clonedDataRegion->labels.size() << " labels in the clone" << std::endl;
 	}else{
 		//clonedDataRegion->data = &this->data;
 	}

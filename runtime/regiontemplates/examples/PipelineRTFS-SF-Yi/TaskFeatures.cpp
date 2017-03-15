@@ -33,6 +33,10 @@ bool TaskFeatures::run(int procType, int tid) {
 
 		std::vector< std::vector<FeatureValueType> > features = featureAnalyzer.getFeatures();
 		this->features->setData(features);
+        featureAnalyzer.setFeatureNames();
+        this->features->labels = featureAnalyzer.getFeatureNames();
+std::cout << "Setting " << this->features->labels.size() << " labels in TaskFeatures" << std::endl;
+
 
 /*		// TESTING data region write/read to/from FS
 		DataRegionFactory::writeDDR2DFS(this->features, "./", false);

@@ -17,9 +17,14 @@ private:
 
 
 public:
+
+    std::vector<std::string> labels;
 	std::vector<std::vector<double> > data;
 
-    std::vector<std::string> featureLabels;
+    unsigned int tilex;
+    unsigned int tiley;
+    unsigned int tilew;
+    unsigned int tileh;
 
 	DataRegion2DUnaligned();
 	virtual ~DataRegion2DUnaligned();

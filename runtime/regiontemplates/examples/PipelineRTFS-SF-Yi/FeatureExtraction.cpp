@@ -29,7 +29,7 @@ int FeatureExtraction::run()
 		DenseDataRegion2D *bgr = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("BGR"));
 		DenseDataRegion2D *mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("mask"));
 
-        imwrite ("/lustre/atlas/proj-shared/csc143/lot/u24/test/DB-rt-adios/maskinfeature.png", mask->getData());
+        //imwrite ("/lustre/atlas/proj-shared/csc143/lot/u24/test/DB-rt-adios/maskinfeature.png", mask->getData());
 
 
         std::cout << "bgr is " << bgr << " and mask is " << mask << std::endl;
