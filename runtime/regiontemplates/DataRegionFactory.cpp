@@ -207,7 +207,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 					//############### Binary Image ###############
 					chunkData = cv::imread(inputFile, -1); // read image
 					if (chunkData.empty()) {
-						std::cout << "Failed to read image:" << inputFile << std::endl;
+						std::cout << "Failed to read as image:" << inputFile << std::endl;
 
 //						inputFile = "";
 //						if(!path.empty())inputFile.append(path);
