@@ -14,7 +14,8 @@
 #define MAX_ITERATION_REPEAT 5
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, double &metricWeight, double &timeWeight, std::string &metricType);
+                         std::string &initPercent, double &metricWeight, double &timeWeight, std::string &metricType,
+                         int &numberOfIterations);
 
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
 
@@ -51,7 +52,7 @@ int main(int argc, char **argv) {
     double tSlowest; //Empirical Data that will be obtained with profiling
     double tFastest; //Empirical Data that will be obtained with profiling
 
-    int max_number_of_tests = 100;
+    int max_number_of_tests = 100; //default number of iterations
 
     std::string metricType = "dicenc"; //default metric
 
@@ -59,7 +60,8 @@ int main(int argc, char **argv) {
     std::string inputFolderPath, tuningPolicy, initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
-    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, metricWeight, timeWeight, metricType);
+    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, metricWeight, timeWeight, metricType,
+                        max_number_of_tests);
 
 
     float *perf = (float *) malloc(sizeof(float) * max_number_of_tests);;
@@ -104,8 +106,8 @@ int main(int argc, char **argv) {
 
         //double timeGap = tSlowest - tFastest;
     }
-    std::cout << "\t\t*&*&*&*&* - Tuning - Metric: " << metricType << " - Max Number of Tests: " <<
-    max_number_of_tests << " - *&*&*&*&*" << std::endl;
+    std::cout << "\n\n\n*&*&*&*&* - Tuning - Metric: " << metricType << " - Max Number of Tests: " <<
+    max_number_of_tests << " - *&*&*&*&*\n\n\n" << std::endl;
     // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
     TuningInterface *result = multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricType, metricWeight,
                                                    timeWeight,
@@ -176,7 +178,8 @@ namespace patch {
 }
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, double &metricWeight, double &timeWeight, std::string &metricType) {
+                         std::string &initPercent, double &metricWeight, double &timeWeight, std::string &metricType,
+                         int &numberOfIterations) {
     // Used for parameters parsing
     for (int i = 0; i < argc - 1; i++) {
         if (argv[i][0] == '-' && argv[i][1] == 'i') {
@@ -196,6 +199,9 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
         }
         if (argv[i][0] == '-' && argv[i][1] == 'x') {
             metricType = argv[i + 1];
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'r') {
+            numberOfIterations = atoi(argv[i + 1]);
         }
     }
 }
@@ -280,10 +286,17 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
         int max_number_of_generations = (int) floor(sqrt(max_number_of_tests));
         int mutationchance = 30;
         int crossoverrate = 50;
-        int propagationamount = 2;
 
         int popsize = (int) ceil(sqrt(max_number_of_tests));
+        if (popsize > 1 && ((popsize % 2) == 1)) --popsize; //Pop size must be an even number for GA.
 
+        if (popsize <= 1) popsize++; //pop size must be at least 2.
+
+        //int propagationamount = 2;
+        int propagationamount = (int) ceil(popsize * 0.25); //around 25% of popsize
+
+        if ((2 * propagationamount) >= popsize)
+            propagationamount--; //Elite size(propagation amount) must be less than half the popsize.
 
         numClients = popsize; //popsize
         tuningClient = new GeneticAlgorithm(max_number_of_generations, popsize, mutationchance,
