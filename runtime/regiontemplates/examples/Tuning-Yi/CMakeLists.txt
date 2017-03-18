@@ -41,7 +41,7 @@ link_directories(${yibuilddir}/)
 set(libname componenttuningyi)
 
 # Source files used by the Runtime System
-set(libcomponentssrcs Segmentation.cpp DiceMaskComp.cpp DiceNotCoolMaskComp.cpp TaskSegmentation.cpp)
+set(libcomponentssrcs Segmentation.cpp DiceMaskComp.cpp DiceNotCoolMaskComp.cpp JaccardMaskComp.cpp TaskSegmentation.cpp)
 
 #Hadoopgis Dependencies
 
