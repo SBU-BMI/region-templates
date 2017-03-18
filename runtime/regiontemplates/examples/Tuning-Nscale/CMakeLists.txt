@@ -38,7 +38,7 @@ link_directories(${nscalebuilddir}/lib)
 set(libname componenttuningnscale)
 
 # Source files used by the Runtime System
-set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp DiceMaskComp.cpp DiceNotCoolMaskComp.cpp
+set(libcomponentssrcs NormalizationComp.cpp Segmentation.cpp DiceMaskComp.cpp DiceNotCoolMaskComp.cpp JaccardMaskComp.cpp
         TaskNormalization.cpp TaskSegmentation.cpp)
 
 #Hadoopgis Dependencies

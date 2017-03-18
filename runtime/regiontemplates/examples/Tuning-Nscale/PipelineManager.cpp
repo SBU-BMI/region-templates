@@ -6,6 +6,7 @@
 #include "Segmentation.h"
 #include "DiceMaskComp.h"
 #include "DiceNotCoolMaskComp.h"
+#include "JaccardMaskComp.h"
 #include "ParameterSet.h"
 #include "hclient.h"
 #include "NormalizationComp.h"
@@ -13,20 +14,23 @@
 #define MAX_ITERATION_REPEAT 5
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, double &metricWeight, double &timeWeight);
+                         std::string &initPercent, double &metricWeight, double &timeWeight, std::string &metricType);
 
 RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
 
 
 TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests,
+                                      std::string &metricType,
                                       double metricWeight,
                                       double timeWeight,
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                                       std::string tuningPolicy,
-                                      float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
+                                      float *perf, float *totaldiffs, float *metricPerIteration,
+                                      float *diceNotCoolPerIteration,
                                       uint64_t *totalexecutiontimes);
 
-int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
+int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests,
+                               std::string &metricType, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
                                std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
                                float *diceNotCoolPerIteration,
@@ -49,16 +53,18 @@ int main(int argc, char **argv) {
 
     int max_number_of_tests = 100;
 
+    std::string metricType = "dicenc"; //default metric
+
     // Folder when input data images are stored
     std::string inputFolderPath, tuningPolicy, initPercent;
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
-    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, metricWeight, timeWeight);
+    parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, metricWeight, timeWeight, metricType);
 
 
     float *perf = (float *) malloc(sizeof(float) * max_number_of_tests);;
     float *totaldiffs = (float *) malloc(sizeof(float) * max_number_of_tests);
-    float *dicePerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
+    float *metricPerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
     float *diceNotCoolPerIteration = (float *) malloc(sizeof(float) * max_number_of_tests);
     uint64_t *totalexecutiontimes = (uint64_t *) malloc(sizeof(uint64_t) * max_number_of_tests);
 
@@ -72,34 +78,41 @@ int main(int argc, char **argv) {
     sysEnv.startupSystem(argc, argv, "libcomponenttuningnscale.so");
 
     // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
-    objectiveFunctionProfiling(argc, argv, sysEnv, 10, tSlowest, tFastest, rtCollection,
-                               "nm", perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
-                               totalexecutiontimes);
+    if (timeWeight > 0) {
+        int amount_of_profiling_tests = 10;
+        if (amount_of_profiling_tests > max_number_of_tests) amount_of_profiling_tests = max_number_of_tests;
 
-    std::cout << "\t\tProfiling:" << std::endl;
-    for (int i = 0; i < 10; ++i) {
+        objectiveFunctionProfiling(argc, argv, sysEnv, amount_of_profiling_tests, metricType, tSlowest, tFastest,
+                                   rtCollection,
+                                   "nm", perf, totaldiffs, metricPerIteration, diceNotCoolPerIteration,
+                                   totalexecutiontimes);
 
-        std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
-        "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
-        diceNotCoolPerIteration[i];
-        std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+        std::cout << "\t\tProfiling:" << std::endl;
+        for (int i = 0; i < amount_of_profiling_tests; ++i) {
+
+            std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
+            "  \tExecution Time: " << totalexecutiontimes[i] << " \tMetric: " << metricPerIteration[i] <<
+            " \tDiceNC: " <<
+            diceNotCoolPerIteration[i];
+            std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+        }
+        std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest <<
+        std::endl;
+
+        std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
+        timeWeight << std::endl;
+
+        //double timeGap = tSlowest - tFastest;
     }
-    std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest << std::endl;
-
-    std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
-    timeWeight << std::endl;
-
-    double timeGap = tSlowest - tFastest;
-//    tSlowest = tSlowest + 2 * timeGap;
-//    tFastest = tFastest - 2 * timeGap;
-//    if (tFastest < 0) tFastest = timeGap;
-//    std::cout << std::endl << "\t\ttSlowest-modified: " << tSlowest << std::endl << "\t\ttFastest-modified: " << tFastest << std::endl;
-
+    std::cout << "\t\t*&*&*&*&* - Tuning - Metric: " << metricType << " - Max Number of Tests: " <<
+    max_number_of_tests << " - *&*&*&*&*" << std::endl;
     // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
-    TuningInterface *result = multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricWeight, timeWeight,
+    TuningInterface *result = multiObjectiveTuning(argc, argv, sysEnv, max_number_of_tests, metricType, metricWeight,
+                                                   timeWeight,
                                                    tSlowest, tFastest,
                                                    rtCollection,
-                                                   tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
+                                                   tuningPolicy, perf, totaldiffs, metricPerIteration,
+                                                   diceNotCoolPerIteration,
                                                    totalexecutiontimes);
 
     cout << "RESULTS: " << result->getBestParamSet()->getScore() << endl;
@@ -119,7 +132,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < max_number_of_tests; ++i) {
 
         std::cout << std::fixed << std::setprecision(6) << "\t\tTest: " << i << " \tDiff: " << totaldiffs[i] <<
-        "  \tExecution Time: " << totalexecutiontimes[i] << " \tDice: " << dicePerIteration[i] << " \tDiceNC: " <<
+        "  \tExecution Time: " << totalexecutiontimes[i] << " \tMetric: " << metricPerIteration[i] << " \tDiceNC: " <<
         diceNotCoolPerIteration[i];
         std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
     }
@@ -135,7 +148,7 @@ int main(int argc, char **argv) {
     }
     std::cout << std::endl;
     std::cout << "\t\tBEST: " << minPerfIndex << " \tDiff: " << totaldiffs[minPerfIndex] <<
-    "  \tExecution Time: " << totalexecutiontimes[minPerfIndex] << " \tDice: " << dicePerIteration[minPerfIndex] <<
+    "  \tExecution Time: " << totalexecutiontimes[minPerfIndex] << " \tMetric: " << metricPerIteration[minPerfIndex] <<
     " \tDiceNC: " << diceNotCoolPerIteration[minPerfIndex] << "  \tPerf(weighted): " << perf[minPerfIndex];
     std::cout << std::endl;
     std::cout << "  \tPerf(weighted): " << perf[minPerfIndex] << std::endl;
@@ -163,7 +176,7 @@ namespace patch {
 }
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
-                         std::string &initPercent, double &metricWeight, double &timeWeight) {
+                         std::string &initPercent, double &metricWeight, double &timeWeight, std::string &metricType) {
     // Used for parameters parsing
     for (int i = 0; i < argc - 1; i++) {
         if (argv[i][0] == '-' && argv[i][1] == 'i') {
@@ -180,6 +193,9 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
         }
         if (argv[i][0] == '-' && argv[i][1] == 't') {
             timeWeight = atof(argv[i + 1]);
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'x') {
+            metricType = argv[i + 1];
         }
     }
 }
@@ -239,11 +255,13 @@ RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
 }
 
 TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests,
+                                      std::string &metricType,
                                       double metricWeight,
                                       double timeWeight,
                                       double &tSlowest, double &tFastest, RegionTemplateCollection *rtCollection,
                                       std::string tuningPolicy,
-                                      float *perf, float *totaldiffs, float *dicePerIteration, float *diceNotCoolPerIteration,
+                                      float *perf, float *totaldiffs, float *metricPerIteration,
+                                      float *diceNotCoolPerIteration,
                                       uint64_t *totalexecutiontimes) {
 
     TuningInterface *tuningClient;
@@ -278,7 +296,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
     double *totalExecutionTimesNormalized = (double *) malloc(sizeof(double) * max_number_of_tests);
 
     std::vector<int> segComponentIds[numClients];
-    std::vector<int> diceComponentIds[numClients];
+    std::vector<int> metricComponentIds[numClients];
     std::vector<int> diceNotCoolComponentIds[numClients];
     std::map<std::string, double> perfDataBase; //Checks if a param has been tested already
 
@@ -434,30 +452,41 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                     seg->addDependency(norm->getId());
 
                     std::cout << "Creating DiffMask" << std::endl;
-                    DiceMaskComp *diceComp = new DiceMaskComp();
-                    DiceNotCoolMaskComp *diceNotCoolComp = new DiceNotCoolMaskComp();
+
+                    RTPipelineComponentBase *metricComp;
+                    DiceNotCoolMaskComp *diceNotCoolComp;
+
+                    if (metricType.find("jaccard") != std::string::npos) metricComp = new JaccardMaskComp();
+                    else metricComp = new DiceMaskComp();
+
+                    if (metricType.find("dicenc") != std::string::npos) diceNotCoolComp = new DiceNotCoolMaskComp();
 
                     // version of the data region that will be read. It is created during the segmentation.
-                    diceComp->addArgument(new ArgumentInt(versionSeg));
-                    diceNotCoolComp->addArgument(new ArgumentInt(versionSeg));
-
                     // region template name
-                    diceComp->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
-                    diceComp->addDependency(seg->getId());
-                    diceNotCoolComp->addRegionTemplateInstance(rtCollection->getRT(i),
-                                                               rtCollection->getRT(i)->getName());
-                    diceNotCoolComp->addDependency(diceComp->getId());
+                    metricComp->addArgument(new ArgumentInt(versionSeg));
+                    metricComp->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+                    metricComp->addDependency(seg->getId());
+
 
                     // add to the list of diff component ids.
                     segComponentIds[j].push_back(seg->getId());
-                    diceComponentIds[j].push_back(diceComp->getId());
-                    diceNotCoolComponentIds[j].push_back(diceNotCoolComp->getId());
+                    metricComponentIds[j].push_back(metricComp->getId());
+
 
                     sysEnv.executeComponent(seg);
-                    sysEnv.executeComponent(diceComp);
-                    sysEnv.executeComponent(diceNotCoolComp);
+                    sysEnv.executeComponent(metricComp);
 
-                    std::cout << "Manager CompId: " << diceComp->getId() << " fileName: " <<
+                    if (metricType.find("dicenc") != std::string::npos) {
+                        diceNotCoolComp->addArgument(new ArgumentInt(versionSeg));
+                        diceNotCoolComp->addRegionTemplateInstance(rtCollection->getRT(i),
+                                                                   rtCollection->getRT(i)->getName());
+                        diceNotCoolComp->addDependency(metricComp->getId());
+                        diceNotCoolComponentIds[j].push_back(diceNotCoolComp->getId());
+                        sysEnv.executeComponent(diceNotCoolComp);
+                    }
+
+
+                    std::cout << "Manager CompId: " << metricComp->getId() << " fileName: " <<
                     rtCollection->getRT(i)->getDataRegion(0)->getInputFileName() << std::endl;
                     segCount++;
                     versionSeg++;
@@ -475,7 +504,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
         //Fetch results from execution workflow
         //==============================================================================================
         for (int j = 0; j < numClients; j++) {
-            float dice = 0;
+            float metric = 0;
             float secondaryMetric = 0;
             float diceNotCoolValue = 0;
 
@@ -488,18 +517,24 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
             }
 
             if (executedAlready[j] == false) {
-                for (int i = 0; i < diceComponentIds[j].size(); i++) {
-                    char *diceResultData = sysEnv.getComponentResultData(diceComponentIds[j][i]);
-                    char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
-                    std::cout << "Diff Id: " << diceComponentIds[j][i] << " \tdiceResultData: ";
-                    if (diceResultData != NULL) {
-                        std::cout << "size: " << ((int *) diceResultData)[0] << " \thadoopgis-metric: " <<
-                        ((float *) diceResultData)[1] <<
-                        " \tsecondary: " << ((float *) diceResultData)[2] << " \tdiceNotCool: " <<
-                        ((float *) diceNotCoolResultData)[1] << std::endl;
-                        dice += ((float *) diceResultData)[1];
-                        secondaryMetric += ((float *) diceResultData)[2];
-                        diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
+                for (int i = 0; i < metricComponentIds[j].size(); i++) {
+                    char *metricResultData = sysEnv.getComponentResultData(metricComponentIds[j][i]);
+                    std::cout << "Diff Id: " << metricComponentIds[j][i] << " \tmetricResultData: ";
+                    if (metricResultData != NULL) {
+                        std::cout << "size: " << ((int *) metricResultData)[0] << " \thadoopgis-metric: " <<
+                        ((float *) metricResultData)[1] <<
+                        " \tsecondary: " << ((float *) metricResultData)[2] << endl;
+
+                        metric += ((float *) metricResultData)[1];
+                        secondaryMetric += ((float *) metricResultData)[2];
+
+                        if (metricType.find("dicenc") != std::string::npos) {
+                            char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
+                            std::cout << " \tdiceNotCool: " <<
+                            ((float *) diceNotCoolResultData)[1] << std::endl;
+                            diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
+                        }
+
                     } else {
                         std::cout << "NULL" << std::endl;
                     }
@@ -510,28 +545,36 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                         cout << "Segmentation execution time:" <<
                         totalexecutiontimes[tuningClient->getIteration() * numClients + (j)] << endl;
                     }
-                    sysEnv.eraseResultData(diceNotCoolComponentIds[j][i]);
-                    sysEnv.eraseResultData(diceComponentIds[j][i]);
+                    if (metricType.find("dicenc") != std::string::npos)
+                        sysEnv.eraseResultData(diceNotCoolComponentIds[j][i]);
+                    sysEnv.eraseResultData(metricComponentIds[j][i]);
                     sysEnv.eraseResultData(segComponentIds[j][i]);
                 }
-                diceComponentIds[j].clear();
+                metricComponentIds[j].clear();
                 segComponentIds[j].clear();
-                diceNotCoolComponentIds[j].clear();
+                if (metricType.find("dicenc") != std::string::npos) diceNotCoolComponentIds[j].clear();
 
 
                 //########################################################################################
                 //Multi Objective Tuning
                 //########################################################################################
 
-                float diff = (dice + diceNotCoolValue) / 2;
+                float diff;
+
+                if (metricType.find("dicenc") != std::string::npos) diff = (metric + diceNotCoolValue) / 2;
+                else diff = metric;
+
                 if (diff <= 0) diff = FLT_EPSILON;
 
-                double timeNormalized =
-                        (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
-                        (tSlowest - tFastest);
+                double timeNormalized;
+                if (timeWeight > 0) {
+                    timeNormalized =
+                            (tSlowest - (double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) /
+                            (tSlowest - tFastest);
 //                double timeNormalized = (tSlowest)/
 //                        ((double) totalexecutiontimes[tuningClient->getIteration() * numClients + (j)]) ;
 
+                }
                 double weightedSumOfMetricAndTime = (double) (metricWeight * diff + timeWeight * timeNormalized);
                 if ((weightedSumOfMetricAndTime > 0) && (diff > FLT_EPSILON)) {
                     perf[tuningClient->getIteration() * numClients + (j)] = (double) 1 /
@@ -562,7 +605,7 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
                 perf[tuningClient->getIteration() * numClients + (j)] << endl;
 
                 totaldiffs[tuningClient->getIteration() * numClients + (j)] = diff;
-                dicePerIteration[tuningClient->getIteration() * numClients + (j)] = dice;
+                metricPerIteration[tuningClient->getIteration() * numClients + (j)] = metric;
                 diceNotCoolPerIteration[tuningClient->getIteration() * numClients + (j)] = diceNotCoolValue;
 
 
@@ -600,13 +643,15 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
 
 }
 
-int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests, double &tSlowest,
+int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number_of_profiling_tests,
+                               std::string &metricType, double &tSlowest,
                                double &tFastest, RegionTemplateCollection *rtCollection,
                                std::string tuningPolicy, float *perf, float *totaldiffs, float *dicePerIteration,
                                float *diceNotCoolPerIteration,
                                uint64_t *totalexecutiontimes) {
 
-    multiObjectiveTuning(argc, argv, sysEnv, number_of_profiling_tests, 1, 0, tSlowest, tFastest, rtCollection,
+    multiObjectiveTuning(argc, argv, sysEnv, number_of_profiling_tests, metricType, 1, 0, tSlowest, tFastest,
+                         rtCollection,
                          tuningPolicy, perf, totaldiffs, dicePerIteration, diceNotCoolPerIteration,
                          totalexecutiontimes);
 
