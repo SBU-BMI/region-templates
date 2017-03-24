@@ -28,7 +28,7 @@ for better organization, your workspace should look like
                 - /opencv-2.4.9
                 - /build
             - /yi
-                - /yi-src
+                - /yi-src-multi
                 - /build
         - /project
             - /region-templates
@@ -130,7 +130,7 @@ NOTE: it may give errors of vars `NSCALE_VERSION_MAJOR` and `NSCALE_VERSION_MINO
 
 inside `/workspace` folder
 ```
-cp project/region-templates/runtime/regiontemplates/external-src/yi-src.tar.gz ./libs/yi/
+cp project/region-templates/runtime/regiontemplates/external-src/yi-src-multi.tar.gz ./libs/yi/
 ```
 
 ### To build and install
@@ -138,9 +138,9 @@ cp project/region-templates/runtime/regiontemplates/external-src/yi-src.tar.gz .
 inside `/yi` folder
 
 ```
-tar -vxzf yi-src.tar.gz
+tar -vxzf yi-src-multi.tar.gz.tar.gz
 cd build
-ccmake ../yi-src
+ccmake ../yi-src-multi
 ```
 
 on the interface
