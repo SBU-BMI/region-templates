@@ -37,7 +37,7 @@ void add_arguments_to_stages(std::map<int, PipelineComponentBase*> &merged_stage
 			new_arg->setParent(merged_arguments[arg_id]->getParent());
 			stage.second->addArgument(new_arg);
 			if (new_arg->getType() == ArgumentBase::RT) {
-				std::cout << "input RT : " << merged_arguments[arg_id]->getName() << std::endl;
+				// std::cout << "input RT : " << merged_arguments[arg_id]->getName() << std::endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->
 						getRegionTemplateInstance(rt->getName()) == NULL) {
@@ -49,12 +49,12 @@ void add_arguments_to_stages(std::map<int, PipelineComponentBase*> &merged_stage
 			if (merged_arguments[arg_id]->getParent() != 0) {
 				// verify if the dependency stage was reused
 				int parent = merged_arguments[arg_id]->getParent();
-				std::cout << "[before]Dependency: " << stage.second->getId() << ":" << stage.second->getName()
-					<< " ->addDependency( " << parent << " )" << std::endl;
+				// std::cout << "[before]Dependency: " << stage.second->getId() << ":" << stage.second->getName()
+				// 	<< " ->addDependency( " << parent << " )" << std::endl;
 				if (merged_stages[merged_arguments[arg_id]->getParent()]->reused != NULL)
 					parent = merged_stages[merged_arguments[arg_id]->getParent()]->reused->getId();
-				std::cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName()
-					<< " ->addDependency( " << parent << " )" << std::endl;
+				// std::cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName()
+				// 	<< " ->addDependency( " << parent << " )" << std::endl;
 				((RTPipelineComponentBase*)stage.second)->addDependency(parent);
 			}
 		}
@@ -66,7 +66,7 @@ void add_arguments_to_stages(std::map<int, PipelineComponentBase*> &merged_stage
 			new_arg->setIo(ArgumentBase::output);
 			stage.second->addArgument(new_arg);
 			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
-				std::cout << "output RT : " << merged_arguments[arg_id]->getName() << std::endl;
+				// std::cout << "output RT : " << merged_arguments[arg_id]->getName() << std::endl;
 				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
 				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
 					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());

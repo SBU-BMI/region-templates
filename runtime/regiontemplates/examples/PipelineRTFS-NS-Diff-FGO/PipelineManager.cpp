@@ -433,7 +433,7 @@ int main(int argc, char* argv[]) {
 		cout << endl << "startupExecution" << endl;
 		gettimeofday(&start, NULL);
 
-		sysEnv.startupExecution();
+		// sysEnv.startupExecution();
 
 		gettimeofday(&end, NULL);
 
@@ -1012,19 +1012,31 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 	}
 
 	// show all generated args
-	for (pair<string, list<ArgumentBase*>> p : input_arguments) {
-		cout << "Argument " << p.first << " with values:" << endl;
+	// for (pair<string, list<ArgumentBase*>> p : input_arguments) {
+	// 	cout << "Argument " << p.first << " with values:" << endl;
+	// 	for (ArgumentBase* a : p.second) {
+	// 		cout << "\t" << a->getId() << ": " << a->toString() << endl;
+	// 	}
+	// }
+
+	for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
+		cout << "Argument set " << p.first << " with parameters:" << endl;
 		for (ArgumentBase* a : p.second) {
-			cout << "\t" << a->getId() << ": " << a->toString() << endl;
+			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
 		}
 	}
 
-	// for (list<ArgumentBase*> s : stages_arguments) {
-	// 	cout << "got stage:" << endl;
-	// 	for (ArgumentBase* a : s) {
-	// 		cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
-	// 	}
-	// }
+	// iterate through each parameter set, creating a workflow for each set
+	for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
+		// iterate through all stages of the workflow model, generating the stages
+		for (pair<int, PipelineComponentBase*> p : base_stages) {
+			
+		}
+
+
+		for (ArgumentBase* a : p.second) {
+		}
+	}
 
 	// keep expanding stages until there is no stage left
 	while (base_stages.size() != 0) {
@@ -1125,11 +1137,11 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 		workflow_outputs_cpy.erase(old_arg->getId());
 
 		// add a copy of the old arg with the correct id to the final map for each repeated output
-		cout << "checking output " << old_arg->getId() << ":" << old_arg->getName() << endl;
+		// cout << "checking output " << old_arg->getId() << ":" << old_arg->getName() << endl;
 		for (ArgumentBase* a : args_values) {
-			cout << "comparing with output " << a->getId() << ":" << a->getName() << endl;
+			// cout << "comparing with output " << a->getId() << ":" << a->getName() << endl;
 			if (a->getName().compare(old_arg->getName()) == 0) {
-				cout << "output found" << endl;
+				// cout << "output found" << endl;
 				ArgumentBase* temp = old_arg->clone();
 				temp->setParent(old_arg->getParent());
 				temp->setId(a->getId());

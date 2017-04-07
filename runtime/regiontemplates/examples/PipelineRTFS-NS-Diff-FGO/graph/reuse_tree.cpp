@@ -138,8 +138,8 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 	list<list<PipelineComponentBase*>>& new_buckets,
 	int max_bucket_size) {
 
-	std::cout << "starting merging with " << leafs_parent_list.size() 
-		<< " parents" << std::endl;
+	// std::cout << "starting merging with " << leafs_parent_list.size() 
+	// 	<< " parents" << std::endl;
 	// cluster the parents nodes of leafs_parent_list by their parents
 	multimap<reuse_node_t*, reuse_node_t*> parents_clusters;
 	set<reuse_node_t*> parents_clusters_keys;
@@ -152,8 +152,8 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 	for (set<reuse_node_t*>::iterator p=parents_clusters_keys.begin(); 
 		p!=parents_clusters_keys.end(); p++) {
 
-		std::cout << "\titerating on cluster of parent node " 
-			<< (*p)->stage_ref->getId() << std::endl;
+		// std::cout << "\titerating on cluster of parent node " 
+		// 	<< (*p)->stage_ref->getId() << std::endl;
 
 		multimap<reuse_node_t*, reuse_node_t*>::iterator c_it = 
 			parents_clusters.lower_bound(*p);
@@ -172,8 +172,8 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 		for (set<int>::reverse_iterator c_count=parents_by_children_count_ids.rbegin();
 			c_count!=parents_by_children_count_ids.rend(); c_count++) {
 
-			std::cout << "\t\ttrying to merge the parents of c_count " << 
-				*c_count << std::endl;
+			// std::cout << "\t\ttrying to merge the parents of c_count " << 
+			// 	*c_count << std::endl;
 
 			multimap<int, reuse_node_t*>::iterator n_it = 
 				parents_by_children_count.lower_bound(*c_count);
@@ -189,9 +189,9 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 				stack<reuse_node_t*> bucket_stack;
 				bucket_stack.push(n_it->second);
 
-				std::cout << "\t\t\tstarting a stack with parent " << 
-					n_it->second->stage_ref->getId() << " and b_size " 
-					<< current_bucket_size << std::endl;
+				// std::cout << "\t\t\tstarting a stack with parent " << 
+				// 	n_it->second->stage_ref->getId() << " and b_size " 
+				// 	<< current_bucket_size << std::endl;
 
 				// starts the merge attempts with the nodes on the current cluster
 				multimap<int, reuse_node_t*>::iterator n_it2 = next(n_it, 1);
@@ -199,9 +199,9 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 					if (current_bucket_size + n_it->first <= max_bucket_size) {
 						bucket_stack.push(n_it2->second);
 						current_bucket_size += n_it2->first;
-						std::cout << "\t\t\t\tfrom the same " << n_it2->first 
-							<< " c_count, added " << n_it2->second->stage_ref->getId() 
-							<< " to the stack" << std::endl;
+						// std::cout << "\t\t\t\tfrom the same " << n_it2->first 
+						// 	<< " c_count, added " << n_it2->second->stage_ref->getId() 
+						// 	<< " to the stack" << std::endl;
 					} else
 						break;
 				}
@@ -217,8 +217,8 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 				while (current_bucket_size != max_bucket_size 
 					&& current_bucket_size != 0) {
 
-					std::cout << "\t\t\t\tsearching other c_counts with b_size " 
-						<< current_bucket_size << std::endl;
+					// std::cout << "\t\t\t\tsearching other c_counts with b_size " 
+					// 	<< current_bucket_size << std::endl;
 
 					// starts the search on the current c_count2
 					for (; c_count2!=parents_by_children_count_ids.rend(); c_count2++) {
@@ -226,18 +226,18 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 						multimap<int, reuse_node_t*>::iterator n_end2 = 
 							parents_by_children_count.upper_bound(*c_count2);
 						
-						std::cout << "\t\t\t\t\tsearching c_count " 
-							<< *c_count2 << std::endl;
+						// std::cout << "\t\t\t\t\tsearching c_count " 
+						// 	<< *c_count2 << std::endl;
 
 						// goes through current c_count2 cluster
 						for (; n_it2!=n_end2; n_it2++) {
 							if (current_bucket_size + n_it2->first <= max_bucket_size) {
 								bucket_stack.push(n_it2->second);
 								current_bucket_size += n_it2->first;
-								std::cout << "\t\t\t\t\t\tadded " 
-									<< n_it2->second->stage_ref->getId() 
-									<< " to the stack with size "
-									<< n_it2->first << std::endl;
+								// std::cout << "\t\t\t\t\t\tadded " 
+								// 	<< n_it2->second->stage_ref->getId() 
+								// 	<< " to the stack with size "
+								// 	<< n_it2->first << std::endl;
 							} else
 								break;
 						}
@@ -245,23 +245,23 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 
 					// if it isn't a perfect sized bucket then pop the last added parent
 					if (current_bucket_size != max_bucket_size) {
-						std::cout << "\t\t\t\tbad bucket size: " 
-							<< current_bucket_size << std::endl;
+						// std::cout << "\t\t\t\tbad bucket size: " 
+						// 	<< current_bucket_size << std::endl;
 						c_count2 = find(parents_by_children_count_ids.rbegin(), 
 							parents_by_children_count_ids.rend(),
 							bucket_stack.top()->children.size());
 						current_bucket_size -= *c_count2;
 						c_count2 = next(c_count2, 1);
 						bucket_stack.pop();
-						std::cout << "\t\t\t\tremoving " << *c_count2 
-							<< " from the stack" << std::endl;
+						// std::cout << "\t\t\t\tremoving " << *c_count2 
+						// 	<< " from the stack" << std::endl;
 					}
 				}
 
 				// checks if a viable bucket was found
 				if (current_bucket_size == max_bucket_size) {
 
-					std::cout << "\t\t\tnew solution found:" << std::endl;
+					// std::cout << "\t\t\tnew solution found:" << std::endl;
 
 					// adds the new bucket to the solution
 					list<PipelineComponentBase*> new_bucket;
@@ -272,7 +272,7 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 						for (list<reuse_node_t*>::iterator nn=n->children.begin();
 							nn!=n->children.end(); ) {
 
-							std::cout << "\t\t\t\t" << (*nn)->stage_ref->getId() << std::endl;
+							// std::cout << "\t\t\t\t" << (*nn)->stage_ref->getId() << std::endl;
 							new_bucket.emplace_back((*nn)->stage_ref);
 							nn = n->children.erase(nn);
 						}
@@ -292,8 +292,8 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 			}
 		}
 
-		std::cout << "\tcluster of parent node " << (*p)->stage_ref->getId() 
-			<< " don't have any more reuse oportunities" << std::endl;
+		// std::cout << "\tcluster of parent node " << (*p)->stage_ref->getId() 
+		// 	<< " don't have any more reuse oportunities" << std::endl;
 		
 		// If this point was reached it means that the current cluster don't have any more 
 		// reuse oportunities to be taken, so we remove the cluster's parents from the
@@ -338,11 +338,11 @@ list<list<PipelineComponentBase*>> prune_leaf_level(reuse_tree_t& reuse_tree,
 			while ((*n)->children.size() >= max_bucket_size) {
 				list<PipelineComponentBase*> new_bucket;
 				int count = 0;
-				std::cout << "[prune_leaf_level] starting bucket of "
-					<< (*n)->stage_ref->getId() << " with size 0" << std::endl;
+				// std::cout << "[prune_leaf_level] starting bucket of "
+				// 	<< (*n)->stage_ref->getId() << " with size 0" << std::endl;
 				while (count < max_bucket_size) {
-					std::cout << "[prune_leaf_level]\tadding "
-						<< (*c)->stage_ref->getId() << " to the bucket" << std::endl;
+					// std::cout << "[prune_leaf_level]\tadding "
+					// 	<< (*c)->stage_ref->getId() << " to the bucket" << std::endl;
 					new_bucket.emplace_back((*c)->stage_ref);
 					c = (*n)->children.erase(c);
 					count++;
@@ -406,22 +406,22 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 
 	// keep prunning and rising the tree until the root height
 	while (reuse_tree.height > 2) {
-		std::cout << "before:" << std::endl;
-		print_reuse_tree(reuse_tree);
+		// std::cout << "before:" << std::endl;
+		// print_reuse_tree(reuse_tree);
 		// perform current height merging iteration
 		list<reuse_node_t*> leafs_parent_list = generate_leafs_parent_list(reuse_tree);
 		// print_leafs_parent_list(leafs_parent_list);
 		list<list<PipelineComponentBase*>> new_buckets = prune_leaf_level(
 			reuse_tree, leafs_parent_list, max_bucket_size, double_prunning);
-		std::cout << "after:" << std::endl;
-		print_reuse_tree(reuse_tree);
+		// std::cout << "after:" << std::endl;
+		// print_reuse_tree(reuse_tree);
 		move_reuse_tree_up(reuse_tree, leafs_parent_list);
 
 		// add new_buckets to final solution
 		solution.insert(solution.begin(), new_buckets.begin(), new_buckets.end());
 	}
 
-	print_reuse_tree(reuse_tree);
+	// print_reuse_tree(reuse_tree);
 
 	// add the remaining unmerged stages to the final solution as single stage buckets
 	if (reuse_tree.parents.size() > 0) {
@@ -435,10 +435,10 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 				while (n->children.size() >= max_bucket_size) {
 					list<PipelineComponentBase*> new_bucket;
 					int count = 0;
-					std::cout << "starting empty bucket:" << std::endl;
+					// std::cout << "starting empty bucket:" << std::endl;
 					while (count < max_bucket_size) {
-						std::cout << "adding to bucket " 
-							<< (*nn)->stage_ref->getId() << std::endl;
+						// std::cout << "adding to bucket " 
+						// 	<< (*nn)->stage_ref->getId() << std::endl;
 						new_bucket.emplace_back((*nn)->stage_ref);
 						nn = n->children.erase(nn);
 						count++;
@@ -450,26 +450,26 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 			// create a final bucket with all remaining stages, if there are any
 			if (n->children.size() > 0) {
 				list<PipelineComponentBase*> final_stage;
-				std::cout << "starting final empty bucket:" << std::endl;
+				// std::cout << "starting final empty bucket:" << std::endl;
 				for (reuse_node_t* nn : n->children) {
 					final_stage.emplace_back(nn->stage_ref);
-					std::cout << "adding to bucket " 
-							<< nn->stage_ref->getId() << std::endl;
+					// std::cout << "adding to bucket " 
+					// 		<< nn->stage_ref->getId() << std::endl;
 				}
 				solution.emplace_back(final_stage);
 			}
 		}
 	}
 
-	std::cout << "FINAL SOLUTION" << std::endl;
-	for (list<PipelineComponentBase*> b : solution) {
-		for (PipelineComponentBase* s : b) {
-			std::cout << "\t" << s->getId() << std::endl;
-		}
-		std::cout << "bucket of size " << b.size() << " with cost " 
-			<< calc_stage_proc(b, args, ref) << std::endl;
-	}
-	std::cout << std::endl << std::endl << std::endl;
+	// std::cout << "FINAL SOLUTION" << std::endl;
+	// for (list<PipelineComponentBase*> b : solution) {
+	// 	for (PipelineComponentBase* s : b) {
+	// 		std::cout << "\t" << s->getId() << std::endl;
+	// 	}
+	// 	std::cout << "bucket of size " << b.size() << " with cost " 
+	// 		<< calc_stage_proc(b, args, ref) << std::endl;
+	// }
+	// std::cout << std::endl << std::endl << std::endl;
 
 	return solution;
 }
