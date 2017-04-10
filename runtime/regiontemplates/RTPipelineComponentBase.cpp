@@ -7,6 +7,8 @@
 
 #include "RTPipelineComponentBase.h"
 
+#include <iostream>
+
 void RTPipelineComponentBase::getRT() {
 	for (std::map<std::string, RegionTemplate*>::iterator i = regionTemplates.begin(); i!=regionTemplates.end();i++) {
 		i->second->printRT();
@@ -313,6 +315,9 @@ RegionTemplate* RTPipelineComponentBase::getRegionTemplateInstance(int index) {
 }
 
 void RTPipelineComponentBase::updateRegionTemplateInfo(RegionTemplate* rt) {
+	
+	long long t_0 = Util::ClockGetTime();
+
 	// there are two cases:
 	// 1) the data regions exist or not
 	RegionTemplate* curRt = this->getRegionTemplateInstance(rt->getName());
@@ -320,6 +325,8 @@ void RTPipelineComponentBase::updateRegionTemplateInfo(RegionTemplate* rt) {
 	std::cout << "BEFORE UPDATE" << std::endl;
 	if(curRt != NULL) curRt->print();
 #endif
+
+	long long t_get_inst = Util::ClockGetTime();
 
 	if(curRt != NULL){
 #ifdef DEBUG
@@ -365,6 +372,19 @@ void RTPipelineComponentBase::updateRegionTemplateInfo(RegionTemplate* rt) {
 	if(curRt != NULL) curRt->print();
 	std::cout << "#########" << std::endl;
 #endif
+
+	long long t_end = Util::ClockGetTime();
+	long long n_data_regs = rt->getNumDataRegions();
+
+	std::stringstream t_0_ss;
+	t_0_ss << t_0;
+	std::stringstream t_get_inst_ss;
+	t_get_inst_ss << t_get_inst;
+	std::stringstream t_end_ss;
+	t_end_ss << t_end;
+
+	std::cout << "[RTPCB_PROFILER] " << t_0_ss.str() << " " << t_get_inst << " "  << t_end_ss.str() << " " 
+		<< n_data_regs << std::endl;
 
 }
 

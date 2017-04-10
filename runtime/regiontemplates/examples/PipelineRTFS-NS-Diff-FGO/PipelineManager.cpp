@@ -102,14 +102,20 @@ void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineCompon
 void expand_stages(const map<int, ArgumentBase*> &args, map<int, list<ArgumentBase*>> args_values, 
 	map<int, ArgumentBase*> &expanded_args,map<int, PipelineComponentBase*> stages,
 	map<int, PipelineComponentBase*> &expanded_stages, map<int, ArgumentBase*> &workflow_outputs);
+
+
+// TODO: place these two on a cgm namespace. currently on fgm.cpp
 void generate_drs(RegionTemplate* rt, const map<int, ArgumentBase*> &expanded_args);
+void generate_drs(RegionTemplate* rt, PipelineComponentBase* stage,
+	const std::map<int, ArgumentBase*> &expanded_args);
 void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
-	map<int, ArgumentBase*> &merged_arguments,
-	RegionTemplate *rt);
+	map<int, ArgumentBase*> &merged_arguments, string name="tile");
+
+
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
 	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
 	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,
-	bool use_coarse_grain=true);
+	bool use_coarse_grain=true, bool clustered_generation=true);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -159,10 +165,6 @@ int main(int argc, char* argv[]) {
 	SysEnv sysEnv;
 
 	if (mpi_rank == mpi_size-1) {
-		// region template used by all stages
-		RegionTemplate *rt = new RegionTemplate();
-		rt->setName("tile");
-
 		// get arguments
 		int max_bucket_size = atoi(argv[1]);
 		string dakota_file = argv[2];
@@ -301,7 +303,7 @@ int main(int argc, char* argv[]) {
 
 		// add arguments to each stage
 		cout << endl << "add_arguments_to_stages" << endl;
-		add_arguments_to_stages(expanded_stages, expanded_args, rt);
+		add_arguments_to_stages(expanded_stages, expanded_args);
 
 		map<int, PipelineComponentBase*> merged_stages;
 
@@ -310,7 +312,7 @@ int main(int argc, char* argv[]) {
 		gettimeofday(&start, NULL);
 
 		fgm::merge_stages_fine_grain(merging_algorithm, expanded_stages, base_stages, merged_stages, 
-			rt, expanded_args, max_bucket_size, shuffle, dakota_file);
+			expanded_args, max_bucket_size, shuffle, dakota_file);
 
 		gettimeofday(&end, NULL);
 
@@ -319,16 +321,16 @@ int main(int argc, char* argv[]) {
 		merge_time_f << merge_time << "\t";
 		merge_time_f.close();
 
-		cout << endl<< "merged-fine before deps resolution: " << endl;
-		for (pair<int, PipelineComponentBase*> p : merged_stages) {
-			string s = p.second->reused!=NULL?" - reused":"";
-			cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
-			cout << "\ttasks: " << endl;
-			for (ReusableTask* t : p.second->tasks) {
-				cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
-				cout << "\t\t\tparent_task: " << t->parentTask << endl;
-			}
-		}
+		// cout << endl<< "merged-fine before deps resolution: " << endl;
+		// for (pair<int, PipelineComponentBase*> p : merged_stages) {
+		// 	string s = p.second->reused!=NULL?" - reused":"";
+		// 	cout << "stage " << p.second->getId() << ":" << p.second->getName() << s << endl;
+		// 	cout << "\ttasks: " << endl;
+		// 	for (ReusableTask* t : p.second->tasks) {
+		// 		cout << "\t\t" << t->getId() << ":" << t->getTaskName() << endl;
+		// 		cout << "\t\t\tparent_task: " << t->parentTask << endl;
+		// 	}
+		// }
 
 		// resolve dependencies of reused stages
 		for (pair<int, PipelineComponentBase*> p : merged_stages) {
@@ -389,8 +391,6 @@ int main(int argc, char* argv[]) {
 		//------------------------------------------------------------
 
 		string inputFolderPath = "~/Desktop/images15";
-		cout << endl << "generate_drs" << endl;
-		generate_drs(rt, expanded_args);
 
 		for (int i=0; i<mpi_size-1; i++)
 			MPI_Send(&mpi_val, 1, MPI_INT, i, 99, MPI_COMM_WORLD);
@@ -399,9 +399,15 @@ int main(int argc, char* argv[]) {
 		sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 
 		// add all stages to manager
-		cout << endl << "executeComponent" << endl;
+		// cout << endl << "executeComponent" << endl;
 		for (pair<int, PipelineComponentBase*> s : merged_stages) {
 			if (s.second->reused == NULL) {
+
+				// generate the data regions for each stage
+				cout << endl << "generate_drs" << endl;
+				generate_drs(((RTPipelineComponentBase*)s.second)->
+					getRegionTemplateInstance("tile"), s.second, expanded_args);
+
 				cout << "sent component " << s.second->getId() << ":" 
 					<< s.second->getName() << " sized " << s.second->size() << " to execute with args:" << endl;
 				cout << "\tall args: " << endl;
@@ -433,7 +439,7 @@ int main(int argc, char* argv[]) {
 		cout << endl << "startupExecution" << endl;
 		gettimeofday(&start, NULL);
 
-		// sysEnv.startupExecution();
+		sysEnv.startupExecution();
 
 		gettimeofday(&end, NULL);
 
@@ -922,10 +928,19 @@ bool all_inps_in(const list<int>& inps, const map<int, ArgumentBase*>& args,
 	return true;
 }
 
+bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
+	for (int i : inps) {
+		if (ref.find(i) == ref.end())
+			return false;
+	}
+	return true;
+}
+
+
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
 	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
 	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,
-	bool use_coarse_grain) {
+	bool use_coarse_grain, bool clustered_generation) {
 
 	cout << "[generate_pre_defined_stages]" << endl;
 
@@ -1019,68 +1034,69 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 	// 	}
 	// }
 
-	for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
-		cout << "Argument set " << p.first << " with parameters:" << endl;
-		for (ArgumentBase* a : p.second) {
-			cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+	// for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
+	// 	cout << "Argument set " << p.first << " with parameters:" << endl;
+	// 	for (ArgumentBase* a : p.second) {
+	// 		cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+	// 	}
+	// }
+
+
+	if (clustered_generation) {
+		// convert base_stages to a list for the necessity of the emplace_back operation
+		list<PipelineComponentBase*> base_stages_l;
+		// also create an empty list of arguments of each stage in order to perform coarse-grain merging
+		map<int, map<string, PipelineComponentBase*>> arg_values_list;
+		for (pair<int, PipelineComponentBase*>&& p : base_stages) {
+			base_stages_l.emplace_back(p.second);
+			arg_values_list[p.second->getId()].size();
 		}
-	}
 
-	// iterate through each parameter set, creating a workflow for each set
-	for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
-		// iterate through all stages of the workflow model, generating the stages
-		for (pair<int, PipelineComponentBase*> p : base_stages) {
-			
-		}
+		// iterate through each parameter set, creating a workflow for each set
+		for (pair<int, list<ArgumentBase*>>&& par_set : stages_arguments) {
+			// iterate through all stages of the workflow model, generating the stages
+			for (list<PipelineComponentBase*>::iterator p = base_stages_l.begin();
+					p != base_stages_l.end();) {
 
+				// attempt to find a stage witch has all inputs expanded either on the workflow inputs or interstage ones
+				// cout << "checking stage " << (*p)->getName() << " with a parameter_set of size " << par_set.second.size() << endl;
+				if (all_inps_in((*p)->getInputs(), args, input_arguments, args_values)) {
+					// cout << "stage " << (*p)->getName() << " has all inputs" << endl;
 
-		for (ArgumentBase* a : p.second) {
-		}
-	}
+					// A list of concatenated arg values, used as a quick way to verify if a stage with
+					// the same args was already created.
+					// map<string, PipelineComponentBase*> arg_values_list;
 
-	// keep expanding stages until there is no stage left
-	while (base_stages.size() != 0) {
-		// cout << "base_stages size: " << base_stages.size() << endl;
-		for (pair<int, PipelineComponentBase*> p : base_stages) {
-			// attempt to find a stage witch has all inputs expanded either on the workflow inputs or interstage ones
-			cout << "checking stage " << p.second->getName() << endl;
-			if (all_inps_in(p.second->getInputs(), args, input_arguments, args_values)) {
-				cout << "stage " << p.second->getName() << " has all inputs" << endl;
-
-				// A list of concatenated arg values, used as a quick way to verify if a stage with
-				// the same args was already created.
-				map<string, PipelineComponentBase*> arg_values_list;
-
-				// expands all input values of stage p
-				for (pair<int, list<ArgumentBase*>> as : stages_arguments) {
-					PipelineComponentBase* tmp = p.second->clone();
+					PipelineComponentBase* tmp = (*p)->clone();
 					string arg_values = "";
-					// add all arguments from stages_arguments that belong to stage p.second
-					for (int inp_id : p.second->getInputs()) {
-						// cout << "checking input " << args[inp_id]->getName() << " of " << p.second->getName() << endl;
-						for (ArgumentBase* a : as.second) {
+					// add all arguments from stages_arguments that belong to stage (*p)
+					for (int inp_id : (*p)->getInputs()) {
+						// cout << "checking input " << args[inp_id]->getName() << " of " << (*p)->getName() << endl;
+						for (ArgumentBase* a : par_set.second) {
+							// cout << "checking arg " << a->getName() << ":" << a->getId() << endl;
 							if (args.at(inp_id)->getName().compare(a->getName())==0) {
 								arg_values += to_string(a->getId());
 								tmp->addInput(a->getId());
-								// tmp->addArgument(a->clone());
+								// cout << "added arg " << a->getName() << ":" << a->getId() << " = " << a->toString() << endl;
 								break;
 							}
 						}
 					}
-					map<string, PipelineComponentBase*>::iterator it = arg_values_list.find(arg_values);
+					// cout << "[arg_values] " << arg_values << endl;
+
+					map<string, PipelineComponentBase*>::iterator it = arg_values_list[tmp->getId()].find(arg_values);
 					// verify if there is no other stage with the same values
-					if (it == arg_values_list.end() || !use_coarse_grain) {
+					if (it == arg_values_list[tmp->getId()].end() || !use_coarse_grain) {
 						// add current stage and args values to be compared later
-						arg_values_list[arg_values] = tmp;
+						arg_values_list[tmp->getId()][arg_values] = tmp;
 
 						// finishes to generate the stage
-						int id = new_uid();
-						tmp->setId(id);
-						tmp->setName(p.second->getName());
+						tmp->setId(new_uid());
+						tmp->setName((*p)->getName());
 						tmp->setLocation(PipelineComponentBase::WORKER_SIDE);
 
 						// generate outputs
-						for (int out_id : p.second->getOutputs()) {
+						for (int out_id : (*p)->getOutputs()) {
 							int new_id = new_uid();
 							ArgumentBase* ab_cpy = args.at(out_id)->clone();
 							ab_cpy->setName(args.at(out_id)->getName());
@@ -1089,7 +1105,31 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 							tmp->replaceOutput(out_id, new_id);						
 							
 							// add stage's output arguments to current workflow's argument list
-							stages_arguments[as.first].emplace_back(ab_cpy);
+
+							// cout << "[]" << endl;
+							// for (ArgumentBase* sss : stages_arguments[par_set.first])
+							// 	cout << "\t" << sss->getId() << ":" << sss->getName() << " = " << sss->toString() << endl;
+							// cout << "second" << endl;
+							// for (ArgumentBase* sss : par_set.second)
+							// 	cout << "\t" << sss->getId() << ":" << sss->getName() << " = " << sss->toString() << endl;
+							
+							stages_arguments[par_set.first].push_back(ab_cpy);
+
+							// cout << "[]" << endl;
+							// for (ArgumentBase* sss : stages_arguments[par_set.first])
+							// 	cout << "\t" << sss->getId() << ":" << sss->getName() << " = " << sss->toString() << endl;
+							// cout << "second" << endl;
+							// for (ArgumentBase* sss : par_set.second)
+							// 	cout << "\t" << sss->getId() << ":" << sss->getName() << " = " << sss->toString() << endl;
+							
+							par_set.second.push_back(ab_cpy);
+
+							// cout << "[]" << endl;
+							// for (ArgumentBase* sss : stages_arguments[par_set.first])
+							// 	cout << "\t" << sss->getId() << ":" << sss->getName() << " = " << sss->toString() << endl;
+							// cout << "second" << endl;
+							// for (ArgumentBase* sss : par_set.second)
+							// 	cout << "\t" << sss->getId() << ":" << sss->getName() << " = " << sss->toString() << endl;
 
 							// add output to interstage args map
 							args_values.emplace_back(ab_cpy);
@@ -1103,20 +1143,106 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 							// add reused stage's output arguments to current workflow's argument list
 							// cout << "reusing stage " << out_id << " from workflow "
 							// 	<< it->second->getId() << endl;
-							stages_arguments[as.first].emplace_back(find_argument(args_values, out_id));
+							stages_arguments[par_set.first].emplace_back(find_argument(args_values, out_id));
+							par_set.second.emplace_back(find_argument(args_values, out_id));
 						}
 
 						// TODO: solve mem leaking
 						// delete tmp;
 					}
+					p++;
+				} else {
+					// since the stage isn't yet ready, replace it in the last position of the stage list
+					// cout << "stage " << (*p)->getName() << " doesen't have all inputs - being placed last now" << endl;
+					base_stages_l.emplace_back(*p);
+					p = base_stages_l.erase(p);
 				}
+			}		
+		}
+	} else {
+		// keep expanding stages until there is no stage left
+		while (base_stages.size() != 0) {
+			// cout << "base_stages size: " << base_stages.size() << endl;
+			for (pair<int, PipelineComponentBase*> p : base_stages) {
+				// attempt to find a stage witch has all inputs expanded either on the workflow inputs or interstage ones
+				// cout << "checking stage " << p.second->getName() << endl;
+				if (all_inps_in(p.second->getInputs(), args, input_arguments, args_values)) {
+					// cout << "stage " << p.second->getName() << " has all inputs" << endl;
 
-				// remove stage descriptor since it was already solved and break the loop
-				base_stages.erase(p.first);
-				break;
+					// A list of concatenated arg values, used as a quick way to verify if a stage with
+					// the same args was already created.
+					map<string, PipelineComponentBase*> arg_values_list;
+
+					// expands all input values of stage p
+					for (pair<int, list<ArgumentBase*>> as : stages_arguments) {
+						PipelineComponentBase* tmp = p.second->clone();
+						string arg_values = "";
+						// add all arguments from stages_arguments that belong to stage p.second
+						for (int inp_id : p.second->getInputs()) {
+							// cout << "checking input " << args[inp_id]->getName() << " of " << p.second->getName() << " with " << as.second.size() << " parameters" << endl;
+							for (ArgumentBase* a : as.second) {
+								// cout << "checking arg " << a->getName() << ":" << a->getId() << endl;
+								if (args.at(inp_id)->getName().compare(a->getName())==0) {
+									arg_values += to_string(a->getId());
+									tmp->addInput(a->getId());
+									// tmp->addArgument(a->clone());
+									// cout << "added arg " << a->getName() << ":" << a->getId() << " = " << a->toString() << endl;
+									break;
+								}
+							}
+						}
+
+						// cout << "[arg_values] " << arg_values << endl;
+						map<string, PipelineComponentBase*>::iterator it = arg_values_list.find(arg_values);
+						// verify if there is no other stage with the same values
+						if (it == arg_values_list.end() || !use_coarse_grain) {
+							// add current stage and args values to be compared later
+							arg_values_list[arg_values] = tmp;
+
+							// finishes to generate the stage
+							int id = new_uid();
+							tmp->setId(id);
+							tmp->setName(p.second->getName());
+							tmp->setLocation(PipelineComponentBase::WORKER_SIDE);
+
+							// generate outputs
+							for (int out_id : p.second->getOutputs()) {
+								int new_id = new_uid();
+								ArgumentBase* ab_cpy = args.at(out_id)->clone();
+								ab_cpy->setName(args.at(out_id)->getName());
+								ab_cpy->setId(new_id);
+								ab_cpy->setParent(tmp->getId());
+								tmp->replaceOutput(out_id, new_id);						
+								
+								// add stage's output arguments to current workflow's argument list
+								stages_arguments[as.first].emplace_back(ab_cpy);
+
+								// add output to interstage args map
+								args_values.emplace_back(ab_cpy);
+							}
+							
+							// add stage to final stages list
+							expanded_stages[tmp->getId()] = tmp;
+						} else {
+							// if the stage already exists, reuse it
+							for (int out_id : it->second->getOutputs()) {
+								// add reused stage's output arguments to current workflow's argument list
+								// cout << "reusing stage " << out_id << " from workflow "
+								// 	<< it->second->getId() << endl;
+								stages_arguments[as.first].emplace_back(find_argument(args_values, out_id));
+							}
+
+							// TODO: solve mem leaking
+							// delete tmp;
+						}
+					}
+
+					// remove stage descriptor since it was already solved and break the loop
+					base_stages.erase(p.first);
+					break;
+				}
 			}
 		}
-
 	}
 
 	// add stages_arguments inputs to expanded_args
@@ -1151,13 +1277,6 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 	}
 }
 
-bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
-	for (int i : inps) {
-		if (ref.find(i) == ref.end())
-			return false;
-	}
-	return true;
-}
 
 // map<int, ArgumentBase*> args: all args, i.e inputs and interstate arguments.
 // map<int, list<ArgumentBase*>> args_values: the list of values for each argument. 

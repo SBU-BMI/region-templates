@@ -95,7 +95,7 @@ void filter_stages(const map<int, PipelineComponentBase*> &all_stages,
 }
 
 list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc, PipelineComponentBase* p, 
-	RegionTemplate* rt, map<int, ArgumentBase*> expanded_args) {
+	map<int, ArgumentBase*> expanded_args) {
 
 	list<ReusableTask*> tasks;
 	ReusableTask* prev_task = NULL;
@@ -112,7 +112,7 @@ list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc,
 
 		// call constructor
 		int uid = new_uid();
-		ReusableTask* n_task = ReusableTask::ReusableTaskFactory::getTaskFromName(t->first, args, rt);
+		ReusableTask* n_task = ReusableTask::ReusableTaskFactory::getTaskFromName(t->first, args, NULL);
 		n_task->setId(uid);
 		n_task->setTaskName(t->first);
 		// set prevoius task dependency if this isn't the first task generated

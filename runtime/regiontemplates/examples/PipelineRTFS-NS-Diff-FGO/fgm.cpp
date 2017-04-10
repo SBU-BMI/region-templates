@@ -25,12 +25,40 @@ void generate_drs(RegionTemplate* rt,
 	}
 }
 
+void generate_drs(RegionTemplate* rt, PipelineComponentBase* stage,
+	const std::map<int, ArgumentBase*> &expanded_args) {
+
+	// verify every argument
+	for (int inp : stage->getInputs()) {
+		// if an argument is a region template data region
+		if (expanded_args.at(inp)->getType() == ArgumentBase::RT) {
+			// if (((ArgumentRT*)expanded_args.at(inp))->isFileInput) {
+				// create the data region and add it to the input region template
+				DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+				ddr2d->setName(expanded_args.at(inp)->getName());
+				std::ostringstream oss;
+				oss << inp;
+				ddr2d->setId(oss.str());
+				ddr2d->setVersion(inp);
+				ddr2d->setIsAppInput(true);
+				ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
+				ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
+				ddr2d->setInputFileName(expanded_args.at(inp)->toString());
+				rt->insertDataRegion(ddr2d);
+			// }
+		}
+	}
+}
+
 void add_arguments_to_stages(std::map<int, PipelineComponentBase*> &merged_stages, 
-	std::map<int, ArgumentBase*> &merged_arguments,
-	RegionTemplate *rt) {
+	std::map<int, ArgumentBase*> &merged_arguments, string name) {
 
 	int i=0;
-	for (pair<int, PipelineComponentBase*> stage : merged_stages) {
+	for (pair<int, PipelineComponentBase*>&& stage : merged_stages) {
+		// create the RT isntance
+		RegionTemplate *rt = new RegionTemplate();
+		rt->setName(name);
+
 		// add input arguments to stage, adding them as RT as needed
 		for (int arg_id : stage.second->getInputs()) {
 			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
@@ -79,7 +107,7 @@ void add_arguments_to_stages(std::map<int, PipelineComponentBase*> &merged_stage
 
 void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineComponentBase*> &all_stages, 
 	const std::map<int, PipelineComponentBase*> &stages_ref, std::map<int, PipelineComponentBase*> &merged_stages, 
-	RegionTemplate* rt, std::map<int, ArgumentBase*> expanded_args, int max_bucket_size, bool shuffle, string dakota_filename) {
+	std::map<int, ArgumentBase*> expanded_args, int max_bucket_size, bool shuffle, string dakota_filename) {
 
 	// attempt merging for each stage type
 	for (std::map<int, PipelineComponentBase*>::const_iterator ref=stages_ref.cbegin(); ref!=stages_ref.cend(); ref++) {
@@ -94,7 +122,7 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 		double max_nrS_mksp = 0;
 		for (list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!=current_stages.end(); ) {
 			// if the stage isn't composed of reusable tasks then 
-			(*s)->tasks = task_generator(ref->second->tasksDesc, *s, rt, expanded_args);
+			(*s)->tasks = task_generator(ref->second->tasksDesc, *s, expanded_args);
 			if ((*s)->tasks.size() == 0) {
 				merged_stages[(*s)->getId()] = *s;
 				
