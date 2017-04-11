@@ -115,7 +115,7 @@ void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages,
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
 	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
 	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,
-	bool use_coarse_grain=true, bool clustered_generation=true);
+	bool use_coarse_grain=true, bool clustered_generation=false);
 
 // Workflow parsing helper functions
 list<string> line_buffer;
@@ -337,8 +337,10 @@ int main(int argc, char* argv[]) {
 			// add correct stage dependencies 
 			list<int> deps_tmp;
 			for (int i=0; i<p.second->getNumberDependencies(); i++) {
+				
 				if (merged_stages.find(p.second->getDependency(i)) != merged_stages.end() && 
 						merged_stages[p.second->getDependency(i)]->reused != NULL) {
+
 					deps_tmp.emplace_back(merged_stages[p.second->getDependency(i)]->reused->getId());
 				}
 			}
@@ -422,6 +424,12 @@ int main(int argc, char* argv[]) {
 				for (int i : s.second->getOutputs())
 					cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
 						<< expanded_args[i]->toString() << endl;
+				cout << "\tdependencies:" << endl;
+				for (int i=0; i<s.second->getNumberDependencies(); i++)
+					cout << "\t\t" << merged_stages[s.second->getDependency(i)]->getId() << ":" 
+						<< merged_stages[s.second->getDependency(i)]->getName() << endl;
+
+				// set task ID to enable dependency enforcement
 				((Task*)s.second)->setId(s.second->getId());
 
 				// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
@@ -936,7 +944,11 @@ bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
 	return true;
 }
 
-
+// WARNING: When using fine-grain reuse with clustered stage generation the merging of stages
+//   can make diff stages be added to be executed (executeComponent) before its dependency,
+//   thus causing the diff stage to have all dependencies solved. Thereby, unless the order
+//   of 'expanded_stages' is fixed before sending the stages to be executed, clustered generation
+//   shouldn't be used with fine-grain reuse.
 void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
 	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
 	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,

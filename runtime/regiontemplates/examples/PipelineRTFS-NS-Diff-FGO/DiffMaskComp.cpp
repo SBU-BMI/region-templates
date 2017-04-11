@@ -99,7 +99,8 @@ int DiffMaskComp::run() {
 	// delete diffPixels;
 
 	long long t = Util::ClockGetTime();
-	cout << "[PROFILER] Diff (id | time in ms): " << this->getId() << " " << t << endl;
+	// cout << "[PROFILER] Diff (id | time in ms): " << this->getId() << " " << t << endl;
+	cout << "[EXEC_ORDER] diff " << this->getId() << endl;
 
 	return 0;
 }

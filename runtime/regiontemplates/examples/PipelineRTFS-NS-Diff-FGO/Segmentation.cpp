@@ -142,7 +142,8 @@ int Segmentation::run() {
 	}
 
 	long long t = Util::ClockGetTime();
-	cout << "[PROFILER] Seg (id | time in ms): " << this->getId() << " " << t << endl;
+	// cout << "[PROFILER] Seg (id | time in ms): " << this->getId() << " " << t << endl;
+	cout << "[EXEC_ORDER] segmentation " << this->getId() << endl;
 
 	return 0;
 }
