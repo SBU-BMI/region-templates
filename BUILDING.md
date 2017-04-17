@@ -4,6 +4,8 @@
 
 Assuming: 
 - You have no previous dependency installed
+
+This guide will go through each of these dependencies:
 - ActiveHarmony [4.6.0](http://www.dyninst.org/sites/default/files/downloads/harmony/ah-4.6.0.tar.gz)
 - OpenCV [2.4.9](http://sourceforge.net/projects/opencvlibrary/files/opencv-unix/2.4.9/opencv-2.4.9.zip/download)
 - InsightToolkit [4.11.0](https://sourceforge.net/projects/itk/files/itk/4.11/InsightToolkit-4.11.0.tar.gz/download)
@@ -67,7 +69,7 @@ inside `/opencv` folder
 unzip opencv-2.4.9.zip
 cd build
 cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local ../opencv-2.4.9/
-make
+make -j$(nproc)
 sudo make install
 ```
 
@@ -89,12 +91,13 @@ on the interface
 - press `t` to toggle advanced mode
 - turn on `BUILD_SHARED_LIBS`
 - turn on `MODULE_ITKVideoBridgeOpenCV`
+- turn on `Module_ITKReview`
 - press `c` to configure
 - press `g` to generate
 
 then build
 ```
-make
+make -j$(nproc)
 ```
 
 ## Installing Nscale
@@ -121,13 +124,18 @@ on the interface
 
 then build
 ```
-make
+make -j$(nproc)
 ```
 
 NOTE: it may give errors of vars `NSCALE_VERSION_MAJOR` and `NSCALE_VERSION_MINOR`, press `e` to continue and ignore.
 
 ## Installing Yi's library
 
+prerequisite
+```
+sudo apt install libopenslide-dev
+sudo ln -s /usr/lib/x86_64-linux-gnu/libopenslide.so /usr/lib/libopenslide.so
+```
 inside `/workspace` folder
 ```
 cp project/region-templates/runtime/regiontemplates/external-src/yi-src-multi.tar.gz ./libs/yi/
@@ -147,15 +155,16 @@ on the interface
 - press `c` to configure
 - press `e` to ignore errors and continue
 - fill `ITK_DIR` to your `ITK` installation
-- turn off `build_mainTileAndSegmentWSINuclei`
+- turn on `build_mainTileAndSegmentWSINuclei`
 - press `c` to configure
+- fill `OpenSlide_INSTALLATION_PATH` with only `/usr`
 - turn on `build_mainSegmentSmallImage`
 - press `c` to configure
 - press `g` to generate
 
 then build
 ```
-make
+make -j$(nproc)
 ```
 
 ## Installing Active Harmony
@@ -232,5 +241,5 @@ on the interface
 
 then build
 ```
-make
+make -j$(nproc)
 ```
