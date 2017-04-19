@@ -241,6 +241,8 @@ bool TaskSegmentation0::run(int procType, int tid) {
 }
 
 void TaskSegmentation0::updateDR(RegionTemplate* rt) {
+	// if (normalized_rt_temp != NULL)
+	// 	delete *normalized_rt_temp;
 	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion((*this->normalized_rt_temp)->getName(),
 		(*this->normalized_rt_temp)->getId(), 0, stoi((*this->normalized_rt_temp)->getId()))));
 
@@ -1192,6 +1194,8 @@ bool TaskSegmentation5::run(int procType, int tid) {
 }
 
 void TaskSegmentation5::updateDR(RegionTemplate* rt) {
+	if (normalized_rt_temp != NULL)
+		delete *normalized_rt_temp;
 	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion((*this->normalized_rt_temp)->getName(),
 		(*this->normalized_rt_temp)->getId(), 0, stoi((*this->normalized_rt_temp)->getId()))));
 
