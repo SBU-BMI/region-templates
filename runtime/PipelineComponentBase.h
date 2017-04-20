@@ -12,6 +12,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <algorithm>
 
 #include "Argument.h"
 #include "Task.h"

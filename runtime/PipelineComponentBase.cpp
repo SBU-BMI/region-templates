@@ -394,8 +394,19 @@ void PipelineComponentBase::replaceArgument(int old_id, ArgumentBase* new_a) {
 		if ((*i)->getId() == old_id) {
 			arguments.erase(i);
 			arguments.push_back(new_a);
-			return;
+			break;
 		}
+	}
+	if (std::find(input_arguments.begin(), input_arguments.end(), old_id) 
+			!= input_arguments.end()) {
+		input_arguments.remove(old_id);
+		input_arguments.push_back(new_a->getId());
+	}
+
+	if (std::find(output_arguments.begin(), output_arguments.end(), old_id) 
+			!= output_arguments.end()) {
+		output_arguments.remove(old_id);
+		output_arguments.push_back(new_a->getId());
 	}
 }
 

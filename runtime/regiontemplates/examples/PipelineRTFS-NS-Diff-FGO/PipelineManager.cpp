@@ -338,6 +338,8 @@ int main(int argc, char* argv[]) {
 			list<int> deps_tmp;
 			for (int i=0; i<p.second->getNumberDependencies(); i++) {
 				
+				// if the i-th dependency of p still exists and is reused, add the dependency of the 
+				//   reused stage to p
 				if (merged_stages.find(p.second->getDependency(i)) != merged_stages.end() && 
 						merged_stages[p.second->getDependency(i)]->reused != NULL) {
 
@@ -349,10 +351,12 @@ int main(int argc, char* argv[]) {
 
 			// connect correct output arguments
 			bool updated = true;
+			// cout << "Updating arguments of " << p.second->getId() << ":" << p.second->getName() << endl;
 			while (updated) {
 				updated = false;
 				for (ArgumentBase* a : p.second->getArguments()) {
 					if (a->getParent() != 0 && merged_stages[a->getParent()]->reused != NULL) {
+						// cout << "Replacing argument " << endl;
 						updated = true;
 						p.second->replaceArgument(a->getId(), 
 							merged_stages[a->getParent()]->reused->getArgumentByName(a->getName()));
