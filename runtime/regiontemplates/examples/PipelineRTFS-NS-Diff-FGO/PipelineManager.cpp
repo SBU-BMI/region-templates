@@ -515,13 +515,20 @@ void get_inputs_from_file(FILE* workflow_descriptor,
 	string name;
 
 	// go to the initial ports beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ip) == string::npos);
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ip) == string::npos)
+		delete line;
 	// cout << "port init begin: " << line << endl;
 
 	// keep getting ports until it reaches the end of initial ports
 	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ipe) == string::npos) {
 		// consumes the port beginning
-		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1) {
+			delete line;
+			line = NULL;
+		}
+
+		if (line != NULL)
+			delete line;
 		// cout << "port begin: " << line << endl;
 
 		// finds the name field
@@ -632,7 +639,8 @@ void get_inputs_from_file(FILE* workflow_descriptor,
 		parameters_values[arg_id] = inp_values;
 
 		// consumes the port ending
-		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
+		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos)
+			delete line;
 			// cout << "not port end: " << line << endl;
 		// cout << "port end: " << line << endl;
 	}
@@ -653,13 +661,19 @@ void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &w
 	string pe("</port>");
 
 	// go to the initial ports beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ip) == string::npos);
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ip) == string::npos)
+		delete line;
 	// cout << "port init begin: " << line << endl;
 
 	// keep getting ports until it reaches the end of initial ports
 	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ipe) == string::npos) {
 		// consumes the port beginning
-		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1) {
+			delete line;
+			line = NULL;
+		}
+		if (line != NULL)
+			delete line;
 		// cout << "port begin: " << line << endl;
 
 		// finds the name field
@@ -721,7 +735,8 @@ void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &w
 		workflow_outputs[new_id] = out_arg;
 
 		// consumes the port ending
-		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
+		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos)
+			delete line;
 			// get_line << "not port end: " << line << endl;
 		// cout << "port end: " << line << endl;
 	}
@@ -744,14 +759,22 @@ void get_stages_from_file(FILE* workflow_descriptor,
 	string pe("</processor>");
 
 	// go to the processors beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ps) == string::npos);
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ps) == string::npos)
+		delete line;
 		// cout << "not processor init begin: " << line << endl;
 	 // cout << "processor init begin: " << line << endl;
 
 	// keep getting single processors until it reaches the end of all processors
 	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pse) == string::npos) {
 		// consumes the processor beginning
-		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1) {
+			delete line;
+			line = NULL;
+		}
+
+		if (line != NULL)
+			delete line;
+
 		// cout << "processor begin: " << line << endl;
 
 		// get stage fields
@@ -786,7 +809,8 @@ void get_stages_from_file(FILE* workflow_descriptor,
 		base_stages[stg_id] = stage;
 
 		// consumes the processor ending
-		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
+		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos)
+			delete line;
 			// cout << "not processor end: " << line << endl;
 		// cout << "processor end: " << line << endl;
 	}
@@ -817,14 +841,22 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 	string sourcee("</source>");
 
 	// go to the datalinks beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ds) == string::npos);
+	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ds) == string::npos)
+		delete line;
 		// cout << "not datalink init begin" << line << endl;
 	// cout << "datalink init begin" << line << endl;
 
 	// keep getting single datalinks until it reaches the end of all datalinks
 	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(dse) == string::npos) {
 		// consumes the datalink beginning
-		while (string(line).find(d) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		while (string(line).find(d) == string::npos && get_line(&line, workflow_descriptor) != -1) {
+			delete line;
+			line = NULL;
+		}
+
+		if (line != NULL)
+			delete line;
+
 		// cout << "datalink begin" << line << endl;
 
 		// get sink and source fields
@@ -877,7 +909,11 @@ void connect_stages_from_file(FILE* workflow_descriptor,
 		}
 
 		// consumes the datalink ending
-		while (string(line).find(de) == string::npos && get_line(&line, workflow_descriptor) != -1);
+		bool cond = string(line).find(de) == string::npos;
+		while (cond && get_line(&line, workflow_descriptor) != -1) {
+			cond = string(line).find(de) == string::npos;
+			delete line;
+		}
 		// cout << "datalink end" << line << endl;
 	}
 }
@@ -1017,8 +1053,10 @@ void generate_pre_defined_stages(FILE* parameters_values_file, map<int, Argument
 				if (a->getName().compare(name)==0 && a->toString().compare(aa->toString())==0) {
 					found = true;
 					arg = a;
+					delete aa;
 					break;
 				}
+				delete aa;
 			}
 
 			char* token2;
@@ -1518,6 +1556,7 @@ string get_workflow_field(FILE* workflow, string field) {
 			return s.substr(s.find("<" + field + ">")+field.length()+2, 
 				s.find("</" + field + ">")-s.find("<" + field + ">")-field.length()-2);
 		}
+		delete line;
 	}
 
 	return nullptr;
@@ -1538,13 +1577,17 @@ void get_workflow_arguments(FILE* workflow,
 	string ee("</entry>");
 
 	// go to the initial entries beginning
-	while (get_line(&line, workflow) != -1 && string(line).find(ie) == string::npos);
+	while (get_line(&line, workflow) != -1 && string(line).find(ie) == string::npos) {
+		delete line;
+		line = NULL;
+	}
 	// cout << "port init begin: " << line << endl;
 
 	// keep getting ports until it reaches the end of initial ports
 	while (get_line(&line, workflow) != -1 && string(line).find(iee) == string::npos) {
 		// consumes the port beginning
-		while (string(line).find(e) == string::npos && get_line(&line, workflow) != -1);
+		while (string(line).find(e) == string::npos && get_line(&line, workflow) != -1)
+			delete line;
 		// cout << "port begin: " << line << endl;
 
 		// finds the name and field
@@ -1558,10 +1601,23 @@ void get_workflow_arguments(FILE* workflow,
 		output_arguments.emplace_back(arg);
 
 		// consumes the port ending
-		while (get_line(&line, workflow) != -1 && string(line).find(ee) == string::npos);
+		while (get_line(&line, workflow) != -1 && string(line).find(ee) == string::npos) {
+			delete line;
+			// some c++ implementations may not set line to null after delete
+			line = NULL;
+		}
 		// 	cout << "not port end: " << line << endl;
 		// cout << "port end: " << line << endl;
+
+		if (line != NULL) {
+			delete line;
+			line = NULL;
+		}
+
 	}
+
+	if (line != NULL)
+		delete line;
 	// cout << "port init end: " << line << endl;
 }
 
@@ -1574,7 +1630,8 @@ vector<general_field_t> get_all_fields(FILE* workflow, string start, string end)
 	general_field_t general_field;
 
 	// consumes the beginning
-	while (get_line(&line, workflow) != -1 && string(line).find(start) == string::npos);
+	while (get_line(&line, workflow) != -1 && string(line).find(start) == string::npos)
+		delete line;
 
 	// create general field regex
 	regex r ("<[\\w]+>[\\w ]+<\\/[\\w]+>");
@@ -1595,6 +1652,7 @@ vector<general_field_t> get_all_fields(FILE* workflow, string start, string end)
 			general_field.data = field;
 			fields.push_back(general_field);
 		}
+		delete line;
 	}
 	return fields;
 }
