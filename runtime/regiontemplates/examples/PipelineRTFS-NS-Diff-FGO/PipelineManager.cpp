@@ -90,6 +90,8 @@ void adj_mat_print(mincut::weight_t** adjMat, map<size_t, int> id2task, size_t n
 	}
 }
 
+int find_arg_pos(string s, int argc, char** argv);
+
 // Workflow parsing functions
 void get_inputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_inputs, 
 	map<int, list<ArgumentBase*>> &parameters_values);
@@ -136,9 +138,9 @@ int main(int argc, char* argv[]) {
 
 	// verify arguments
 	if (argc > 1 && string(argv[1]).compare("-h") == 0) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max bucket size> <dakota output file> <merging algorithm> [s] [ncg]" << endl;
-		cout << "   s - shuffle" << endl;
-		cout << "   ncg - don't do coarse grain merging" << endl;
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-s] [-ncg]" << endl;
+		cout << "   -s - shuffle" << endl;
+		cout << "   -ncg - don't do coarse grain merging" << endl;
 		cout << "avaiable algorithms:" << endl;
 		cout << "0 - No fine grain merging algorithm" << endl;
 		cout << "1 - naive fine grain merging algorithm" << endl;
@@ -147,8 +149,8 @@ int main(int argc, char* argv[]) {
 		cout << "4 - Double-prunning reuse-tree fine grain merging algorithm" << endl;
 		return 0;
 	}
-	if (argc < 4) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO <max bucket size> <dakota output file> <merging algorithm> [s] [ncg]" << endl;
+	if (argc < 7) {
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-s] [-ncg]" << endl;
 		return 0;
 	}
 
@@ -166,18 +168,30 @@ int main(int argc, char* argv[]) {
 
 	if (mpi_rank == mpi_size-1) {
 		// get arguments
-		int max_bucket_size = atoi(argv[1]);
-		string dakota_file = argv[2];
-		int merging_algorithm = atoi(argv[3]);
-		bool shuffle = false;
-		for (int i=1; i<argc; i++)
-			if (string(argv[i]).compare("s")==0)
-				shuffle = true;
+		int max_bucket_size;
+		if (find_arg_pos("-b", argc, argv) == -1) {
+			cout << "Missing max bucket size." << endl;
+			return 0;
+		} else
+			max_bucket_size = atoi(argv[find_arg_pos("-b", argc, argv)+1]);
 
-		bool use_coarse_grain=true;
-		for (int i=1; i<argc; i++)
-			if (string(argv[i]).compare("ncg")==0)
-				use_coarse_grain = false;
+		string dakota_file;
+		if (find_arg_pos("-dkt", argc, argv) == -1) {
+			cout << "Missing dakota file path." << endl;
+			return 0;
+		} else
+			dakota_file = argv[find_arg_pos("-dkt", argc, argv)+1];
+
+		int merging_algorithm;
+		if (find_arg_pos("-ma", argc, argv) == -1) {
+			cout << "Missing merging algorithm option." << endl;
+			return 0;
+		} else
+			merging_algorithm = atoi(argv[find_arg_pos("-ma", argc, argv)+1]);
+
+		bool shuffle = find_arg_pos("-s", argc, argv) == -1 ? false : true;
+
+		bool use_coarse_grain = find_arg_pos("-ncg", argc, argv) == -1 ? true : false;
 
 		// workflow file
 		FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
@@ -488,6 +502,17 @@ int main(int argc, char* argv[]) {
 
 	sysEnv.finalizeSystem();
 
+}
+
+/***************************************************************/
+/***************** Arguments parsing functions *****************/
+/***************************************************************/
+
+int find_arg_pos(string s, int argc, char** argv) {
+	for (int i=1; i<argc; i++)
+		if (string(argv[i]).compare(s)==0)
+			return i;
+	return -1;
 }
 
 /***************************************************************/
