@@ -25,6 +25,15 @@ private:
 	DenseDataRegion2D* mask;
 
 public:
+
+    float otsuRatio;
+    double curvatureWeight;
+    float sizeThld;
+    float sizeUpperThld;
+    double mpp;
+    float msKernel;
+    int levelsetNumberOfIteration;
+
 	TaskSegmentation(DenseDataRegion2D* bgr, DenseDataRegion2D* mask);
 
 	virtual ~TaskSegmentation();

@@ -46,6 +46,16 @@ int FeatureExtraction::run()
 			DataRegion2DUnaligned *features = new DataRegion2DUnaligned();
 			features->setName("features");
 			features->setId(bgr->getId());
+            
+            features->otsuRatio = ((ArgumentFloat*)this->getArgument(0))->getArgValue();
+            features->curvatureWeight = ((ArgumentFloat*)this->getArgument(1))->getArgValue();
+            features->sizeThld = ((ArgumentFloat*)this->getArgument(2))->getArgValue();
+            features->sizeUpperThld = ((ArgumentFloat*)this->getArgument(3))->getArgValue();
+            features->mpp = ((ArgumentFloat*)this->getArgument(4))->getArgValue();
+            features->msKernel = ((ArgumentFloat*)this->getArgument(5))->getArgValue();
+            features->levelsetNumberOfIteration = ((ArgumentInt*)this->getArgument(6))->getArgValue();
+
+
 			std::cout << "featuresId: "<< features->getId() << std::endl;
 			// Because this is the application output, I want it to be written in the FS. Thus,
 			// I will force the storage level 1 (defined in rtconf.xml) that must be a FS storage.

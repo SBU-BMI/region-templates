@@ -10,6 +10,7 @@
 #include "RegionTemplate.h"
 #include "RegionTemplateCollection.h"
 
+#include "Argument.h"
 #include "NormalizationComp.h"
 #include "Segmentation.h"
 #include "FeatureExtraction.h"

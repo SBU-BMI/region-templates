@@ -21,13 +21,18 @@ bool TaskFeatures::run(int procType, int tid) {
 
 	cv::Mat inputImage = this->bgr->getData();
 	cv::Mat maskImage = this->mask->getData();
+	cv::Mat maskImageBinary;
 	std::cout << "nChannels:  "<< maskImage.channels() << std::endl;
-	if(inputImage.rows > 0 && maskImage.rows > 0){
+
+	ImagenomicAnalytics::MultipleObjectFeatureAnalysisFilter featureAnalyzer;
+	if(inputImage.rows > 0 && maskImage.rows > 0 && cv::countNonZero (maskImage) > 0){
+
+        cv::threshold (maskImage, maskImageBinary, 0.5, 1, cv::THRESH_BINARY);
+
 		//nscale::ObjFeatures::calcFeatures(inputImage, maskImage);
 		std::cout << "FEATURE COMPUTATION COMES HERE!!" << std::endl;
-		ImagenomicAnalytics::MultipleObjectFeatureAnalysisFilter featureAnalyzer;
 		featureAnalyzer.setInputRGBImage(itk::OpenCVImageBridge::CVMatToITKImage<itkRGBImageType>(inputImage));
-		featureAnalyzer.setObjectBinaryMask(itk::OpenCVImageBridge::CVMatToITKImage<itkBinaryMaskImageType>(maskImage));
+		featureAnalyzer.setObjectBinaryMask(itk::OpenCVImageBridge::CVMatToITKImage<itkBinaryMaskImageType>(maskImageBinary));
 		featureAnalyzer.setTopLeft(0,0);
 		featureAnalyzer.update();
 
@@ -36,7 +41,6 @@ bool TaskFeatures::run(int procType, int tid) {
         featureAnalyzer.setFeatureNames();
         this->features->labels = featureAnalyzer.getFeatureNames();
 std::cout << "Setting " << this->features->labels.size() << " labels in TaskFeatures" << std::endl;
-
 
 /*		// TESTING data region write/read to/from FS
 		DataRegionFactory::writeDDR2DFS(this->features, "./", false);
@@ -56,7 +60,11 @@ std::cout << "Setting " << this->features->labels.size() << " labels in TaskFeat
 		delete features2;*/
 
 	}else{
-		std::cout << "Not Computing features" << std::endl;
+        //Setup empty feature output
+        featureAnalyzer.setFeatureNames();
+        this->features->labels = featureAnalyzer.getFeatureNames();
+        std::vector< std::vector<FeatureValueType> > features (0);
+        this->features->setData(features);
 	}
 
 	uint64_t t2 = Util::ClockGetTimeProfile();

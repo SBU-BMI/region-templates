@@ -45,6 +45,15 @@ int Segmentation::run()
 			// Create processing task
 			TaskSegmentation * segTask = new TaskSegmentation(bgr, mask);
 
+            segTask->otsuRatio = ((ArgumentFloat*)this->getArgument(0))->getArgValue();
+            segTask->curvatureWeight = ((ArgumentFloat*)this->getArgument(1))->getArgValue();
+            segTask->sizeThld = ((ArgumentFloat*)this->getArgument(2))->getArgValue();
+            segTask->sizeUpperThld = ((ArgumentFloat*)this->getArgument(3))->getArgValue();
+            segTask->mpp = ((ArgumentFloat*)this->getArgument(4))->getArgValue();
+            segTask->msKernel = ((ArgumentFloat*)this->getArgument(5))->getArgValue();
+            segTask->levelsetNumberOfIteration = ((ArgumentInt*)this->getArgument(6))->getArgValue();
+
+
 			this->executeTask(segTask);
 
 		}else{

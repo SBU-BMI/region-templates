@@ -31,6 +31,7 @@ void parseInputArguments(int argc, char**argv, std::string &inputFolder){
 
 
 RegionTemplateCollection* RTFromFiles(std::string inputFolderPath){
+
 	// Search for input files in folder path
 	FileUtils fileUtils("tif");
 	std::vector<std::string> fileList;
@@ -81,6 +82,17 @@ int main (int argc, char **argv){
 
 	parseInputArguments(argc, argv, inputFolderPath);
 
+
+    // Parameters
+    float otsuRatio = 1.0;
+    double curvatureWeight = 0.8;
+    float sizeThld = 3;
+    float sizeUpperThld = 200;
+    double mpp = 0.25;
+    float msKernel = 20.0;
+    int levelsetNumberOfIteration = 100;
+	
+
 	// Handler to the distributed execution system environment
 	SysEnv sysEnv;
 
@@ -96,8 +108,23 @@ int main (int argc, char **argv){
 	for(int i = 0; i < rtCollection->getNumRTs(); i++){
 		Segmentation *seg = new Segmentation();
 		seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+        seg->addArgument(new ArgumentFloat(otsuRatio));
+        seg->addArgument(new ArgumentFloat(curvatureWeight));
+        seg->addArgument(new ArgumentFloat(sizeThld));
+        seg->addArgument(new ArgumentFloat(sizeUpperThld));
+        seg->addArgument(new ArgumentFloat(mpp));
+        seg->addArgument(new ArgumentFloat(msKernel));
+        seg->addArgument(new ArgumentInt(levelsetNumberOfIteration));
+
 		FeatureExtraction *fe =  new FeatureExtraction();
 
+        fe->addArgument(new ArgumentFloat(otsuRatio));
+        fe->addArgument(new ArgumentFloat(curvatureWeight));
+        fe->addArgument(new ArgumentFloat(sizeThld));
+        fe->addArgument(new ArgumentFloat(sizeUpperThld));
+        fe->addArgument(new ArgumentFloat(mpp));
+        fe->addArgument(new ArgumentFloat(msKernel));
+        fe->addArgument(new ArgumentInt(levelsetNumberOfIteration));
 		fe->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
 		fe->addDependency(seg->getId());
 

@@ -26,6 +26,15 @@ public:
     unsigned int tilew;
     unsigned int tileh;
 
+    // Segmentation parameters
+    float otsuRatio;
+    double curvatureWeight;
+    float sizeThld;
+    float sizeUpperThld;
+    double mpp;
+    float msKernel;
+    int levelsetNumberOfIteration;
+
 	DataRegion2DUnaligned();
 	virtual ~DataRegion2DUnaligned();
 

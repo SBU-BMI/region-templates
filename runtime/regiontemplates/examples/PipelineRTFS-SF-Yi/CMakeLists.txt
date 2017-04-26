@@ -15,6 +15,20 @@ include_directories(${Runtime_SOURCE_DIR}/util)
 include_directories(${RegionTemplate_SOURCE_DIR})
 include_directories(${RegionTemplate_SOURCE_DIR}/Utils)
 
+# nscale dirs
+find_path( NSCALE_SRC_DIR REQUIRED )
+find_path( NSCALE_BUILD_DIR REQUIRED )
+set(nscalesrcdir ${NSCALE_SRC_DIR})
+set(nscalebuilddir ${NSCALE_BUILD_DIR})
+
+#includes
+include_directories(${nscalesrcdir}/segment)
+include_directories(${nscalesrcdir}/segment/cuda)
+include_directories(${nscalesrcdir}/common)
+include_directories(${nscalesrcdir}/features)
+
+link_directories(${nscalebuilddir}/lib)
+
 # yis dirs
 find_path( YI_SRC_DIR REQUIRED )
 find_path( YI_BUILD_DIR REQUIRED )
@@ -47,7 +61,7 @@ target_link_libraries(${libname} ${YI_BUILD_DIR}/liblocalLibraries.a)
 target_link_libraries("${libname}" ${OpenCV_LIBS} ${ITK_LIBRARIES})
 
 # nscale libs
-#target_link_libraries("${libname}" segment featuresAll ${OpenCV_LIBS})
+target_link_libraries("${libname}" segment featuresAll ${OpenCV_LIBS})
         
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-SF-Yi PipelineManager.cpp)

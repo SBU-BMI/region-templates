@@ -133,6 +133,16 @@ bool DataRegionFactory::writeDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string 
     adios_define_var (ad_group, "tilew", "", adios_unsigned_integer, "", "", "");
     adios_define_var (ad_group, "tileh", "", adios_unsigned_integer, "", "", "");
 
+    // Parameters
+    adios_define_var (ad_group, "otsuRatio", "", adios_real, "", "", "");
+    adios_define_var (ad_group, "curvatureWeight", "", adios_double, "", "", "");
+    adios_define_var (ad_group, "sizeThld", "", adios_real, "", "", "");
+    adios_define_var (ad_group, "sizeUpperThld", "", adios_real, "", "", "");
+    adios_define_var (ad_group, "mpp", "", adios_double, "", "", "");
+    adios_define_var (ad_group, "msKernel", "", adios_real, "", "", "");
+    adios_define_var (ad_group, "levelsetNumberOfIteration", "", adios_integer, "", "", "");
+
+
     // Image name
     adios_define_var (ad_group, "image_name", "", adios_string, "", "", "");
 
@@ -144,6 +154,7 @@ bool DataRegionFactory::writeDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string 
 
     int obj_count = dr->data.size();
     adios_write(ad_file, "obj_count", &obj_count);
+std::cout << "OBJ_COUNT IS " << obj_count << "\n";
     for (uint i=0;i<dr->labels.size()-1;i++) {
         // Pull all of this feature into an array and then write it.
         std::vector<double> featureData(obj_count);
@@ -212,6 +223,16 @@ bool DataRegionFactory::writeDr2DUnADIOS(DataRegion2DUnaligned* dr, std::string 
     adios_write (ad_file, "tiley", &tiley);
     adios_write (ad_file, "tilew", &tilew);
     adios_write (ad_file, "tileh", &tileh);
+
+    // Parameters
+    adios_write (ad_file, "otsuRatio", &(dr->otsuRatio) ); 
+    adios_write (ad_file, "curvatureWeight", &(dr->curvatureWeight) ); 
+    adios_write (ad_file, "sizeThld", &(dr->sizeThld) ); 
+    adios_write (ad_file, "sizeUpperThld", &(dr->sizeUpperThld) ); 
+    adios_write (ad_file, "mpp", &(dr->mpp) ); 
+    adios_write (ad_file, "msKernel", &(dr->msKernel) ); 
+    adios_write (ad_file, "levelsetNumberOfIteration", &(dr->levelsetNumberOfIteration) ); 
+
 
 
     free (poly_points);
