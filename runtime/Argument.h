@@ -18,12 +18,15 @@ class ArgumentBase {
 protected:
 	int type;
 	std::string name;
-
-	// this field is used only on workflow generation
 	int id;
 
+	// this fields are used only on workflow generation
+	int parent;
+
 public:
-	ArgumentBase(){};
+	enum io_type {input, output};
+
+	ArgumentBase() : io(ArgumentBase::input) {};
 	ArgumentBase(int type);
 	virtual ~ArgumentBase();
 
@@ -36,11 +39,17 @@ public:
 	int getType() const;
 	void setType(int type);
 
-	void setName(std::string name) {this->name = name;};
-	std::string getName(void) const {return name;};
+	void setName(std::string name);
+	std::string getName(void) const;
 
-	int getId() {return id;};
-	void setId(int id) {this->id = id;};
+	int getId();
+	void setId(int id);
+
+	io_type getIo();
+	void setIo(io_type io);
+
+	int getParent();
+	void setParent(int parent);
 
 	virtual std::string toString() = 0;
 
@@ -54,6 +63,13 @@ public:
 	static const int FLOAT = 4;
 	static const int RT = 5;
 	static const int FLOAT_ARRAY = 8;
+
+
+private:
+	// this field is here only because forward enum declaraion isn't allowed before c++0x
+	// otherwise, it would be below id.
+	// this is necessary since io_type must be a public type
+	io_type io;
 
 };
 
@@ -145,6 +161,8 @@ public:
 	virtual ArgumentBase* clone();
 
 	std::string toString() {return path;};
+
+	bool isFileInput;
 
 	int size();
 	int serialize(char *buff);

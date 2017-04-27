@@ -1,0 +1,136 @@
+Task$NAME$::Task$NAME$() {
+$INTERTASK_INST$
+}
+
+Task$NAME$::Task$NAME$(list<ArgumentBase*> args, RegionTemplate* inputRt) {
+	
+	int set_cout = 0;
+	for(ArgumentBase* a : args){
+$TASK_ARGS$
+	}
+	if (set_cout < args.size())
+		std::cout << __FILE__ << ":" << __LINE__ <<" Missing common arguments on Segmentation" << std::endl;
+
+$INTERTASK_INST$	
+}
+
+Task$NAME$::~Task$NAME$() {
+$TASK_DESTR$
+}
+
+bool Task$NAME$::run(int procType, int tid) {
+$INPUT_MAT_DR$
+$OUTPUT_MAT_DR$
+$INTERTASK_MAT$
+	uint64_t t1 = Util::ClockGetTimeProfile();
+
+	std::cout << "Task$NAME$ executing." << std::endl;	
+
+	$CMD$
+	
+	uint64_t t2 = Util::ClockGetTimeProfile();
+
+$OUTPUT_DR_RETURN$
+	std::cout << "Task $NAME$ time elapsed: "<< t2-t1 << std::endl;
+}
+
+void Task$NAME$::updateDR(RegionTemplate* rt) {
+$UPDATE_MAT_DR$
+}
+
+void Task$NAME$::updateInterStageArgs(ReusableTask* t) {
+	// verify if the tasks are compatible
+	if (dynamic_cast<Task$NAME$*>(t) == NULL) {
+		std::cout << "[Task$NAME$] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
+		return;
+	}
+
+$UPDATE_INTS_ARGS$
+}
+
+void Task$NAME$::resolveDependencies(ReusableTask* t) {
+	// verify if the task type is compatible
+$TYPE_CHECK$
+	
+$RESOLVE_DEPS$
+}
+
+bool Task$NAME$::reusable(ReusableTask* rt) {
+	Task$NAME$* t = (Task$NAME$*)(rt);
+	if (
+$REUSABLE_COND$
+		true) {
+
+		return true;
+	} else {
+		return false;
+	}
+	return true;
+}
+
+int Task$NAME$::size() {
+	return 
+$TASK_SIZE$
+		0;
+}
+
+int Task$NAME$::serialize(char *buff) {
+	int serialized_bytes = 0;
+	// copy id
+	int id = this->getId();
+	memcpy(buff+serialized_bytes, &id, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// copy parent task id
+	int pt = this->parentTask;
+	memcpy(buff+serialized_bytes, &pt, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+$TASK_SERIALIZE$
+	return serialized_bytes;
+}
+
+int Task$NAME$::deserialize(char *buff) {
+	int deserialized_bytes = 0;
+
+	// extract task id
+	this->setId(((int*)(buff+deserialized_bytes))[0]);
+	deserialized_bytes += sizeof(int);
+
+	// extract parent task id
+	this->parentTask = ((int*)(buff+deserialized_bytes))[0];
+	deserialized_bytes += sizeof(int);
+
+$TASK_DESERIALIZE$
+	return deserialized_bytes;
+}
+
+ReusableTask* Task$NAME$::clone() {
+	ReusableTask* retValue = new Task$NAME$();
+	int size = this->size();
+	char *buff = new char[size];
+	this->serialize(buff);
+	retValue->deserialize(buff);
+	delete[] buff;
+
+	return retValue;
+}
+
+void Task$NAME$::print() {
+$TASK_PRINT$
+}
+
+// Create the task factory
+ReusableTask* $NAME$Factory1(list<ArgumentBase*> args, RegionTemplate* inputRt) {
+	return new Task$NAME$(args, inputRt);
+}
+
+// Create the task factory
+ReusableTask* $NAME$Factory2() {
+	return new Task$NAME$();
+}
+
+// register factory with the runtime system
+bool registeredTask$NAME$2 = ReusableTask::ReusableTaskFactory::taskRegister("Task$NAME$", 
+	&$NAME$Factory1, &$NAME$Factory2);
+

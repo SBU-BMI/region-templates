@@ -1,839 +1,413 @@
 #include <stdio.h>
+#include <string.h>
+#include <sys/time.h>
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <map>
 #include <list>
-#include <regex>
+#include <vector>
+#include <cfloat>
+#include <algorithm>
 
-#include "json/json.h"
+#include <omp.h>
 
 #include "SysEnv.h"
 #include "Argument.h"
 #include "PipelineComponentBase.h"
 #include "RTPipelineComponentBase.h"
 #include "RegionTemplateCollection.h"
+#include "ReusableTask.hpp"
+
+#include "parsing.hpp"
+
+#include "fg_reuse/merging.hpp"
+#include "fg_reuse/fgm.hpp"
+
+#include "debug_funs.hpp"
 
 using namespace std;
 
-namespace parsing {
-enum port_type_t {
-	int_t, string_t, float_t, float_array_t, rt_t, error
-};
-}
-
-// global uid for any local(this file) entity
-int uid=1;
-int new_uid() {return uid++;}
-
-// general xml field structure
-typedef struct {
-	string type;
-	string data;
-} general_field_t;
-
-void mapprint(map<int, ArgumentBase*> mapp) {
-	for (map<int, ArgumentBase*>::iterator it = mapp.begin(); it != mapp.end(); ++it)
-	// for (map<int, ArgumentBase*>::iterator i=map.begin(); i!=map.end();i++)
-		cout << it->first << ":" << it->second->getName() << endl;
-}
-
-void mapprint(map<int, list<ArgumentBase*>> mapp) {
-	for (pair<int, list<ArgumentBase*>> p : mapp) {
-	// for (map<int, ArgumentBase*>::iterator i=map.begin(); i!=map.end();i++)
-		cout << p.first << ":" << endl;
-		for (ArgumentBase* a : p.second)
-			cout << "\t" << a->getName() << ":" << a->toString() << endl;
-	}
-}
-
-void mapprint(map<int, PipelineComponentBase*> mapp) {
-	for (map<int, PipelineComponentBase*>::iterator i=mapp.begin(); i!=mapp.end();i++)
-		cout << i->first << ":" << i->second->getName() << endl;
-}
-
-void listprint(list<ArgumentBase*> listt) {
-	for (list<ArgumentBase*>::iterator i=listt.begin(); i!=listt.end(); i++)
-		cout << (*i)->getName() << endl;
-}
-
-void listprint(list<int> listt) {
-	for (list<int>::iterator i=listt.begin(); i!=listt.end(); i++)
-		cout << (*i) << endl;
-}
-
-// BUG??? g++4.9 bad???
-//
-list<int>::iterator beg(list<int> l) {return l.begin();}
-list<int>::iterator endd(list<int> l) {return l.end();}
-list<int>::iterator inc(list<int>::iterator &i) {return i++;}
-//
-// for (map<int, PipelineComponentBase*>::iterator it = base_stages.begin(); it != base_stages.end(); ++it) {
-// 	cout << "stage: " << it->second->getName() << endl;
-// 	for (list<int>::iterator i = it->second->getOutputs().begin(); i != (it->second->getOutputs().end()); ++i) {
-// 		list<int> l = it->second->getOutputs();
-// 		// works
-// 		listprint(l);
-// 		// also works
-// 		listprint(it->second->getOutputs());
-// 		// this works too
-// 		for (list<int>::iterator i=l.begin(); i!=l.end(); i++)
-// 			cout << (*i) << endl;
-// 		// not this
-// 		for (list<int>::iterator i=it->second->getOutputs().begin(); i!=it->second->getOutputs().end(); i++)
-// 			cout << (*i) << endl;
-// 		// nor this
-// 		for (list<int>::iterator i=beg(it->second->getOutputs()); i!=endd(it->second->getOutputs()); inc(i))
-// 			cout << (*i) << endl;
-// 		// this also works
-// 		for (int i:it->second->getOutputs())
-// 			cout << i << endl;
-// 	}
-// }
-
-
-
-// Workflow parsing functions
-void get_inputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_inputs, 
-	map<int, list<ArgumentBase*>> &parameters_values);
-void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_outputs);
-void get_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
-	map<int, ArgumentBase*> &interstage_arguments);
-void connect_stages_from_file(FILE* workflow_descriptor, map<int, PipelineComponentBase*> &base_stages, 
-	map<int, ArgumentBase*> &interstage_arguments, map<int, ArgumentBase*> &input_arguments,
-	map<int, list<int>> &deps);
-list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
-	map<int, ArgumentBase*> workflow_inputs);
-void expand_arguments(map<int, ArgumentBase*> &ref_arguments, int copies, 
-	list<map<int, ArgumentBase*>> &copy_arguments);
-void expand_stages(map<int, PipelineComponentBase*> &base_stages, int copies, 
-	list<map<int, PipelineComponentBase*>> &all_stages);
-void iterative_full_merging(list<map<int, ArgumentBase*>> &all_inputs, list<map<int, ArgumentBase*>> &all_outputs, 
-	list<map<int, PipelineComponentBase*>> &all_stages, list<map<int, ArgumentBase*>> &all_interstage_arguments, 
-	map<int, ArgumentBase*> &interstage_arguments_ref, map<int, ArgumentBase*> &merged_arguments, 
-	map<int, ArgumentBase*> &merged_outputs, map<int, PipelineComponentBase*> &merged_stages);
-void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, map<int, ArgumentBase*> &merged_arguments, 
-	map<int, list<int>> &deps, RegionTemplateCollection *rts);
-
-// Workflow parsing helper functions
-list<string> line_buffer;
-int get_line(char** line, FILE* f);
-string get_workflow_name(FILE* workflow);
-string get_workflow_field(FILE* workflow, string field);
-void get_workflow_arguments(FILE* workflow, list<ArgumentBase*> &output_arguments);
-vector<general_field_t> get_all_fields(FILE* workflow, string start, string end);
-PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, string name);
-ArgumentBase* find_argument(map<int, ArgumentBase*> arguments, string name);
-ArgumentBase* new_typed_arg_base(string type);
-parsing::port_type_t get_port_type(string s);
-map<int, ArgumentBase*> cpy_ab_map(map<int, ArgumentBase*> &ref);
-template <class T>
-T map_pop(map<int, T> &m);
-int find_id_by_name(string name, map<int, ArgumentBase*> &ref);
-
-
-void expand_stages(const map<int, ArgumentBase*> &args, 
-	map<int, list<ArgumentBase*>> args_values, 
-	map<int, ArgumentBase*> &expanded_args,
-	map<int, PipelineComponentBase*> stages,
-	map<int, PipelineComponentBase*> &expanded_stages);
+// Workflow generation functions
+void generate_drs(RegionTemplate* rt, const map<int, ArgumentBase*> &expanded_args);
+void generate_drs(RegionTemplate* rt, PipelineComponentBase* stage,
+	const std::map<int, ArgumentBase*> &expanded_args);
+void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
+	map<int, ArgumentBase*> &merged_arguments, string name="tile");
+void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
+	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
+	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,
+	bool use_coarse_grain=true, bool clustered_generation=false);
 
 int main(int argc, char* argv[]) {
+
+	// verify arguments
+	if (argc > 1 && string(argv[1]).compare("-h") == 0) {
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-s] [-ncg]" << endl;
+		cout << "   -s - shuffle" << endl;
+		cout << "   -ncg - don't do coarse grain merging" << endl;
+		cout << "avaiable algorithms:" << endl;
+		cout << "0 - No fine grain merging algorithm" << endl;
+		cout << "1 - naive fine grain merging algorithm" << endl;
+		cout << "2 - Smart recursive cut fine grain merging algorithm" << endl;
+		cout << "3 - Reuse-Tree fine grain merging algorithm" << endl;
+		cout << "4 - Double-prunning reuse-tree fine grain merging algorithm" << endl;
+		return 0;
+	}
+	if (argc < 7) {
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-s] [-ncg]" << endl;
+		return 0;
+	}
+
+	int mpi_rank;
+	int mpi_size;
+	int mpi_val;
+
+	MPI_Init(&argc, &argv);
+
+	MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+	MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
 	// Handler to the distributed execution system environment
 	SysEnv sysEnv;
 
-	// Tell the system which libraries should be used
-	// sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+	if (mpi_rank == mpi_size-1) {
+		// get arguments
+		int max_bucket_size;
+		if (find_arg_pos("-b", argc, argv) == -1) {
+			cout << "Missing max bucket size." << endl;
+			return 0;
+		} else
+			max_bucket_size = atoi(argv[find_arg_pos("-b", argc, argv)+1]);
 
+		string dakota_file;
+		if (find_arg_pos("-dkt", argc, argv) == -1) {
+			cout << "Missing dakota file path." << endl;
+			return 0;
+		} else
+			dakota_file = argv[find_arg_pos("-dkt", argc, argv)+1];
 
-	FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
+		int merging_algorithm;
+		if (find_arg_pos("-ma", argc, argv) == -1) {
+			cout << "Missing merging algorithm option." << endl;
+			return 0;
+		} else
+			merging_algorithm = atoi(argv[find_arg_pos("-ma", argc, argv)+1]);
 
-	//------------------------------------------------------------
-	// Parse pipeline file
-	//------------------------------------------------------------
+		bool shuffle = find_arg_pos("-s", argc, argv) == -1 ? false : true;
 
-	// get all workflow inputs without their values, returning also the parameters 
-	// values (i.e list<ArgumentBase> values) on another map
-	map<int, ArgumentBase*> workflow_inputs;
-	map<int, list<ArgumentBase*>> parameters_values;
-	get_inputs_from_file(workflow_descriptor, workflow_inputs, parameters_values);
+		bool use_coarse_grain = find_arg_pos("-ncg", argc, argv) == -1 ? true : false;
 
-	cout << "workflow_inputs:" << endl;
-	for (pair<int, ArgumentBase*> p : workflow_inputs)
-		cout << p.first << ":" << p.second->getName() << endl;
+		// workflow file
+		FILE* workflow_descriptor = fopen("seg_example.t2flow", "r");
 
-	cout << endl << "parameters_values:" << endl;
-	for (pair<int, list<ArgumentBase*>> p : parameters_values) {
-		cout << "argument " << p.first << ":" << workflow_inputs[p.first]->getName() << ":" << endl;
-		for (ArgumentBase* a : p.second)
-			cout << "\t" << a->toString() << endl;
-	}
+		//------------------------------------------------------------
+		// Parse pipeline file
+		//------------------------------------------------------------
 
-	// get all workflow outputs
-	map<int, ArgumentBase*> workflow_outputs;
-	get_outputs_from_file(workflow_descriptor, workflow_outputs);
-	cout << endl << "workflow_outputs " << endl;
-	for (pair<int, ArgumentBase*> p : workflow_outputs)
-		cout << p.first << ":" << p.second->getName() << endl;
+		// get all workflow inputs without their values, returning also the parameters 
+		// values (i.e list<ArgumentBase> values) on another map
+		map<int, ArgumentBase*> workflow_inputs;
+		map<int, list<ArgumentBase*>> parameters_values;
+		get_inputs_from_file(workflow_descriptor, workflow_inputs, parameters_values);
 
-	// get all stages, also setting the uid from this context to Task (i.e Task::setId())
-	// also returns the list of arguments used
-	// the stages dependencies are also set here (i.e Task::addDependency())
-	map<int, PipelineComponentBase*> base_stages;
-	map<int, ArgumentBase*> interstage_arguments;
-	get_stages_from_file(workflow_descriptor, base_stages, interstage_arguments);
-	cout << endl << "base_stages:" << endl;
-	for (pair<int, PipelineComponentBase*> p : base_stages) {
-		cout << p.first << ":" << p.second->getName() << ", outputs: " << p.second->getOutputs().size() << endl << endl;
-		for (int i : p.second->getOutputs())
-			cout << "\t" << i << ":" << interstage_arguments[i]->getName() << endl;
-	}
+		// get all workflow outputs
+		map<int, ArgumentBase*> workflow_outputs;
+		get_outputs_from_file(workflow_descriptor, workflow_outputs);
 
-	cout << endl << "interstage_arguments:" << endl;
-	for (pair<int, ArgumentBase*> p : interstage_arguments)
-		cout << p.first << ":" << p.second->getName() << endl;
+		// get all stages, also setting the uid from this context to Task (i.e Task::setId())
+		// also returns the list of arguments used
+		// the stages dependencies are also set here (i.e Task::addDependency())
+		map<int, PipelineComponentBase*> base_stages;
+		map<int, ArgumentBase*> interstage_arguments;
+		get_stages_from_file(workflow_descriptor, base_stages, interstage_arguments);
 
-	// this map is a dependency structure: stage -> dependency_list
-	map<int, list<int>> deps;
-	
-	// connect the stages inputs/outputs 
-	connect_stages_from_file(workflow_descriptor, base_stages, interstage_arguments, workflow_inputs, deps);
-	map<int, ArgumentBase*> all_argument(workflow_inputs);
-	for (pair<int, ArgumentBase*> a : interstage_arguments)
-		all_argument[a.first] = a.second;
+		// this map is a dependency structure: stage -> dependency_list
+		map<int, list<int>> deps;
+		
+		// connect the stages inputs/outputs 
+		connect_stages_from_file(workflow_descriptor, base_stages, 
+			interstage_arguments, workflow_inputs, deps, workflow_outputs);
+		map<int, ArgumentBase*> all_argument(workflow_inputs);
+		for (pair<int, ArgumentBase*> a : interstage_arguments)
+			all_argument[a.first] = a.second;
 
-	cout << endl << "all_arguments:" << endl;
-	mapprint(all_argument);
+		//------------------------------------------------------------
+		// Iterative merging of stages
+		//------------------------------------------------------------
 
-	cout << endl << "deps:" << endl;
-	for (pair<int, list<int>> p : deps)
-		for (int d : p.second)
-			cout << "\t" << base_stages[p.first]->getName() << " depends on " << base_stages[d]->getName() << endl;
+		map<int, ArgumentBase*> args;
+		for (pair<int, ArgumentBase*> p : workflow_inputs)
+			args[p.first] = p.second;
+		for (pair<int, ArgumentBase*> p : interstage_arguments)
+			args[p.first] = p.second;
 
-// buggy buggggy
-/*for (map<int, PipelineComponentBase*>::iterator it = base_stages.begin(); it != base_stages.end(); ++it) {
-	cout << "stage: " << it->second->getName() << endl;
-	for (list<int>::iterator i = it->second->getOutputs().begin(); i != (it->second->getOutputs().end()); ++i) {
-		list<int> l = it->second->getOutputs();
-		// works
-		listprint(l);
-		// also works
-		listprint(it->second->getOutputs());
-		// this works too
-		for (list<int>::iterator i=l.begin(); i!=l.end(); i++)
-			cout << (*i) << endl;
-		// not this
-		for (list<int>::iterator i=it->second->getOutputs().begin(); i!=it->second->getOutputs().end(); i++)
-			cout << (*i) << endl;
-		// nor this
-		for (list<int>::iterator i=beg(it->second->getOutputs()); i!=endd(it->second->getOutputs()); inc(i))
-			cout << (*i) << endl;
-		// this also works
-		for (int i:it->second->getOutputs())
-			cout << i << endl;
-	}
-}*/
+		map<int, ArgumentBase*> expanded_args;
+		map<int, PipelineComponentBase*> expanded_stages;
 
+		// expand_stages(args, parameters_values, expanded_args, 
+		// 	base_stages, expanded_stages, workflow_outputs);
+		FILE* parameters_values_file = fopen(dakota_file.c_str(), "r");
+		generate_pre_defined_stages(parameters_values_file, args, base_stages, workflow_outputs, 
+			expanded_args, expanded_stages, use_coarse_grain);
 
-	cout << endl << "connected base_stages:" << endl;
-	for (pair<int, PipelineComponentBase*> p : base_stages) {
-		cout << p.first << ":" << p.second->getName() << endl;
-		cout << "\tinputs: " << p.second->getInputs().size() << endl << endl;
-		for (int i : p.second->getInputs())
-			cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
-		cout << "\toutputs: " << p.second->getOutputs().size() << endl << endl;
-		for (int i : p.second->getOutputs())
-			cout << "\t\t" << i << ":" << all_argument[i]->getName() << endl;
-	}
+		// mapprint(expanded_stages, expanded_args);
+		// mapprint(expanded_args);
 
-	//------------------------------------------------------------
-	// Add create all combinarions of parameters
-	//------------------------------------------------------------
+		// add arguments to each stage
+		add_arguments_to_stages(expanded_stages, expanded_args);
 
-	// expand parameter combinations returning a list of parameters sets each set contains 
-	// exactly one value for every input parameter. the agrument objects are ready to be used 
-	// on the workflow execution.
-	list<map<int, ArgumentBase*>> expanded_parameters;
-	expanded_parameters = expand_parameters_combinations(parameters_values, workflow_inputs);
-	int i = 0;
-	for (map<int, ArgumentBase*> parameter_set : expanded_parameters) {
-		cout << "Parameter set " << i++ << endl;
-		for (pair<int, ArgumentBase*> p : parameter_set) {
-			cout << "\t" << p.first << ":" << p.second->getName() << " = " << p.second->toString() << endl;
-		}
-		cout << endl;
-	}
+		map<int, PipelineComponentBase*> merged_stages;
 
-	// replicate outputs
-	list<map<int, ArgumentBase*>> all_outputs;
-	expand_arguments(workflow_outputs, expanded_parameters.size(), all_outputs);
-	i = 0;
-	for (map<int, ArgumentBase*> parameter_set : all_outputs) {
-		cout << "Output set " << i++ << endl;
-		for (pair<int, ArgumentBase*> p : parameter_set) {
-			cout << "\t" << p.first << ":" << p.second->getName() << endl;
-		}
-		cout << endl;
-	}
+		// mesure merging exec time
+		struct timeval start, end;
+		gettimeofday(&start, NULL);
 
-	// replicate interstage arguments
-	list<map<int, ArgumentBase*>> all_interstage_arguments;
-	expand_arguments(interstage_arguments, expanded_parameters.size(), all_interstage_arguments);
-	i = 0;
-	for (map<int, ArgumentBase*> parameter_set : all_interstage_arguments) {
-		cout << "Interstage arguments set " << i++ << endl;
-		for (pair<int, ArgumentBase*> p : parameter_set) {
-			cout << "\t" << p.first << ":" << p.second->getName() << endl;
-		}
-		cout << endl;
-	}
+		fgm::merge_stages_fine_grain(merging_algorithm, expanded_stages, base_stages, merged_stages, 
+			expanded_args, max_bucket_size, shuffle, dakota_file);
 
-	// replicate stages
-	list<map<int, PipelineComponentBase*>> all_stages;
-	expand_stages(base_stages, expanded_parameters.size(), all_stages);
-	i = 0;
-	for (map<int, PipelineComponentBase*> stage_set : all_stages) {
-		cout << "Stage set " << i++ << endl;
-		for (pair<int, PipelineComponentBase*> p : stage_set) {
-			cout << "\t" << p.first << ":" << p.second->getName() << " with inputs:" << endl;
-			for (int inp : p.second->getInputs()) {
-				cout << "\t\t" << inp << ":" << all_argument[inp]->getName() << endl;
+		gettimeofday(&end, NULL);
+
+		long merge_time = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
+		ofstream merge_time_f(dakota_file + "-b" + to_string(max_bucket_size) + "merge_time.log", ios::app);
+		merge_time_f << merge_time << "\t";
+		merge_time_f.close();
+
+		// resolve dependencies of reused stages
+		for (pair<int, PipelineComponentBase*> p : merged_stages) {
+			// add correct stage dependencies 
+			list<int> deps_tmp;
+			for (int i=0; i<p.second->getNumberDependencies(); i++) {
+				
+				// if the i-th dependency of p still exists and is reused, add the dependency of the 
+				//   reused stage to p
+				if (merged_stages.find(p.second->getDependency(i)) != merged_stages.end() && 
+						merged_stages[p.second->getDependency(i)]->reused != NULL) {
+
+					deps_tmp.emplace_back(merged_stages[p.second->getDependency(i)]->reused->getId());
+				}
 			}
-			cout << "\tand outputs: " << endl;
-			for (int out : p.second->getOutputs()) {
-				cout << "\t\t" << out << ":" << all_argument[out]->getName() << endl;
-			}
-		}
-		cout << endl;
-	}
+			for (int d : deps_tmp)
+				p.second->addDependency(d);
 
-	//------------------------------------------------------------
-	// Iterative merging of stages
-	//------------------------------------------------------------
-
-	// maybe try to merge the inputs, and then merge stages iteratively
-	// again, updating the uids (Task and local id)
-	map<int, ArgumentBase*> merged_arguments;
-	map<int, ArgumentBase*> merged_outputs;
-	map<int, PipelineComponentBase*> merged_stages;
-	iterative_full_merging(expanded_parameters, all_outputs, all_stages, all_interstage_arguments, 
-		interstage_arguments, merged_arguments, merged_outputs, merged_stages);
-
-	cout << endl << "merged stages" << endl;
-	for (pair<int, PipelineComponentBase*> p : merged_stages) {
-		cout << "\t" << p.first << ":" << p.second->getName() << " with inputs:" << endl;
-		for (int inp : p.second->getInputs()) {
-			cout << "\t\t" << inp << ":" << merged_arguments[inp]->getName() << endl;
-		}
-		cout << "\tand outputs: " << endl;
-		for (int out : p.second->getOutputs()) {
-			cout << "\t\t" << out << ":" << merged_arguments[out]->getName() << endl;
-		}
-	}
-	cout << endl;
-
-	//------------------------------------------------------------
-	// Add workflows to Manager to be executed
-	//------------------------------------------------------------
-
-	string inputFolderPath = "~/Desktop/images15";
-	RegionTemplateCollection* rts;
-	// rts = RTFromFiles(inputFolderPath);
-
-	// add arguments to each stage
-	add_arguments_to_stages(merged_stages, merged_arguments, deps, rts);
-
-	// add all stages to manager
-	// for (pair<int, PipelineComponentBase*> s : merged_stages)
-	// 	sysEnv.executeComponent(s.second);
-
-	// execute workflows
-	// sysEnv.startupExecution();
-
-	// get results
-	// for each ArgumentBase output of merged_outputs do
-	// 	cout << sysEnv.getComponentResultData(output.getId()) << endl;
-	// end
-
-	map<int, ArgumentBase*> args;
-	for (pair<int, ArgumentBase*> p : workflow_inputs)
-		args[p.first] = p.second;
-	for (pair<int, ArgumentBase*> p : interstage_arguments)
-		args[p.first] = p.second;
-
-	map<int, ArgumentBase*> expanded_args;
-	map<int, PipelineComponentBase*> expanded_stages;
-
-	expand_stages(args, parameters_values, expanded_args, base_stages, expanded_stages);
-
-	cout << endl<< "merged: " << endl;
-	for (pair<int, PipelineComponentBase*> p : expanded_stages) {
-		cout << "stage " << p.second->getId() << ":" << p.second->getName() << endl;
-		cout << "\tinputs: " << endl;
-		for (int i : p.second->getInputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << endl;
-		cout << "\toutputs: " << endl;
-		for (int i : p.second->getOutputs())
-			cout << "\t\t" << i << ":" << expanded_args[i]->getName() << endl;
-	}
-
-	cout << endl << "merged args" << endl;
-	for (pair<int, ArgumentBase*> p : expanded_args)
-		cout << "\t" << p.first << ":" << p.second->getName() << " = " << p.second->toString() << endl;
-
-}
-
-/***************************************************************/
-/***************** Workflow parsing functions ******************/
-/***************************************************************/
-
-// returns by reference a map of input arguments to an uid from 'workflow_descriptor' with the
-// list if all possible values each argument can get on a separate map, linked with the same uid
-void get_inputs_from_file(FILE* workflow_descriptor, 
-	map<int, ArgumentBase*> &workflow_inputs, 
-	map<int, list<ArgumentBase*>> &parameters_values) {
-
-	char *line = NULL;
-	size_t len = 0;
-
-	// initial ports section beginning and end
-	string ip("<inputPorts>");
-	string ipe("</inputPorts>");
-	
-	// ports section beginning and end
-	string p("<port>");
-	string pe("</port>");
-
-	// argument name, stored before to be consumed when the ArgumentBase type can be set
-	string name;
-
-	// go to the initial ports beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ip) == string::npos);
-	// cout << "port init begin: " << line << endl;
-
-	// keep getting ports until it reaches the end of initial ports
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ipe) == string::npos) {
-		// consumes the port beginning
-		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
-		// cout << "port begin: " << line << endl;
-
-		// finds the name field
-		name = get_workflow_name(workflow_descriptor);
-		// cout << "name: " << name << endl;
-
-		// finds the description field
-		string description = get_workflow_field(workflow_descriptor, "text");
-		// cout << "description: " << description << endl;
-
-		// parse the description to get the input value(s)
-		Json::Reader reader;
-		bool wellFormed;
-		Json::Value data;
-
-		wellFormed = reader.parse(description, data, false);
-		if(!wellFormed) {
-			cout << "Failed to parse JSON: " << description << endl << reader.getFormattedErrorMessages() << endl;
-			exit(-3);
-		}
-
-		// create the propper Argument object for each type case also getting
-		// the parameters' values
-		ArgumentBase* inp_arg;
-		list<ArgumentBase*> inp_values;
-		switch (get_port_type(data["type"].asString())) {
-			case parsing::int_t:
-				// create the argument
-				inp_arg = new ArgumentInt();
-				// cout << "int argument: " << name << ", values: " << endl;		
-				// get all possible values for the argument
-				for (int i=0; i<data["values"].size(); i++) {
-					ArgumentBase* val = new ArgumentInt(data["values"][i].asInt());
-					// cout << ((ArgumentInt*)val)->toString() << endl;
-					inp_values.emplace_back(val);
-				}
-				// cout << endl;
-				break;
-			case parsing::string_t:
-				// create the argument
-				inp_arg = new ArgumentString();
-				// cout << "string argument: " << name << ", values: " << endl;		
-				// get all possible values for the argument
-				for (int i=0; i<data["values"].size(); i++) {
-					ArgumentBase* val = new ArgumentString(data["values"][i].asString());
-					// cout << ((ArgumentString*)val)->toString() << endl;
-					inp_values.emplace_back(val);
-				}
-				// cout << endl;
-				break;
-			case parsing::float_t:
-				// create the argument
-				inp_arg = new ArgumentFloat();
-				// cout << "float argument: " << name << ", values: " << endl;		
-				// get all possible values for the argument
-				for (int i=0; i<data["values"].size(); i++) {
-					ArgumentBase* val = new ArgumentFloat(data["values"][i].asFloat());
-					// cout << ((ArgumentFloat*)val)->toString() << endl;
-					inp_values.emplace_back(val);
-				}
-				// cout << endl;
-				break;
-			case parsing::float_array_t:
-				// create the argument
-				inp_arg = new ArgumentFloatArray();
-				// cout << "floatarray argument: " << name << ", values: " << endl;		
-				// get all possible values for the argument
-				for (int i=0; i<data["values"].size(); i++) {
-					ArgumentBase* val = new ArgumentFloatArray();
-					// cout << "[";
-					for (int j=0; j<data["values"][i].size(); j++) {
-						ArgumentFloat temp(data["values"][i][j].asFloat());
-						((ArgumentFloatArray*)val)->addArgValue(temp);
-						// cout << temp.toString() << endl;
+			// connect correct output arguments
+			bool updated = true;
+			// cout << "Updating arguments of " << p.second->getId() << ":" << p.second->getName() << endl;
+			while (updated) {
+				updated = false;
+				for (ArgumentBase* a : p.second->getArguments()) {
+					if (a->getParent() != 0 && merged_stages[a->getParent()]->reused != NULL) {
+						// cout << "Replacing argument " << endl;
+						updated = true;
+						p.second->replaceArgument(a->getId(), 
+							merged_stages[a->getParent()]->reused->getArgumentByName(a->getName()));
+						break;
 					}
-					// cout << "]";
-					inp_values.emplace_back(val);
 				}
-				// cout << endl;
-				break;
-			case parsing::rt_t:
-				// create the argument
-				inp_arg = new ArgumentRT();
-				// cout << "string argument: " << name << ", values: " << endl;		
-				// get all possible values for the argument
-				for (int i=0; i<data["values"].size(); i++) {
-					ArgumentBase* val = new ArgumentRT(data["values"][i].asString());
-					// cout << ((ArgumentString*)val)->toString() << endl;
-					inp_values.emplace_back(val);
-				}
-				// cout << endl;
-				break;
-			default:
-				exit(-4);
-		}
-
-		// set inp_arg name and id
-		inp_arg->setName(name);
-		int arg_id = new_uid();
-		inp_arg->setId(arg_id);
-
-		// add input argument to map
-		workflow_inputs[arg_id] = inp_arg;
-
-		// add list of argument values to map
-		parameters_values[arg_id] = inp_values;
-
-		// consumes the port ending
-		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
-			// cout << "not port end: " << line << endl;
-		// cout << "port end: " << line << endl;
-	}
-}
-
-// returns by reference a map of output arguments, mapped by an uid, 'workflow_outputs'
-void get_outputs_from_file(FILE* workflow_descriptor, map<int, ArgumentBase*> &workflow_outputs) {
-
-	char *line = NULL;
-	size_t len = 0;
-
-	// initial ports section beginning and end
-	string ip("<outputPorts>");
-	string ipe("</outputPorts>");
-	
-	// ports section beginning and end
-	string p("<port>");
-	string pe("</port>");
-
-	// go to the initial ports beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ip) == string::npos);
-	// cout << "port init begin: " << line << endl;
-
-	// keep getting ports until it reaches the end of initial ports
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ipe) == string::npos) {
-		// consumes the port beginning
-		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
-		// cout << "port begin: " << line << endl;
-
-		// finds the name field
-		string name = get_workflow_name(workflow_descriptor);
-		// cout << "name: " << name << endl;
-
-		// finds the description field
-		string description = get_workflow_field(workflow_descriptor, "text");
-		// cout << "description: " << description << endl;
-
-		// parse the description to get the input value(s)
-		Json::Reader reader;
-		bool wellFormed;
-		Json::Value data;
-
-		wellFormed = reader.parse(description, data, false);
-		if(!wellFormed) {
-			cout << "Failed to parse JSON: " << description << endl << reader.getFormattedErrorMessages() << endl;
-			exit(-3);
-		}
-
-		// create the propper Argument object for each type case also getting
-		// the parameters' values
-		ArgumentBase* out_arg;
-		switch (get_port_type(data["type"].asString())) {
-			case parsing::int_t:
-				// create the argument
-				out_arg = new ArgumentInt();
-				// cout << "int output: " << name << endl;		
-				break;
-			case parsing::string_t:
-				// create the argument
-				out_arg = new ArgumentString();
-				// cout << "string output: " << name << endl;		
-				break;
-			case parsing::float_t:
-				// create the argument
-				out_arg = new ArgumentFloat();
-				// cout << "float output: " << name << endl;		
-				break;
-			case parsing::float_array_t:
-				// create the argument
-				out_arg = new ArgumentFloatArray();
-				// cout << "floatarray output: " << name << endl;		
-				break;
-			case parsing::rt_t:
-				// create the argument
-				out_arg = new ArgumentRT();
-				// cout << "string output: " << name << endl;		
-				break;
-			default:
-				exit(-4);
-		}
-		
-		out_arg->setName(name);
-		workflow_outputs[new_uid()] = out_arg;
-
-		// consumes the port ending
-		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
-			// get_line << "not port end: " << line << endl;
-		// cout << "port end: " << line << endl;
-	}
-	// cout << "port init end: " << line << endl;
-}
-
-// returns by reference the map of stages on its uid, 'base_stages', and also a map
-// of all output arguments of all stages on its uid, 'interstage_arguments'.
-void get_stages_from_file(FILE* workflow_descriptor, 
-	map<int, PipelineComponentBase*> &base_stages, 
-	map<int, ArgumentBase*> &interstage_arguments) {
-
-	char *line = NULL;
-	size_t len = 0;
-
-	string ps("<processors>");
-	string pse("</processors>");
-
-	string p("<processor>");
-	string pe("</processor>");
-
-	// go to the processors beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ps) == string::npos);
-		// cout << "not processor init begin: " << line << endl;
-	 // cout << "processor init begin: " << line << endl;
-
-	// keep getting single processors until it reaches the end of all processors
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pse) == string::npos) {
-		// consumes the processor beginning
-		while (string(line).find(p) == string::npos && get_line(&line, workflow_descriptor) != -1);
-		// cout << "processor begin: " << line << endl;
-
-		// get stage fields
-		string name = get_workflow_name(workflow_descriptor);
-		// cout << "name: " << name << endl;
-
-		// get stage command
-		string command = get_workflow_field(workflow_descriptor, "command");
-		// cout << "command: " << command << endl;
-
-		PipelineComponentBase* stage = PipelineComponentBase::ComponentFactory::getComponentFactory(command)();
-		stage->setName(name);
-
-		// get outputs and add them to the map of arguments
-		// list<string> inputs = get_workflow_ports(workflow_descriptor, "inputPorts");
-		// cout << "outputs:" << endl;
-		list<ArgumentBase*> outputs;
-		get_workflow_arguments(workflow_descriptor, outputs);
-		for(list<ArgumentBase*>::iterator i=outputs.begin(); i!=outputs.end(); i++) {
-			// cout << "\t" << (*i)->getId() << ":" << (*i)->getName() << endl;
-			interstage_arguments[(*i)->getId()] = *i;
-			stage->addOutput((*i)->getId());
-		}
-
-		int stg_id = new_uid();
-		// cout << "uid: " << stg_id << endl;
-		// setting task id
-		stage->setId(stg_id);
-		base_stages[stg_id] = stage;
-
-		// consumes the processor ending
-		while (get_line(&line, workflow_descriptor) != -1 && string(line).find(pe) == string::npos);
-			// cout << "not processor end: " << line << endl;
-		// cout << "processor end: " << line << endl;
-	}
-}
-
-// returns by reference the map of stages to its ids updated. each stage now has
-// the list of input ids
-void connect_stages_from_file(FILE* workflow_descriptor, 
-	map<int, PipelineComponentBase*> &base_stages, 
-	map<int, ArgumentBase*> &interstage_arguments,
-	map<int, ArgumentBase*> &input_arguments,
-	map<int, list<int>> &deps) {
-
-	char *line = NULL;
-	size_t len = 0;
-
-	string ds("<datalinks>");
-	string dse("</datalinks>");
-
-	string d("<datalink>");
-	string de("</datalink>");
-
-	string sink("<sink type=");
-	string sinke("</sink>");
-
-	string source("<source type=");
-	string sourcee("</source>");
-
-	// go to the datalinks beginning
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(ds) == string::npos);
-		// cout << "not datalink init begin" << line << endl;
-	// cout << "datalink init begin" << line << endl;
-
-	// keep getting single datalinks until it reaches the end of all datalinks
-	while (get_line(&line, workflow_descriptor) != -1 && string(line).find(dse) == string::npos) {
-		// consumes the datalink beginning
-		while (string(line).find(d) == string::npos && get_line(&line, workflow_descriptor) != -1);
-		// cout << "datalink begin" << line << endl;
-
-		// get sink and source fields
-		vector<general_field_t> all_sink_fields = get_all_fields(workflow_descriptor, sink, sinke);
-		vector<general_field_t> all_source_fields = get_all_fields(workflow_descriptor, source, sourcee);
-
-		// verify if it's a task sink instead of a workflow sink
-		if (all_sink_fields.size() != 1) {
-			// get the sink stage
-			PipelineComponentBase* sink_stg = find_stage(base_stages, all_sink_fields[0].data);
-			// cout << "stage " << sink_stg->getId() << ":" << sink_stg->getName() << " sink" << endl;
-
-			ArgumentBase* arg;
-			// check whether the source is from the workflow arguments or another stage
-			if (all_source_fields.size() == 1) {
-				// if source is workflow argument:
-				arg = find_argument(input_arguments, all_source_fields[0].data);
-				// cout << "source from workflow is " << arg->getId() << ":" << arg->getName() << endl;
-			} else {
-				// if the source is another stage
-				deps[sink_stg->getId()].emplace_back(find_stage(base_stages, all_source_fields[0].data)->getId());
-				arg = find_argument(interstage_arguments, all_source_fields[1].data);
-				// cout << "source from stage " << all_source_fields[0].data << " is " << arg->getId() << ":" << arg->getName() << endl;
 			}
+		}
 
-			// add the link to the sink stage
-			sink_stg->addInput(arg->getId());
-		} 
-		// else {
-		// 	cout << "workflow argument sink: " << all_sink_fields[0].data << endl;
-		// }
+		//------------------------------------------------------------
+		// Add workflows to Manager to be executed
+		//------------------------------------------------------------
 
-		// consumes the datalink ending
-		while (string(line).find(de) == string::npos && get_line(&line, workflow_descriptor) != -1);
-		// cout << "datalink end" << line << endl;
+		string inputFolderPath = "~/Desktop/images15";
+
+		for (int i=0; i<mpi_size-1; i++)
+			MPI_Send(&mpi_val, 1, MPI_INT, i, 99, MPI_COMM_WORLD);
+
+		// Tell the system which libraries should be used
+		sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
+
+		// add all stages to manager
+		// cout << endl << "executeComponent" << endl;
+		for (pair<int, PipelineComponentBase*> s : merged_stages) {
+			if (s.second->reused == NULL) {
+
+				// generate the data regions for each stage
+				generate_drs(((RTPipelineComponentBase*)s.second)->
+					getRegionTemplateInstance("tile"), s.second, expanded_args);
+
+				cout << "sent component " << s.second->getId() << ":" 
+					<< s.second->getName() << " sized " << s.second->size() << " to execute with args:" << endl;
+				cout << "\tall args: " << endl;
+				for (ArgumentBase* a : s.second->getArguments())
+					cout << "\t\t" << a->getId() << ":" << a->getName() << " = " 
+						<< a->toString() << " parent " << a->getParent() << endl;
+				cout << "\tinputs: " << endl;
+				for (int i : s.second->getInputs())
+					cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+						<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
+				cout << "\toutputs: " << endl;
+				for (int i : s.second->getOutputs())
+					cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+						<< expanded_args[i]->toString() << endl;
+				cout << "\tdependencies:" << endl;
+				for (int i=0; i<s.second->getNumberDependencies(); i++)
+					cout << "\t\t" << merged_stages[s.second->getDependency(i)]->getId() << ":" 
+						<< merged_stages[s.second->getDependency(i)]->getName() << endl;
+
+				// set task ID to enable dependency enforcement
+				((Task*)s.second)->setId(s.second->getId());
+
+				// workaround to make sure that the RTs, if any, won't leak on this part of the algorithm
+				s.second->setLocation(PipelineComponentBase::MANAGER_SIDE);
+				sysEnv.executeComponent(s.second);
+			}
+		}
+
+		// execute workflows
+		cout << endl << "startupExecution" << endl;
+		gettimeofday(&start, NULL);
+
+		sysEnv.startupExecution();
+
+		gettimeofday(&end, NULL);
+
+		long run_time = ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec));
+		ofstream run_time_f(dakota_file + "-b" + to_string(max_bucket_size) + "run_time.log", ios::app);
+		run_time_f << run_time << "\t";
+		run_time_f.close();
+
+		// get results
+		cout << endl << "Results: " << endl;
+		for (pair<int, ArgumentBase*> output : workflow_outputs) {
+			// cout << "\t" << output.second->getName() << ":" << output.second->getId() << " = " << 
+			// 	sysEnv.getComponentResultData(output.second->getId()) << endl;
+			char *resultData = sysEnv.getComponentResultData(output.second->getId());
+	        std::cout << "Diff Id: " << output.second->getId() << " resultData -  ";
+			if(resultData != NULL){
+	            std::cout << "size: " << ((int *) resultData)[0] << " Diff: " << ((float *) resultData)[1] <<
+	            " Secondary Metric: " << ((float *) resultData)[2] << std::endl;
+			}else{
+				std::cout << "NULL" << std::endl;
+			}
+		}
+	} else {
+		int flag;
+		do {
+			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
+				&flag, MPI_STATUS_IGNORE);
+			usleep(200000);
+		} while (!flag);
+		MPI_Recv(&mpi_val, 1, MPI_INT, MPI_ANY_SOURCE, 
+			MPI_ANY_TAG, MPI_COMM_WORLD,  MPI_STATUS_IGNORE);
+		sysEnv.startupSystem(argc, argv, "libcomponentnsdifffgo.so");
 	}
+
+	sysEnv.finalizeSystem();
+
 }
 
 /***************************************************************/
-/**************** Argument expansion functions *****************/
+/**************** Workflow generation functions ****************/
 /***************************************************************/
 
-// returns by value the list of expanded parameters sets. each parameter set
-// an be sent to the workflow to be executed. a parameter set is a map of aguments with
-// a possible value for that argument (parameter). 
-list<map<int, ArgumentBase*>> expand_parameters_combinations(map<int, list<ArgumentBase*>> parameters_values, 
-	map<int, ArgumentBase*> workflow_inputs) {
 
-	list<map<int, ArgumentBase*>> output;
+void generate_drs(RegionTemplate* rt, 
+	const std::map<int, ArgumentBase*> &expanded_args) {
 
-	list<ArgumentBase*> values_head = map_pop(parameters_values);
-	ArgumentBase* input_head = map_pop(workflow_inputs);
-
-	// halting condition
-	if (parameters_values.size() == 0) {
-		// cout << "halting on " << input_head->getName() << endl;
-		for (ArgumentBase* a : values_head) {
-			map<int, ArgumentBase*> inputs;
-			ArgumentBase* input = a->clone();
-			input->setName(input_head->getName());
-			input->setId(new_uid());
-			inputs[input->getId()] = input;
-			output.emplace_back(inputs);
+	// verify every argument
+	for (pair<int, ArgumentBase*> p : expanded_args) {
+		// if an argument is a region template data region
+		if (p.second->getType() == ArgumentBase::RT) {
+			if (((ArgumentRT*)p.second)->isFileInput) {
+				// create the data region and add it to the input region template
+				DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+				ddr2d->setName(p.second->getName());
+				std::ostringstream oss;
+				oss << p.first;
+				ddr2d->setId(oss.str());
+				ddr2d->setVersion(p.first);
+				ddr2d->setIsAppInput(true);
+				ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
+				ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
+				ddr2d->setInputFileName(p.second->toString());
+				rt->insertDataRegion(ddr2d);
+			}
 		}
-
-		return output;
-	}
-	
-	// cout << "recurring on " << endl;
-	// mapprint(parameters_values);
-	// cout << endl;
-	list<map<int, ArgumentBase*>> next = expand_parameters_combinations(parameters_values, workflow_inputs);
-	for (ArgumentBase* a : values_head) {
-		// list<map<int, ArgumentBase*>> next_copy = copt(next);
-		ArgumentBase* input_copy = a->clone();
-		input_copy->setName(input_head->getName());
-		input_copy->setId(new_uid());
-
-		for (map<int, ArgumentBase*> p : next) {
-			map<int, ArgumentBase*> updated_arguments = cpy_ab_map(p);
-			updated_arguments[input_copy->getId()] = input_copy;
-			output.emplace_back(updated_arguments);
-		}
-		
-	}
-
-	return output;
-}
-
-// returns by reference a list of copied outputs.
-void expand_arguments(map<int, ArgumentBase*> &ref_arguments, int copies, 
-	list<map<int, ArgumentBase*>> &copy_arguments) {
-
-	for (int i=0; i<copies; i++) {
-		map<int, ArgumentBase*> cpy = cpy_ab_map(ref_arguments);
-		copy_arguments.emplace_back(cpy);
 	}
 }
 
-void expand_stages(map<int, PipelineComponentBase*> &base_stages, int copies, 
-	list<map<int, PipelineComponentBase*>> &all_stages) {
+void generate_drs(RegionTemplate* rt, PipelineComponentBase* stage,
+	const std::map<int, ArgumentBase*> &expanded_args) {
 
-	for (int i=0; i<copies; i++) {
-		map<int, PipelineComponentBase*> cpy;
-		for (pair<int, PipelineComponentBase*> pcb : base_stages) {
-			// clone basic info
-			PipelineComponentBase* pcb_cpy = pcb.second->clone();
-			
-			// set name and id
-			pcb_cpy->setName(pcb.second->getName());
-			pcb_cpy->setId(new_uid());
+	// verify every argument
+	for (int inp : stage->getInputs()) {
+		// if an argument is a region template data region
+		if (expanded_args.at(inp)->getType() == ArgumentBase::RT) {
+			// if (((ArgumentRT*)expanded_args.at(inp))->isFileInput) {
+				// create the data region and add it to the input region template
+				DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+				ddr2d->setName(expanded_args.at(inp)->getName());
+				std::ostringstream oss;
+				oss << inp;
+				ddr2d->setId(oss.str());
+				ddr2d->setVersion(inp);
+				ddr2d->setIsAppInput(true);
+				ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
+				ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
+				ddr2d->setInputFileName(expanded_args.at(inp)->toString());
+				rt->insertDataRegion(ddr2d);
+			// }
+		}
+	}
+}
 
-			// copy input list
-			for (int inp : pcb.second->getInputs())
-				pcb_cpy->addInput(inp);
+void add_arguments_to_stages(std::map<int, PipelineComponentBase*> &merged_stages, 
+	std::map<int, ArgumentBase*> &merged_arguments, string name) {
 
-			// copy output list
-			for (int out : pcb.second->getOutputs())
-				pcb_cpy->addOutput(out);
+	int i=0;
+	for (pair<int, PipelineComponentBase*>&& stage : merged_stages) {
+		// create the RT isntance
+		RegionTemplate *rt = new RegionTemplate();
+		rt->setName(name);
 
-			cpy[pcb_cpy->getId()] = pcb_cpy;
+		// add input arguments to stage, adding them as RT as needed
+		for (int arg_id : stage.second->getInputs()) {
+			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
+			new_arg->setParent(merged_arguments[arg_id]->getParent());
+			stage.second->addArgument(new_arg);
+			if (new_arg->getType() == ArgumentBase::RT) {
+				// std::cout << "input RT : " << merged_arguments[arg_id]->getName() << std::endl;
+				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
+				if (((RTPipelineComponentBase*)stage.second)->
+						getRegionTemplateInstance(rt->getName()) == NULL) {
+					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
+				}
+				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(
+					rt->getName(), new_arg->getName(), RTPipelineComponentBase::INPUT);
+			}
+			if (merged_arguments[arg_id]->getParent() != 0) {
+				// verify if the dependency stage was reused
+				int parent = merged_arguments[arg_id]->getParent();
+				// std::cout << "[before]Dependency: " << stage.second->getId() << ":" << stage.second->getName()
+				// 	<< " ->addDependency( " << parent << " )" << std::endl;
+				if (merged_stages[merged_arguments[arg_id]->getParent()]->reused != NULL)
+					parent = merged_stages[merged_arguments[arg_id]->getParent()]->reused->getId();
+				// std::cout << "Dependency: " << stage.second->getId() << ":" << stage.second->getName()
+				// 	<< " ->addDependency( " << parent << " )" << std::endl;
+				((RTPipelineComponentBase*)stage.second)->addDependency(parent);
+			}
 		}
 
-		all_stages.emplace_back(cpy);
+		// add output arguments to stage, adding them as RT as needed
+		for (int arg_id : stage.second->getOutputs()) {
+			ArgumentBase* new_arg = merged_arguments[arg_id]->clone();
+			new_arg->setParent(merged_arguments[arg_id]->getParent());
+			new_arg->setIo(ArgumentBase::output);
+			stage.second->addArgument(new_arg);
+			if (merged_arguments[arg_id]->getType() == ArgumentBase::RT) {
+				// std::cout << "output RT : " << merged_arguments[arg_id]->getName() << std::endl;
+				// insert the region template on the parent stage if the argument is a DR and if the RT wasn't already added
+				if (((RTPipelineComponentBase*)stage.second)->getRegionTemplateInstance(rt->getName()) == NULL)
+					((RTPipelineComponentBase*)stage.second)->addRegionTemplateInstance(rt, rt->getName());
+				((RTPipelineComponentBase*)stage.second)->addInputOutputDataRegion(rt->getName(), 
+					merged_arguments[arg_id]->getName(), RTPipelineComponentBase::OUTPUT);
+			}
+		}
 	}
 }
 
@@ -841,333 +415,59 @@ void expand_stages(map<int, PipelineComponentBase*> &base_stages, int copies,
 /********* Workflow merging and preparation functions **********/
 /***************************************************************/
 
-void iterative_full_merging(list<map<int, ArgumentBase*>> &all_inputs, 
-	list<map<int, ArgumentBase*>> &all_outputs, 
-	list<map<int, PipelineComponentBase*>> &all_stages, 
-	list<map<int, ArgumentBase*>> &all_interstage_arguments, 
-	map<int, ArgumentBase*> &interstage_arguments_ref, 
-	map<int, ArgumentBase*> &merged_arguments, 
-	map<int, ArgumentBase*> &merged_outputs,
-	map<int, PipelineComponentBase*> &merged_stages) {
+double str2d (string s) {
+	istringstream os(s);
+	double d;
+	os >> d;
+	return d;
+}
 
-	list<map<int, ArgumentBase*>>::iterator inputs_it = all_inputs.begin();
-	list<map<int, ArgumentBase*>>::iterator outputs_it = all_outputs.begin();
-	list<map<int, ArgumentBase*>>::iterator interstage_arguments_it = all_interstage_arguments.begin();
-
-	RegionTemplate* rt;
-
-	// assign the right arguments, inputs and outputs to each stage
-	int i=0;
-	for (map<int, PipelineComponentBase*> stages : all_stages) {
-		// cout << "starting stage " << i << endl;
-		int io_offset = inputs_it->begin()->first - 1;
-		int input_lim = inputs_it->size();
-		int output_lim = inputs_it->size() + outputs_it->size();
-
-		rt = NULL;
-
-		// cout << "io_offset " << io_offset << endl;
-		// cout << "input_lim " << input_lim << endl;
-		// cout << "output_lim " << output_lim << endl;
-
-		// update all arguments ids
-		for (pair<int, PipelineComponentBase*> stage : stages) {
-			// cout << "\tstage " << stage.first << ":" << stage.second->getName() << endl;
-			// replace all inputs and outputs ids
-			for (int inp : stage.second->getInputs()) {
-				if (inp <= input_lim) {
-					// cout << "\t\treg_input" << endl;
-					stage.second->replaceInput(inp, inp+io_offset);
-					// cout << "\t\tinput " << inp << " swaped with " << inp+io_offset << endl;
-				} else {
-					// cout << "\t\targ_input" << endl;
-					int new_inp = find_id_by_name(interstage_arguments_ref[inp]->getName(), 
-						*interstage_arguments_it);
-					stage.second->replaceInput(inp, new_inp);
-					// cout << "\t\tisa_input " << inp << new_inp << endl;
-				}
+ArgumentBase* gen_arg(string value, string type) {
+	ArgumentBase* arg;
+	char* token2;
+	switch (get_port_type(type)) {
+		case parsing::int_t:
+			arg = new ArgumentInt((int)str2d(value));
+			break;
+		case parsing::string_t:
+			arg = new ArgumentString(value);
+			break;
+		case parsing::float_t:
+			arg = new ArgumentFloat((float)str2d(value));
+			break;
+		case parsing::float_array_t:
+			arg = new ArgumentFloatArray();
+			token2 = strtok(const_cast<char*>(value.c_str()), "[],");
+			while (token2 != NULL) {
+				// convert value
+				ArgumentFloat f((float)str2d(token2));
+				((ArgumentFloatArray*)arg)->addArgValue(f);
+				token2 = strtok(NULL, "[],");
 			}
-			for (int out : stage.second->getOutputs()) {
-				if (out <= output_lim) {
-					stage.second->replaceOutput(out, out+io_offset);
-				} else {
-					int new_inp = find_id_by_name(interstage_arguments_ref[out]->getName(), 
-						*interstage_arguments_it);
-					stage.second->replaceOutput(out, new_inp);
-				}
-			}
-		}
-		inputs_it++;
-		outputs_it++;
-		interstage_arguments_it++;
-	}
-
-	// merge inputs
-
-
-	// merge all inputs, outputs and interstage arguments into one
-	for (map<int, ArgumentBase*> m : all_inputs) 
-		for (pair<int, ArgumentBase*> p : m)
-			merged_arguments[p.first] = p.second;
-	for (map<int, ArgumentBase*> m : all_outputs) {
-		for (pair<int, ArgumentBase*> p : m) {
-			merged_arguments[p.first] = p.second;
-			merged_outputs[p.first] = p.second;
-		}
-	}
-	for (map<int, ArgumentBase*> m : all_interstage_arguments) 
-		for (pair<int, ArgumentBase*> p : m)
-			merged_arguments[p.first] = p.second;
-
-	// merged_arguments
-
-	// bool changes = true;
-	// while (changes) {
-	// 	changes = false;
-
-	// 	// 
-	// }
-
-	merged_stages = all_stages.front();
-}
-
-void add_arguments_to_stages(map<int, PipelineComponentBase*> &merged_stages, 
-	map<int, ArgumentBase*> &merged_arguments,
-	map<int, list<int>> &deps,
-	RegionTemplateCollection *rts) {
-
-	int i=0;
-	RegionTemplate* rt;
-	for (pair<int, PipelineComponentBase*> stage : merged_stages) {
-		// add arguments to stage, adding them as RT as needed
-		for (int arg_id : stage.second->getInputs()) {
-			stage.second->addArgument(merged_arguments[arg_id]);
-			if (merged_arguments[arg_id]->getType() == ArgumentBase::STRING)
-				cout << "RT : " << merged_arguments[arg_id]->getName() << endl;
-				// if (rt == NULL)
-				//------------------------------------------------------------------------------------------------------- if rt == NULL then make a new one
-				// stage.second->addRegionTemplateInstance(rts->getRT(i), rts->getRT(i++)->getName());
-		}
-
-		// add dependencies
-		for (int d : deps[stage.second->getId()])
-			((RTPipelineComponentBase*)stage.second)->addDependency(d);
-	}
-
-}
-
-/***************************************************************/
-/************* Workflow parsing helper functions ***************/
-/***************************************************************/
-
-int get_line(char** line, FILE* f) {
-	char* nline;
-	size_t length=0;
-	if (line_buffer.empty()) {
-		if (getline(&nline, &length, f) == -1)
-			return -1;
-		string sline(nline);
-		size_t pos=string::npos;
-		while ((pos = sline.find("><")) != string::npos) {
-			line_buffer.emplace_back(sline.substr(0,pos+1));
-			sline = sline.substr(pos+1);
-		}
-		line_buffer.emplace_back(sline);
-	}
-
-	char* cline = (char*)malloc((line_buffer.front().length()+1)*sizeof(char*));
-	memcpy(cline, line_buffer.front().c_str(), line_buffer.front().length()+1);
-	*line = cline;
-	line_buffer.pop_front();
-	return strlen(*line);
-}
-
-string get_workflow_name(FILE* workflow) {
-	return get_workflow_field(workflow, "name");
-}
-
-string get_workflow_field(FILE* workflow, string field) {
-	char *line = NULL;
-	size_t len = 0;
-	
-	// create field regex
-	regex r ("<" + field + ">[\"\\:\\w {},.\\[\\]-]+<\\/" + field + ">");
-
-	// get a new line until name is found
-	while (get_line(&line, workflow) != -1) {
-		smatch match;
-		string s(line);
-		regex_search(s, match, r);
-
-		// cout << "line: " << s << endl;
-
-		// if got a name match
-		if (match.size() == 1) {
-			// cout << "field match: " << line << endl;
-			return s.substr(s.find("<" + field + ">")+field.length()+2, 
-				s.find("</" + field + ">")-s.find("<" + field + ">")-field.length()-2);
-		}
-	}
-
-	return nullptr;
-}
-
-void get_workflow_arguments(FILE* workflow, 
-	list<ArgumentBase*> &output_arguments) {
-
-	char *line = NULL;
-	size_t len = 0;
-
-	// initial ports section beginning and end
-	string ie("<outputs>");
-	string iee("</outputs>");
-	
-	// ports section beginning and end
-	string e("<entry>");
-	string ee("</entry>");
-
-	// go to the initial entries beginning
-	while (get_line(&line, workflow) != -1 && string(line).find(ie) == string::npos);
-	// cout << "port init begin: " << line << endl;
-
-	// keep getting ports until it reaches the end of initial ports
-	while (get_line(&line, workflow) != -1 && string(line).find(iee) == string::npos) {
-		// consumes the port beginning
-		while (string(line).find(e) == string::npos && get_line(&line, workflow) != -1);
-		// cout << "port begin: " << line << endl;
-
-		// finds the name and field
-		string name = get_workflow_field(workflow, "string");
-
-		// generate an argument
-		string type = get_workflow_field(workflow, "path");
-		ArgumentBase* arg = new_typed_arg_base(type);
-		arg->setName(name);
-		arg->setId(new_uid());
-		output_arguments.emplace_back(arg);
-
-		// consumes the port ending
-		while (get_line(&line, workflow) != -1 && string(line).find(ee) == string::npos);
-		// 	cout << "not port end: " << line << endl;
-		// cout << "port end: " << line << endl;
-	}
-	// cout << "port init end: " << line << endl;
-}
-
-vector<general_field_t> get_all_fields(FILE* workflow, string start, string end) {
-	char *line = NULL;
-	size_t len = 0;
-	string type;
-	string field;
-	vector<general_field_t> fields;
-	general_field_t general_field;
-
-	// consumes the beginning
-	while (get_line(&line, workflow) != -1 && string(line).find(start) == string::npos);
-
-	// create general field regex
-	regex r ("<[\\w]+>[\\w ]+<\\/[\\w]+>");
-	
-	// keep fiding fields until the end
-	while (get_line(&line, workflow) != -1 && string(line).find(end) == string::npos) {
-		smatch match;
-		string s(line);
-		regex_search(s, match, r);
-
-		// if got a general field match
-		if (match.size() == 1) {
-			// cout << "general field match: " << line << endl;
-			type = s.substr(s.find("<")+1, s.find(">")-s.find("<")-1);
-			field = s.substr(s.find("<" + type + ">")+type.length()+2, s.find("</" + type + ">")-s.find("<" + type + ">")-type.length()-2);
-			// cout << "type: " << type << ", field: " << field << endl;
-			general_field.type = type;
-			general_field.data = field;
-			fields.push_back(general_field);
-		}
-	}
-	return fields;
-}
-
-PipelineComponentBase* find_stage(map<int, PipelineComponentBase*> stages, string name) {
-	for (pair<int, PipelineComponentBase*> p : stages)
-		if (p.second->getName().compare(name) == 0)
-			return p.second;
-	return NULL;
-}
-
-ArgumentBase* find_argument(map<int, ArgumentBase*> arguments, string name) {
-	for (pair<int, ArgumentBase*> p : arguments)
-		if (p.second->getName().compare(name) == 0)
-			return p.second;
-	return NULL;
-}
-
-// taken from: http://stackoverflow.com/questions/16388510/evaluate-a-string-with-a-switch-in-c
-constexpr unsigned int str2int(const char* str, int h = 0) {
-	return !str[h] ? 5381 : (str2int(str, h+1) * 33) ^ str[h];
-}
-
-ArgumentBase* new_typed_arg_base(string type) {
-	switch (str2int(type.c_str())) {
-		case str2int("integer"):
-			return new ArgumentInt();
-		case str2int("float"):
-			return new ArgumentFloat();
-		case str2int("string"):
-			return new ArgumentString();
-		case str2int("floatarray"):
-			return new ArgumentFloatArray();
-		case str2int("rt"):
-			return new ArgumentRT();
+			break;
+		case parsing::rt_t:
+			arg = new ArgumentRT(value);
+			break;
 		default:
-			return NULL;
+			exit(-4);
 	}
+	return arg;
 }
 
-parsing::port_type_t get_port_type(string s) {
-	switch (str2int(s.c_str())) {
-		case str2int("integer"):
-			return parsing::int_t;
-		case str2int("float"):
-			return parsing::float_t;
-		case str2int("string"):
-			return parsing::string_t;
-		case str2int("floatarray"):
-			return parsing::float_array_t;
-		case str2int("rt"):
-			return parsing::rt_t;
-		default:
-			return parsing::error;
+bool all_inps_in(const list<int>& inps, const map<int, ArgumentBase*>& args, 
+	const map<string, list<ArgumentBase*>>& input_arguments, 
+	const list<ArgumentBase*>& args_values) {
+
+	for (int i : inps) {
+		// cout << "checking arg " << args.at(i)->getId() << ":" << args.at(i)->getName() << endl;
+		if (input_arguments.find(args.at(i)->getName()) == input_arguments.end() &&
+			find_argument(args_values, args.at(i)->getName()) == NULL) {
+			// cout << "not here" << endl;
+			return false;
+		}
 	}
+	return true;
 }
-
-map<int, ArgumentBase*> cpy_ab_map(map<int, ArgumentBase*> &ref) {
-	map<int, ArgumentBase*> cpy;
-	for (pair<int, ArgumentBase*> p : ref) {
-		ArgumentBase* ab_cpy = p.second->clone();
-		ab_cpy->setName(p.second->getName());
-		ab_cpy->setId(new_uid());
-		cpy[ab_cpy->getId()] = ab_cpy;
-	}
-	return cpy;
-}
-
-template <class T>
-T map_pop(map<int, T> &m) {
-	typename map<int, T>::iterator i = m.begin();
-	T val = i->second;
-	m.erase(i);
-	return val;
-}
-
-int find_id_by_name(string name, map<int, ArgumentBase*> &ref) {
-	for (pair<int, ArgumentBase*> p : ref) {
-		if (name.compare(p.second->getName()) == 0)
-			return p.first;
-	}
-	return 0;
-}
-
 
 bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
 	for (int i : inps) {
@@ -1176,6 +476,230 @@ bool all_inps_in(list<int> inps, map<int, list<ArgumentBase*>> ref) {
 	}
 	return true;
 }
+
+void generate_pre_defined_stages(FILE* parameters_values_file, map<int, ArgumentBase*> args, 
+	map<int, PipelineComponentBase*> base_stages, map<int, ArgumentBase*>& workflow_outputs, 
+	map<int, ArgumentBase*>& expanded_args, map<int, PipelineComponentBase*>& expanded_stages,
+	bool use_coarse_grain, bool clustered_generation) {
+
+	cout << "[generate_pre_defined_stages]" << endl;
+
+	string pe("Parameters for evaluation");
+
+	char* line = NULL;
+	size_t length=0;
+
+	// map of arguments, ordered by name, containing all values of each argument
+	map<string, list<ArgumentBase*>> input_arguments;
+
+	// list of the stages' arguments
+	map<int, list<ArgumentBase*>> stages_arguments;
+
+	// interstage args
+	list<ArgumentBase*> args_values;
+
+	// list of stages created here
+	list<PipelineComponentBase*> stages_iterative;
+
+	while(getline(&line, &length, parameters_values_file) != -1) {
+		// go to the first pe
+		int r = 0;
+		while (string(line).find(pe) == string::npos && r != -1)
+			r = getline(&line, &length, parameters_values_file);
+
+		// finishes loop when the eof is reached
+		if (r == -1)
+			break;
+
+		list<ArgumentBase*> current_args;
+
+		// get all parameters of a workflow
+		while (true) {
+			getline(&line, &length, parameters_values_file);
+
+			// get parameter name, value and token
+			char* token = strtok(line, " \t");
+			string value(token);
+
+			// break loop if the line is empty with only a '\n'
+			if (value.compare("\n")==0)
+				break;
+
+			token = strtok(NULL, " \t");
+			string name(token);
+			token = strtok(NULL, " \t\n");
+			string type(token);
+
+			ArgumentBase* arg;
+
+			// verify if the argument is on the map and if it contains the current value
+			bool found = false;
+			for (ArgumentBase* a : input_arguments[name]) {
+				ArgumentBase* aa = gen_arg(value, type);
+
+				// cout << "[---] comparing " << a->getName() << ":" << a->toString() << " with " << name << ":" << aa->toString() << endl;
+				if (a->getName().compare(name)==0 && a->toString().compare(aa->toString())==0) {
+					found = true;
+					arg = a;
+					delete aa;
+					break;
+				}
+				delete aa;
+			}
+
+			char* token2;
+			if (!found) {
+				arg = gen_arg(value, type);
+
+				// set RT arguments as file inputs
+				if (arg->getType() == ArgumentBase::RT)
+					((ArgumentRT*)arg)->isFileInput = true;
+
+				// set remaining atributes
+				arg->setName(name);
+				arg->setId(new_uid());
+
+				input_arguments[name].emplace_back(arg);
+			}
+
+			current_args.emplace_back(arg);
+		}
+
+		stages_arguments[new_uid()] = current_args;
+	}
+
+	// show all generated args
+	// for (pair<string, list<ArgumentBase*>> p : input_arguments) {
+	// 	cout << "Argument " << p.first << " with values:" << endl;
+	// 	for (ArgumentBase* a : p.second) {
+	// 		cout << "\t" << a->getId() << ": " << a->toString() << endl;
+	// 	}
+	// }
+
+	// for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
+	// 	cout << "Argument set " << p.first << " with parameters:" << endl;
+	// 	for (ArgumentBase* a : p.second) {
+	// 		cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+	// 	}
+	// }
+
+
+	// keep expanding stages until there is no stage left
+	while (base_stages.size() != 0) {
+		// cout << "base_stages size: " << base_stages.size() << endl;
+		for (pair<int, PipelineComponentBase*> p : base_stages) {
+			// attempt to find a stage witch has all inputs expanded either on the workflow inputs or interstage ones
+			// cout << "checking stage " << p.second->getName() << endl;
+			if (all_inps_in(p.second->getInputs(), args, input_arguments, args_values)) {
+				// cout << "stage " << p.second->getName() << " has all inputs" << endl;
+
+				// A list of concatenated arg values, used as a quick way to verify if a stage with
+				// the same args was already created.
+				map<string, PipelineComponentBase*> arg_values_list;
+
+				// expands all input values of stage p
+				for (pair<int, list<ArgumentBase*>> as : stages_arguments) {
+					PipelineComponentBase* tmp = p.second->clone();
+					string arg_values = "";
+					// add all arguments from stages_arguments that belong to stage p.second
+					for (int inp_id : p.second->getInputs()) {
+						// cout << "checking input " << args[inp_id]->getName() << " of " << p.second->getName() << " with " << as.second.size() << " parameters" << endl;
+						for (ArgumentBase* a : as.second) {
+							// cout << "checking arg " << a->getName() << ":" << a->getId() << endl;
+							if (args.at(inp_id)->getName().compare(a->getName())==0) {
+								arg_values += to_string(a->getId());
+								tmp->addInput(a->getId());
+								// tmp->addArgument(a->clone());
+								// cout << "added arg " << a->getName() << ":" << a->getId() << " = " << a->toString() << endl;
+								break;
+							}
+						}
+					}
+
+					// cout << "[arg_values] " << arg_values << endl;
+					map<string, PipelineComponentBase*>::iterator it = arg_values_list.find(arg_values);
+					// verify if there is no other stage with the same values
+					if (it == arg_values_list.end() || !use_coarse_grain) {
+						// add current stage and args values to be compared later
+						arg_values_list[arg_values] = tmp;
+
+						// finishes to generate the stage
+						int id = new_uid();
+						tmp->setId(id);
+						tmp->setName(p.second->getName());
+						tmp->setLocation(PipelineComponentBase::WORKER_SIDE);
+
+						// generate outputs
+						for (int out_id : p.second->getOutputs()) {
+							int new_id = new_uid();
+							ArgumentBase* ab_cpy = args.at(out_id)->clone();
+							ab_cpy->setName(args.at(out_id)->getName());
+							ab_cpy->setId(new_id);
+							ab_cpy->setParent(tmp->getId());
+							tmp->replaceOutput(out_id, new_id);						
+							
+							// add stage's output arguments to current workflow's argument list
+							stages_arguments[as.first].emplace_back(ab_cpy);
+
+							// add output to interstage args map
+							args_values.emplace_back(ab_cpy);
+						}
+						
+						// add stage to final stages list
+						expanded_stages[tmp->getId()] = tmp;
+					} else {
+						// if the stage already exists, reuse it
+						for (int out_id : it->second->getOutputs()) {
+							// add reused stage's output arguments to current workflow's argument list
+							// cout << "reusing stage " << out_id << " from workflow "
+							// 	<< it->second->getId() << endl;
+							stages_arguments[as.first].emplace_back(find_argument(args_values, out_id));
+						}
+
+						// TODO: solve mem leaking
+						// delete tmp;
+					}
+				}
+
+				// remove stage descriptor since it was already solved and break the loop
+				base_stages.erase(p.first);
+				break;
+			}
+		}
+	}
+
+	// add stages_arguments inputs to expanded_args
+	for (pair<int, list<ArgumentBase*>> p : stages_arguments) {
+		for (ArgumentBase* a : p.second) {
+			expanded_args[a->getId()] = a;
+		}
+	}
+
+	// update the output arguments
+	map<int, ArgumentBase*> workflow_outputs_cpy = workflow_outputs;
+	while (workflow_outputs_cpy.size() != 0) {
+		// get the first output argument
+		ArgumentBase* old_arg = (workflow_outputs_cpy.begin())->second;
+
+		// remove the current, outdated, argument from final map
+		workflow_outputs.erase(old_arg->getId());
+		workflow_outputs_cpy.erase(old_arg->getId());
+
+		// add a copy of the old arg with the correct id to the final map for each repeated output
+		// cout << "checking output " << old_arg->getId() << ":" << old_arg->getName() << endl;
+		for (ArgumentBase* a : args_values) {
+			// cout << "comparing with output " << a->getId() << ":" << a->getName() << endl;
+			if (a->getName().compare(old_arg->getName()) == 0) {
+				// cout << "output found" << endl;
+				ArgumentBase* temp = old_arg->clone();
+				temp->setParent(old_arg->getParent());
+				temp->setId(a->getId());
+				workflow_outputs[temp->getId()] = temp;
+			}
+		}
+	}
+}
+
 
 // map<int, ArgumentBase*> args: all args, i.e inputs and interstate arguments.
 // map<int, list<ArgumentBase*>> args_values: the list of values for each argument. 
@@ -1188,21 +712,22 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 	map<int, list<ArgumentBase*>> args_values, 
 	map<int, ArgumentBase*> &expanded_args,
 	map<int, PipelineComponentBase*> stages,
-	map<int, PipelineComponentBase*> &expanded_stages) {
+	map<int, PipelineComponentBase*> &expanded_stages,
+	map<int, ArgumentBase*> &workflow_outputs) {
 
 	// cout << endl << "args:" << endl;
 	// mapprint(args);
 	// cout << endl;
 
-	// cout << endl << "arg_values:" << endl;
-	for (pair<int, list<ArgumentBase*>> p : args_values) {
-		// cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
-		for (ArgumentBase* a : p.second) {
-			a->setId(new_uid());
-			a->setName(args.at(p.first)->getName());
-			// cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
-		}
-	}
+	// // cout << endl << "arg_values:" << endl;
+	// for (pair<int, list<ArgumentBase*>> p : args_values) {
+	// 	// cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
+	// 	for (ArgumentBase* a : p.second) {
+	// 		a->setId(new_uid());
+	// 		a->setName(args.at(p.first)->getName());
+	// 		// cout << "\t" << a->getId() << ":" << a->getName() << " = " << a->toString() << endl;
+	// 	}
+	// }
 
 	// cout << endl << "stages:" << endl;
 	// mapprint(stages);
@@ -1241,6 +766,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 							// cout << "updating stage " << pt->getId() << ":" << pt->getName() << endl;
 							// clone pt basic infoinfoinfo
 							PipelineComponentBase* pt_cpy = pt->clone();
+							pt_cpy->setLocation(PipelineComponentBase::WORKER_SIDE);
 		
 							// set name and id
 							pt_cpy->setName(pt->getName());
@@ -1281,6 +807,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 						ArgumentBase* ab_cpy = args.at(out_id)->clone();
 						ab_cpy->setName(args.at(out_id)->getName());
 						ab_cpy->setId(new_id);
+						ab_cpy->setParent(pt->getId());
 						pt->replaceOutput(out_id, new_id);
 						temp.emplace_back(ab_cpy);
 					}
@@ -1309,12 +836,13 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 				// break loop of 'stages' since its content has changed
 				break;
 			} 
-			else
+			// else
 				// cout << "stage " << p.second->getName() << " have unmet dependencies " << endl;
 		}
 	}
 
 	// flatten the arg values into expanded_args
+	// cout << endl << "arg_values" << endl;
 	for (pair<int, list<ArgumentBase*>> p : args_values) {
 		// cout << "base argument " << p.first << ":" << args.at(p.first)->getName() << endl;
 		for (ArgumentBase* a : p.second) {
@@ -1322,4 +850,27 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 			expanded_args[a->getId()] = a;
 		}
 	}
+
+	// update the output arguments
+	map<int, ArgumentBase*> workflow_outputs_cpy = workflow_outputs;
+	while (workflow_outputs_cpy.size() != 0) {
+		// get the first output argument
+		ArgumentBase* old_arg = (workflow_outputs_cpy.begin())->second;
+
+		// get the list of parameters (i.e the number of copies and the final ids) of the outputs
+		list<ArgumentBase*> l = args_values[old_arg->getId()];
+
+		// remove the current, outdated, argument from final map
+		workflow_outputs.erase(old_arg->getId());
+		workflow_outputs_cpy.erase(old_arg->getId());
+
+		// add a copy of the old arg with the correct id to the final map for each repeated output
+		for (ArgumentBase* a : l) {
+			ArgumentBase* temp = old_arg->clone();
+			temp->setParent(old_arg->getParent());
+			temp->setId(a->getId());
+			workflow_outputs[temp->getId()] = temp;
+		}
+	}
 }
+

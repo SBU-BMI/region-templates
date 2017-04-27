@@ -20,6 +20,9 @@ PipelineComponentBase::PipelineComponentBase(){
 	this->setLocation(PipelineComponentBase::MANAGER_SIDE);
 	this->resultDataSize = 0;
 	this->resultData = NULL;
+
+	this->reused = NULL;
+	this->remove_outputs = false;
 	// this->input_arguments = new std::list<int>();
 	// this->output_arguments = new std::list<int>();
 }
@@ -35,9 +38,22 @@ PipelineComponentBase::~PipelineComponentBase() {
 	while(this->arguments.size()> 0){
 		ArgumentBase *aux = this->arguments.back();
 		this->arguments.pop_back();
-		delete aux;
+		if (remove_outputs || aux->getIo() == ArgumentBase::input) {
+			delete aux;
+		}
 	}
 	if(resultData != NULL) free(resultData);
+
+	for (std::map<std::string, std::list<ArgumentBase*> >::iterator p=tasksDesc.begin(); p!=tasksDesc.end(); p++) {
+		for (std::list<ArgumentBase*>::iterator a=p->second.begin(); a!=p->second.end(); a++) {
+			delete *a;
+		}
+	}
+
+	for (std::list<ReusableTask*>::iterator t=tasks.begin(); t!=tasks.end(); t++) {
+		if (*t)
+			delete *t;
+	}
 }
 
 void PipelineComponentBase::addArgument(ArgumentBase *arg)
@@ -56,7 +72,25 @@ ArgumentBase *PipelineComponentBase::getArgument(int index)
 	return retArg;
 }
 
+ArgumentBase *PipelineComponentBase::getArgumentById(int id) 
+{
+	for (vector<ArgumentBase*>::iterator i = this->arguments.begin(); i != this->arguments.end(); i++) {
+		if ((*i)->getId() == id) {
+			return *i;
+		}
+	}
+	return NULL;
+}
 
+ArgumentBase *PipelineComponentBase::getArgumentByName(std::string name)
+{
+	for (vector<ArgumentBase*>::iterator i = this->arguments.begin(); i != this->arguments.end(); i++) {
+		if ((*i)->getName().compare(name) == 0) {
+			return *i;
+		}
+	}
+	return NULL;
+}
 
 std::string PipelineComponentBase::getComponentName() const
 {
@@ -132,6 +166,24 @@ int PipelineComponentBase::size()
 	for(int i = 0; i < this->getArgumentsSize(); i++){
 		size_bytes+=this->getArgument(i)->size();
 	}
+
+	// add the number of tasks
+	size_bytes += sizeof(int);
+
+	for(list<ReusableTask*>::iterator t=this->tasks.begin(); t!=this->tasks.end(); t++){
+		// add the task id
+		size_bytes += sizeof(int);
+
+		// add the task name size
+		size_bytes += sizeof(int);
+
+		// add the task size
+		size_bytes += (*t)->size();
+
+		// add the task name
+		size_bytes += (*t)->getTaskName().size() * sizeof(char);
+	}
+
 	return size_bytes;
 }
 
@@ -170,6 +222,31 @@ int PipelineComponentBase::serialize(char *buff)
 	// serialize each of the arguments
 	for(int i = 0; i < number_args; i++){
 		serialized_bytes += this->getArgument(i)->serialize(buff+serialized_bytes);
+	}
+
+	// Copy the number of tasks
+	int number_tasks = this->tasks.size();
+	memcpy(buff+serialized_bytes, &number_tasks, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// serialize each of the tasks
+	for(list<ReusableTask*>::iterator t=this->tasks.begin(); t!=this->tasks.end(); t++){
+		// Copy the task id
+		int id = (*t)->getId();
+		memcpy(buff+serialized_bytes, &id, sizeof(int));
+		serialized_bytes+=sizeof(int);
+
+		// copy the task name size
+		int task_name_size = (*t)->getTaskName().size();
+		memcpy(buff+serialized_bytes, &task_name_size, sizeof(int));
+		serialized_bytes+=sizeof(int);
+
+		// copy the task name
+		memcpy(buff+serialized_bytes, (*t)->getTaskName().c_str(), task_name_size*sizeof(char) );
+		serialized_bytes+=task_name_size*sizeof(char);
+
+		// copy the task
+		serialized_bytes += (*t)->serialize(buff+serialized_bytes);
 	}
 
 //	std::cout << "PipelineComponentBase::serialize" << std::endl;
@@ -252,6 +329,9 @@ int PipelineComponentBase::deserialize(char *buff)
 			case ArgumentBase::FLOAT_ARRAY:
 				arg = new ArgumentFloatArray();
 				break;
+			case ArgumentBase::RT:
+				arg = new ArgumentRT();
+				break;
 			default:
 				std::cout << "Argument type not known: " << arg_type << std::endl;
 				exit(1);
@@ -263,6 +343,37 @@ int PipelineComponentBase::deserialize(char *buff)
 		this->addArgument(arg);
 
 	}
+
+	// deserialize the number of tasks
+	int number_tasks = ((int*)(buff+deserialized_bytes))[0];
+	deserialized_bytes+=sizeof(int);
+
+	// deserialize the tasks
+	for (int i=0; i<number_tasks; i++) {
+		// deserialize the task id
+		int id = ((int*)(buff+deserialized_bytes))[0];
+		deserialized_bytes+=sizeof(int);
+
+		// deserialize the task name size
+		int task_name_size = ((int*)(buff+deserialized_bytes))[0];
+		deserialized_bytes+=sizeof(int);
+
+		// deserialize the task name
+		char task_name[task_name_size+1];
+		task_name[task_name_size] = '\0';
+		memcpy(task_name, buff+deserialized_bytes, sizeof(char)*task_name_size);
+		deserialized_bytes += sizeof(char)*task_name_size;
+		std::string task_name_s = std::string(task_name);
+		// std::string task_name_s = "TaskSegmentation";
+
+		// deserialize the task
+		ReusableTask* task = ReusableTask::ReusableTaskFactory::getTaskFromName(task_name_s);
+		task->setTaskName(task_name_s);
+		task->setId(id);
+		deserialized_bytes += task->deserialize(buff+deserialized_bytes);
+		this->tasks.push_back(task);
+	}
+
 //	std::cout << "PipelineComponentBase::deserialize" << std::endl;
 	return deserialized_bytes;
 
@@ -276,6 +387,33 @@ PipelineComponentBase* PipelineComponentBase::clone() {
 	retValue->deserialize(buff);
 	delete buff;
 	return retValue;
+}
+
+void PipelineComponentBase::replaceArgument(int old_id, ArgumentBase* new_a) {
+	for (std::vector<ArgumentBase*>::iterator i=arguments.begin(); i!=arguments.end(); i++) {
+		if ((*i)->getId() == old_id) {
+			arguments.erase(i);
+			arguments.push_back(new_a);
+			break;
+		}
+	}
+	if (std::find(input_arguments.begin(), input_arguments.end(), old_id) 
+			!= input_arguments.end()) {
+		input_arguments.remove(old_id);
+		input_arguments.push_back(new_a->getId());
+	}
+
+	if (std::find(output_arguments.begin(), output_arguments.end(), old_id) 
+			!= output_arguments.end()) {
+		output_arguments.remove(old_id);
+		output_arguments.push_back(new_a->getId());
+	}
+}
+
+void PipelineComponentBase::printTasks() {
+	for (std::list<ReusableTask*>::iterator i = tasks.begin(); i!=tasks.end(); i++) {
+		(*i)->print();
+	}
 }
 
 void PipelineComponentBase::executeTask(Task *task)

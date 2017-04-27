@@ -7,6 +7,16 @@
 
 #include "RegionTemplate.h"
 
+void RegionTemplate::printRT() {
+	for (std::map<std::string, std::list<DataRegion*> >::iterator r = templateRegions.begin(); r!=templateRegions.end(); r++) {
+		cout << "RT: " << r->first << endl;
+		for (std::list<DataRegion*>::iterator d = r->second.begin(); d!=r->second.end(); d++) {
+			cout << "\tDR: " << (*d)->getName() << endl;
+		}
+	}
+}
+
+
 RegionTemplate::RegionTemplate() {
 //	lazyRead = false;
 	this->setLazyRead(false);
@@ -264,7 +274,7 @@ int RegionTemplate::deserialize(char* buff) {
 	// Extract number of data regions
 	int regionSize = ((int*)(buff+deserialized_bytes))[0];
 	deserialized_bytes += sizeof(int);
-	std::cout << "\tnDataRegions deserialize:"<< regionSize << std::endl;
+	// std::cout << "\tnDataRegions deserialize:"<< regionSize << std::endl;
 	// extract each of the data regions
 	for(int i = 0; i < regionSize; i++){
 		// create data region: assuming that it is a 2D. Might not be the case.

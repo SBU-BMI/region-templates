@@ -92,6 +92,8 @@ public:
 	bool isLazyRead() const;
 	void setLazyRead(bool lazyRead);
 
+	void printRT();
+	
 };
 
 #ifdef MATLAB_INTEGRATION

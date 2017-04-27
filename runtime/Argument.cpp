@@ -8,25 +8,126 @@
 #include "Argument.h"
 #include <sstream>
 
-ArgumentBase::ArgumentBase(int type) {
+ArgumentBase::ArgumentBase(int type) : io(ArgumentBase::input), parent(0) {
 	this->type=type;
 }
 
+void ArgumentBase::setName(std::string name) {
+	this->name = name;
+}
+
+std::string ArgumentBase::getName(void) const {
+	return name;
+}
+
+int ArgumentBase::getId() {
+	return id;
+}
+
+void ArgumentBase::setId(int id) {
+	this->id = id;
+}
+
+ArgumentBase::io_type ArgumentBase::getIo() {
+	return io;
+}
+
+void ArgumentBase::setIo(io_type io) {
+	this->io = io;
+}
+
+int ArgumentBase::getParent() {
+	return parent;
+}
+
+void ArgumentBase::setParent(int parent) {
+	this->parent = parent;
+}
+
 int ArgumentBase::size()
-{
-	return (sizeof(int));
+{	
+	// starts with the size of the type
+	int arg_size = sizeof(int);
+
+	// used to store the id
+	arg_size+=sizeof(int);
+
+	// used to store the io type
+	arg_size+=sizeof(io_type);
+
+	// used to store the size of the name stored
+	arg_size+=sizeof(int);
+
+	// the actual size of the name
+	arg_size+=sizeof(char) * this->name.size();
+	
+	return arg_size;
 }
 
 int ArgumentBase::serialize(char *buff)
 {
+	// add type value
+	int serialized_bytes = sizeof(int);
 	((int*)buff)[0] = this->getType();
-	return ArgumentBase::size();
+
+	// add id value
+	int id = this->getId();
+	memcpy(buff+serialized_bytes, &id, sizeof(int));
+	serialized_bytes += sizeof(int);
+
+	// add io value
+	io_type io = this->getIo();
+	memcpy(buff+serialized_bytes, &io, sizeof(io_type));
+	serialized_bytes += sizeof(io_type);
+
+	// pack the size of the name
+	int string_size = this->name.size();
+	memcpy(buff+serialized_bytes, &string_size, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// serialize the name itself
+	memcpy(buff+serialized_bytes, this->name.c_str(), this->name.size()*sizeof(char));
+	serialized_bytes+=this->name.size()*sizeof(char);
+
+	return serialized_bytes;
 }
 
 int ArgumentBase::deserialize(char *buff)
 {
+	// get type
 	this->setType(((int*)buff)[0]);
-	return ArgumentBase::size();
+	int deserialized_bytes = sizeof(int);
+
+	// get id
+	int id;
+	memcpy(&id, buff+deserialized_bytes, sizeof(int));
+	deserialized_bytes+= sizeof(int);
+	this->setId(id);
+
+	// get io
+	io_type io;
+	memcpy(&io, buff+deserialized_bytes, sizeof(io_type));
+	deserialized_bytes+= sizeof(io_type);
+	this->setIo(io);
+
+	// get Size of the name
+	int string_size;
+	memcpy(&string_size, buff+deserialized_bytes, sizeof(int));
+	deserialized_bytes+= sizeof(int);
+
+	// create string to extract data from memory buffer
+	char string_value[string_size+1];
+	string_value[string_size] = '\0';
+
+	// copy name string from message buffer to local variable holding string terminator
+	memcpy(string_value, buff+deserialized_bytes, sizeof(char)*string_size);
+	deserialized_bytes+=sizeof(char)*string_size;
+
+	// init argument value from string extracted
+	this->setName(string_value);
+
+	// return total number of bytes extracted from message
+	return deserialized_bytes;
 }
 
 void ArgumentBase::setType(int type)
@@ -108,7 +209,7 @@ ArgumentBase* ArgumentString::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -193,7 +294,7 @@ ArgumentBase* ArgumentInt::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -262,7 +363,7 @@ ArgumentBase* ArgumentFloat::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -368,7 +469,7 @@ ArgumentBase* ArgumentFloatArray::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -386,21 +487,19 @@ std::string ArgumentFloatArray::toString() {
 	return out;
 }
 
-ArgumentRT::ArgumentRT() : path(""), ArgumentBase(ArgumentBase::RT){}
+ArgumentRT::ArgumentRT() : path(""), isFileInput(false), ArgumentBase(ArgumentBase::RT){}
 
-ArgumentRT::ArgumentRT(std::string path) : ArgumentBase(ArgumentBase::RT) {
-	this->setArgValue(path);
-}
+ArgumentRT::ArgumentRT(std::string path) : path(path), isFileInput(false), ArgumentBase(ArgumentBase::RT){}
 
 ArgumentRT::~ArgumentRT() {}
 
 
 std::string ArgumentRT::getArgValue() const {
-    return path;
+    return name;
 }
 
-void ArgumentRT::setArgValue(std::string path) {
-    this->path = path;
+void ArgumentRT::setArgValue(std::string name) {
+    this->name = name;
 }
 
 int ArgumentRT::serialize(char *buff) {
@@ -418,6 +517,10 @@ int ArgumentRT::serialize(char *buff) {
 	memcpy(buff+serialized_bytes, this->getArgValue().c_str(), this->getArgValue().size()*sizeof(char));
 	serialized_bytes+=this->getArgValue().size()*sizeof(char);
 
+	// pack the isFileInput var
+	memcpy(buff+serialized_bytes, &isFileInput, sizeof(bool));
+	serialized_bytes+=sizeof(bool);
+
 	return serialized_bytes;
 }
 
@@ -431,6 +534,9 @@ int ArgumentRT::size() {
 	// the actual size of the string
 	arg_size+=sizeof(char) * this->getArgValue().size();
 
+	// the size of the bool
+	arg_size+=sizeof(bool);
+
 	return arg_size;
 }
 
@@ -440,7 +546,7 @@ ArgumentBase* ArgumentRT::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 	return retValue;
 }
 
@@ -461,6 +567,10 @@ int ArgumentRT::deserialize(char *buff) {
 	// copy string from message buffer to local variable holding string terminator
 	memcpy(string_value, buff+deserialized_bytes, sizeof(char)*string_size);
 	deserialized_bytes+=sizeof(char)*string_size;
+
+	// get the isFileInput variable
+	memcpy(&isFileInput, buff+deserialized_bytes, sizeof(bool));
+	deserialized_bytes+=sizeof(bool);	
 
 	// init argument value from string extracted
 	this->setArgValue(string_value);

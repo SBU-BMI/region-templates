@@ -10,12 +10,14 @@
 
 #include <mpi.h>
 #include <string>
+#include <sstream>
 #include <dlfcn.h>
 #include <assert.h>
 #include "MessageTag.h"
 #include "PipelineComponentBase.h"
 #include "CallBackComponentExecution.h"
 #include "DataPack.h"
+#include "Util.h"
 
 #ifdef	WITH_DATA_SPACES
 extern "C" {

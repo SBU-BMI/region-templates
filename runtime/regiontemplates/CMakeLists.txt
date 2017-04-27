@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(RegionTemplate)
 
+add_definitions( -ggdb -gdwarf-2 )
+
 # The version number
 set(RegionTemplates_VERSION_MAJOR 1)
 set(RegionTemplates_VERSION_MINOR 0)
