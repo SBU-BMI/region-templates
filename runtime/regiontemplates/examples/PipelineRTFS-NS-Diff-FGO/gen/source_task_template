@@ -14,7 +14,9 @@ $TASK_ARGS$
 $INTERTASK_INST$	
 }
 
-Task$NAME$::~Task$NAME$() {}
+Task$NAME$::~Task$NAME$() {
+$TASK_DESTR$
+}
 
 bool Task$NAME$::run(int procType, int tid) {
 $INPUT_MAT_DR$
@@ -38,8 +40,8 @@ $UPDATE_MAT_DR$
 
 void Task$NAME$::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[Task$NAME$] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<Task$NAME$*>(t) == NULL) {
+		std::cout << "[Task$NAME$] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -109,7 +111,7 @@ ReusableTask* Task$NAME$::clone() {
 	char *buff = new char[size];
 	this->serialize(buff);
 	retValue->deserialize(buff);
-	delete buff;
+	delete[] buff;
 
 	return retValue;
 }

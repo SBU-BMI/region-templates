@@ -10,6 +10,7 @@
 #include <string>
 #include <sstream>
 #include <typeinfo>
+#include <typeindex>
 
 /**************************************************************************************/
 /**************************** PipelineComponent functions *****************************/
@@ -117,14 +118,14 @@ int Segmentation::run() {
 	map<int, ReusableTask*> prev_map;
 	list<ReusableTask*> ordered_tasks;
 	for (list<ReusableTask*>::reverse_iterator task=tasks.rbegin(); task!=tasks.rend(); task++) {
-		cout << "[Segmentation] sending task " << (*task)->getId() << endl;
+		// cout << "[Segmentation] sending task " << (*task)->getId() << endl;
 		// generate a task copy and update the DR, getting the actual data
 		ReusableTask* t = (*task)->clone();
 		t->updateDR(inputRt);
 
 		// solve dependency if it isn't the first task
 		if (t->parentTask != -1) {
-			cout << "\t\t\t[Segmentation] setting dep of " << t->getId() << " to " << prev_map[t->parentTask]->getId() << endl;
+			// cout << "\t\t\t[Segmentation] setting dep of " << t->getId() << " to " << prev_map[t->parentTask]->getId() << endl;
 			t->addDependency(prev_map[t->parentTask]->getId());
 			t->resolveDependencies(prev_map[t->parentTask]);
 		}
@@ -140,10 +141,6 @@ int Segmentation::run() {
 		t->mock = false;
 		this->executeTask(t);
 	}
-
-	long long t = Util::ClockGetTime();
-	// cout << "[PROFILER] Seg (id | time in ms): " << this->getId() << " " << t << endl;
-	cout << "[EXEC_ORDER] segmentation " << this->getId() << endl;
 
 	return 0;
 }
@@ -217,7 +214,7 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation0::~TaskSegmentation0() {
-	if (normalized_rt_temp.unique())
+	if (normalized_rt_temp.unique() && mock)
 		delete *normalized_rt_temp;
 }
 
@@ -241,21 +238,18 @@ bool TaskSegmentation0::run(int procType, int tid) {
 }
 
 void TaskSegmentation0::updateDR(RegionTemplate* rt) {
-	string name = (*this->normalized_rt_temp)->getName();
-	string sid = (*this->normalized_rt_temp)->getId();
-	int id = stoi((*this->normalized_rt_temp)->getId());
+	string name_normalized_rt_temp = (*this->normalized_rt_temp)->getName();
+	string sid_normalized_rt_temp = (*this->normalized_rt_temp)->getId();
+	int id_normalized_rt_temp = stoi((*this->normalized_rt_temp)->getId());
 	if (normalized_rt_temp != NULL)
 		delete *normalized_rt_temp;
-
-	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(
-		dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(name,sid, 0, id)));
-
+	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(name_normalized_rt_temp, sid_normalized_rt_temp, 0, id_normalized_rt_temp)));
 }
 
 void TaskSegmentation0::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation0] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation0*>(t) == NULL) {
+		std::cout << "[TaskSegmentation0] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -264,9 +258,6 @@ void TaskSegmentation0::updateInterStageArgs(ReusableTask* t) {
 
 void TaskSegmentation0::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
-	if (typeid(t) != typeid(TaskSegmentation1)) {
-		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
-	}
 
 	
 
@@ -470,7 +461,9 @@ TaskSegmentation1::TaskSegmentation1(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation1::~TaskSegmentation1() {}
+TaskSegmentation1::~TaskSegmentation1() {
+
+}
 
 bool TaskSegmentation1::run(int procType, int tid) {
 
@@ -497,8 +490,8 @@ void TaskSegmentation1::updateDR(RegionTemplate* rt) {
 
 void TaskSegmentation1::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation1*>(t) == NULL) {
+		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -509,8 +502,9 @@ void TaskSegmentation1::updateInterStageArgs(ReusableTask* t) {
 
 void TaskSegmentation1::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
-	if (typeid(t) != typeid(TaskSegmentation2)) {
-		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation0*>(t) == NULL) {
+		std::cout << "[TaskSegmentation1] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
+		return;
 	}
 
 	
@@ -640,7 +634,9 @@ TaskSegmentation2::TaskSegmentation2(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation2::~TaskSegmentation2() {}
+TaskSegmentation2::~TaskSegmentation2() {
+
+}
 
 bool TaskSegmentation2::run(int procType, int tid) {
 
@@ -666,8 +662,8 @@ void TaskSegmentation2::updateDR(RegionTemplate* rt) {
 
 void TaskSegmentation2::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation2*>(t) == NULL) {
+		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -680,8 +676,9 @@ void TaskSegmentation2::updateInterStageArgs(ReusableTask* t) {
 
 void TaskSegmentation2::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
-	if (typeid(t) != typeid(TaskSegmentation3)) {
-		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation1*>(t) == NULL) {
+		std::cout << "[TaskSegmentation2] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
+		return;
 	}
 
 	
@@ -822,7 +819,9 @@ TaskSegmentation3::TaskSegmentation3(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation3::~TaskSegmentation3() {}
+TaskSegmentation3::~TaskSegmentation3() {
+
+}
 
 bool TaskSegmentation3::run(int procType, int tid) {
 
@@ -847,8 +846,8 @@ void TaskSegmentation3::updateDR(RegionTemplate* rt) {
 
 void TaskSegmentation3::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation3*>(t) == NULL) {
+		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -860,8 +859,9 @@ void TaskSegmentation3::updateInterStageArgs(ReusableTask* t) {
 
 void TaskSegmentation3::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
-	if (typeid(t) != typeid(TaskSegmentation4)) {
-		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation2*>(t) == NULL) {
+		std::cout << "[TaskSegmentation3] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
+		return;
 	}
 
 	
@@ -996,7 +996,9 @@ TaskSegmentation4::TaskSegmentation4(list<ArgumentBase*> args, RegionTemplate* i
 	
 }
 
-TaskSegmentation4::~TaskSegmentation4() {}
+TaskSegmentation4::~TaskSegmentation4() {
+
+}
 
 bool TaskSegmentation4::run(int procType, int tid) {
 
@@ -1021,8 +1023,8 @@ void TaskSegmentation4::updateDR(RegionTemplate* rt) {
 
 void TaskSegmentation4::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation4*>(t) == NULL) {
+		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -1034,8 +1036,9 @@ void TaskSegmentation4::updateInterStageArgs(ReusableTask* t) {
 
 void TaskSegmentation4::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
-	if (typeid(t) != typeid(TaskSegmentation5)) {
-		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation3*>(t) == NULL) {
+		std::cout << "[TaskSegmentation4] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
+		return;
 	}
 
 	
@@ -1175,7 +1178,7 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation5::~TaskSegmentation5() {
-	if (normalized_rt_temp.unique())
+	if (normalized_rt_temp.unique() && mock)
 		delete *normalized_rt_temp;
 }
 
@@ -1198,21 +1201,18 @@ bool TaskSegmentation5::run(int procType, int tid) {
 }
 
 void TaskSegmentation5::updateDR(RegionTemplate* rt) {
-	string name = (*this->normalized_rt_temp)->getName();
-	string sid = (*this->normalized_rt_temp)->getId();
-	int id = stoi((*this->normalized_rt_temp)->getId());
+	string name_normalized_rt_temp = (*this->normalized_rt_temp)->getName();
+	string sid_normalized_rt_temp = (*this->normalized_rt_temp)->getId();
+	int id_normalized_rt_temp = stoi((*this->normalized_rt_temp)->getId());
 	if (normalized_rt_temp != NULL)
 		delete *normalized_rt_temp;
-
-	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(
-		dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(name,sid, 0, id)));
-
+	normalized_rt_temp = std::make_shared<DenseDataRegion2D*>(dynamic_cast<DenseDataRegion2D*>(rt->getDataRegion(name_normalized_rt_temp, sid_normalized_rt_temp, 0, id_normalized_rt_temp)));
 }
 
 void TaskSegmentation5::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation5*>(t) == NULL) {
+		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -1222,8 +1222,9 @@ void TaskSegmentation5::updateInterStageArgs(ReusableTask* t) {
 
 void TaskSegmentation5::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
-	if (typeid(t) != typeid(TaskSegmentation6)) {
-		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation4*>(t) == NULL) {
+		std::cout << "[TaskSegmentation5] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
+		return;
 	}
 
 	
@@ -1440,8 +1441,8 @@ rt->insertDataRegion(*this->segmented_rt_temp);
 
 void TaskSegmentation6::updateInterStageArgs(ReusableTask* t) {
 	// verify if the tasks are compatible
-	if (typeid(t) != typeid(this)) {
-		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks." << std::endl;
+	if (dynamic_cast<TaskSegmentation6*>(t) == NULL) {
+		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
 		return;
 	}
 
@@ -1451,6 +1452,10 @@ void TaskSegmentation6::updateInterStageArgs(ReusableTask* t) {
 
 void TaskSegmentation6::resolveDependencies(ReusableTask* t) {
 	// verify if the task type is compatible
+	if (dynamic_cast<TaskSegmentation5*>(t) == NULL) {
+		std::cout << "[TaskSegmentation6] " << __FILE__ << ":" << __LINE__ <<" incompatible tasks: needed " << typeid(this).name() << " and got " << typeid(t).name() << std::endl;
+		return;
+	}
 
 	
 	this->seg_nonoverlap = ((TaskSegmentation5*)t)->seg_nonoverlap;

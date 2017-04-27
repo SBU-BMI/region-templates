@@ -10,6 +10,7 @@
 #include <string>
 #include <sstream>
 #include <typeinfo>
+#include <typeindex>
 
 /**************************************************************************************/
 /**************************** PipelineComponent functions *****************************/
@@ -37,14 +38,14 @@ $STAGE_OUTPUT_DR$
 	map<int, ReusableTask*> prev_map;
 	list<ReusableTask*> ordered_tasks;
 	for (list<ReusableTask*>::reverse_iterator task=tasks.rbegin(); task!=tasks.rend(); task++) {
-		cout << "[Segmentation] sending task " << (*task)->getId() << endl;
+		// cout << "[Segmentation] sending task " << (*task)->getId() << endl;
 		// generate a task copy and update the DR, getting the actual data
 		ReusableTask* t = (*task)->clone();
 		t->updateDR(inputRt);
 
 		// solve dependency if it isn't the first task
 		if (t->parentTask != -1) {
-			cout << "\t\t\t[Segmentation] setting dep of " << t->getId() << " to " << prev_map[t->parentTask]->getId() << endl;
+			// cout << "\t\t\t[Segmentation] setting dep of " << t->getId() << " to " << prev_map[t->parentTask]->getId() << endl;
 			t->addDependency(prev_map[t->parentTask]->getId());
 			t->resolveDependencies(prev_map[t->parentTask]);
 		}
@@ -57,6 +58,7 @@ $STAGE_OUTPUT_DR$
 	// send all tasks to be executed
 	for (ReusableTask* t : ordered_tasks) {
 		cout << "\t\t\t[Segmentation] sending task " << t->getId() << endl;
+		t->mock = false;
 		this->executeTask(t);
 	}
 
