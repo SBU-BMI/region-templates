@@ -24,7 +24,9 @@ set(yibuilddir ${YI_BUILD_DIR})
 
 #includes
 include_directories(${yisrcdir}/)
+include_directories(${yibuilddir}/nscale/src/segment/)
 
+link_directories(${yibuilddir}/nscale-proj-prefix/src/nscale-proj-build/lib/)
 
 if (USE_ACTIVE_HARMONY)
     find_path(AH_SRC_DIR REQUIRED)
@@ -73,6 +75,7 @@ add_dependencies("${libname}" copyScriptsToPipelineRTFS-NS-Diff-AH-PRO-Yi-GIS)  
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
 target_link_libraries(${libname} regiontemplates)
+target_link_libraries(${libname} segment)
 set(CMAKE_CXX_FLAGS "-fopenmp")
 set(CMAKE_C_FLAGS "-fopenmp")
 

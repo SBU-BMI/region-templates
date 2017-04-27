@@ -25,6 +25,8 @@ set(yibuilddir ${YI_BUILD_DIR})
 #includes
 include_directories(${yisrcdir}/)
 
+include_directories(${yibuilddir}/nscale/src/segment/)
+
 
 if (USE_ACTIVE_HARMONY)
     include_directories(${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/include/)
@@ -36,7 +38,8 @@ link_directories(${Runtime_SOURCE_DIR})
 #link_directories(/Users/george/Documents/emory/nscale-sc13/nscale/lib)
 
 link_directories(${yibuilddir}/)
-
+# path to nscale
+link_directories(${yibuilddir}/nscale-proj-prefix/src/nscale-proj-build/lib/)
 # Create library with components implementation
 set(libname componenttuningyi)
 
@@ -71,6 +74,7 @@ add_dependencies("${libname}" copyScriptsToTuning)  #End of  Hadoopgis Dependenc
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
 target_link_libraries(${libname} regiontemplates)
+target_link_libraries(${libname} segment)
 set(CMAKE_CXX_FLAGS "-fopenmp")
 set(CMAKE_C_FLAGS "-fopenmp")
 
