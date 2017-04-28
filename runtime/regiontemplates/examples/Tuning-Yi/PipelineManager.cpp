@@ -136,13 +136,14 @@ int main(int argc, char **argv) {
 
     // If you want to peform a singleobjective tuning, just change the metric and time weights. Ex.: metricWeight=1 and timeWeight=0
 
-    cout << "RESULTS: " << result->getBestParamSet()->getScore() << endl;
+    cout << "RESULTS: " << result->getBestParamSet()->getScore() << " ";
     typedef std::map<std::string, double *>::iterator it_type;
     for (it_type iterator = result->getBestParamSet()->paramSet.begin();
          iterator != result->getBestParamSet()->paramSet.end(); iterator++) {
-        cout << iterator->first << " - " << *(iterator->second) << endl;
+        cout << iterator->first << " " << *(iterator->second) << " ";
 
     }
+    cout << endl;
 
     sleep(2);
     std::cout << "\t\tResults:" << std::endl;

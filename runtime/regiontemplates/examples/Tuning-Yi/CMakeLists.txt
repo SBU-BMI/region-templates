@@ -86,6 +86,9 @@ target_link_libraries("${libname}" ${OpenCV_LIBS} ${ITK_LIBRARIES})
 #Copy the cache-conf.xml file located in the example folder to the build folder everytime the program is compiled.
 add_custom_target(copyCacheConfToTuning COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
 
+#Copy run.sh to the build folder
+add_custom_target(copyRUNScriptToTuning COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/run.sh ${CMAKE_CURRENT_BINARY_DIR})
+
 # Create executable to be built from the files listed
 add_executable(Tuning-Yi PipelineManager.cpp)
 if (USE_ACTIVE_HARMONY)
