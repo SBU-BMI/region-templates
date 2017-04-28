@@ -96,7 +96,7 @@ if (USE_ACTIVE_HARMONY)
 	set(ahsrcdir ${AH_SRC_DIR})
     target_link_libraries(Tuning-Yi ${ahsrcdir}/lib/libharmony.a)
 endif (USE_ACTIVE_HARMONY)
-add_dependencies(Tuning-Yi copyCacheConfToTuning)
+add_dependencies(Tuning-Yi copyCacheConfToTuning copyRUNScriptToTuning)
 
 # Link the executable to the runtime system library
 target_link_libraries(Tuning-Yi runtimesystem "${libname}")
