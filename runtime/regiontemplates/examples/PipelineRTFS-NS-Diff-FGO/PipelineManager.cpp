@@ -45,8 +45,8 @@ int main(int argc, char* argv[]) {
 
 	// verify arguments
 	if (argc > 1 && string(argv[1]).compare("-h") == 0) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-s] [-ncg]" << endl;
-		cout << "   -s - shuffle" << endl;
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-f] [-ncg]" << endl;
+		cout << "   -f - shuffle" << endl;
 		cout << "   -ncg - don't do coarse grain merging" << endl;
 		cout << "avaiable algorithms:" << endl;
 		cout << "0 - No fine grain merging algorithm" << endl;
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	if (argc < 7) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-s] [-ncg]" << endl;
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-f] [-ncg]" << endl;
 		return 0;
 	}
 
@@ -96,7 +96,8 @@ int main(int argc, char* argv[]) {
 		} else
 			merging_algorithm = atoi(argv[find_arg_pos("-ma", argc, argv)+1]);
 
-		bool shuffle = find_arg_pos("-s", argc, argv) == -1 ? false : true;
+		bool shuffle = find_arg_pos("-f", argc, argv) == -1 ? false : true;
+		cout << "shuffle: " << shuffle << endl;
 
 		bool use_coarse_grain = find_arg_pos("-ncg", argc, argv) == -1 ? true : false;
 
