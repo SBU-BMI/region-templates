@@ -48,7 +48,8 @@ set(libjson json/jsoncpp.cpp)
 set(libstages stages/NormalizationComp.cpp stages/Segmentation.cpp stages/FeatureExtraction.cpp stages/TaskFeatures.cpp stages/DiffMaskComp.cpp)
 
 # Source files used by the Runtime System
-set(libcomponentssrcs fg_reuse/graph/min_cut.cpp fg_reuse/graph/reuse_tree.cpp fg_reuse/merging.cpp fg_reuse/fgm.cpp fg_reuse/cutting_algorithms.cpp parsing.cpp parsing_helper.cpp)
+set(libcomponentssrcs fg_reuse/graph/min_cut.cpp fg_reuse/graph/reuse_tree.cpp fg_reuse/merging.cpp fg_reuse/fgm.cpp fg_reuse/cutting_algorithms.cpp parsing.cpp parsing_helper.cpp
+fg_reuse/dynablaster.cpp)
 
 set(libcomparativeanalysis ../../comparativeanalysis/TaskDiffMask.cpp
             ../../comparativeanalysis/pixelcompare/PixelCompare.cpp)

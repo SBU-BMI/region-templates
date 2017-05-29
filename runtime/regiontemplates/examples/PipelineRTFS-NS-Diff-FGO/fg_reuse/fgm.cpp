@@ -2,7 +2,7 @@
 
 void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineComponentBase*> &all_stages, 
 	const std::map<int, PipelineComponentBase*> &stages_ref, std::map<int, PipelineComponentBase*> &merged_stages, 
-	std::map<int, ArgumentBase*> expanded_args, int max_bucket_size, bool shuffle, string dakota_filename) {
+	std::map<int, ArgumentBase*> expanded_args, int size_limit, bool shuffle, string dakota_filename) {
 
 	// attempt merging for each stage type
 	for (std::map<int, PipelineComponentBase*>::const_iterator ref=stages_ref.cbegin(); ref!=stages_ref.cend(); ref++) {
@@ -40,11 +40,10 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 		}
 
 		std::list<std::list<PipelineComponentBase*>> solution;
-		int max_cuts = ceil(current_stages.size()/max_bucket_size);
 
 		switch (algorithm) {
 			case 0:
-				// no fine grain merging - ok
+				// no fine grain merging
 				for (PipelineComponentBase* p : current_stages) {
 					std::list<PipelineComponentBase*> single_stage_bucket;
 					single_stage_bucket.emplace_back(p);
@@ -53,12 +52,12 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 				break;
 
 			case 1:
-				// naive merging - ok
+				// naive merging - size_limit is the max bucket size
 				for (std::list<PipelineComponentBase*>::iterator s=current_stages.begin(); s!=current_stages.end(); s++) {
 					int i;
 					std::list<PipelineComponentBase*> bucket;
 					bucket.emplace_back(*s);
-					for (i=1; i<ceil(max_bucket_size); i++) {
+					for (i=1; i<ceil(size_limit); i++) {
 						if ((++s)==current_stages.end())
 							break;
 						bucket.emplace_back(*s);
@@ -71,27 +70,34 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 				break;
 
 			case 2:
-				// smart recursive cut - ok
+				// smart recursive cut - size_limit is the max bucket size
 				solution = recursive_cut(current_stages, all_stages, 
-					max_bucket_size, max_cuts, expanded_args, ref->second->tasksDesc);
+					size_limit, ceil(current_stages.size()/size_limit), 
+					expanded_args, ref->second->tasksDesc);
 				break;
 
 			case 3:
-				// reuse-tree merging - ok
+				// reuse-tree merging - size_limit is the max bucket size
 				solution = reuse_tree_merging(current_stages, all_stages, 
-					max_bucket_size, expanded_args, ref->second->tasksDesc, false);
+					size_limit, expanded_args, ref->second->tasksDesc, false);
 				break;
 			
 			case 4:
-				// reuse-tree merging with double prunning
+				// reuse-tree merging with double prunning - size_limit is the max bucket size
 				solution = reuse_tree_merging(current_stages, all_stages, 
-					max_bucket_size, expanded_args, ref->second->tasksDesc, true);
+					size_limit, expanded_args, ref->second->tasksDesc, true);
 				break;
+			case 5:
+				// dynablaster merging
+				solution = db_merging(current_stages, all_stages, 
+					size_limit, expanded_args, ref->second->tasksDesc);
+				break;
+
 		}
 
 		// write merging solution
 		ofstream solution_file;
-		solution_file.open(dakota_filename + "-b" + std::to_string(max_bucket_size) + "merging_solution.log", ios::trunc);
+		solution_file.open(dakota_filename + "-b" + std::to_string(size_limit) + "merging_solution.log", ios::trunc);
 
 		std::cout << std::endl << "solution:" << std::endl;
 		solution_file << "solution:" << std::endl;
@@ -111,7 +117,7 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 
 		// write some statistics abou the solution
 		ofstream statistics_file;
-		statistics_file.open(dakota_filename + "-b" + std::to_string(max_bucket_size) + "merging_statistics.log", ios::trunc);
+		statistics_file.open(dakota_filename + "-b" + std::to_string(size_limit) + "merging_statistics.log", ios::trunc);
 
 		statistics_file << current_stages.size() << "\t";
 		statistics_file << current_stages.size()*ref->second->tasksDesc.size() << "\t";
