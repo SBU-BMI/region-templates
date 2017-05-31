@@ -20,6 +20,10 @@ time_weight=0
 max_iterations=100
 # -x metric used to compare ground thruth and generated mask:  dice, jaccard or dicenc. dicenc is the default metric. dicenc is that average metric that we discussed = (dice+dice not cool)/2.
 comparison_metric="dicenc"
+# -a input image extension for the program parser to look for. The name of the images and reference masks must be the same (apart from the extension)
+image_extension=".tiff"
+# -b reference mask extension. .txt for labeled masks, and .png for binary
+mask_extension=".txt"
 
 #input image extension
 input_image_extension=".tiff"
@@ -50,7 +54,6 @@ while getopts "u:i:f:d:m:t:r:x:a:b:" opt; do
         ;;
     esac
 done
-echo "input_ext: $input_image_extension reference_ext: $reference_mask_extension"
 
 command="mpirun --allow-run-as-root -n 2 ../Tuning-Yi -i $input_image_folder -f $tuning_algorithm -d $declumpin_method -m $quality_weight -t $time_weight -r $max_iterations -x $comparison_metric -a $input_image_extension -b $reference_mask_extension"
 
@@ -67,7 +70,7 @@ $command > outtuning.txt
 
 end_time=`date`
 
-# genarate JASON file
+# genarate JSON file
 echo "{" > $exec_id.json
 echo "\"executionid\":\"$exec_id\"," >> $exec_id.json
 echo "\"startdatetime\":\"$start_time\"," >> $exec_id.json

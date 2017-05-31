@@ -19,9 +19,11 @@
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
                          std::string &initPercent, int &declumpingType, double &metricWeight, double &timeWeight,
-                         std::string &metricType, int &numberOfIterations);
+                         std::string &metricType, int &numberOfIterations, std::string &imageExtension,
+                         std::string &maskExtension);
 
-RegionTemplateCollection *RTFromFiles(std::string inputFolderPath);
+RegionTemplateCollection *RTFromFiles(std::string inputFolderPath, std::string imageExtension,
+                                      std::string maskExtension);
 
 TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int max_number_of_tests,
                                       std::string &metricType,
@@ -58,6 +60,10 @@ int main(int argc, char **argv) {
 
     std::string metricType = "dicenc"; //default metric
 
+    std::string imageExtension = ".tiff"; //default image extension.
+    std::string maskExtension = ".txt"; //default mask extension. .txt for labeled masks or .png for binary masks.
+
+
     //Yi's default declumping type variable
     int declumpingType = DECLUMPING_TYPE_MEANSHIFT;
 
@@ -66,7 +72,7 @@ int main(int argc, char **argv) {
     std::vector<RegionTemplate *> inputRegionTemplates;
     RegionTemplateCollection *rtCollection;
     parseInputArguments(argc, argv, inputFolderPath, tuningPolicy, initPercent, declumpingType, metricWeight,
-                        timeWeight, metricType, max_number_of_tests);
+                        timeWeight, metricType, max_number_of_tests, imageExtension, maskExtension);
 
     if (declumpingType != DECLUMPING_TYPE_MEANSHIFT && declumpingType != DECLUMPING_TYPE_NO_DECLUMPING &&
         declumpingType != DECLUMPING_TYPE_WATERSHED) {
@@ -85,7 +91,7 @@ int main(int argc, char **argv) {
 
 
     // Create region templates description without instantiating data
-    rtCollection = RTFromFiles(inputFolderPath);
+    rtCollection = RTFromFiles(inputFolderPath, imageExtension, maskExtension);
 
     if(rtCollection->getNumRTs() == 0){
 	std::cout << "Collection size: " << rtCollection->getNumRTs() << std::endl;
@@ -200,7 +206,8 @@ namespace patch {
 
 void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::string &AHpolicy,
                          std::string &initPercent, int &declumpingType, double &metricWeight, double &timeWeight,
-                         std::string &metricType, int &numberOfIterations) {
+                         std::string &metricType, int &numberOfIterations, std::string &imageExtension,
+                         std::string &maskExtension) {
     // Used for parameters parsing
     for (int i = 0; i < argc - 1; i++) {
         if (argv[i][0] == '-' && argv[i][1] == 'i') {
@@ -227,59 +234,127 @@ void parseInputArguments(int argc, char **argv, std::string &inputFolder, std::s
         if (argv[i][0] == '-' && argv[i][1] == 'r') {
             numberOfIterations = atoi(argv[i + 1]);
         }
+        if (argv[i][0] == '-' && argv[i][1] == 'a') {
+            imageExtension = (argv[i + 1]); // ex.: ".tiff"
+        }
+        if (argv[i][0] == '-' && argv[i][1] == 'b') {
+            maskExtension = (argv[i + 1]); // ex.: " .png" for binary mask or ".txt" for labeled mask
+        }
     }
 }
 
+bool compareNat(const std::string &a, const std::string &b) {
+    if (a.empty())
+        return true;
+    if (b.empty())
+        return false;
+    if (std::isdigit(a[0]) && !std::isdigit(b[0]))
+        return true;
+    if (!std::isdigit(a[0]) && std::isdigit(b[0]))
+        return false;
+    if (!std::isdigit(a[0]) && !std::isdigit(b[0])) {
+        if (std::toupper(a[0]) == std::toupper(b[0]))
+            return compareNat(a.substr(1), b.substr(1));
+        return (std::toupper(a[0]) < std::toupper(b[0]));
+    }
 
-RegionTemplateCollection *RTFromFiles(std::string inputFolderPath) {
+    // Both strings begin with digit --> parse both numbers
+    std::istringstream issa(a);
+    std::istringstream issb(b);
+    int ia, ib;
+    issa >> ia;
+    issb >> ib;
+    if (ia != ib)
+        return ia < ib;
+
+    // Numbers are the same --> remove numbers and recurse
+    std::string anew, bnew;
+    std::getline(issa, anew);
+    std::getline(issb, bnew);
+    return (compareNat(anew, bnew));
+}
+
+
+RegionTemplateCollection *RTFromFiles(std::string inputFolderPath, std::string imageExtension,
+                                      std::string maskExtension) {
     // Search for input files in folder path
-    std::string referenceMaskExtension = "_mask.txt"; //In case of labeled masks in text format;
+    //std::string referenceMaskExtension = "_mask.txt"; //In case of labeled masks in text format;
     //std::string referenceMaskExtension = ".mask.png"; //In case of binary mask in png format;
+    FileUtils imageFileUtils(imageExtension);
+    std::vector<std::string> imageFileList;
+    imageFileUtils.traverseDirectoryRecursive(inputFolderPath, imageFileList);
+    std::sort(imageFileList.begin(), imageFileList.end(), compareNat);
 
 
-    FileUtils fileUtils(referenceMaskExtension);
-    std::vector<std::string> fileList;
-    fileUtils.traverseDirectoryRecursive(inputFolderPath, fileList);
+    FileUtils maskFileUtils(maskExtension);
+    std::vector<std::string> maskFileList;
+    maskFileUtils.traverseDirectoryRecursive(inputFolderPath, maskFileList);
+    std::sort(maskFileList.begin(), maskFileList.end(), compareNat);
+
+
+
     RegionTemplateCollection *rtCollection = new RegionTemplateCollection();
     rtCollection->setName("inputimage");
 
-    std::cout << "Input Folder: " << inputFolderPath << std::endl;
-
-    // Create one region template instance for each input data file
-    // (creates representations without instantiating them)
-    for (int i = 0; i < fileList.size(); i++) {
-
-        // Create input mask data region
-        DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-        ddr2d->setName("RAW");
-        std::ostringstream oss;
-        oss << i;
-        ddr2d->setId(oss.str());
-        ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
-        ddr2d->setIsAppInput(true);
-        ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-        std::string inputFileName = fileUtils.replaceExt(fileList[i], referenceMaskExtension, ".tiff");
-        ddr2d->setInputFileName(inputFileName);
-
-        // Create reference mask data region
-        DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
-        ddr2dRefMask->setName("REF_MASK");
-        ddr2dRefMask->setId(oss.str());
-        ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
-        ddr2dRefMask->setIsAppInput(true);
-        ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
-        cout << endl << "MASK FILE: " << fileList[i] << endl;
-        ddr2dRefMask->setInputFileName(fileList[i]);
-
-        // Adding data regions to region template
-        RegionTemplate *rt = new RegionTemplate();
-        rt->setName("tile");
-        rt->insertDataRegion(ddr2d);
-        rt->insertDataRegion(ddr2dRefMask);
-
-        // Adding region template instance to collection
-        rtCollection->addRT(rt);
+    if (imageFileList.size() == 0 || maskFileList.size() == 0) {
+        std::cout << "\t\tERROR! ARE THE INPUT FILES PARSED CORRECTLY? \nInput Folder: " << inputFolderPath <<
+        std::endl;
+        std::cout << "\t\tLooking for image extension: " << imageExtension << " - Files found: " <<
+        imageFileList.size() << "\n ";
+        std::cout << "\t\tLooking for mask extension: " << maskExtension << " - Files found: " << maskFileList.size() <<
+        "\n ";
+        exit(-1);
     }
+    else {
+        // Create one region template instance for each input data file
+        // (creates representations without instantiating them)
+        for (int i = 0; i < maskFileList.size(); i++) {
+
+            // Create input image data region
+            DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+            ddr2d->setName("RAW");
+            std::ostringstream oss;
+            oss << i;
+            ddr2d->setId(oss.str());
+            ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
+            ddr2d->setIsAppInput(true);
+            ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
+            std::string inputFileName = imageFileList[i];
+            cout << endl << "IMAGE FILE " << i << ":" << inputFileName << endl;
+            ddr2d->setInputFileName(inputFileName);
+
+            // Create reference mask data region
+            DenseDataRegion2D *ddr2dRefMask = new DenseDataRegion2D();
+            ddr2dRefMask->setName("REF_MASK");
+            ddr2dRefMask->setId(oss.str());
+            ddr2dRefMask->setInputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
+            ddr2dRefMask->setIsAppInput(true);
+            ddr2dRefMask->setOutputType(DataSourceType::FILE_SYSTEM_TEXT_FILE);
+            std::string maskFileName = maskFileList[i];
+            cout << endl << "MASK FILE: " << i << ":" << maskFileName << endl;
+            ddr2dRefMask->setInputFileName(maskFileName);
+
+            //Check if image name and mask name are the same (after removing the extensions)
+            if (imageFileUtils.replaceExt(imageFileList[i], imageExtension, "").compare(
+                    maskFileUtils.replaceExt(maskFileList[i], maskExtension, ""))) {
+                cout <<
+                "\n\n\t\tERROR!!!! The name of the input image is not the same as the input mask.\n\t\tPlease check the input folder or rename one of them:\n\t\t\tImage: " <<
+                imageFileUtils.replaceExt(imageFileList[i], imageExtension, "") << "\n\t\t\tMask: " <<
+                maskFileUtils.replaceExt(maskFileList[i], maskExtension, "") << "\n\n\n";
+                exit(-1);
+            } else {
+                // Adding data regions to region template
+                RegionTemplate *rt = new RegionTemplate();
+                rt->setName("tile");
+                rt->insertDataRegion(ddr2d);
+                rt->insertDataRegion(ddr2dRefMask);
+
+                // Adding region template instance to collection
+                rtCollection->addRT(rt);
+            }
+        }
+    }
+
 
     return rtCollection;
 }
@@ -312,9 +387,16 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
         int crossoverrate = 50;
 
         int popsize = (int) ceil(sqrt(max_number_of_tests));
-        if (popsize > 1 && ((popsize % 2) == 1)) --popsize; //Pop size must be an even number for GA.
-
+        if (popsize > 1 && ((popsize % 2) == 1)) {
+            --popsize;
+            max_number_of_generations++;
+        } //Pop size must be an even number for GA.
         if (popsize <= 1) popsize++; //pop size must be at least 2.
+
+
+        if (popsize * max_number_of_generations > max_number_of_tests) {
+            max_number_of_generations--;
+        }
 
         //int propagationamount = 2;
         int propagationamount = (int) ceil(popsize * 0.25); //around 25% of popsize
