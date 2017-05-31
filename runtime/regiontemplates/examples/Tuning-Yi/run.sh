@@ -21,7 +21,12 @@ max_iterations=100
 # -x metric used to compare ground thruth and generated mask:  dice, jaccard or dicenc. dicenc is the default metric. dicenc is that average metric that we discussed = (dice+dice not cool)/2.
 comparison_metric="dicenc"
 
-while getopts "u:i:f:d:m:t:r:x:" opt; do
+#input image extension
+input_image_extension=".tiff"
+#reference mask extension
+reference_mask_extension="_mask.txt"
+
+while getopts "u:i:f:d:m:t:r:x:a:b:" opt; do
     case "$opt" in
     u)  exec_id=$OPTARG
 	;;
@@ -39,10 +44,15 @@ while getopts "u:i:f:d:m:t:r:x:" opt; do
         ;;
     x)  comparison_metric=$OPTARG
         ;;
+    a)  input_image_extension=$OPTARG
+        ;;
+    b)  reference_mask_extension=$OPTARG
+        ;;
     esac
 done
+echo "input_ext: $input_image_extension reference_ext: $reference_mask_extension"
 
-command="mpirun --allow-run-as-root -n 2 ../Tuning-Yi -i $input_image_folder -f $tuning_algorithm -d $declumpin_method -m $quality_weight -t $time_weight -r $max_iterations -x $comparison_metric"
+command="mpirun --allow-run-as-root -n 2 ../Tuning-Yi -i $input_image_folder -f $tuning_algorithm -d $declumpin_method -m $quality_weight -t $time_weight -r $max_iterations -x $comparison_metric -a $input_image_extension -b $reference_mask_extension"
 
 mkdir $exec_id
 cd $exec_id
