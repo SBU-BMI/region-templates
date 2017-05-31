@@ -87,6 +87,11 @@ int main(int argc, char **argv) {
     // Create region templates description without instantiating data
     rtCollection = RTFromFiles(inputFolderPath);
 
+    if(rtCollection->getNumRTs() == 0){
+	std::cout << "Collection size: " << rtCollection->getNumRTs() << std::endl;
+	exit(1);	
+    }
+ 
     // Handler to the distributed execution system environment
     SysEnv sysEnv;
     // Tell the system which libraries should be used
