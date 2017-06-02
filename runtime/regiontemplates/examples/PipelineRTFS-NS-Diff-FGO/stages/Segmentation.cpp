@@ -214,7 +214,7 @@ TaskSegmentation0::TaskSegmentation0(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation0::~TaskSegmentation0() {
-	if (normalized_rt_temp.unique() && mock)
+	if (normalized_rt_temp.unique())
 		delete *normalized_rt_temp;
 }
 
@@ -1178,7 +1178,7 @@ TaskSegmentation5::TaskSegmentation5(list<ArgumentBase*> args, RegionTemplate* i
 }
 
 TaskSegmentation5::~TaskSegmentation5() {
-	if (normalized_rt_temp.unique() && mock)
+	if (normalized_rt_temp.unique())
 		delete *normalized_rt_temp;
 }
 
