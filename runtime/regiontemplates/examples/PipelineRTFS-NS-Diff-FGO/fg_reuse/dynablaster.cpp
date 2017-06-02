@@ -61,15 +61,15 @@ list<list<PipelineComponentBase*>> db_merging(
 		// find best merging sugestion on cost matrix
 		list<pair<int, int>> sugestions = get_best_merging_sug(cost_m);
 
-		cout << "Merging sugestions:" << endl;
-		for (pair<int, int> p : sugestions) {
-			cout << p.first << ":" << p.second << endl;
-		}
+		// cout << "Merging sugestions:" << endl;
+		// for (pair<int, int> p : sugestions) {
+		// 	cout << p.first << ":" << p.second << endl;
+		// }
 
 		// break the ties (if any)
 		pair<int, int> best_sug = break_ties(sugestions);
-		cout << "Best sugestion: " << best_sug.first 
-			<< ":" << best_sug.second << endl;
+		// cout << "Best sugestion: " << best_sug.first 
+		// 	<< ":" << best_sug.second << endl;
 
 		// verify if merging sugestion achieves stoping condition
 		// if not, perform mergence and update the cost matrix
@@ -78,8 +78,8 @@ list<list<PipelineComponentBase*>> db_merging(
 			break;
 		}
 
-		cout << "before:" << endl;
-		print_solution(merging_solution);
+		// cout << "before:" << endl;
+		// print_solution(merging_solution);
 
 		// perform symbolical mergence on the stage list
 		merging_solution[best_sug.second].first.insert(
@@ -88,23 +88,23 @@ list<list<PipelineComponentBase*>> db_merging(
 			merging_solution[best_sug.first].first.end());
 
 		// perform symbolical mergence on the PCB
-		cout << "merging of " << best_sug.second << "=" << 
-			merging_solution[best_sug.second].second->tasks.size() << 
-			" with " <<	best_sug.first << "=" << 
-			merging_solution[best_sug.first].second->tasks.size();
+		// cout << "merging of " << best_sug.second << "=" << 
+		// 	merging_solution[best_sug.second].second->tasks.size() << 
+		// 	" with " <<	best_sug.first << "=" << 
+		// 	merging_solution[best_sug.first].second->tasks.size();
 		merge_stages(merging_solution[best_sug.second].second, 
 			merging_solution[best_sug.first].second, ref);
-		cout << " resulting in " << 
-			merging_solution[best_sug.second].second->tasks.size() <<
-			" with reuse=" << get_reuse_factor(stages[best_sug.first], 
-					stages[best_sug.second], args, ref) << endl;
+		// cout << " resulting in " << 
+		// 	merging_solution[best_sug.second].second->tasks.size() <<
+		// 	" with reuse=" << get_reuse_factor(stages[best_sug.first], 
+		// 			stages[best_sug.second], args, ref) << endl;
 
 
 		// remove merged stage
 		merging_solution.erase(best_sug.first);
 
-		cout << endl << "after:" << endl;
-		print_solution(merging_solution);
+		// cout << endl << "after:" << endl;
+		// print_solution(merging_solution);
 
 		// remove merged line and column
 		cost_m.remove_line(best_sug.first);
@@ -124,8 +124,8 @@ list<list<PipelineComponentBase*>> db_merging(
 			cost_m.increment(i, best_sug.second, inc);
 		}
 
-		cost_m.print_matrix();
-		cost_m.print_list();
+		// cost_m.print_matrix();
+		// cost_m.print_list();
 	}
 
 	cout << endl << "Solution:" << endl;
