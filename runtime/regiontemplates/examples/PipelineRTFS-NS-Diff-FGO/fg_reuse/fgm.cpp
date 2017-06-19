@@ -77,18 +77,18 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 				break;
 
 			case 3:
-				// reuse-tree merging - size_limit is the max bucket size
+				// stage-balanced reuse-tree merging - size_limit is the max bucket size
 				solution = reuse_tree_merging(current_stages, all_stages, 
 					size_limit, expanded_args, ref->second->tasksDesc, false);
 				break;
 			
 			case 4:
-				// reuse-tree merging with double prunning - size_limit is the max bucket size
+				// stage-balanced reuse-tree merging with double prunning - size_limit is the max bucket size
 				solution = reuse_tree_merging(current_stages, all_stages, 
 					size_limit, expanded_args, ref->second->tasksDesc, true);
 				break;
 			case 5:
-				// dynablaster merging
+				// task-balanced reuse-tree merging
 				solution = balanced_reuse_tree_merging(current_stages, all_stages, 
 					size_limit, expanded_args, ref->second->tasksDesc);
 				break;
