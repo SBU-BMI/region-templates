@@ -89,7 +89,7 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 				break;
 			case 5:
 				// dynablaster merging
-				solution = db_merging(current_stages, all_stages, 
+				solution = balanced_reuse_tree_merging(current_stages, all_stages, 
 					size_limit, expanded_args, ref->second->tasksDesc);
 				break;
 

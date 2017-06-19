@@ -12,7 +12,6 @@
 #include "merging.hpp"
 #include "cutting_algorithms.hpp"
 #include "graph/reuse_tree.hpp"
-#include "dynablaster.hpp"
 
 namespace fgm {
 

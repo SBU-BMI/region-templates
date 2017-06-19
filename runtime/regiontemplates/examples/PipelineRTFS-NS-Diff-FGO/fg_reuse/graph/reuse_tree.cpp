@@ -23,6 +23,32 @@ void print_leafs_parent_list(const list<reuse_node_t*>& l) {
 		std::cout << n->stage_ref->getId() << std::endl;
 }
 
+int get_rt_cost (const reuse_tree_t& rt) {
+	
+	list<reuse_node_t*> children = rt.parents;
+	int cost = 0;
+
+	while (children.size() > 0) {
+		list<reuse_node_t*> new_children;
+		for (reuse_node_t* child : children) {
+			cost++;
+			if (child->children.size() > 0) {
+				new_children.insert(new_children.end(); 
+					child->children.begin(), child->children.end());
+			} else {
+				cost++;
+			}
+		}
+		children = new_children;
+	}
+
+	return cost;
+}
+
+bool compare_rt (const reuse_tree_t& first, const reuse_tree_t& second) {
+	return get_rt_cost(first) > get_rt_cost(second);
+}
+
 void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBase* s, 
 	reuse_node_t* parent, int height, int curr_level, const map<int, ArgumentBase*>& args,
 	const map<string, list<ArgumentBase*>>& ref) {
@@ -41,8 +67,9 @@ void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBas
 		// std::cout << "[recursive_insert_stage][" << curr_level << "] checking " 
 		// 	<< s->getId() << " with " << n->stage_ref->getId() << std::endl;
 		if (get_reuse_factor(s, n->stage_ref, args, ref) > curr_level) {
-			// std::cout << "[recursive_insert_stage][" << curr_level << "] " << s->getId() 
-			// 	<< " is reusable with " << n->stage_ref->getId() << std::endl;
+			// std::cout << "[recursive_insert_stage][" << curr_level << "] " 
+			//	<< s->getId() << " is reusable with " 
+			//	<< n->stage_ref->getId() << std::endl;
 			reusable_node = n;
 			break;
 		}
@@ -112,7 +139,8 @@ list<reuse_node_t*> generate_leafs_parent_list(reuse_tree_t& reuse_tree) {
 	list<reuse_node_t*> leafs_parent_list;
 
 	for (reuse_node_t* n : reuse_tree.parents) {
-		list<reuse_node_t*> current_leafs_parent_list = generate_leafs_parent_list(n, reuse_tree.height-1);
+		list<reuse_node_t*> current_leafs_parent_list = 
+			generate_leafs_parent_list(n, reuse_tree.height-1);
 		leafs_parent_list.insert(leafs_parent_list.begin(), 
 			current_leafs_parent_list.begin(), current_leafs_parent_list.end());
 	}
@@ -272,7 +300,8 @@ void cluster_merging(reuse_tree_t& reuse_tree,
 						for (list<reuse_node_t*>::iterator nn=n->children.begin();
 							nn!=n->children.end(); ) {
 
-							// std::cout << "\t\t\t\t" << (*nn)->stage_ref->getId() << std::endl;
+							// std::cout << "\t\t\t\t" << 
+								(*nn)->stage_ref->getId() << std::endl;
 							new_bucket.emplace_back((*nn)->stage_ref);
 							nn = n->children.erase(nn);
 						}
@@ -473,3 +502,70 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 
 	return solution;
 }
+
+list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
+	const list<PipelineComponentBase*>& stages_to_merge, 
+	const map<int, PipelineComponentBase*> &all_stages, int max_buckets, 
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref) {
+
+	list<list<PipelineComponentBase*>> solution;
+	
+	// generate reuse tree
+	reuse_tree_t initial_reuse_tree = generate_reuse_tree(stages_to_merge, args, ref);
+
+	// perform full merge
+	list<reuse_node_t*> children = initial_reuse_tree.children;
+	while (children.size() < max_buckets) {
+		list<reuse_node_t*> new_children;
+		for (reuse_node_t* child : children) {
+			new_children.insert(new_children.end(), 
+				child->children.begin(), child->children.end());
+		}
+		children = new_children;
+	}
+
+	// generate first bucket list
+	list<reuse_tree_t> buckets;
+	for (reuse_node_t* n : children) {
+		// prepare current bucket
+		reuse_tree_t bucket;
+		bucket.height = initial_reuse_tree.height;
+
+		// insert each leaf node on the new bucket
+		list<reuse_node_t*> child_list = n.children;
+		while (child_list.size() > 0) {
+			list<reuse_node_t*> new_child_list;
+			for (reuse_node_t* child : child_list) {
+				if (child->children.size() == 0) {
+					recursive_insert_stage(bucket.parents, child->stage_ref, NULL, 
+						bucket.height, 0, args, ref);
+				} else {
+					new_child_list.insert(new_child_list.end(), 
+						child->children.begin(), child->children.end());
+				}
+			}
+			child_list = new_child_list;
+		}
+	}
+
+	// sort bucket list by descending cost
+	buckets.sort(compare_rt);
+
+	// perform single merges, if needed
+	if (buckets.size() > max_buckets) {
+		// remove the most costly buckets from the 'fold' merging and add them to the
+		//   current solution 'as is'
+		list<reuse_tree_t> folded_buckets;
+		int f = 2*(buckets.size()-floor(buckets.size()/max_buckets)*max_buckets);
+		for (reuse_tree_t rt : buckets) {
+			if (f-- <= 0) {
+				folded_buckets.emplace_back(rt);
+			}
+		}
+
+		// perform fold merging
+	}
+
+	// balance the task costs
+}
+
