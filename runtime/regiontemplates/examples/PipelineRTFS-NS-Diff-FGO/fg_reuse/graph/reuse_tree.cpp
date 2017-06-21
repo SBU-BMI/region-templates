@@ -569,12 +569,16 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	}
 
 	// perform single merges, if needed
-	if (buckets.size() > max_buckets) {
+	while (buckets.size() > max_buckets) {
 		list<reuse_tree_t> new_buckets;
 		// remove the most costly buckets from the 'fold' merging and add them to the
 		//   current solution 'as is'
 		list<reuse_tree_t> folded_buckets;
-		int f = buckets.size()-2*(buckets.size()-floor(buckets.size()/max_buckets)*max_buckets);
+		int f;
+		if (buckets.size() > 2*max_buckets)
+			f = buckets.size() % 2;
+		else
+			f = 2*max_buckets - buckets.size();
 		cout << "f=" << f << endl;
 
 		for (reuse_tree_t rt : buckets) {
