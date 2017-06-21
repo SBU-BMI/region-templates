@@ -49,6 +49,28 @@ bool compare_rt (const reuse_tree_t& first, const reuse_tree_t& second) {
 	return get_rt_cost(first) > get_rt_cost(second);
 }
 
+list<PipelineComponentBase*> rnode_to_PCB_list(const reuse_node_t* n) {
+	list<PipelineComponentBase*> ret, tmp;
+	if (n->children.size() == 0) {
+		ret.emplace_back(n->stage_ref);
+	} else {
+		for (reuse_node_t* nn : n->children) {
+			tmp = rnode_to_PCB_list(nn);
+			ret.insert(ret.end(), tmp.begin(), tmp.end());
+		}
+	}
+	return ret;
+}
+
+list<PipelineComponentBase*> tree_to_PCB_list(const reuse_tree_t& t) {
+	list<PipelineComponentBase*> ret, tmp;
+	for (reuse_node_t* n : t.parents) {
+		tmp = rnode_to_PCB_list(n);
+		ret.insert(ret.end(), tmp.begin(), tmp.end());
+	}
+	return ret;
+}
+
 void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBase* s, 
 	reuse_node_t* parent, int height, int curr_level, const map<int, ArgumentBase*>& args,
 	const map<string, list<ArgumentBase*>>& ref) {
@@ -632,7 +654,14 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		cout << endl;
 	}
 
+	// convert the tree structured solution to a PCB bucket list
+	for (reuse_tree_t rt : buckets) {
+		list<PipelineComponentBase*> bucket = tree_to_PCB_list(rt);
+		solution.emplace_back(bucket);
+	}
+
 	cout << "done" << endl;
 
-}
+	return solution;
 
+}
