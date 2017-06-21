@@ -9,8 +9,12 @@
 
 #include "../merging.hpp"
 
+static int r_node_id = 0;
+static int new_node_id() {return r_node_id++;};
+
 typedef struct reuse_node_t {
 	reuse_node_t* parent;
+	int id;
 	std::list<reuse_node_t*> children;
 	PipelineComponentBase* stage_ref;
 } reuse_node_t;

@@ -7,7 +7,8 @@ void print_reuse_node(const reuse_node_t* n, int tt) {
 	for (int i=0; i<tt; i++)
 		std::cout << "\t";
 	string p = n->parent==NULL ? " no parent" : to_string(n->parent->stage_ref->getId());
-	std::cout << n->stage_ref->getId() << ", parent: " << p << std::endl;
+	std::cout << n->stage_ref->getId() << ", parent: " << p 
+		<< " and id " << n->id << std::endl;
 	for (reuse_node_t* nn : n->children)
 		print_reuse_node(nn, tt+1);
 }
@@ -34,8 +35,6 @@ int get_nodes_cost (list<reuse_node_t*> children) {
 			if (child->children.size() > 0) {
 				new_children.insert(new_children.end(), 
 					child->children.begin(), child->children.end());
-			} else {
-				cost++;
 			}
 		}
 		children = new_children;
@@ -108,6 +107,7 @@ void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBas
 		node_list.emplace_back(new_node);
 		new_node->parent = parent;
 		new_node->stage_ref = s;
+		new_node->id = new_node_id();
 		recursive_insert_stage(new_node->children, s, 
 			new_node, height, curr_level+1, args, ref);
 	}
@@ -528,17 +528,64 @@ list<list<PipelineComponentBase*>> reuse_tree_merging(
 	return solution;
 }
 
+bool remove_node_by_id(list<reuse_node_t*>& ns, int id) {
+	if (ns.size() == 1 && ns.front()->children.size() == 0 && ns.front()->id == id) {
+		// cout << "clearing ns" << endl;
+		// print_reuse_node(ns.front(), 0);
+		ns.clear();
+		return true;
+	}
+
+	for (list<reuse_node_t*>::iterator n=ns.begin(); n!=ns.end(); n++) {
+		if ((*n)->id == id) {
+			// MEMLEAK: if n isn't a leaf, n->children will be lost
+			// cout << "1 erasing " << (*n)->id << " from " << (*n)->parent->id << endl;
+			// print_reuse_node((*n), 0);
+			ns.erase(n);
+			return true;
+		}
+		if (remove_node_by_id((*n)->children, id) && (*n)->children.size() == 0) {
+			// cout << "2 erasing " << (*n)->id << " from " << (*n)->parent->id << endl;
+			// print_reuse_node((*n), 0);
+			ns.erase(n);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void swap_node(reuse_tree_t& from_rt, reuse_tree_t&  to_rt, reuse_node_t* n,
 	const map<int, ArgumentBase*>& args, const map<string, list<ArgumentBase*>>& ref) {
+	
 	if (n->parent == NULL) {
-		from_rt.parents.remove(n);
+		for (list<reuse_node_t*>::iterator nn=from_rt.parents.begin(); 
+				nn!=from_rt.parents.end(); nn++) {
+			if ((*nn)->id == n->id) {
+				from_rt.parents.erase(nn);
+				return;
+			}
+		}
 		to_rt.parents.emplace_back(n);
 	} else {
+		// cout << "before insert:" << endl;
+		// print_reuse_tree(from_rt);
+		// print_reuse_tree(to_rt);
+		
 		for (PipelineComponentBase* pcb : rnode_to_PCB_list(n)) {
 			recursive_insert_stage(to_rt.parents, pcb, 
 				NULL, to_rt.height, 0, args, ref);
 		}
-		n->parent->children.remove(n);
+
+		// cout << "after insert:" << endl;
+		// print_reuse_tree(from_rt);
+		// print_reuse_tree(to_rt);
+		
+		remove_node_by_id(from_rt.parents, n->id);
+
+		// cout << "after remove:" << endl;
+		// print_reuse_tree(from_rt);
+		// print_reuse_tree(to_rt);
 	}
 }
 
@@ -546,6 +593,8 @@ reuse_node_t* nt_clone(reuse_node_t* nt) {
 	reuse_node_t* new_nt = new reuse_node_t;
 	reuse_node_t* tmp_nt;
 	new_nt->stage_ref = nt->stage_ref;
+	new_nt->id = nt->id;
+	new_nt->parent = NULL;
 	for (reuse_node_t* n : nt->children) {
 		tmp_nt = nt_clone(n);
 		tmp_nt->parent = new_nt;
@@ -565,56 +614,94 @@ reuse_tree_t rt_clone(reuse_tree_t rt) {
 
 reuse_node_t* balance(list<reuse_node_t*> children, reuse_tree_t big_rt, 
 	reuse_tree_t small_rt, const map<int, ArgumentBase*>& args, 
-	const map<string, list<ArgumentBase*>>& ref) {
+	const map<string, list<ArgumentBase*>>& ref, int k=0) {
 
 	int unbalance = get_rt_cost(big_rt) - get_rt_cost(small_rt);
 	reuse_node_t* solution = NULL;
 
-	cout << "starting balancing of " << unbalance << endl;
+	cout << "starting balancing " << k << " of " << unbalance << endl;
 
-	while (children.size() == 1) {
-		children = children.front()->children;
+	if (children.size() == 0) {
+		cout << "[balance " << k << "] no more children" << endl;
+		return NULL;
 	}
 
-	if (children.size() > 1) {
-		// make sure that there is only one search attempt
-		//   per node cost, and also, try any balance from 
-		//   the next level
-		map<int, reuse_node_t*> children_by_cost;
-		for (reuse_node_t* n : children) {
-			// try to solve the unbalancement with the best solution
-			//   from the next level
-			reuse_node_t* sol = balance(n->children, big_rt, small_rt, args, ref);
-			if (sol != NULL) {
-				reuse_tree_t big_tmp = rt_clone(big_rt);
-				reuse_tree_t small_tmp = rt_clone(small_rt);
-				swap_node(big_tmp, small_tmp, sol, args, ref);
-				int cost_tmp = abs(get_rt_cost(big_tmp) - get_rt_cost(small_tmp));
-				if (cost_tmp < unbalance) {
-					solution = sol;
-					unbalance = cost_tmp;
-				}
-			}
+	while (children.size() == 1 && children.front()->children.size() > 0) {
+		children = children.front()->children;
+		cout << "[balance " << k << "] one child only" << endl;
+	}
 
-			// make sure that the current level solution test will
-			//    only be made once
-			children_by_cost[get_nodes_cost(n->children)] = n;
-		}
-
-		// try the current level solutions
-		for (pair<int, reuse_node_t*> p : children_by_cost) {
+	// if (children.size() > 0) {
+	// make sure that there is only one search attempt
+	//   per node cost, and also, try any balance from 
+	//   the next level
+	map<int, reuse_node_t*> children_by_cost;
+	for (reuse_node_t* n : children) {
+		// try to solve the unbalancement with the best solution
+		//   from the next level
+		cout << "[balance " << k << "] trying to balance children of " << endl;
+		print_reuse_node(n, 0);
+		reuse_node_t* sol = balance(n->children, big_rt, small_rt, args, ref, k+1);
+		cout << "[balance " << k << "] checking if last balance got a solution" << endl;
+		if (sol != NULL) {
+			cout << "[balance " << k << "] Solution:" << endl;
 			reuse_tree_t big_tmp = rt_clone(big_rt);
 			reuse_tree_t small_tmp = rt_clone(small_rt);
-			swap_node(big_tmp, small_tmp, p.second, args, ref);
+			swap_node(big_tmp, small_tmp, sol, args, ref);
 			int cost_tmp = abs(get_rt_cost(big_tmp) - get_rt_cost(small_tmp));
+			print_reuse_node(sol, 0);
+			cout << "big_rt with cost " << get_rt_cost(big_tmp) << endl;
+			print_reuse_tree(big_tmp);
+			cout << "small_rt with cost " << get_rt_cost(small_tmp) << endl;
+			print_reuse_tree(small_tmp);
 			if (cost_tmp < unbalance) {
-				solution = p.second;
+				solution = sol;
 				unbalance = cost_tmp;
+				cout << "[balance " << k << "] new best solution of cost " 
+					<< unbalance << endl;
+				print_reuse_node(solution, 0);
 			}
 		}
-	} 
 
-	cout << "done balancing with new balance: " << unbalance << endl;
+		// make sure that the current level solution test will
+		//    only be made once
+		children_by_cost[get_nodes_cost(n->children)] = n;
+	}
+
+	// try the current level solutions
+	cout << "[balance " << k << "] trying current level solutions" << endl;
+	for (pair<int, reuse_node_t*> p : children_by_cost) {
+		cout << "[balance " << k << "] trying node" << endl;
+		print_reuse_node(p.second, 0);
+		reuse_tree_t big_tmp = rt_clone(big_rt);
+		reuse_tree_t small_tmp = rt_clone(small_rt);
+		swap_node(big_tmp, small_tmp, p.second, args, ref);
+		cout << "big_rt with cost " << get_rt_cost(big_tmp) << endl;
+		print_reuse_tree(big_tmp);
+		cout << "small_rt with cost " << get_rt_cost(small_tmp) << endl;
+		print_reuse_tree(small_tmp);
+		int cost_tmp = abs(get_rt_cost(big_tmp) - get_rt_cost(small_tmp));
+		if (cost_tmp < unbalance) {
+			solution = p.second;
+			unbalance = cost_tmp;
+			cout << "[balance " << k << "] new best solution of cost " 
+					<< unbalance << endl;
+		}
+	}
+	// } 
+
+	cout << "done balancing " << k << " with new balance: " << unbalance 
+		<< " and solution node" << endl;
+	reuse_tree_t big_tmp = rt_clone(big_rt);
+	reuse_tree_t small_tmp = rt_clone(small_rt);
+	if (solution != NULL) {
+		print_reuse_node(solution,0);
+		swap_node(big_tmp, small_tmp, solution, args, ref);
+	}
+	cout << "big_rt with cost " << get_rt_cost(big_tmp) << endl;
+	print_reuse_tree(big_tmp);
+	cout << "small_rt with cost " << get_rt_cost(small_tmp) << endl;
+	print_reuse_tree(small_tmp);
 
 	return solution;
 }
@@ -757,29 +844,32 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 			rt_clone(small_rt), args, ref);
 
 		// verify if there is an improvement
-		swap_node(big_rt, small_rt, n, args, ref);
-		int unbalance_tmp = abs(get_rt_cost(big_rt) - get_rt_cost(small_rt));
-		cout << "balancement attempt: " << unbalance_tmp << endl;
-		if (unbalance_tmp < unbalance) {
-			// if such, update unbalance cost ...
-			unbalance = unbalance_tmp;
-			// ... remove old, unbalanced rt's ...
-			buckets.pop_front();
-			buckets.pop_back();
-			// ... add new, balanced, rt's ...
-			buckets.emplace_back(big_rt);
-			buckets.emplace_back(small_rt);
-			// ... and re-sort the bucket list
-			buckets.sort(compare_rt);
-			improvement = true;
-			cout << "inproved!" << endl;
-		}
+		if (n != NULL) {
+			swap_node(big_rt, small_rt, n, args, ref);
+			int unbalance_tmp = abs(get_rt_cost(big_rt) - get_rt_cost(small_rt));
+			cout << "balancement attempt: " << unbalance_tmp << endl;
+			if (unbalance_tmp < unbalance) {
+				// if such, update unbalance cost ...
+				unbalance = unbalance_tmp;
+				// ... remove old, unbalanced rt's ...
+				buckets.pop_front();
+				buckets.pop_back();
+				// ... add new, balanced, rt's ...
+				buckets.emplace_back(big_rt);
+				buckets.emplace_back(small_rt);
+				// ... and re-sort the bucket list
+				buckets.sort(compare_rt);
+				improvement = true;
+				cout << "inproved!" << endl;
+			}
 
-		cout << "inprv buckets" << endl;
-		for (reuse_tree_t rt : buckets) {
-			print_reuse_tree(rt);
-			cout << endl;
-		}
+			cout << "imprv buckets" << endl;
+			for (reuse_tree_t rt : buckets) {
+				print_reuse_tree(rt);
+				cout << endl;
+			}
+		} else
+			cout << "no imprv" << endl;
 	}
 
 
