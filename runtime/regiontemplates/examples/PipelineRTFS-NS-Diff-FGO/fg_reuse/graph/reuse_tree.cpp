@@ -20,12 +20,6 @@ void print_reuse_node(const reuse_node_t* n, int tt) {
 		print_reuse_node(nn, tt+1);
 }
 
-void print_reuse_tree(const reuse_tree_t& t) {
-	std::cout << "tree of height " << t.height << ":" << std::endl;
-	for (reuse_node_t* n : t.parents)
-		print_reuse_node(n, 1);
-}
-
 void print_leafs_parent_list(const list<reuse_node_t*>& l) {
 	for (reuse_node_t* n : l)
 		std::cout << n->stage_ref->getId() << std::endl;
@@ -52,6 +46,13 @@ int get_nodes_cost (list<reuse_node_t*> children) {
 
 int get_rt_cost (const reuse_tree_t& rt) {
 	return get_nodes_cost(rt.parents);
+}
+
+void print_reuse_tree(const reuse_tree_t& t) {
+	std::cout << "tree of height " << t.height 
+		<< " and cost " << get_rt_cost(t) << ":" << std::endl;
+	for (reuse_node_t* n : t.parents)
+		print_reuse_node(n, 1);
 }
 
 bool compare_rt (const reuse_tree_t& first, const reuse_tree_t& second) {
@@ -99,8 +100,10 @@ void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBas
 	reuse_node_t* reusable_node = NULL;
 	for (reuse_node_t* n : node_list) {
 		// palealive solution to merging two equal stages
-		if (s->getId() ==  n->stage_ref->getId())
+		if (s->getId() ==  n->stage_ref->getId()) {
+			cout << "[SAME_COMPARE] " << s->getId() << endl;
 			return;
+		}
 
 		// check if the reuse factor matches the minimum required for this level
 		// std::cout << "[recursive_insert_stage][" << curr_level << "] checking " 
@@ -747,15 +750,41 @@ reuse_node_t* balance(list<reuse_node_t*> children, reuse_tree_t big_rt,
 	return solution;
 }
 
+int count_stages(list<reuse_tree_t> rts) {
+	int count = 0;
+	for (reuse_tree_t rt : rts)
+		for (reuse_node_t* n : rt.parents)
+			count += rnode_to_PCB_list(n).size();
+
+	return count;
+}
+
+int get_unbal_group(list<reuse_tree_t> buckets) {
+	int unbalance = 0;
+	int max_unbalance = get_rt_cost(buckets.front());
+	for (reuse_tree_t rt : buckets) {
+		if (get_rt_cost(rt) < max_unbalance)
+			break;
+		unbalance++;
+	}
+	return unbalance;
+}
+
 list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	const list<PipelineComponentBase*>& stages_to_merge, 
 	const map<int, PipelineComponentBase*> &all_stages, int max_buckets, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref) {
 
 	list<list<PipelineComponentBase*>> solution;
-	
+
 	// generate reuse tree
 	reuse_tree_t initial_reuse_tree = generate_reuse_tree(stages_to_merge, args, ref);
+
+	if (max_buckets > stages_to_merge.size()) {
+		// max_buckets = initial_reuse_tree.parents.size();
+		max_buckets = stages_to_merge.size()*0.9;
+		cout << "MAX_BUCKETS RESIZED!!!!!! to " << max_buckets << endl;
+	}
 
 	// cout << "init" << endl;
 	// print_reuse_tree(initial_reuse_tree);
@@ -769,6 +798,12 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 				child->children.begin(), child->children.end());
 		}
 		children = new_children;
+	}
+
+	cout << "buckets" << endl;
+	for (reuse_node_t* rn : children) {
+		print_reuse_node(rn, 0);
+		cout << endl;
 	}
 
 	// generate first bucket list
@@ -797,11 +832,11 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		buckets.emplace_back(bucket);
 	}
 
-	// cout << "buckets" << endl;
-	// for (reuse_tree_t rt : buckets) {
-	// 	print_reuse_tree(rt);
-	// 	cout << endl;
-	// }
+	cout << "buckets" << endl;
+	for (reuse_tree_t rt : buckets) {
+		print_reuse_tree(rt);
+		cout << endl;
+	}
 
 	// sort bucket list by descending cost
 	buckets.sort(compare_rt);
@@ -851,20 +886,23 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		buckets = new_buckets;
 	}
 
-	// cout << "semifinal buckets" << endl;
-	// for (reuse_tree_t rt : buckets) {
-	// 	print_reuse_tree(rt);
-	// 	cout << endl;
-	// }
+	cout << "semifinal buckets" << endl;
+	for (reuse_tree_t rt : buckets) {
+		print_reuse_tree(rt);
+		cout << endl;
+	}
 
 	// sort again bucket list by descending cost
 	buckets.sort(compare_rt);
+	cout << "got " << count_stages(buckets) << " stages" << endl;
 
 	// balance the task costs
 	bool improvement = true;
 	int unbalance = get_rt_cost(buckets.front()) - get_rt_cost(buckets.back());
 	while (improvement) {
-		cout << "unbalancement: " << unbalance << endl;
+		cout << "unbalancement: " << unbalance << " with " 
+			<< get_unbal_group(buckets) << " maxed buckets" << endl;
+		cout << "got " << count_stages(buckets) << " stages" << endl;
 		improvement = false;
 
 		// get the bucket with the highest cost
@@ -892,7 +930,12 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 			swap_node(big_rt, small_rt, n, args, ref);
 			int unbalance_tmp = abs(get_rt_cost(big_rt) - get_rt_cost(small_rt));
 			cout << "balancement attempt: " << unbalance_tmp << endl;
-			if (unbalance_tmp < unbalance) {
+			// if the balanced rt with the greatest cost is as costly as 
+			//   the current most expensive bucket (i.e. buckets.front()) then
+			//   there isn't an improvement
+			if (max(get_rt_cost(big_rt), get_rt_cost(small_rt)) 
+				< get_rt_cost(buckets.front())) {
+
 				// if such remove old, unbalanced rt's ...
 				rt_delete(buckets.front());
 				buckets.pop_front();
@@ -904,14 +947,14 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 				// ... re-sort the bucket list ...
 				buckets.sort(compare_rt);
 				// ... and update the unbalance value
-				unbalance_tmp = get_rt_cost(buckets.front()) - get_rt_cost(buckets.back());
-				if (unbalance_tmp < unbalance) {
-					improvement = true;
-					unbalance = unbalance_tmp;
-					cout << "improved!" << endl;
-				} else
-					cout << "bad improvement" << endl;
-			}
+				// unbalance_tmp = get_rt_cost(buckets.front()) - get_rt_cost(buckets.back());
+				improvement = true;
+				unbalance = unbalance_tmp;
+				cout << "improved!" << endl;
+			} else
+				cout << "bad improvement: " << unbalance_tmp 
+					<< " vs " << unbalance << endl;
+			
 
 			// cout << "imprv buckets" << endl;
 			// for (reuse_tree_t rt : buckets) {
