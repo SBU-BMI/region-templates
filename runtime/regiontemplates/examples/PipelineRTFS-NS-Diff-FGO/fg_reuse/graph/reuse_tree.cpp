@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <string>
+#include <set>
+#include <algorithm>
 
 void print_reuse_node(const reuse_node_t* n, int tt) {
 	for (int i=0; i<tt; i++)
@@ -9,6 +11,11 @@ void print_reuse_node(const reuse_node_t* n, int tt) {
 	string p = n->parent==NULL ? " no parent" : to_string(n->parent->stage_ref->getId());
 	std::cout << n->stage_ref->getId() << ", parent: " << p 
 		<< " and id " << n->id << std::endl;
+	if (n->children.size() == 0) {
+		for (int i=0; i<tt; i++)
+			std::cout << "\t";
+		cout << "leaf with stage " << n->stage_ref->getId() << endl;
+	}
 	for (reuse_node_t* nn : n->children)
 		print_reuse_node(nn, tt+1);
 }
@@ -51,6 +58,10 @@ bool compare_rt (const reuse_tree_t& first, const reuse_tree_t& second) {
 	return get_rt_cost(first) > get_rt_cost(second);
 }
 
+bool compare_rn_by_id (const reuse_node_t* first, const reuse_node_t* second) {
+	return first->id > second->id;
+}
+
 list<PipelineComponentBase*> rnode_to_PCB_list(const reuse_node_t* n) {
 	list<PipelineComponentBase*> ret, tmp;
 	if (n->children.size() == 0) {
@@ -87,6 +98,10 @@ void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBas
 	// attempt to find if there is a reuse oportunity on this level
 	reuse_node_t* reusable_node = NULL;
 	for (reuse_node_t* n : node_list) {
+		// palealive solution to merging two equal stages
+		if (s->getId() ==  n->stage_ref->getId())
+			return;
+
 		// check if the reuse factor matches the minimum required for this level
 		// std::cout << "[recursive_insert_stage][" << curr_level << "] checking " 
 		// 	<< s->getId() << " with " << n->stage_ref->getId() << std::endl;
@@ -635,7 +650,13 @@ reuse_node_t* balance(list<reuse_node_t*> children, reuse_tree_t big_rt,
 
 	// cout << "starting balancing " << k << " of " << unbalance << endl;
 
-	if (children.size() == 0) {
+	list<reuse_node_t*> rt_both;
+	set_intersection(big_rt.parents.begin(), big_rt.parents.end(),
+					 small_rt.parents.begin(), small_rt.parents.end(),
+					 back_inserter(rt_both), compare_rn_by_id);
+	
+	if (children.size() == 0 || (rt_both.size() == big_rt.parents.size() &&
+								 rt_both.size() == small_rt.parents.size())) {
 		// cout << "[balance " << k << "] no more children" << endl;
 		return NULL;
 	}
