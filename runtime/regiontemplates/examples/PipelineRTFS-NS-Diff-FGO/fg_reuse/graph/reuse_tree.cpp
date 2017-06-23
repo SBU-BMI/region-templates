@@ -55,6 +55,14 @@ void print_reuse_tree(const reuse_tree_t& t) {
 		print_reuse_node(n, 1);
 }
 
+void print_bucket_list(list<reuse_tree_t> buckets) {
+	int i=0;
+	for (reuse_tree_t rt : buckets) {
+		cout << "bucket " << i++ << " _________________________________________" << endl;
+		print_reuse_tree(rt);
+	}
+}
+
 bool compare_rt (const reuse_tree_t& first, const reuse_tree_t& second) {
 	return get_rt_cost(first) > get_rt_cost(second);
 }
@@ -613,35 +621,24 @@ bool remove_node_by_id(list<reuse_node_t*>& ns, int id) {
 void swap_node(reuse_tree_t& from_rt, reuse_tree_t&  to_rt, reuse_node_t* n,
 	const map<int, ArgumentBase*>& args, const map<string, list<ArgumentBase*>>& ref) {
 	
-	if (n->parent == NULL) {
-		for (list<reuse_node_t*>::iterator nn=from_rt.parents.begin(); 
-				nn!=from_rt.parents.end(); nn++) {
-			if ((*nn)->id == n->id) {
-				from_rt.parents.erase(nn);
-				return;
-			}
-		}
-		to_rt.parents.emplace_back(n);
-	} else {
-		// cout << "before insert:" << endl;
-		// print_reuse_tree(from_rt);
-		// print_reuse_tree(to_rt);
-		
-		for (PipelineComponentBase* pcb : rnode_to_PCB_list(n)) {
-			recursive_insert_stage(to_rt.parents, pcb, 
-				NULL, to_rt.height, 0, args, ref);
-		}
-
-		// cout << "after insert:" << endl;
-		// print_reuse_tree(from_rt);
-		// print_reuse_tree(to_rt);
-		
-		remove_node_by_id(from_rt.parents, n->id);
-
-		// cout << "after remove:" << endl;
-		// print_reuse_tree(from_rt);
-		// print_reuse_tree(to_rt);
+	// cout << "before insert:" << endl;
+	// print_reuse_tree(from_rt);
+	// print_reuse_tree(to_rt);
+	
+	for (PipelineComponentBase* pcb : rnode_to_PCB_list(n)) {
+		recursive_insert_stage(to_rt.parents, pcb, 
+			NULL, to_rt.height, 0, args, ref);
 	}
+
+	// cout << "after insert:" << endl;
+	// print_reuse_tree(from_rt);
+	// print_reuse_tree(to_rt);
+	
+	remove_node_by_id(from_rt.parents, n->id);
+
+	// cout << "after remove:" << endl;
+	// print_reuse_tree(from_rt);
+	// print_reuse_tree(to_rt);
 }
 
 reuse_node_t* balance(list<reuse_node_t*> children, reuse_tree_t big_rt, 
