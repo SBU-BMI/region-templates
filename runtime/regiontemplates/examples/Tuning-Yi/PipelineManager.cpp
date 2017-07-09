@@ -109,7 +109,8 @@ int main(int argc, char **argv) {
         if (amount_of_profiling_tests > max_number_of_tests) amount_of_profiling_tests = max_number_of_tests;
         objectiveFunctionProfiling(argc, argv, sysEnv, amount_of_profiling_tests, metricType, tSlowest, tFastest,
                                    rtCollection,
-                                   "nm", declumpingType, perf, totaldiffs, metricPerIteration, diceNotCoolPerIteration,
+                                   "random", declumpingType, perf, totaldiffs, metricPerIteration,
+                                   diceNotCoolPerIteration,
                                    totalexecutiontimes);
 
         std::cout << "\t\tProfiling:" << std::endl;
@@ -375,7 +376,8 @@ TuningInterface *multiObjectiveTuning(int argc, char **argv, SysEnv &sysEnv, int
 
     //USING AH
     if (tuningPolicy.find("nm") != std::string::npos || tuningPolicy.find("NM") != std::string::npos ||
-        tuningPolicy.find("pro") != std::string::npos || tuningPolicy.find("PRO") != std::string::npos) {
+        tuningPolicy.find("pro") != std::string::npos || tuningPolicy.find("PRO") != std::string::npos ||
+        tuningPolicy.find("random") != std::string::npos || tuningPolicy.find("RANDOM") != std::string::npos) {
         numClients = 1;
         tuningClient = new ActiveHarmonyTuning(tuningPolicy, max_number_of_tests, numClients);
     } else {
