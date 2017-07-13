@@ -45,6 +45,13 @@ int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number
 
 void resetPerf(float *perf, int max_number_of_tests);
 
+void defaultExecution(SysEnv &sysEnv, std::string &metricType, RegionTemplateCollection *rtCollection,
+                      std::string tuningPolicy, int declumpingType,
+                      float *perf, float *totaldiffs, float *metricPerIteration,
+                      float *diceNotCoolPerIteration,
+                      uint64_t *totalexecutiontimes);
+
+
 int main(int argc, char **argv) {
 
 
@@ -95,45 +102,52 @@ int main(int argc, char **argv) {
 
     if(rtCollection->getNumRTs() == 0){
 	std::cout << "Collection size: " << rtCollection->getNumRTs() << std::endl;
-	exit(1);	
+        exit(1);
     }
- 
+
     // Handler to the distributed execution system environment
     SysEnv sysEnv;
     // Tell the system which libraries should be used
     sysEnv.startupSystem(argc, argv, "libcomponenttuningyi.so");
 
-    // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
-    if (timeWeight > 0) {
-        int amount_of_profiling_tests = 10;
-        if (amount_of_profiling_tests > max_number_of_tests) amount_of_profiling_tests = max_number_of_tests;
-        objectiveFunctionProfiling(argc, argv, sysEnv, amount_of_profiling_tests, metricType, tSlowest, tFastest,
-                                   rtCollection,
-                                   "random", declumpingType, perf, totaldiffs, metricPerIteration,
-                                   diceNotCoolPerIteration,
-                                   totalexecutiontimes);
+    if (tuningPolicy.find("default") != std::string::npos || tuningPolicy.find("DEFAULT") != std::string::npos) {
+        defaultExecution(sysEnv, metricType, rtCollection,
+                         tuningPolicy, declumpingType, perf, totaldiffs, metricPerIteration,
+                         diceNotCoolPerIteration,
+                         totalexecutiontimes);
+    }
+    else {    // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
+        if (timeWeight > 0) {
+            int amount_of_profiling_tests = 10;
+            if (amount_of_profiling_tests > max_number_of_tests) amount_of_profiling_tests = max_number_of_tests;
+            objectiveFunctionProfiling(argc, argv, sysEnv, amount_of_profiling_tests, metricType, tSlowest, tFastest,
+                                       rtCollection,
+                                       "random", declumpingType, perf, totaldiffs, metricPerIteration,
+                                       diceNotCoolPerIteration,
+                                       totalexecutiontimes);
 
-        std::cout << "\t\tProfiling:" << std::endl;
-        for (int i = 0; i < amount_of_profiling_tests; ++i) {
+            std::cout << "\t\tProfiling:" << std::endl;
+            for (int i = 0; i < amount_of_profiling_tests; ++i) {
 
-            std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
-            "  \tExecution Time: " << totalexecutiontimes[i] << " \tMetric: " << metricPerIteration[i] <<
-            " \tDiceNC: " <<
-            diceNotCoolPerIteration[i];
-            std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
-        }
-        std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest <<
-        std::endl;
+                std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
+                "  \tExecution Time: " << totalexecutiontimes[i] << " \tMetric: " << metricPerIteration[i] <<
+                " \tDiceNC: " <<
+                diceNotCoolPerIteration[i];
+                std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+            }
+            std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest <<
+            std::endl;
 
-        std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
-        timeWeight << std::endl;
+            std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
+            timeWeight << std::endl;
 
-        //double timeGap = tSlowest - tFastest;
+            //double timeGap = tSlowest - tFastest;
 //    tSlowest = tSlowest + 2 * timeGap;
 //    tFastest = tFastest - 2 * timeGap;
 //    if (tFastest < 0) tFastest = timeGap;
 //    std::cout << std::endl << "\t\ttSlowest-modified: " << tSlowest << std::endl << "\t\ttFastest-modified: " << tFastest << std::endl;
-    }
+        }
+
 
     std::cout << "\n\n\n*&*&*&*&* - Tuning - Metric: " << metricType << " - Max Number of Tests: " <<
     max_number_of_tests << " - *&*&*&*&*\n\n\n" << std::endl;
@@ -187,6 +201,7 @@ int main(int argc, char **argv) {
     std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
     std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
 
+    }
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
 
@@ -748,5 +763,192 @@ void resetPerf(float *perf, int max_number_of_tests) {
     for (int i = 0; i < max_number_of_tests; ++i) {
         perf[i] = std::numeric_limits<float>::infinity();
     }
+
+}
+
+void defaultExecution(SysEnv &sysEnv, std::string &metricType, RegionTemplateCollection *rtCollection,
+                      std::string tuningPolicy, int declumpingType,
+                      float *perf, float *totaldiffs, float *metricPerIteration,
+                      float *diceNotCoolPerIteration,
+                      uint64_t *totalexecutiontimes) {
+    int versionSeg = 0;
+    int segCount = 0;
+    std::vector<int> segComponentIds[rtCollection->getNumRTs()];
+    std::vector<int> metricComponentIds[rtCollection->getNumRTs()];
+    std::vector<int> diceNotCoolComponentIds[rtCollection->getNumRTs()];
+    // Build application dependency graph
+    // Instantiate application dependency graph
+    for (int i = 0; i < rtCollection->getNumRTs(); i++) {
+
+        int previousSegCompId = 0;
+
+
+        std::cout << "BEGIN: Default Execution: ";
+
+
+        std::cout << std::endl;
+
+        // Creating segmentation component
+        Segmentation *seg = new Segmentation();
+
+
+        // version of the data region generated by the segmentation stage
+        seg->addArgument(new ArgumentInt(versionSeg));
+
+
+
+        // add remaining (application specific) parameters from the argSegInstance
+
+
+        float otsuRatio = 1.0;
+        float curvatureWeight = 0.8;
+        float sizeThld = 3;
+        float sizeUpperThld = 200;
+        float mpp = 0.25;
+        float mskernel = 20.0;
+        int levelSetNumberOfIteration = 100;
+
+
+
+        // add remaining (application specific) parameters from the argSegInstance
+        seg->addArgument(
+                new ArgumentFloat(otsuRatio));
+        seg->addArgument(
+                new ArgumentFloat(curvatureWeight));
+        seg->addArgument(
+                new ArgumentFloat(sizeThld));
+        seg->addArgument(
+                new ArgumentFloat(sizeUpperThld));
+        seg->addArgument(
+                new ArgumentFloat(mpp));
+        seg->addArgument(
+                new ArgumentFloat(mskernel));
+        seg->addArgument(new ArgumentInt(levelSetNumberOfIteration));
+        seg->addArgument(new ArgumentInt(
+                declumpingType));
+
+        // and region template instance that it is suppose to process
+        seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+        //seg->addDependency(norm->getId());
+
+        std::cout << "Creating DiffMask" << std::endl;
+
+        RTPipelineComponentBase *metricComp;
+        DiceNotCoolMaskComp *diceNotCoolComp;
+
+        if (metricType.find("jaccard") != std::string::npos) metricComp = new JaccardMaskComp();
+        else metricComp = new DiceMaskComp();
+
+        if (metricType.find("dicenc") != std::string::npos) diceNotCoolComp = new DiceNotCoolMaskComp();
+
+        // version of the data region that will be read. It is created during the segmentation.
+        // region template name
+        metricComp->addArgument(new ArgumentInt(versionSeg));
+        metricComp->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+        metricComp->addDependency(seg->getId());
+
+
+        // add to the list of diff component ids.
+        segComponentIds[i].push_back(seg->getId());
+        metricComponentIds[i].push_back(metricComp->getId());
+
+
+        sysEnv.executeComponent(seg);
+        sysEnv.executeComponent(metricComp);
+
+        if (metricType.find("dicenc") != std::string::npos) {
+            diceNotCoolComp->addArgument(new ArgumentInt(versionSeg));
+            diceNotCoolComp->addRegionTemplateInstance(rtCollection->getRT(i),
+                                                       rtCollection->getRT(i)->getName());
+            diceNotCoolComp->addDependency(metricComp->getId());
+            diceNotCoolComponentIds[i].push_back(diceNotCoolComp->getId());
+            sysEnv.executeComponent(diceNotCoolComp);
+        }
+
+
+        std::cout << "Manager CompId: " << metricComp->getId() << " fileName: " <<
+        rtCollection->getRT(i)->getDataRegion(0)->getInputFileName() << std::endl;
+        segCount++;
+        versionSeg++;
+
+
+    }
+
+
+
+    // End Creating Dependency Graph
+    sysEnv.startupExecution();
+
+    std::cout << std::endl << std::endl;
+    //==============================================================================================
+    //Fetch results from execution workflow
+    //==============================================================================================
+    for (int j = 0; j < rtCollection->getNumRTs(); j++) {
+        float metric = 0;
+        float secondaryMetric = 0;
+        float diceNotCoolValue = 0;
+
+        std::ostringstream oss;
+        oss << " Default PARAMS";
+
+
+        for (int i = 0; i < metricComponentIds[j].size(); i++) {
+            char *metricResultData = sysEnv.getComponentResultData(metricComponentIds[j][i]);
+            std::cout << "RT name: " << rtCollection->getRT(j)->getDataRegion("RAW")->getInputFileName() <<
+            " - Diff Id: " << metricComponentIds[j][i];
+            if (metricResultData != NULL) {
+                //std::cout << "size: " << ((int *) metricResultData)[0] << " \thadoopgis-metric: " <<
+                //((float *) metricResultData)[1] <<
+                //" \tsecondary: " << ((float *) metricResultData)[2] << endl;
+
+                metric += ((float *) metricResultData)[1];
+                secondaryMetric += ((float *) metricResultData)[2];
+
+                if (metricType.find("dicenc") != std::string::npos) {
+                    char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
+//                        std::cout << " \tdiceNotCool: " <<
+//                        ((float *) diceNotCoolResultData)[1] << std::endl;
+                    diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
+                }
+
+            } else {
+                std::cout << "NULL" << std::endl;
+            }
+            char *segExecutionTime = sysEnv.getComponentResultData(segComponentIds[j][i]);
+            if (segExecutionTime != NULL) {
+                totalexecutiontimes[j] = ((int *) segExecutionTime)[1];
+//                    cout << "Segmentation execution time:" <<
+//                    totalexecutiontimes[j] << endl;
+            }
+            if (metricType.find("dicenc") != std::string::npos)
+                sysEnv.eraseResultData(diceNotCoolComponentIds[j][i]);
+            sysEnv.eraseResultData(metricComponentIds[j][i]);
+            sysEnv.eraseResultData(segComponentIds[j][i]);
+        }
+        metricComponentIds[j].clear();
+        segComponentIds[j].clear();
+        if (metricType.find("dicenc") != std::string::npos) diceNotCoolComponentIds[j].clear();
+
+
+        float diff;
+
+        if (metricType.find("dicenc") != std::string::npos) diff = (metric + diceNotCoolValue) / 2;
+        else diff = metric;
+
+        if (diff <= 0) diff = FLT_EPSILON;
+
+
+        cout << "\tDiff (average of metric and dnc): " << diff << "\tMetric:" << metric << "\tDNC:" <<
+        diceNotCoolValue << " Segmentation Time: " <<
+        totalexecutiontimes[j] << endl;
+
+        totaldiffs[j] = diff;
+        metricPerIteration[j] = metric;
+        diceNotCoolPerIteration[j] = diceNotCoolValue;
+
+    }
+
+    std::cout << std::endl << std::endl;
+
 
 }

@@ -40,6 +40,12 @@ int objectiveFunctionProfiling(int argc, char **argv, SysEnv &sysEnv, int number
 
 void resetPerf(float *perf, int max_number_of_tests);
 
+void defaultExecution(SysEnv &sysEnv, std::string &metricType, RegionTemplateCollection *rtCollection,
+                      std::string tuningPolicy,
+                      float *perf, float *totaldiffs, float *metricPerIteration,
+                      float *diceNotCoolPerIteration,
+                      uint64_t *totalexecutiontimes);
+
 int main(int argc, char **argv) {
 
 
@@ -83,33 +89,42 @@ int main(int argc, char **argv) {
     // Tell the system which libraries should be used
     sysEnv.startupSystem(argc, argv, "libcomponenttuningnscale.so");
 
-    // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
-    if (timeWeight > 0) {
-        int amount_of_profiling_tests = 10;
-        if (amount_of_profiling_tests > max_number_of_tests) amount_of_profiling_tests = max_number_of_tests;
+    if (tuningPolicy.find("default") != std::string::npos || tuningPolicy.find("DEFAULT") != std::string::npos) {
+        defaultExecution(sysEnv, metricType, rtCollection,
+                         tuningPolicy, perf, totaldiffs, metricPerIteration,
+                         diceNotCoolPerIteration,
+                         totalexecutiontimes);
+    }
+    else {
+        if (timeWeight > 0) {
+            // In case of multiobjective tuning is mandatory to peform a profiling of the slowest and fastest execution times that objective function.
+
+            int amount_of_profiling_tests = 10;
+            if (amount_of_profiling_tests > max_number_of_tests) amount_of_profiling_tests = max_number_of_tests;
 
         objectiveFunctionProfiling(argc, argv, sysEnv, amount_of_profiling_tests, metricType, tSlowest, tFastest,
                                    rtCollection,
                                    "random", perf, totaldiffs, metricPerIteration, diceNotCoolPerIteration,
                                    totalexecutiontimes);
 
-        std::cout << "\t\tProfiling:" << std::endl;
-        for (int i = 0; i < amount_of_profiling_tests; ++i) {
+            std::cout << "\t\tProfiling:" << std::endl;
+            for (int i = 0; i < amount_of_profiling_tests; ++i) {
 
-            std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
-            "  \tExecution Time: " << totalexecutiontimes[i] << " \tMetric: " << metricPerIteration[i] <<
-            " \tDiceNC: " <<
-            diceNotCoolPerIteration[i];
-            std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+                std::cout << std::fixed << std::setprecision(6) << "\t\tProf: " << i << " \tDiff: " << totaldiffs[i] <<
+                "  \tExecution Time: " << totalexecutiontimes[i] << " \tMetric: " << metricPerIteration[i] <<
+                " \tDiceNC: " <<
+                diceNotCoolPerIteration[i];
+                std::cout << "  \tPerf(weighted): " << perf[i] << std::endl;
+            }
+            std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest <<
+            std::endl;
+
+            std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
+            timeWeight << std::endl;
+
+            //double timeGap = tSlowest - tFastest;
         }
-        std::cout << std::endl << "\t\ttSlowest: " << tSlowest << std::endl << "\t\ttFastest: " << tFastest <<
-        std::endl;
 
-        std::cout << std::endl << "\t\ttMetric Weight: " << metricWeight << std::endl << "\t\ttTime Weight: " <<
-        timeWeight << std::endl;
-
-        //double timeGap = tSlowest - tFastest;
-    }
     std::cout << "\n\n\n*&*&*&*&* - Tuning - Metric: " << metricType << " - Max Number of Tests: " <<
     max_number_of_tests << " - *&*&*&*&*\n\n\n" << std::endl;
     // Peform the multiobjective tuning with the profiling data (tSlowest and tFastest)
@@ -163,6 +178,7 @@ int main(int argc, char **argv) {
     std::cout << "\tTime of Best anwser: " << totalexecutiontimes[minPerfIndex] << std::endl;
     std::cout << "\tBest anwser index: " << minPerfIndex << std::endl;
 
+    }
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
 
@@ -764,5 +780,230 @@ void resetPerf(float *perf, int max_number_of_tests) {
     for (int i = 0; i < max_number_of_tests; ++i) {
         perf[i] = std::numeric_limits<float>::infinity();
     }
+
+}
+
+void defaultExecution(SysEnv &sysEnv, std::string &metricType, RegionTemplateCollection *rtCollection,
+                      std::string tuningPolicy,
+                      float *perf, float *totaldiffs, float *metricPerIteration,
+                      float *diceNotCoolPerIteration,
+                      uint64_t *totalexecutiontimes) {
+    int versionNorm = 0, versionSeg = 0;
+    int segCount = 0;
+    std::vector<int> segComponentIds[rtCollection->getNumRTs()];
+    std::vector<int> metricComponentIds[rtCollection->getNumRTs()];
+    std::vector<int> diceNotCoolComponentIds[rtCollection->getNumRTs()];
+    // Build application dependency graph
+    // Instantiate application dependency graph
+    for (int i = 0; i < rtCollection->getNumRTs(); i++) {
+
+        int previousSegCompId = 0;
+        // CREATE NORMALIZATION STEP
+        ParameterSet parSetNormalization;
+        std::vector<ArgumentBase *> targetMeanOptions;
+        ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray(ArgumentFloat(-0.632356));
+        targetMeanAux->addArgValue(ArgumentFloat(-0.0516004));
+        targetMeanAux->addArgValue(ArgumentFloat(0.0376543));
+        targetMeanOptions.push_back(targetMeanAux);
+        parSetNormalization.addArguments(targetMeanOptions);
+        parSetNormalization.resetIterator();
+        std::vector<ArgumentBase *> argSetInstanceNorm = parSetNormalization.getNextArgumentSetInstance();
+        NormalizationComp *norm = new NormalizationComp();
+        // normalization parameters
+        norm->addArgument(new ArgumentInt(versionNorm));
+        norm->addArgument(argSetInstanceNorm[0]);
+        norm->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+        sysEnv.executeComponent(norm);
+
+
+        std::cout << "BEGIN: Default Execution: ";
+
+
+        std::cout << std::endl;
+
+        // Creating segmentation component
+        Segmentation *seg = new Segmentation();
+
+        // version of the data region red. Each parameter instance in norm creates a output w/ different version
+        seg->addArgument(new ArgumentInt(versionNorm));
+        // version of the data region generated by the segmentation stage
+        seg->addArgument(new ArgumentInt(versionSeg));
+
+
+        int blue = 220;
+        int green = 220;
+        int red = 220;
+        float T1 = 5.0;
+        float T2 = 4.0;
+        int G1 = 80;
+        int minSize = 11;
+        int maxSize = 1000;
+        int G2 = 45;
+        int minSizePl = 30;
+        int minSizeSeg = 21;
+        int maxSizeSeg = 1000;
+        int fillHolesConnectivity = 4;
+        int reconConnectivity = 8;
+        int watershedConnectivity = 8;
+
+        // add remaining (application specific) parameters from the argSegInstance
+        seg->addArgument(new ArgumentInt(
+                (int) round(blue)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(green)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(red)));
+        seg->addArgument(
+                new ArgumentFloat((float) (T1)));
+        seg->addArgument(
+                new ArgumentFloat((float) (T2)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(G1)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(G2)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(minSize)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(maxSize)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(minSizePl)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(minSizeSeg)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(maxSizeSeg)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(fillHolesConnectivity)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(reconConnectivity)));
+        seg->addArgument(new ArgumentInt(
+                (int) round(watershedConnectivity)));
+
+
+        // and region template instance that it is suppose to process
+        seg->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+        seg->addDependency(norm->getId());
+
+        std::cout << "Creating DiffMask" << std::endl;
+
+        RTPipelineComponentBase *metricComp;
+        DiceNotCoolMaskComp *diceNotCoolComp;
+
+        if (metricType.find("jaccard") != std::string::npos) metricComp = new JaccardMaskComp();
+        else metricComp = new DiceMaskComp();
+
+        if (metricType.find("dicenc") != std::string::npos) diceNotCoolComp = new DiceNotCoolMaskComp();
+
+        // version of the data region that will be read. It is created during the segmentation.
+        // region template name
+        metricComp->addArgument(new ArgumentInt(versionSeg));
+        metricComp->addRegionTemplateInstance(rtCollection->getRT(i), rtCollection->getRT(i)->getName());
+        metricComp->addDependency(seg->getId());
+
+
+        // add to the list of diff component ids.
+        segComponentIds[i].push_back(seg->getId());
+        metricComponentIds[i].push_back(metricComp->getId());
+
+
+        sysEnv.executeComponent(seg);
+        sysEnv.executeComponent(metricComp);
+
+        if (metricType.find("dicenc") != std::string::npos) {
+            diceNotCoolComp->addArgument(new ArgumentInt(versionSeg));
+            diceNotCoolComp->addRegionTemplateInstance(rtCollection->getRT(i),
+                                                       rtCollection->getRT(i)->getName());
+            diceNotCoolComp->addDependency(metricComp->getId());
+            diceNotCoolComponentIds[i].push_back(diceNotCoolComp->getId());
+            sysEnv.executeComponent(diceNotCoolComp);
+        }
+
+
+        std::cout << "Manager CompId: " << metricComp->getId() << " fileName: " <<
+        rtCollection->getRT(i)->getDataRegion(0)->getInputFileName() << std::endl;
+        segCount++;
+        versionSeg++;
+
+
+        versionNorm++;
+    }
+
+
+
+    // End Creating Dependency Graph
+    sysEnv.startupExecution();
+
+    std::cout << std::endl << std::endl;
+    //==============================================================================================
+    //Fetch results from execution workflow
+    //==============================================================================================
+    for (int j = 0; j < rtCollection->getNumRTs(); j++) {
+        float metric = 0;
+        float secondaryMetric = 0;
+        float diceNotCoolValue = 0;
+
+        std::ostringstream oss;
+        oss << " Default PARAMS";
+
+
+        for (int i = 0; i < metricComponentIds[j].size(); i++) {
+            char *metricResultData = sysEnv.getComponentResultData(metricComponentIds[j][i]);
+            std::cout << "RT name: " << rtCollection->getRT(j)->getDataRegion("RAW")->getInputFileName() <<
+            " - Diff Id: " << metricComponentIds[j][i];
+            if (metricResultData != NULL) {
+                //std::cout << "size: " << ((int *) metricResultData)[0] << " \thadoopgis-metric: " <<
+                //((float *) metricResultData)[1] <<
+                //" \tsecondary: " << ((float *) metricResultData)[2] << endl;
+
+                metric += ((float *) metricResultData)[1];
+                secondaryMetric += ((float *) metricResultData)[2];
+
+                if (metricType.find("dicenc") != std::string::npos) {
+                    char *diceNotCoolResultData = sysEnv.getComponentResultData(diceNotCoolComponentIds[j][i]);
+//                        std::cout << " \tdiceNotCool: " <<
+//                        ((float *) diceNotCoolResultData)[1] << std::endl;
+                    diceNotCoolValue += ((float *) diceNotCoolResultData)[1];
+                }
+
+            } else {
+                std::cout << "NULL" << std::endl;
+            }
+            char *segExecutionTime = sysEnv.getComponentResultData(segComponentIds[j][i]);
+            if (segExecutionTime != NULL) {
+                totalexecutiontimes[j] = ((int *) segExecutionTime)[1];
+//                    cout << "Segmentation execution time:" <<
+//                    totalexecutiontimes[j] << endl;
+            }
+            if (metricType.find("dicenc") != std::string::npos)
+                sysEnv.eraseResultData(diceNotCoolComponentIds[j][i]);
+            sysEnv.eraseResultData(metricComponentIds[j][i]);
+            sysEnv.eraseResultData(segComponentIds[j][i]);
+        }
+        metricComponentIds[j].clear();
+        segComponentIds[j].clear();
+        if (metricType.find("dicenc") != std::string::npos) diceNotCoolComponentIds[j].clear();
+
+
+        float diff;
+
+        if (metricType.find("dicenc") != std::string::npos) diff = (metric + diceNotCoolValue) / 2;
+        else diff = metric;
+
+        if (diff <= 0) diff = FLT_EPSILON;
+
+
+        cout << "\tDiff (average of metric and dnc): " << diff << "\tMetric:" << metric << "\tDNC:" <<
+        diceNotCoolValue << " Segmentation Time: " <<
+        totalexecutiontimes[j] << endl;
+
+        totaldiffs[j] = diff;
+        metricPerIteration[j] = metric;
+        diceNotCoolPerIteration[j] = diceNotCoolValue;
+
+    }
+
+    std::cout << std::endl << std::endl;
+
+
+
 
 }
