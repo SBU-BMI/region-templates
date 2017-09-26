@@ -46,14 +46,16 @@ int main(int argc, char* argv[]) {
 	// verify arguments
 	if (argc > 1 && string(argv[1]).compare("-h") == 0) {
 		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-f] [-ncg]" << endl;
-		cout << "   -f - shuffle" << endl;
+		cout << "   -f   - shuffle" << endl;
 		cout << "   -ncg - don't do coarse grain merging" << endl;
+		cout << "   -b   - for -ma 5, represents the number of buckets generated" << endl;
 		cout << "avaiable algorithms:" << endl;
 		cout << "0 - No fine grain merging algorithm" << endl;
 		cout << "1 - naive fine grain merging algorithm" << endl;
 		cout << "2 - Smart recursive cut fine grain merging algorithm" << endl;
 		cout << "3 - Reuse-Tree fine grain merging algorithm" << endl;
 		cout << "4 - Double-prunning reuse-tree fine grain merging algorithm" << endl;
+		cout << "5 - Task-Balanced Reuse-tree fine grain merging algorithm" << endl;
 		return 0;
 	}
 	if (argc < 7) {

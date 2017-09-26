@@ -63,7 +63,7 @@ void print_bucket_list(list<reuse_tree_t> buckets) {
 	}
 }
 
-bool compare_rt (const reuse_tree_t& first, const reuse_tree_t& second) {
+bool compare_rt (reuse_tree_t first, reuse_tree_t second) {
 	return get_rt_cost(first) > get_rt_cost(second);
 }
 
@@ -583,7 +583,7 @@ void nt_delete(reuse_node_t *n) {
 	delete n;
 }
 
-void rt_delete(reuse_tree_t& rt) {
+void rt_delete(const reuse_tree_t& rt) {
 	for (reuse_node_t* n : rt.parents) {
 		nt_delete(n);
 	}
@@ -671,6 +671,10 @@ reuse_node_t* balance(list<reuse_node_t*> children, reuse_tree_t big_rt,
 	//   per node cost, and also, try any balance from 
 	//   the next level
 	map<int, reuse_node_t*> children_by_cost;
+	cout << "[balance] analysing " << children.size() << " children";
+	for (int i=0; i<k; i++)
+		cout << "#";
+	cout << endl;
 	for (reuse_node_t* n : children) {
 		// try to solve the unbalancement with the best solution
 		//   from the next level
@@ -747,7 +751,7 @@ reuse_node_t* balance(list<reuse_node_t*> children, reuse_tree_t big_rt,
 	return solution;
 }
 
-int count_stages(list<reuse_tree_t> rts) {
+int count_stages(std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)> rts) {
 	int count = 0;
 	for (reuse_tree_t rt : rts)
 		for (reuse_node_t* n : rt.parents)
@@ -756,9 +760,23 @@ int count_stages(list<reuse_tree_t> rts) {
 	return count;
 }
 
-int get_unbal_group(list<reuse_tree_t> buckets) {
+inline reuse_tree_t ms_front(std::multiset<reuse_tree_t,
+	bool(*)(reuse_tree_t,reuse_tree_t)> buckets) {
+
+	return *(buckets.begin());
+}
+
+inline reuse_tree_t ms_back(std::multiset<reuse_tree_t,
+	bool(*)(reuse_tree_t,reuse_tree_t)> buckets) {
+
+	return *(buckets.rbegin());
+}
+
+int get_unbal_group(std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)>
+	buckets) {
+	
 	int unbalance = 0;
-	int max_unbalance = get_rt_cost(buckets.front());
+	int max_unbalance = get_rt_cost(ms_front(buckets));
 	for (reuse_tree_t rt : buckets) {
 		if (get_rt_cost(rt) < max_unbalance)
 			break;
@@ -804,7 +822,9 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	}
 
 	// generate first bucket list
-	list<reuse_tree_t> buckets;
+	//list<reuse_tree_t> buckets;
+	bool(*fn_pt)(reuse_tree_t,reuse_tree_t) = compare_rt;
+	std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)> buckets (fn_pt);
 	for (reuse_node_t* n : children) {
 		// prepare current bucket
 		reuse_tree_t bucket;
@@ -826,7 +846,8 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 			child_list = new_child_list;
 		}
 
-		buckets.emplace_back(bucket);
+		//buckets.emplace_back(bucket);
+		buckets.insert(bucket);
 	}
 
 	cout << "buckets" << endl;
@@ -836,7 +857,7 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	}
 
 	// sort bucket list by descending cost
-	buckets.sort(compare_rt);
+	// buckets.sort(compare_rt);
 
 	// cout << "sorted buckets" << endl;
 	// for (reuse_tree_t rt : buckets) {
@@ -846,7 +867,10 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 
 	// perform single merges, if needed
 	while (buckets.size() > max_buckets) {
-		list<reuse_tree_t> new_buckets;
+		// list<reuse_tree_t> new_buckets;
+		std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)> 
+			new_buckets (fn_pt);
+
 		// remove the most costly buckets from the 'fold' merging and add them to the
 		//   current solution 'as is'
 		list<reuse_tree_t> folded_buckets;
@@ -861,7 +885,8 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 			if (f-- <= 0) {
 				folded_buckets.emplace_back(rt);
 			} else {
-				new_buckets.emplace_back(rt);
+				// new_buckets.emplace_back(rt);
+				new_buckets.insert(rt);
 			}
 		}
 
@@ -877,7 +902,8 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 				folded_buckets.front().parents.end());
 			folded_buckets.pop_front();
 			folded_buckets.pop_back();
-			new_buckets.emplace_back(rt);
+			// new_buckets.emplace_back(rt);
+			new_buckets.insert(rt);
 		}
 
 		buckets = new_buckets;
@@ -890,12 +916,12 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	}
 
 	// sort again bucket list by descending cost
-	buckets.sort(compare_rt);
+	// buckets.sort(compare_rt);
 	cout << "got " << count_stages(buckets) << " stages" << endl;
 
 	// balance the task costs
 	bool improvement = true;
-	int unbalance = get_rt_cost(buckets.front()) - get_rt_cost(buckets.back());
+	int unbalance = get_rt_cost(ms_front(buckets)) - get_rt_cost(ms_back(buckets));
 	while (improvement) {
 		cout << "unbalancement: " << unbalance << " with " 
 			<< get_unbal_group(buckets) << " maxed buckets" << endl;
@@ -903,7 +929,7 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		improvement = false;
 
 		// get the bucket with the highest cost
-		reuse_tree_t big_rt = rt_clone(buckets.front());
+		reuse_tree_t big_rt = rt_clone(ms_front(buckets));
 		// cout << "big_rt cost: " << get_rt_cost(big_rt) << endl;
 
 		// IMPROVEMENT: maybe try balancing big_rt with all other buckets
@@ -911,7 +937,7 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		//    the same min cost
 
 		// get the bucket with the lowest cost
-		reuse_tree_t small_rt = rt_clone(buckets.back());
+		reuse_tree_t small_rt = rt_clone(ms_back(buckets));
 		// cout << "small_rt cost: " << get_rt_cost(small_rt) << endl;
 
 		// try to balance big and small buckets
@@ -928,23 +954,24 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 			int unbalance_tmp = abs(get_rt_cost(big_rt) - get_rt_cost(small_rt));
 			cout << "balancement attempt: " << unbalance_tmp << endl;
 			// if the balanced rt with the greatest cost is as costly as 
-			//   the current most expensive bucket (i.e. buckets.front()) then
+			//   the current most expensive bucket (i.e. ms_front(buckets)) then
 			//   there isn't an improvement
 			if (max(get_rt_cost(big_rt), get_rt_cost(small_rt)) 
-				< get_rt_cost(buckets.front())) {
+				< get_rt_cost(ms_front(buckets))) {
 
 				// if such remove old, unbalanced rt's ...
-				rt_delete(buckets.front());
-				buckets.pop_front();
-				rt_delete(buckets.back());
-				buckets.pop_back();
+				rt_delete(ms_front(buckets));
+				buckets.erase(buckets.begin());
+				rt_delete(ms_back(buckets));
+				buckets.erase(--buckets.end());
 				// ... add new, balanced, rt's ...
-				buckets.emplace_back(big_rt);
-				buckets.emplace_back(small_rt);
+// TODO: try adding hints....................................................
+				buckets.insert(big_rt);
+				buckets.insert(--buckets.end(), small_rt);
 				// ... re-sort the bucket list ...
-				buckets.sort(compare_rt);
+				// buckets.sort(compare_rt);
 				// ... and update the unbalance value
-				// unbalance_tmp = get_rt_cost(buckets.front()) - get_rt_cost(buckets.back());
+				// unbalance_tmp = get_rt_cost(ms_front(buckets)) - get_rt_cost(ms_back(buckets));
 				improvement = true;
 				unbalance = unbalance_tmp;
 				cout << "improved!" << endl;
