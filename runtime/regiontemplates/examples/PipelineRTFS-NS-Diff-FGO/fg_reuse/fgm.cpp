@@ -2,7 +2,7 @@
 
 void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineComponentBase*> &all_stages, 
 	const std::map<int, PipelineComponentBase*> &stages_ref, std::map<int, PipelineComponentBase*> &merged_stages, 
-	std::map<int, ArgumentBase*> expanded_args, int size_limit, bool shuffle, string dakota_filename) {
+	std::map<int, ArgumentBase*> expanded_args, int size_limit, int n_nodes, bool shuffle, string dakota_filename) {
 
 	// attempt merging for each stage type
 	for (std::map<int, PipelineComponentBase*>::const_iterator ref=stages_ref.cbegin(); ref!=stages_ref.cend(); ref++) {
@@ -92,6 +92,11 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 				solution = balanced_reuse_tree_merging(current_stages, all_stages, 
 					size_limit, expanded_args, ref->second->tasksDesc);
 				break;
+			case 6:
+				// task-balanced task-constrained reuse-tree merging
+				solution = tc_balanced_reuse_tree_merging(current_stages, all_stages, 
+					size_limit, n_nodes, expanded_args, ref->second->tasksDesc);
+				break;
 
 		}
 
@@ -99,17 +104,17 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 		ofstream solution_file;
 		solution_file.open(dakota_filename + "-b" + std::to_string(size_limit) + "merging_solution.log", ios::trunc);
 
-		std::cout << std::endl << "solution:" << std::endl;
+		// std::cout << std::endl << "solution:" << std::endl;
 		solution_file << "solution:" << std::endl;
 		int total_tasks=0;
 		for (std::list<PipelineComponentBase*> b : solution) {
-			std::cout << "\tbucket with " << b.size() << " stages and cost "
-				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << std::endl;
+			// std::cout << "\tbucket with " << b.size() << " stages and cost "
+			// 	<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << std::endl;
 			solution_file << "\tbucket with " << b.size() << " stages and cost "
 				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << std::endl;
 			total_tasks += calc_stage_proc(b, expanded_args, ref->second->tasksDesc);
 			for (PipelineComponentBase* s : b) {
-				std::cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << std::endl;
+				// std::cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << std::endl;
 				// solution_file << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << std::endl;
 			}
 		}

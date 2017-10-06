@@ -224,7 +224,7 @@ list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages,
 // The new list will have the merged PCBs without any tasks and with the reuse
 // atribute set as true.
 list<PipelineComponentBase*> merge_stages_full(list<PipelineComponentBase*> stages, 
-	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref) {
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>> ref) {
 
 	if (stages.size() == 1)
 		return stages;
@@ -336,4 +336,14 @@ float calc_stage_mem(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &ar
 	}
 
 	return mem_cost;
+}
+
+list<PipelineComponentBase*> cpy_stage_list(const list<PipelineComponentBase*>& stages) {
+	list<PipelineComponentBase*> new_list;
+	
+	for (PipelineComponentBase* s : stages) {
+		new_list.emplace_back(s->clone());
+	}
+
+	return new_list;
 }

@@ -671,10 +671,10 @@ reuse_node_t* balance(list<reuse_node_t*> children, reuse_tree_t big_rt,
 	//   per node cost, and also, try any balance from 
 	//   the next level
 	map<int, reuse_node_t*> children_by_cost;
-	cout << "[balance] analysing " << children.size() << " children";
-	for (int i=0; i<k; i++)
-		cout << "#";
-	cout << endl;
+	// cout << "[balance] analysing " << children.size() << " children";
+	// for (int i=0; i<k; i++)
+	// 	cout << "#";
+	// cout << endl;
 	for (reuse_node_t* n : children) {
 		// try to solve the unbalancement with the best solution
 		//   from the next level
@@ -798,7 +798,7 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	if (max_buckets > stages_to_merge.size()) {
 		// max_buckets = initial_reuse_tree.parents.size();
 		max_buckets = stages_to_merge.size()*0.9;
-		cout << "MAX_BUCKETS RESIZED!!!!!! to " << max_buckets << endl;
+		// cout << "MAX_BUCKETS RESIZED!!!!!! to " << max_buckets << endl;
 	}
 
 	// cout << "init" << endl;
@@ -815,11 +815,11 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		children = new_children;
 	}
 
-	cout << "buckets" << endl;
-	for (reuse_node_t* rn : children) {
-		print_reuse_node(rn, 0);
-		cout << endl;
-	}
+	// cout << "buckets" << endl;
+	// for (reuse_node_t* rn : children) {
+	// 	print_reuse_node(rn, 0);
+	// 	cout << endl;
+	// }
 
 	// generate first bucket list
 	//list<reuse_tree_t> buckets;
@@ -850,11 +850,11 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		buckets.insert(bucket);
 	}
 
-	cout << "buckets" << endl;
-	for (reuse_tree_t rt : buckets) {
-		print_reuse_tree(rt);
-		cout << endl;
-	}
+	// cout << "buckets" << endl;
+	// for (reuse_tree_t rt : buckets) {
+	// 	print_reuse_tree(rt);
+	// 	cout << endl;
+	// }
 
 	// sort bucket list by descending cost
 	// buckets.sort(compare_rt);
@@ -909,23 +909,23 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		buckets = new_buckets;
 	}
 
-	cout << "semifinal buckets" << endl;
-	for (reuse_tree_t rt : buckets) {
-		print_reuse_tree(rt);
-		cout << endl;
-	}
+	// cout << "semifinal buckets" << endl;
+	// for (reuse_tree_t rt : buckets) {
+	// 	print_reuse_tree(rt);
+	// 	cout << endl;
+	// }
 
 	// sort again bucket list by descending cost
 	// buckets.sort(compare_rt);
-	cout << "got " << count_stages(buckets) << " stages" << endl;
+	// cout << "got " << count_stages(buckets) << " stages" << endl;
 
 	// balance the task costs
 	bool improvement = true;
 	int unbalance = get_rt_cost(ms_front(buckets)) - get_rt_cost(ms_back(buckets));
 	while (improvement) {
-		cout << "unbalancement: " << unbalance << " with " 
-			<< get_unbal_group(buckets) << " maxed buckets" << endl;
-		cout << "got " << count_stages(buckets) << " stages" << endl;
+		// cout << "unbalancement: " << unbalance << " with " 
+		// 	<< get_unbal_group(buckets) << " maxed buckets" << endl;
+		// cout << "got " << count_stages(buckets) << " stages" << endl;
 		improvement = false;
 
 		// get the bucket with the highest cost
@@ -952,7 +952,7 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		if (n != NULL) {
 			swap_node(big_rt, small_rt, n, args, ref);
 			int unbalance_tmp = abs(get_rt_cost(big_rt) - get_rt_cost(small_rt));
-			cout << "balancement attempt: " << unbalance_tmp << endl;
+			// cout << "balancement attempt: " << unbalance_tmp << endl;
 			// if the balanced rt with the greatest cost is as costly as 
 			//   the current most expensive bucket (i.e. ms_front(buckets)) then
 			//   there isn't an improvement
@@ -965,7 +965,7 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 				rt_delete(ms_back(buckets));
 				buckets.erase(--buckets.end());
 				// ... add new, balanced, rt's ...
-// TODO: try adding hints....................................................
+   // TODO: try adding hints....................................................
 				buckets.insert(big_rt);
 				buckets.insert(--buckets.end(), small_rt);
 				// ... re-sort the bucket list ...
@@ -974,10 +974,11 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 				// unbalance_tmp = get_rt_cost(ms_front(buckets)) - get_rt_cost(ms_back(buckets));
 				improvement = true;
 				unbalance = unbalance_tmp;
-				cout << "improved!" << endl;
-			} else
-				cout << "bad improvement: " << unbalance_tmp 
-					<< " vs " << unbalance << endl;
+				// cout << "improved!" << endl;
+			} 
+			// } else
+			// 	cout << "bad improvement: " << unbalance_tmp 
+			// 		<< " vs " << unbalance << endl;
 			
 
 			// cout << "imprv buckets" << endl;
@@ -985,8 +986,9 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 			// 	print_reuse_tree(rt);
 			// 	cout << endl;
 			// }
-		} else
-			cout << "no balancement" << endl;
+		} 
+		// } else
+		// 	cout << "no balancement" << endl;
 	}
 
 
@@ -1007,4 +1009,105 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 
 	return solution;
 
+}
+
+list<list<PipelineComponentBase*>> tc_balanced_reuse_tree_merging(
+	const list<PipelineComponentBase*>& stages_to_merge, 
+	const map<int, PipelineComponentBase*> &all_stages, int max_tasks, int n_nodes, 
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref) {
+
+	list<list<PipelineComponentBase*>> solution;
+
+	int full_m_tasks = 0;
+
+	int buckets_wo_reuse;
+	int buckets_w_reuse;
+	float reuse_factor_inv;
+	int total_tasks = stages_to_merge.size() * 
+		stages_to_merge.front()->tasks.size();
+
+	// perform a full-merge on which there is a single bucket with all stages 
+	std::list<PipelineComponentBase*> full_merge = 
+		merge_stages_full(cpy_stage_list(stages_to_merge), args, ref);
+	// get the number of tasks of the single full-merged bucket
+	for (PipelineComponentBase* s : full_merge) {
+		if (s->reused == NULL) {
+			full_m_tasks += s->tasks.size();
+		}
+	}
+	reuse_factor_inv = (float)(full_m_tasks) / (float)(total_tasks);
+
+	buckets_wo_reuse = ceil(total_tasks / max_tasks);
+	buckets_w_reuse = ceil(buckets_wo_reuse * reuse_factor_inv);
+
+	cout << "buckets_wo_reuse: " << buckets_wo_reuse << endl;
+	cout << "buckets_w_reuse: " << buckets_w_reuse << endl;
+	cout << "n_nodes: " << n_nodes << endl;
+
+	// get the best performance case with the memory constraint
+	if (n_nodes > buckets_w_reuse)
+		buckets_w_reuse = n_nodes;
+	if (n_nodes > buckets_wo_reuse)
+		buckets_wo_reuse = n_nodes;
+
+	// run reuse alg with optimistic max_buxkets
+	solution = balanced_reuse_tree_merging(cpy_stage_list(stages_to_merge), 
+		all_stages, buckets_w_reuse, args, ref);
+
+	// check if all buckets comply with the memory restriction
+	bool fesible = true;
+	for (list<PipelineComponentBase*> b : solution) {
+		int task_count = 0;
+		for (PipelineComponentBase* s : b) {
+			if (s->reused == NULL) {
+				task_count += s->tasks.size();
+			}
+		}
+		if (task_count > max_tasks) {
+			fesible = false;
+			break;
+		}
+	}
+
+	// If optimistic solution isn't good enough, go to persimistic solution
+	// Even if the optimistic solution is good the algorithm must run again on
+	// the real stages_to_merge list, instead of a copy, to commit the internal
+	// changes
+	if (!fesible) {
+		solution = balanced_reuse_tree_merging(stages_to_merge, 
+			all_stages, buckets_wo_reuse, args, ref);
+		cout << "optimistic is unfesiable" << endl;
+	} else
+		solution = balanced_reuse_tree_merging(stages_to_merge, 
+			all_stages, buckets_w_reuse, args, ref);
+
+	// get the reuse factor - for comparison reasons only
+	full_m_tasks = 0;
+	int maxc = 0;
+	int minc = INT_MAX;
+	for (list<PipelineComponentBase*> b : solution) {
+		list<PipelineComponentBase*> tmp;
+		for (PipelineComponentBase* s : b) {
+			if (s->reused == NULL) {
+				tmp.emplace_back(s->clone());
+			}
+		}
+		int curr = 0;
+		for (PipelineComponentBase* s : merge_stages_full(tmp, args, ref)) {
+			curr += s->tasks.size();
+		}
+		if (curr > maxc)
+			maxc = curr;
+		if (curr < minc)
+			minc = curr;
+		full_m_tasks += curr;
+	}
+
+	cout << "solution inv reuse factor X best inv reuse factor: " 
+		<< (float)(full_m_tasks) / (float)(total_tasks) 
+		<< " X " << reuse_factor_inv << endl;
+	cout << "[min/max] cost of the " << solution.size() 
+		<< " buckets: [" << minc << "/" << maxc << "]" << endl;
+
+	return solution;
 }

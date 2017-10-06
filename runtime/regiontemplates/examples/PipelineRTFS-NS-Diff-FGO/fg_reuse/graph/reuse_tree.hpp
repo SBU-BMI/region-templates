@@ -35,4 +35,9 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(const list<Pipeli
 	const map<int, PipelineComponentBase*> &all_stages, int max_buckets, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref);
 
+list<list<PipelineComponentBase*>> tc_balanced_reuse_tree_merging(
+	const list<PipelineComponentBase*>& stages_to_merge, 
+	const map<int, PipelineComponentBase*> &all_stages, int max_tasks, int n_nodes, 
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref);
+
 #endif

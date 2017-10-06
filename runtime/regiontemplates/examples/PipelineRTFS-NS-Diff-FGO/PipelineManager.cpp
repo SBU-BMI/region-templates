@@ -45,10 +45,15 @@ int main(int argc, char* argv[]) {
 
 	// verify arguments
 	if (argc > 1 && string(argv[1]).compare("-h") == 0) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-f] [-ncg]" << endl;
-		cout << "   -f   - shuffle" << endl;
-		cout << "   -ncg - don't do coarse grain merging" << endl;
-		cout << "   -b   - for -ma 5, represents the number of buckets generated" << endl;
+		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-f] [-ncg] [-nn <number of nodes>]" << endl;
+		cout << "   -f    - shuffle" << endl;
+		cout << "   -ncg  - don't do coarse grain merging" << endl;
+		cout << "   -nn X - notify that X nodes are used to execute the workflow (only usable for -ma 6)" << endl;
+		cout << "   -b:" << endl;
+		cout << "    + for -ma 0-4 represents the maximum bucket size" << endl;
+		cout << "    + for -ma 5   represents the number of buckets generated" << endl;
+		cout << "    + for -ma 6   represents the maximum number of tasks per bucket allowed" << endl;
+		cout << endl;
 		cout << "avaiable algorithms:" << endl;
 		cout << "0 - No fine grain merging algorithm" << endl;
 		cout << "1 - naive fine grain merging algorithm" << endl;
@@ -56,12 +61,13 @@ int main(int argc, char* argv[]) {
 		cout << "3 - Reuse-Tree fine grain merging algorithm" << endl;
 		cout << "4 - Double-prunning reuse-tree fine grain merging algorithm" << endl;
 		cout << "5 - Task-Balanced Reuse-tree fine grain merging algorithm" << endl;
+		cout << "6 - Task-Balanced Reuse-tree fine grain merging algorithm with task restriction" << endl;
 		return 0;
 	}
-	if (argc < 7) {
-		cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-f] [-ncg]" << endl;
-		return 0;
-	}
+	// if (argc < 7) {
+	// 	cout << "usage: ./PipelineRTFS-NS-Diff-FGO -b <max bucket size> -dkt <dakota output file> -ma <merging algorithm> [-f] [-ncg]" << endl;
+	// 	return 0;
+	// }
 
 	int mpi_rank;
 	int mpi_size;
@@ -97,6 +103,15 @@ int main(int argc, char* argv[]) {
 			return 0;
 		} else
 			merging_algorithm = atoi(argv[find_arg_pos("-ma", argc, argv)+1]);
+
+		int n_nodes;
+		if (merging_algorithm == 6) {
+			if (find_arg_pos("-nn", argc, argv) == -1) {
+				cout << "Missing number of nodes, needed for -ma 6." << endl;
+				return 0;
+			} else
+				n_nodes = atoi(argv[find_arg_pos("-nn", argc, argv)+1]);
+		}
 
 		bool shuffle = find_arg_pos("-f", argc, argv) == -1 ? false : true;
 		cout << "shuffle: " << shuffle << endl;
@@ -169,7 +184,7 @@ int main(int argc, char* argv[]) {
 		gettimeofday(&start, NULL);
 
 		fgm::merge_stages_fine_grain(merging_algorithm, expanded_stages, base_stages, merged_stages, 
-			expanded_args, max_bucket_size, shuffle, dakota_file);
+			expanded_args, max_bucket_size, n_nodes, shuffle, dakota_file);
 
 		gettimeofday(&end, NULL);
 

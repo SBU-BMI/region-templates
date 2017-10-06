@@ -38,7 +38,7 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 // The new list will have the merged PCBs without any tasks and with the reuse
 // atribute set as true.
 list<PipelineComponentBase*> merge_stages_full(list<PipelineComponentBase*> stages, 
-	map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref);
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>> ref);
 
 int get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBase* s2, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref);
@@ -50,5 +50,7 @@ float calc_stage_proc(list<PipelineComponentBase*> stages, PipelineComponentBase
 	map<string, list<ArgumentBase*>> ref);
 
 float calc_stage_mem(list<PipelineComponentBase*> s, map<int, ArgumentBase*> &args, map<string, list<ArgumentBase*>> ref);
+
+list<PipelineComponentBase*> cpy_stage_list(const list<PipelineComponentBase*>& stages);
 
 #endif
