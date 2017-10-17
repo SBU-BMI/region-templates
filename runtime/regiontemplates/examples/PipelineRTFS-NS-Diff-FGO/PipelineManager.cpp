@@ -308,7 +308,8 @@ int main(int argc, char* argv[]) {
 		do {
 			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
 				&flag, MPI_STATUS_IGNORE);
-			usleep(200000);
+			if (flag)
+				usleep(200000);
 		} while (!flag);
 		MPI_Recv(&mpi_val, 1, MPI_INT, MPI_ANY_SOURCE, 
 			MPI_ANY_TAG, MPI_COMM_WORLD,  MPI_STATUS_IGNORE);
