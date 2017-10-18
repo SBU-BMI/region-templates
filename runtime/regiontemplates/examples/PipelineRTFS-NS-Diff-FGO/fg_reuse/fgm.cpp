@@ -104,15 +104,37 @@ void fgm::merge_stages_fine_grain(int algorithm, const std::map<int, PipelineCom
 		ofstream solution_file;
 		solution_file.open(dakota_filename + "-b" + std::to_string(size_limit) + "merging_solution.log", ios::trunc);
 
-		// std::cout << std::endl << "solution:" << std::endl;
+		// // perform simbolic merging to avoid false mergings (i.e. 2 stages that have 0 reuse remaining in the same bucket)
+		// // std::cout << std::endl << "solution:" << std::endl;
+		// solution_file << "solution:" << std::endl;
+		// int total_tasks=0;
+		// for (std::list<PipelineComponentBase*> b : solution) {
+		// 	list<PipelineComponentBase*> b_tmp = merge_stages_full(cpy_stage_list(b), expanded_args, ref->second->tasksDesc);
+		// 	for (PipelineComponentBase* s : b_tmp) {
+		// 		if (s->reused == NULL) {
+		// 			int ns = 0;
+		// 			solution_file << "\tbucket with " << ns << " stages and cost "
+		// 				<< s->tasks.size() << ":" << std::endl;
+		// 			total_tasks += s->tasks.size();
+		// 		}
+		// 	}
+		// }
+
+		std::cout << std::endl << "solution:" << std::endl;
 		solution_file << "solution:" << std::endl;
 		int total_tasks=0;
 		for (std::list<PipelineComponentBase*> b : solution) {
+			int n_tasks = 0;
+			for (PipelineComponentBase* s : merge_stages_full(cpy_stage_list(b), expanded_args, ref->second->tasksDesc)) {
+				if (s->reused == NULL) {
+					n_tasks += s->tasks.size();
+				}
+			}
 			// std::cout << "\tbucket with " << b.size() << " stages and cost "
 			// 	<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << std::endl;
 			solution_file << "\tbucket with " << b.size() << " stages and cost "
-				<< calc_stage_proc(b, expanded_args, ref->second->tasksDesc) << ":" << std::endl;
-			total_tasks += calc_stage_proc(b, expanded_args, ref->second->tasksDesc);
+				<< n_tasks << ":" << std::endl;
+			total_tasks += n_tasks;
 			for (PipelineComponentBase* s : b) {
 				// std::cout << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << std::endl;
 				// solution_file << "\t\tstage " << s->getId() << ":" << s->getName() << ":" << std::endl;

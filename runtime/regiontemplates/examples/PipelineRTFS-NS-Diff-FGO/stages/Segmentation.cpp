@@ -137,7 +137,10 @@ int Segmentation::run() {
 
 	// send all tasks to be executed
 	for (ReusableTask* t : ordered_tasks) {
-		cout << "\t\t\t[Segmentation] sending task " << t->getId() << endl;
+		cout << "\t\t\t[Segmentation] sending task " << t->getId() 
+			<< " with dependencies:" << endl;
+		for (int i=0; i<t->getNumberDependencies(); i++)
+			cout << "\t\t\t\t" << t->getDependency(i) << ":" << endl;
 		t->mock = false;
 		this->executeTask(t);
 	}

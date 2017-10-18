@@ -250,22 +250,26 @@ int main(int argc, char* argv[]) {
 
 				cout << "sent component " << s.second->getId() << ":" 
 					<< s.second->getName() << " sized " << s.second->size() << " to execute with args:" << endl;
-				cout << "\tall args: " << endl;
-				for (ArgumentBase* a : s.second->getArguments())
-					cout << "\t\t" << a->getId() << ":" << a->getName() << " = " 
-						<< a->toString() << " parent " << a->getParent() << endl;
-				cout << "\tinputs: " << endl;
-				for (int i : s.second->getInputs())
-					cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
-						<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
-				cout << "\toutputs: " << endl;
-				for (int i : s.second->getOutputs())
-					cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
-						<< expanded_args[i]->toString() << endl;
+				// cout << "\tall args: " << endl;
+				// for (ArgumentBase* a : s.second->getArguments())
+				// 	cout << "\t\t" << a->getId() << ":" << a->getName() << " = " 
+				// 		<< a->toString() << " parent " << a->getParent() << endl;
+				// cout << "\tinputs: " << endl;
+				// for (int i : s.second->getInputs())
+				// 	cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+				// 		<< expanded_args[i]->toString() << " parent " << expanded_args[i]->getParent() << endl;
+				// cout << "\toutputs: " << endl;
+				// for (int i : s.second->getOutputs())
+				// 	cout << "\t\t" << i << ":" << expanded_args[i]->getName() << " = " 
+				// 		<< expanded_args[i]->toString() << endl;
 				cout << "\tdependencies:" << endl;
 				for (int i=0; i<s.second->getNumberDependencies(); i++)
 					cout << "\t\t" << merged_stages[s.second->getDependency(i)]->getId() << ":" 
 						<< merged_stages[s.second->getDependency(i)]->getName() << endl;
+				cout << "\ttasks:" << endl;
+				for (ReusableTask* t : s.second->tasks) {
+					cout << "\t\t task " << t->getId() << endl;
+				}
 
 				// set task ID to enable dependency enforcement
 				((Task*)s.second)->setId(s.second->getId());
