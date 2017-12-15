@@ -142,6 +142,25 @@ PipelineComponentBase *PipelineComponentBase::ComponentFactory::getCompoentFromN
 	return pc;
 }
 
+
+string PipelineComponentBase::getHash() {
+	int size_bytes;
+	int serialized_bytes = 0;
+
+	for(int i = 0; i < this->getArgumentsSize(); i++){
+		size_bytes+=this->getArgument(i)->size();
+	}
+
+	char* buff = new char[size_bytes];
+
+	for(int i = 0; i < this->getArgumentsSize(); i++){
+		serialized_bytes += this->getArgument(i)->serialize(buff+serialized_bytes);
+	}
+
+	return string(buff, size_bytes);
+
+}
+
 int PipelineComponentBase::size()
 {
 	// To store component id

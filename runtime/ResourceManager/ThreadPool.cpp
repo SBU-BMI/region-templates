@@ -510,7 +510,7 @@ void ThreadPool::processTasks(int procType, int tid)
 		// calculate time in microseconds
 		double tS = startTime.tv_sec*1000000 + (startTime.tv_usec);
 		double tE = endTime.tv_sec*1000000  + (endTime.tv_usec);
-		printf("procType:%d  tid:%d procTime = %f\n", procType, tid,  (tE-tS)/1000000);
+		printf("procType:%d taskId:%d  tid:%d procTime = %f\n", procType, curTask->getId(), tid,  (tE-tS)/1000000);
 
 		// October 04, 2013. Commenting out line bellow to work with GPUs without compiling w/ cuda/gpu suppport
 	//	if(procType == ExecEngineConstants::CPU){

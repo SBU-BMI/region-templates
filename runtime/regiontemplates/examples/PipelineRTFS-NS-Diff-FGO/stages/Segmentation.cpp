@@ -106,14 +106,17 @@ Segmentation::~Segmentation() {}
 
 int Segmentation::run() {
 
+	long long t0 = Util::ClockGetTime();
+
 	// Print name and id of the component instance
-	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
+	std::cout << "[Segmentation] Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
 
 	this->addInputOutputDataRegion("tile", "normalized_rt", RTPipelineComponentBase::INPUT);
 
 	this->addInputOutputDataRegion("tile", "segmented_rt", RTPipelineComponentBase::OUTPUT);
 
+	long long t1 = Util::ClockGetTime();
 
 	map<int, ReusableTask*> prev_map;
 	list<ReusableTask*> ordered_tasks;
@@ -135,6 +138,8 @@ int Segmentation::run() {
 		ordered_tasks.emplace_back(t);
 	}
 
+	long long t2 = Util::ClockGetTime();
+
 	// send all tasks to be executed
 	for (ReusableTask* t : ordered_tasks) {
 		cout << "\t\t\t[Segmentation] sending task " << t->getId() 
@@ -144,6 +149,10 @@ int Segmentation::run() {
 		t->mock = false;
 		this->executeTask(t);
 	}
+
+	long long t3 = Util::ClockGetTime();
+
+	cout << "[SEGMENTATION_PROFILER] " << t0 << " " << t1 << " " << t2 << " " << t3 << endl;
 
 	return 0;
 }
@@ -230,14 +239,14 @@ bool TaskSegmentation0::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation0 executing." << std::endl;	
+	std::cout << "TaskSegmentation0 of id " << this->getId() << " is executing - " << t1 << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg1(normalized_rt, blue, green, red, T1, T2, &*bgr, &*rbc);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation0 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "TaskSegmentation0 exec time of task " << this->getId() << " on thread " << tid << ": " << t2-t1 << " - " << t2 << std::endl;
 }
 
 void TaskSegmentation0::updateDR(RegionTemplate* rt) {
@@ -477,14 +486,14 @@ bool TaskSegmentation1::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation1 executing." << std::endl;	
+	std::cout << "TaskSegmentation1 of id " << this->getId() << " is executing - " << t1 << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg2(reconConnectivity, &*bgr, &*rc, &*rc_recon, &*rc_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation1 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "TaskSegmentation1 exec time of task " << this->getId() << " on thread " << tid << ": " << t2-t1 << " - " << t2 << std::endl;
 }
 
 void TaskSegmentation1::updateDR(RegionTemplate* rt) {
@@ -649,14 +658,14 @@ bool TaskSegmentation2::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation2 executing." << std::endl;	
+	std::cout << "TaskSegmentation2 of id " << this->getId() << " is executing - " << t1 << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg3(fillHolesConnectivity, G1, &*rc, &*rc_recon, &*rc_open, &*bw1, &*diffIm);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation2 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "TaskSegmentation2 exec time of task " << this->getId() << " on thread " << tid << ": " << t2-t1 << " - " << t2 << std::endl;
 }
 
 void TaskSegmentation2::updateDR(RegionTemplate* rt) {
@@ -833,14 +842,14 @@ bool TaskSegmentation3::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation3 executing." << std::endl;	
+	std::cout << "TaskSegmentation3 of id " << this->getId() << " is executing - " << t1 << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg4(minSize, maxSize, &*bw1, &*bw1_t);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation3 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "TaskSegmentation3 exec time of task " << this->getId() << " on thread " << tid << ": " << t2-t1 << " - " << t2 << std::endl;
 }
 
 void TaskSegmentation3::updateDR(RegionTemplate* rt) {
@@ -1010,14 +1019,14 @@ bool TaskSegmentation4::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation4 executing." << std::endl;	
+	std::cout << "TaskSegmentation4 of id " << this->getId() << " is executing - " << t1 << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg5(G2, &*diffIm, &*bw1_t, &*rbc, &*seg_open);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation4 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "TaskSegmentation4 exec time of task " << this->getId() << " on thread " << tid << ": " << t2-t1 << " - " << t2 << std::endl;
 }
 
 void TaskSegmentation4::updateDR(RegionTemplate* rt) {
@@ -1193,14 +1202,14 @@ bool TaskSegmentation5::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation5 executing." << std::endl;	
+	std::cout << "TaskSegmentation5 of id " << this->getId() << " is executing - " << t1 << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg6(normalized_rt, minSizePl, watershedConnectivity, &*seg_open, &*seg_nonoverlap);
 	
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 
-	std::cout << "Task Segmentation5 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "TaskSegmentation5 exec time of task " << this->getId() << " on thread " << tid << ": " << t2-t1 << " - " << t2 << std::endl;
 }
 
 void TaskSegmentation5::updateDR(RegionTemplate* rt) {
@@ -1426,7 +1435,7 @@ bool TaskSegmentation6::run(int procType, int tid) {
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
 
-	std::cout << "TaskSegmentation6 executing." << std::endl;	
+	std::cout << "TaskSegmentation6 of id " << this->getId() << " is executing - " << t1 << std::endl;	
 
 	::nscale::HistologicalEntities::segmentNucleiStg7(&segmented_rt, minSizeSeg, maxSizeSeg, fillHolesConnectivity, &*seg_nonoverlap);
 	
@@ -1434,7 +1443,7 @@ bool TaskSegmentation6::run(int procType, int tid) {
 
 	(*this->segmented_rt_temp)->setData(segmented_rt);
 
-	std::cout << "Task Segmentation6 time elapsed: "<< t2-t1 << std::endl;
+	std::cout << "TaskSegmentation6 exec time of task " << this->getId() << " on thread " << tid << ": " << t2-t1 << " - " << t2 << std::endl;
 }
 
 void TaskSegmentation6::updateDR(RegionTemplate* rt) {

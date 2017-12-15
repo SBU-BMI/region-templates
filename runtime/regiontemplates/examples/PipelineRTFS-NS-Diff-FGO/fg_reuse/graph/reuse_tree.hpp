@@ -6,6 +6,7 @@
 #include <set>
 #include <stack>
 #include <iterator>
+#include <unordered_map>
 
 #include "../merging.hpp"
 
@@ -16,16 +17,18 @@ typedef struct reuse_node_t {
 	reuse_node_t* parent;
 	int id;
 	std::list<reuse_node_t*> children;
+	std::unordered_map<string, reuse_node_t*> children_hashmap;
 	PipelineComponentBase* stage_ref;
 } reuse_node_t;
 
 typedef struct {
 	std::list<reuse_node_t*> parents;
+	std::unordered_map<string, reuse_node_t*> parents_hashmap;
 	int height;
 	// int cost;
 } reuse_tree_t;
 
-// Performs the stage mearging using the reuse tree algorithm
+// Performs the stage merging using the reuse tree algorithm
 list<list<PipelineComponentBase*>> reuse_tree_merging(const list<PipelineComponentBase*>& stages_to_merge, 
 	const map<int, PipelineComponentBase*> &all_stages, int max_bucket_size, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref,

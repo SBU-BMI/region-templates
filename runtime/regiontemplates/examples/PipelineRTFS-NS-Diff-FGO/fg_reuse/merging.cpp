@@ -38,11 +38,11 @@ bool exists_reusable_task(const PipelineComponentBase* merged, const PipelineCom
 	return false;
 }
 
-// for the meantime the mearging will happen whenever at least the first task is reusable
+// for the meantime the merging will happen whenever at least the first task is reusable
 bool merging_condition(const PipelineComponentBase* merged, const PipelineComponentBase* to_merge, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref) {
 	
-	// compatibility with stages that dont implement task reuse
+	// compatibility with stages that don't implement task reuse
 	if (ref.size() == 0)
 		return false;
 
@@ -54,7 +54,7 @@ bool merging_condition(const PipelineComponentBase* merged, const PipelineCompon
 	if (!exists_reusable_task(merged, to_merge, ref.begin()->first))
 		return false;
 
-	// verify if the stage dependecy is the same
+	// verify if the stage dependency is the same
 	for (ArgumentBase* a1 : merged->getArguments()) {
 		ArgumentBase* arg1 = args.at(a1->getId());
 		if (arg1->getParent() != 0) {
@@ -115,7 +115,7 @@ list<ReusableTask*> task_generator(map<string, list<ArgumentBase*>> &tasks_desc,
 		ReusableTask* n_task = ReusableTask::ReusableTaskFactory::getTaskFromName(t->first, args, NULL);
 		n_task->setId(uid);
 		n_task->setTaskName(t->first);
-		// set prevoius task dependency if this isn't the first task generated
+		// set previous task dependency if this isn't the first task generated
 		if (t != tasks_desc.rbegin()) {
 			prev_task->parentTask = n_task->getId();
 		}
@@ -150,8 +150,7 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 	s->reused = current;
 
 	if (s->tasks.size() != ref.size()) {
-		(s+134)->tasks.size();
-		// exit(-10);
+		exit(-10);
 	}
 
 	ReusableTask* current_frontier_reusable_tasks;
@@ -222,7 +221,7 @@ list<PipelineComponentBase*> merge_stages(list<PipelineComponentBase*> stages,
 
 // Attempt to merge a list of PCB, returning a list of PCBs with the same size.
 // The new list will have the merged PCBs without any tasks and with the reuse
-// atribute set as true.
+// attribute set as true.
 list<PipelineComponentBase*> merge_stages_full(list<PipelineComponentBase*> stages, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>> ref) {
 
@@ -233,6 +232,8 @@ list<PipelineComponentBase*> merge_stages_full(list<PipelineComponentBase*> stag
 	
 	for (; i!=stages.end(); i++) {
 		for (list<PipelineComponentBase*>::iterator j = next(i); j!=stages.end(); j++) {
+			// cout << "i tasks=" << (*i)->tasks.size() << endl;
+			// cout << "j tasks=" << (*j)->tasks.size() << endl;
 			if (merging_condition(*i, *j, args, ref)) {
 				merge_stages(*i, *j, ref);
 				(*j)->reused = *i;

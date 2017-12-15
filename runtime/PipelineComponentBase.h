@@ -178,6 +178,10 @@ public:
 
 	PipelineComponentBase* reused;
 
+	// generate a hash value of the parameter inputs of a stage
+	// used for reduction in the complexity of the RTMA algorithm
+	string getHash();
+
 	// used to fix a memory leak when merging the PCBs
 	bool remove_outputs;
 

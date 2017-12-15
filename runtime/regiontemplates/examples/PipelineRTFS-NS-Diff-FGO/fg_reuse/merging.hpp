@@ -17,7 +17,7 @@ ArgumentBase* find_argument(PipelineComponentBase* p, string name, map<int, Argu
 // conditions are not checked.
 bool exists_reusable_task(const PipelineComponentBase* merged, const PipelineComponentBase* to_merge, string task_name);
 
-// for the meantime the mearging will happen whenever at least the first task is reusable
+// for the meantime the merging will happen whenever at least the first task is reusable
 bool merging_condition(const PipelineComponentBase* merged, const PipelineComponentBase* to_merge, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref);
 
@@ -36,7 +36,7 @@ void merge_stages(PipelineComponentBase* current, PipelineComponentBase* s, map<
 
 // Attempt to merge a list of PCB, returning a list of PCBs with the same size.
 // The new list will have the merged PCBs without any tasks and with the reuse
-// atribute set as true.
+// attribute set as true.
 list<PipelineComponentBase*> merge_stages_full(list<PipelineComponentBase*> stages, 
 	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>> ref);
 
@@ -45,7 +45,7 @@ int get_reuse_factor(PipelineComponentBase* s1, PipelineComponentBase* s2,
 
 float calc_stage_proc(list<PipelineComponentBase*> s, const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>>& ref);
 
-// just add PCB s symbolicaly and calc the cost with stages
+// just add PCB s symbolically and calculate the cost with stages
 float calc_stage_proc(list<PipelineComponentBase*> stages, PipelineComponentBase* s, map<int, ArgumentBase*> &args, 
 	map<string, list<ArgumentBase*>> ref);
 

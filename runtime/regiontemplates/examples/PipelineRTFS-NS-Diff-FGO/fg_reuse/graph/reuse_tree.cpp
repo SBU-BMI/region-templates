@@ -5,6 +5,29 @@
 #include <set>
 #include <algorithm>
 
+
+list<PipelineComponentBase*> rnode_to_PCB_list(const reuse_node_t* n) {
+	list<PipelineComponentBase*> ret, tmp;
+	if (n->children.size() == 0) {
+		ret.emplace_back(n->stage_ref);
+	} else {
+		for (reuse_node_t* nn : n->children) {
+			tmp = rnode_to_PCB_list(nn);
+			ret.insert(ret.end(), tmp.begin(), tmp.end());
+		}
+	}
+	return ret;
+}
+
+list<PipelineComponentBase*> tree_to_PCB_list(const reuse_tree_t& t) {
+	list<PipelineComponentBase*> ret, tmp;
+	for (reuse_node_t* n : t.parents) {
+		tmp = rnode_to_PCB_list(n);
+		ret.insert(ret.end(), tmp.begin(), tmp.end());
+	}
+	return ret;
+}
+
 void print_reuse_node(const reuse_node_t* n, int tt) {
 	for (int i=0; i<tt; i++)
 		std::cout << "\t";
@@ -48,11 +71,44 @@ int get_rt_cost (const reuse_tree_t& rt) {
 	return get_nodes_cost(rt.parents);
 }
 
+int get_merged_rt_cost(const reuse_tree_t& rt1, const reuse_tree_t& rt2, 
+	const map<int, ArgumentBase*> &args, const map<string, list<ArgumentBase*>> ref) {
+
+	list<PipelineComponentBase*> b1 = tree_to_PCB_list(rt1);
+	list<PipelineComponentBase*> b2 = tree_to_PCB_list(rt2);
+	b1.merge(b2);
+
+	// need to make copy or the merger of merge_stages_full will go to the PCB stages 
+	list<PipelineComponentBase*> buckets_tmp;
+	for (PipelineComponentBase* s : b2) {
+		buckets_tmp.emplace_back(s->clone());
+	}
+
+	list<PipelineComponentBase*> m_buckets = merge_stages_full(buckets_tmp, args, ref);
+
+	int ret = get_rt_cost(rt1) + get_rt_cost(rt2) - calc_stage_proc(m_buckets, args, ref);
+
+	// memory cleanup
+	for (PipelineComponentBase* s : buckets_tmp)
+		delete s;
+
+	return ret;
+
+}
+
 void print_reuse_tree(const reuse_tree_t& t) {
 	std::cout << "tree of height " << t.height 
 		<< " and cost " << get_rt_cost(t) << ":" << std::endl;
 	for (reuse_node_t* n : t.parents)
 		print_reuse_node(n, 1);
+}
+
+void print_bucket_list(std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)> buckets) {
+	int i=0;
+	for (reuse_tree_t rt : buckets) {
+		cout << "bucket " << i++ << " _________________________________________" << endl;
+		print_reuse_tree(rt);
+	}
 }
 
 void print_bucket_list(list<reuse_tree_t> buckets) {
@@ -71,28 +127,6 @@ bool compare_rn_by_id (const reuse_node_t* first, const reuse_node_t* second) {
 	return first->id > second->id;
 }
 
-list<PipelineComponentBase*> rnode_to_PCB_list(const reuse_node_t* n) {
-	list<PipelineComponentBase*> ret, tmp;
-	if (n->children.size() == 0) {
-		ret.emplace_back(n->stage_ref);
-	} else {
-		for (reuse_node_t* nn : n->children) {
-			tmp = rnode_to_PCB_list(nn);
-			ret.insert(ret.end(), tmp.begin(), tmp.end());
-		}
-	}
-	return ret;
-}
-
-list<PipelineComponentBase*> tree_to_PCB_list(const reuse_tree_t& t) {
-	list<PipelineComponentBase*> ret, tmp;
-	for (reuse_node_t* n : t.parents) {
-		tmp = rnode_to_PCB_list(n);
-		ret.insert(ret.end(), tmp.begin(), tmp.end());
-	}
-	return ret;
-}
-
 void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBase* s, 
 	reuse_node_t* parent, int height, int curr_level, const map<int, ArgumentBase*>& args,
 	const map<string, list<ArgumentBase*>>& ref) {
@@ -104,8 +138,14 @@ void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBas
 		return;
 	}
 
-	// attempt to find if there is a reuse oportunity on this level
+	// attempt to find if there is a reuse opportunity on this level
 	reuse_node_t* reusable_node = NULL;
+	// cout << "here?" << endl;
+	// unordered_map<string, reuse_node_t*>::iterator reusable_node 
+	// 	= curr->children_hashmap.find(s->getHash());	
+	// cout << "hash:" << s->getHash() << endl;
+
+
 	for (reuse_node_t* n : node_list) {
 		// palealive solution to merging two equal stages
 		if (s->getId() ==  n->stage_ref->getId()) {
@@ -127,15 +167,20 @@ void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBas
 
 	// if there isn't a reusable node then create a new node for s
 	if (reusable_node == NULL) {
+	// if (reusable_node == curr->children_hashmap.end()) {
 		// std::cout << "[recursive_insert_stage][" << curr_level 
 		// 	<< "] no reusable node for " << s->getId() << std::endl;
 		reuse_node_t* new_node = new reuse_node_t;
 		node_list.emplace_back(new_node);
+		// curr->children.emplace_back(new_node);
+		// curr->children_hashmap[s->getHash()] = new_node;
 		new_node->parent = parent;
 		new_node->stage_ref = s;
 		new_node->id = new_node_id();
-		recursive_insert_stage(new_node->children, s, 
+		recursive_insert_stage(new_node->children, s,
 			new_node, height, curr_level+1, args, ref);
+		// recursive_insert_stage(new_node, s, 
+		// 	new_node, height, curr_level+1, args, ref);
 	}
 	// if there is a reusable stage then continue the recursive traverse on this node
 	else {
@@ -143,10 +188,11 @@ void recursive_insert_stage(list<reuse_node_t*>& node_list, PipelineComponentBas
 		// 	<< "] recurring" << std::endl;
 		recursive_insert_stage(reusable_node->children, s, 
 			reusable_node, height, curr_level+1, args, ref);
+		// recursive_insert_stage(reusable_node->second, s, 
+		// 	reusable_node->second, height, curr_level+1, args, ref);
 	}
 }
 
-// Generates the reuse tree based on the reuse level of the stages
 reuse_tree_t generate_reuse_tree(const list<PipelineComponentBase*>& stages, 
 	const map<int, ArgumentBase*>& args, const map<string, list<ArgumentBase*>>& ref) {
 	reuse_tree_t reuse_tree;
@@ -628,6 +674,8 @@ void swap_node(reuse_tree_t& from_rt, reuse_tree_t&  to_rt, reuse_node_t* n,
 	for (PipelineComponentBase* pcb : rnode_to_PCB_list(n)) {
 		recursive_insert_stage(to_rt.parents, pcb, 
 			NULL, to_rt.height, 0, args, ref);
+		// for (reuse_node_t* n : to_rt.parents)
+		// 	recursive_insert_stage(n, pcb, NULL, to_rt.height, 0, args, ref);
 	}
 
 	// cout << "after insert:" << endl;
@@ -836,8 +884,11 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 			list<reuse_node_t*> new_child_list;
 			for (reuse_node_t* child : child_list) {
 				if (child->children.size() == 0) {
-					recursive_insert_stage(bucket.parents, child->stage_ref, NULL, 
-						bucket.height, 0, args, ref);
+					recursive_insert_stage(bucket.parents, child->stage_ref, 
+						NULL, bucket.height, 0, args, ref);
+					// for (reuse_node_t* nn : bucket.parents)
+					// 	recursive_insert_stage(nn, child->stage_ref, NULL, 
+					// 		bucket.height, 0, args, ref);
 				} else {
 					new_child_list.insert(new_child_list.end(), 
 						child->children.begin(), child->children.end());
@@ -910,10 +961,16 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	}
 
 	// cout << "semifinal buckets" << endl;
+	// int stg = 0;
+	// int tasks = 0;
 	// for (reuse_tree_t rt : buckets) {
-	// 	print_reuse_tree(rt);
-	// 	cout << endl;
+	// 	// print_reuse_tree(rt);
+	// 	// cout << endl;
+	// 	cout << get_rt_cost(rt) << endl;
+	// 	stg += tree_to_PCB_list(rt).size();
+	// 	tasks += get_rt_cost(rt);
 	// }
+	// cout << stg << " stages and " << tasks << " tasks" << endl;
 
 	// sort again bucket list by descending cost
 	// buckets.sort(compare_rt);
@@ -932,12 +989,33 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 		reuse_tree_t big_rt = rt_clone(ms_front(buckets));
 		// cout << "big_rt cost: " << get_rt_cost(big_rt) << endl;
 
-		// IMPROVEMENT: maybe try balancing big_rt with all other buckets
-		// IMPROVEMENT[2]: maybe try balancing big_rt with all buckets with
-		//    the same min cost
+		// get all rts with min cost
+		pair<std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)>::iterator,
+			std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)>::iterator> it 
+				= buckets.equal_range(ms_back(buckets));
 
-		// get the bucket with the lowest cost
-		reuse_tree_t small_rt = rt_clone(ms_back(buckets));
+		// get the bucket with the lowest cost and maximum reuse with big_rt
+		std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)>::iterator i;
+		int small_rt_reuse = 0;
+		std::multiset<reuse_tree_t,bool(*)(reuse_tree_t,reuse_tree_t)>::iterator 
+			small_rt_it = it.first;
+		for (i=it.first; i!=it.second; i++) {
+			// there may be the case on which perfect balance is achieved 
+			//    (i.e., all buckets have the same cost)
+			//    in this case there cannot be any more improvement
+			//    goto used for breaking 2 loops
+			if (get_rt_cost(big_rt) == get_rt_cost(*i))
+				goto FINAL;
+
+			// test if *i is the new most-reusable node with big_rt
+			int curReuse = get_merged_rt_cost(big_rt, *i, args, ref);
+			if (curReuse > small_rt_reuse) {
+				small_rt_reuse = curReuse;
+				small_rt_it = i;
+			}
+		}
+		reuse_tree_t small_rt = rt_clone(*small_rt_it);
+
 		// cout << "small_rt cost: " << get_rt_cost(small_rt) << endl;
 
 		// try to balance big and small buckets
@@ -962,12 +1040,12 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 				// if such remove old, unbalanced rt's ...
 				rt_delete(ms_front(buckets));
 				buckets.erase(buckets.begin());
-				rt_delete(ms_back(buckets));
-				buckets.erase(--buckets.end());
+				rt_delete(*small_rt_it);
+				buckets.erase(small_rt_it);
 				// ... add new, balanced, rt's ...
    // TODO: try adding hints....................................................
 				buckets.insert(big_rt);
-				buckets.insert(--buckets.end(), small_rt);
+				buckets.insert(small_rt);
 				// ... re-sort the bucket list ...
 				// buckets.sort(compare_rt);
 				// ... and update the unbalance value
@@ -999,11 +1077,19 @@ list<list<PipelineComponentBase*>> balanced_reuse_tree_merging(
 	// }
 
 	// convert the tree structured solution to a PCB bucket list
-	for (reuse_tree_t rt : buckets) {
+	FINAL:for (reuse_tree_t rt : buckets) {
 		list<PipelineComponentBase*> bucket = tree_to_PCB_list(rt);
 		solution.emplace_back(bucket);
 		rt_delete(rt);
 	}
+
+	// int i=0;
+	// for (list<PipelineComponentBase*> b : solution) {
+	// 	cout << "bucket " << i++ << endl;
+	// 	for (PipelineComponentBase* s : b) {
+	// 		cout << "id=" << s->getId() << " - cost=" << s->tasks.size() << endl;
+	// 	}
+	// }
 
 	// cout << "done" << endl;
 
@@ -1069,14 +1155,14 @@ list<list<PipelineComponentBase*>> tc_balanced_reuse_tree_merging(
 		}
 	}
 
-	// If optimistic solution isn't good enough, go to persimistic solution
+	// If optimistic solution isn't good enough, go to pessimistic solution
 	// Even if the optimistic solution is good the algorithm must run again on
 	// the real stages_to_merge list, instead of a copy, to commit the internal
 	// changes
 	if (!fesible) {
 		solution = balanced_reuse_tree_merging(stages_to_merge, 
 			all_stages, buckets_wo_reuse, args, ref);
-		cout << "optimistic is unfesiable" << endl;
+		cout << "optimistic is unfeasible" << endl;
 	} else
 		solution = balanced_reuse_tree_merging(stages_to_merge, 
 			all_stages, buckets_w_reuse, args, ref);
