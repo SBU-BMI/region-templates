@@ -44,6 +44,10 @@ int ActiveHarmonyTuning::initialize(int argc, char **argv) {
     else if (strategyAHpolicy.find("pro") != std::string::npos || strategyAHpolicy.find("PRO") != std::string::npos) {
         AHpolicy.append("pro.so");
     }
+    else if (strategyAHpolicy.find("random") != std::string::npos ||
+             strategyAHpolicy.find("RANDOM") != std::string::npos) {
+        AHpolicy.append("random.so");
+    }
     else {
         AHpolicy.append("nm.so");
     }

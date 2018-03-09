@@ -24,6 +24,10 @@ set(yibuilddir ${YI_BUILD_DIR})
 
 #includes
 include_directories(${yisrcdir}/)
+include_directories(${yibuilddir}/nscale/src/segment/)
+
+#/home/pathomics_analysis/nucleusSegmentation/build/nscale/src/
+#/home/pathomics_analysis/nucleusSegmentation/build/nscale-proj-prefix/src/nscale-proj-build/lib/
 
 
 if(USE_ACTIVE_HARMONY)
@@ -38,6 +42,7 @@ link_directories(${Runtime_SOURCE_DIR})
 #link_directories(/Users/george/Documents/emory/nscale-sc13/nscale/lib)
 
 link_directories(${yibuilddir}/)
+link_directories(${yibuilddir}/nscale-proj-prefix/src/nscale-proj-build/lib/)
 
 # Create library with components implementation
 set(libname componentnsdiffahproyi)
@@ -56,6 +61,7 @@ add_library("${libname}" SHARED ${libcomponentssrcs} ${libcomparativeanalysis})
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
 target_link_libraries(${libname} regiontemplates)
+target_link_libraries(${libname} segment)
 set(CMAKE_CXX_FLAGS "-fopenmp")
 set(CMAKE_C_FLAGS "-fopenmp")
 

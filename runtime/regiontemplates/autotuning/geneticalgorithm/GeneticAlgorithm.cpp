@@ -46,6 +46,8 @@ int GeneticAlgorithm::initialize(int argc, char **argv) {
         cout << "\tMaximum Number of Generations: " << maxNumberOfIterations << endl;
         cout << "\tElite Size (Propagate Amount): " << propagateamount << endl;
         cout << "\tMutation Rate: " << (mutationchance) << " % " << endl;
+        cout << "\tCrossover Rate: " << (crossoverrate) << " % " << endl;
+
     }
 
     if (fmod(numSets, 2)) {

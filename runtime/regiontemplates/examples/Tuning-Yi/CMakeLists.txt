@@ -25,6 +25,8 @@ set(yibuilddir ${YI_BUILD_DIR})
 #includes
 include_directories(${yisrcdir}/)
 
+include_directories(${yibuilddir}/nscale/src/segment/)
+
 
 if (USE_ACTIVE_HARMONY)
     include_directories(${RegionTemplate_BINARY_DIR}/external-src/activeharmony-4.5/include/)
@@ -36,7 +38,8 @@ link_directories(${Runtime_SOURCE_DIR})
 #link_directories(/Users/george/Documents/emory/nscale-sc13/nscale/lib)
 
 link_directories(${yibuilddir}/)
-
+# path to nscale
+link_directories(${yibuilddir}/nscale-proj-prefix/src/nscale-proj-build/lib/)
 # Create library with components implementation
 set(libname componenttuningyi)
 
@@ -71,6 +74,7 @@ add_dependencies("${libname}" copyScriptsToTuning)  #End of  Hadoopgis Dependenc
 #set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" runtimesystem)
 target_link_libraries(${libname} regiontemplates)
+target_link_libraries(${libname} segment)
 set(CMAKE_CXX_FLAGS "-fopenmp")
 set(CMAKE_C_FLAGS "-fopenmp")
 
@@ -82,6 +86,9 @@ target_link_libraries("${libname}" ${OpenCV_LIBS} ${ITK_LIBRARIES})
 #Copy the cache-conf.xml file located in the example folder to the build folder everytime the program is compiled.
 add_custom_target(copyCacheConfToTuning COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cache-conf/rtconf.xml ${CMAKE_CURRENT_BINARY_DIR})
 
+#Copy run.sh to the build folder
+add_custom_target(copyRUNScriptToTuning COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/run.sh ${CMAKE_CURRENT_BINARY_DIR})
+
 # Create executable to be built from the files listed
 add_executable(Tuning-Yi PipelineManager.cpp)
 if (USE_ACTIVE_HARMONY)
@@ -89,7 +96,7 @@ if (USE_ACTIVE_HARMONY)
 	set(ahsrcdir ${AH_SRC_DIR})
     target_link_libraries(Tuning-Yi ${ahsrcdir}/lib/libharmony.a)
 endif (USE_ACTIVE_HARMONY)
-add_dependencies(Tuning-Yi copyCacheConfToTuning)
+add_dependencies(Tuning-Yi copyCacheConfToTuning copyRUNScriptToTuning)
 
 # Link the executable to the runtime system library
 target_link_libraries(Tuning-Yi runtimesystem "${libname}")
