@@ -18,7 +18,7 @@ DenseDataRegion2D::~DenseDataRegion2D() {
 		it->second.release();
 	}
 #ifdef DEBUG
-	std::cout << "DDR2D destructor:"<< this->getName() << ":"<< this->getId()<< std::endl;
+	// std::cout << "DDR2D destructor:"<< this->getName() << ":"<< this->getId()<< std::endl;
 #endif
 	this->dataCPU.release();
 }

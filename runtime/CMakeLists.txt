@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 2.6)
 project(Runtime)
 
+
 # The version number
 set(Runtime_VERSION_MAJOR 1)
 set(Runtime_VERSION_MINOR 0)
+
+add_definitions( -ggdb -gdwarf-2 )
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release CACHE STRING
@@ -40,7 +43,7 @@ else(USE_CUDA)
 endif(USE_CUDA)
 
 # Source files used by the Runtime System
-set( libsyssrcs SysEnv.cpp Worker.cpp Manager.cpp Argument.cpp PipelineComponentBase.cpp CallBackComponentExecution.cpp ./util/Util.cpp ./util/DataPack.cpp )
+set( libsyssrcs SysEnv.cpp Worker.cpp Manager.cpp Argument.cpp PipelineComponentBase.cpp CallBackComponentExecution.cpp ./util/Util.cpp ./util/DataPack.cpp ReusableTask.cpp )
 
 set( libname runtimesystem )
 

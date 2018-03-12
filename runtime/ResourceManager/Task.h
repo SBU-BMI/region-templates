@@ -57,14 +57,14 @@ class Task {
 		// Pointer to the Execution Engine that is responsible for this task.
 		ExecutionEngine *curExecEngine;
 
-		// Simple setter for the task id
-		void setId(int id);
-
 		// This bool variable says whether the all dependencies that were to be associated to
 		// this task have already being associated. It is only used by the CallBackTaskClass.
 		// However, it has to be defined here because we can't typecast the Task pointer available
 		// during the execution to an object of type CallBackTask.
 		bool callBackDepsReady;
+
+		// used to get the task type on FGO
+		std::string taskName;
 
 	public:
 
@@ -117,6 +117,9 @@ class Task {
 		// Interface implemented by the end user
 		virtual bool run(int procType=ExecEngineConstants::GPU, int tid=0);
 
+		// Simple setter for the task id
+		void setId(int id);
+
 		// Other simple getters and setters
 		int getId() const;
 		int getTaskType() const;
@@ -130,6 +133,14 @@ class Task {
 
 		void setStatus(int status) {
 			this->status = status;
+		}
+
+		std::string getTaskName () {
+			return taskName;
+		}
+
+		void setTaskName (std::string taskName) {
+			this->taskName = taskName;
 		}
 
 };

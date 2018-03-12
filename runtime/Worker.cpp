@@ -242,7 +242,7 @@ int Worker::getRank() const
 
 void Worker::workerProcess()
 {
-	// Init data spaces
+	// Init data spaces1
 	// Number of DataSpaces clients equals to number of workers
 	// Load Components implemented by the current application, and
 	// check if all workers were correctly initialized.
@@ -269,11 +269,15 @@ void Worker::workerProcess()
 	char flag = MessageTag::MANAGER_READY;
 	while (flag != MessageTag::MANAGER_FINISHED && flag != MessageTag::MANAGER_ERROR) {
 
+		long long t0 = Util::ClockGetTime();
+
 		// tell the manager - ready
 		this->comm_world.Send(&MessageTag::WORKER_READY, 1, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
 
 		// get the manager status
 		this->comm_world.Recv(&flag, 1, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
+
+		long long t_recv = Util::ClockGetTime();
 
 	//	std::cout << "Worker: "<< this->getRank()<<" flag: " <<(int)flag<<std::endl;
 	
@@ -285,6 +289,7 @@ void Worker::workerProcess()
 #ifdef DEBUG
 				std::cout << "maxActive: " << this->getMaxActiveComponentInstances() << " activeComps: "<< this->getActiveComponentInstances() <<" #resTasks:"<< std::endl;
 #endif
+				long long t_isnull = Util::ClockGetTime();
 
 				if(pc != NULL){
 					// One more component instance was received and is being dispatched for execution
@@ -303,6 +308,7 @@ void Worker::workerProcess()
 					// subtasks have finished the call back is executed, destroyed and the component is destroyed
 					int ioTaskId = pc->createIOTask();
 
+					long long t_cache = Util::ClockGetTime();
 
 					CallBackComponentExecution *callBackTask = new CallBackComponentExecution(pc, this);
 					if(ioTaskId != -1){
@@ -315,8 +321,12 @@ void Worker::workerProcess()
 					// Start transaction. All tasks created within the execution engine will be associated to this one
 					this->getResourceManager()->startTransaction(callBackTask);
 
+					long long t_callback = Util::ClockGetTime();
+
 					// Execute component function that instantiates tasks within the execution engine
 					pc->run();
+
+					long long t_run = Util::ClockGetTime();
 
 					// Stop transaction: defines the end of the transaction associated to the current component
 					this->getResourceManager()->endTransaction();
@@ -324,6 +334,27 @@ void Worker::workerProcess()
 					// Dispatch transaction task for execution
 					this->getResourceManager()->insertTask(callBackTask);
 
+					long long t_end = Util::ClockGetTime();
+
+					std::stringstream t0_ss;
+					t0_ss << t0;
+					std::stringstream t_recv_ss;
+					t_recv_ss << t_recv;
+					std::stringstream t_isnull_ss;
+					t_isnull_ss << t_isnull;
+					std::stringstream t_cache_ss;
+					t_cache_ss << t_cache;
+					std::stringstream t_callback_ss;
+					t_callback_ss << t_callback;
+					std::stringstream t_run_ss;
+					t_run_ss << t_run;
+					std::stringstream t_end_ss;
+					t_end_ss << t_end;
+
+					std::cout << "[WORKER_PROFILER] " << t0_ss.str() << " " << t_recv_ss.str() << " " 
+						<< t_isnull_ss.str() << " " << t_cache_ss.str() << " " 
+						<< t_callback_ss.str() << " " << t_run_ss.str() << " " 
+						<< t_end_ss.str() << std::endl;
 
 				}else{
 					std::cout << "Error: Failed to load PipelineComponent!"<<std::endl;

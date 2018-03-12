@@ -12,9 +12,11 @@
 #include <string>
 #include <map>
 #include <list>
+#include <algorithm>
 
 #include "Argument.h"
 #include "Task.h"
+#include "ReusableTask.hpp"
 //#include "Worker.h"
 //#include "Manager.h"
 
@@ -25,6 +27,7 @@
 
 class PipelineComponentBase;
 class Manager;
+class ReusableTask;
 
 
 // Define factory function type that creates objects of type PipelineComponentBase and its subclasses
@@ -32,8 +35,6 @@ typedef PipelineComponentBase* (componetFactory_t)();
 
 class PipelineComponentBase: public Task {
 private:
-	// Contain pointers to all arguments associated to this pipeline component
-	std::vector<ArgumentBase*> arguments;
 
 	// Holds the string name of the component, which should be the same used to register with the ComponentFactory
 	std::string component_name;
@@ -71,6 +72,9 @@ private:
 	std::list<int> output_arguments;
 
 protected:
+	// Contain pointers to all arguments associated to this pipeline component
+	std::vector<ArgumentBase*> arguments;
+	
 	// is this component at the worker or manager side?
 	int location;
 	// this is used to pass cache stored in the Worker to the Pipeline component
@@ -106,6 +110,16 @@ public:
 
 	// Retrieve "index"th argument, if it exists, otherwise NULL is returned
 	ArgumentBase *getArgument(int index);
+
+	// Retrieve an argument with 'id', if it exists, otherwise NULL is returned
+	// This is used by the pipeline generator and was added here as a new function
+	// instead of changing getArgument(int) for compatibility reasons
+	ArgumentBase *getArgumentById(int id);
+
+	// Retrieve an argument with 'id', if it exists, otherwise NULL is returned
+	// This is used by the fine-grain merging and was added here as a new function
+	// instead of changing getArgument(int) for compatibility reasons
+	ArgumentBase *getArgumentByName(std::string name);
 
 	// Get current number of arguments associated to this component.
 	int getArgumentsSize();
@@ -156,6 +170,27 @@ public:
 
 	void replaceInput(int old_a, int new_a);
 	void replaceOutput(int old_a, int new_a);
+
+	// a map of all tasks ID used by the stage and the list of arguments for each task
+	std::map<std::string, std::list<ArgumentBase*> > tasksDesc;
+
+	std::list<ReusableTask*> tasks;
+
+	PipelineComponentBase* reused;
+
+	// used to fix a memory leak when merging the PCBs
+	bool remove_outputs;
+
+	// needed for inter stage dependency verification on task merging
+	std::vector<ArgumentBase*> getArguments() const {return arguments;};
+
+	// needed to update an argument of a reused stage on fine-grain merging
+	void replaceArgument(int old_id, ArgumentBase* new_a);
+
+	void printTasks();
+
+	// makespan cost 
+	float getMksp() {return 1;};
 
 	// Factory class is used to build "reflection", and instantiate objects of
 	// PipelineComponentBase subclasses that register with it
