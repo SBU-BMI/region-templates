@@ -17,6 +17,8 @@
 #include "ExecEngineConstants.h"
 #include "TaskArgument.h"
 
+#include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
+
 class ExecutionEngine;
 class Task;
 
@@ -75,8 +77,8 @@ class Task {
 		TaskArgument* getArgument(int index);
 		int getNumberArguments();
 		int getArgumentId(int index);
-		int uploadArgument(int index, cv::gpu::Stream& stream);
-		int downloadArgument(int index, cv::gpu::Stream& stream);
+		int uploadArgument(int index, cv::cuda::Stream& stream);
+		int downloadArgument(int index, cv::cuda::Stream& stream);
 
 		Task* tryPreassignment();
 

@@ -15,7 +15,9 @@
 // OpenCV library includes: used as an auxiliar lib to read/write data(images) to fs
 //#include "cv.hpp"
 //#include "opencv2/gpu/gpu.hpp"
-#include "highgui.h"
+// #include "highgui.h" // old opencv 2.4
+#include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
+
 #include <string>
 #include <sstream>
 

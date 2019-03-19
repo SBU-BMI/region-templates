@@ -9,7 +9,8 @@
 #define TASKARGUMENT_H_
 
 #include <iostream>
-#include "opencv2/gpu/gpu.hpp"
+// #include "opencv2/gpu/gpu.hpp" // old opencv 2.4
+#include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
 #include "ExecEngineConstants.h"
 
 class TaskArgument {
@@ -46,14 +47,14 @@ public:
 		this->id = id;
 	}
 
-	virtual bool upload(cv::gpu::Stream& stream) {
+	virtual bool upload(cv::cuda::Stream& stream) {
 		std::cout << "uploadMaster" << std::endl;
 		return false;
 	}
 
 	;
 
-	virtual bool download(cv::gpu::Stream& stream) {
+	virtual bool download(cv::cuda::Stream& stream) {
 		std::cout << "dowloadMaster" << std::endl;
 		return false;
 	}

@@ -149,14 +149,14 @@ int Task::getArgumentId(int index) {
 	return id;
 }
 
-int Task::uploadArgument(int index, cv::gpu::Stream& stream) {
+int Task::uploadArgument(int index, cv::cuda::Stream& stream) {
 	if(index >= 0 && index < this->taskArguments.size()){
 		taskArguments[index]->upload(stream);
 	}
 	return 0;
 }
 
-int Task::downloadArgument(int index, cv::gpu::Stream& stream) {
+int Task::downloadArgument(int index, cv::cuda::Stream& stream) {
 	if(index >= 0 && index < this->taskArguments.size()){
 		taskArguments[index]->download(stream);
 	}

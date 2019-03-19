@@ -26,16 +26,16 @@ void *callThread(void *arg){
 
 #ifdef	WITH_CUDA
 
-//		cv::gpu::setDevice(2);
-		cv::gpu::setDevice(tid);
+//		cv::cuda::setDevice(2);
+		cv::cuda::setDevice(tid);
 
-	//	cv::gpu::setDevice(tid);
+	//	cv::cuda::setDevice(tid);
 //		if(tid==1){
 //			std::cout << "GPU thread: "<< tid << " using GPU:"<< tid+1<<std::endl;
-//			cv::gpu::setDevice(tid+1);
+//			cv::cuda::setDevice(tid+1);
 //		}else{
 //			std::cout << "GPU thread: "<< tid << " using GPU:"<< tid<<std::endl;
-//			cv::gpu::setDevice(tid);
+//			cv::cuda::setDevice(tid);
 //		}
 		int cpuId=tid;
 
@@ -53,7 +53,7 @@ void *callThread(void *arg){
 		// warmup gpu
 		cv::Mat A;
 		A = cv::Mat::zeros(3,3,CV_32F);
-		cv::gpu::GpuMat A_g(A);
+		cv::cuda::GpuMat A_g(A);
 		A_g.release();
 #endif
 		
@@ -186,14 +186,14 @@ void ThreadPool::initExecution()
 	pthread_mutex_unlock(&initExecutionMutex);
 }
 
-void ThreadPool::enqueueUploadTaskParameters(Task* task, cv::gpu::Stream& stream) {
+void ThreadPool::enqueueUploadTaskParameters(Task* task, cv::cuda::Stream& stream) {
 	for(int i = 0; i < task->getNumberArguments(); i++){
 		task->getArgument(i)->upload(stream);
 	}
 }
 
 
-void ThreadPool::downloadTaskOutputParameters(Task* task, cv::gpu::Stream& stream) {
+void ThreadPool::downloadTaskOutputParameters(Task* task, cv::cuda::Stream& stream) {
 	for(int i = 0; i < task->getNumberArguments(); i++){
 		// Download only those parameters that are of type: output, or input_output.
 		// Input type arguments can be deleted directly.
@@ -209,7 +209,7 @@ void ThreadPool::downloadTaskOutputParameters(Task* task, cv::gpu::Stream& strea
 
 }
 
-void ThreadPool::enqueueDownloadTaskParameters(Task* task, cv::gpu::Stream& stream) {
+void ThreadPool::enqueueDownloadTaskParameters(Task* task, cv::cuda::Stream& stream) {
 	for(int i = 0; i < task->getNumberArguments(); i++){
 		task->getArgument(i)->download(stream);
 	}
@@ -221,7 +221,7 @@ void ThreadPool::deleteOutputParameters(Task* task) {
 	}
 }
 
-void ThreadPool::preassignmentSelectiveDownload(Task* task, Task* preAssigned, cv::gpu::Stream& stream) {
+void ThreadPool::preassignmentSelectiveDownload(Task* task, Task* preAssigned, cv::cuda::Stream& stream) {
 	vector<int> downloadingTasksIds;
 
 	// Perform parameter matching, and download what will not be used
@@ -262,19 +262,19 @@ void ThreadPool::processTasks(int procType, int tid)
 {
 
 #ifdef WITH_CUDA
-	cv::gpu::Stream *stream;
+	cv::cuda::Stream *stream;
 
 	// stream used to perform data prefetching
-	cv::gpu::Stream *pStream;
+	cv::cuda::Stream *pStream;
 
 	// stream used to perform asynchronous download of data
-	cv::gpu::Stream *dStream;
+	cv::cuda::Stream *dStream;
 
 	if(procType == ExecEngineConstants::GPU){
 		try{
-			stream = new cv::gpu::Stream();
-			pStream = new cv::gpu::Stream();
-			dStream = new cv::gpu::Stream();
+			stream = new cv::cuda::Stream();
+			pStream = new cv::cuda::Stream();
+			dStream = new cv::cuda::Stream();
 		}catch(...){
 			printf("ERROR creating stream. EXCEPTION\n");
 		}

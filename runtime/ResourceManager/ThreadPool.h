@@ -17,7 +17,8 @@
 #include <sched.h>
 
 #include "cv.hpp"
-#include "opencv2/gpu/gpu.hpp"
+// #include "opencv2/gpu/gpu.hpp" // old opencv 2.4
+#include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
 
 #include "TasksQueue.h"
 #include "ExecutionEngine.h"
@@ -71,16 +72,16 @@ private:
 	struct timeval lastToFinishTime;
 
 	// Non-Blocking operation that enqueue upload of parameters data
-	void enqueueUploadTaskParameters(Task* task, cv::gpu::Stream &stream);
+	void enqueueUploadTaskParameters(Task* task, cv::cuda::Stream &stream);
 
 	// Blocking operation that downloads parameters and delete them.
-	void downloadTaskOutputParameters(Task* task, cv::gpu::Stream &stream);
+	void downloadTaskOutputParameters(Task* task, cv::cuda::Stream &stream);
 
 	// Blocking operation that downloads parameters that are not used by preassigned task
-	void preassignmentSelectiveDownload(Task* task, Task* preassigned, cv::gpu::Stream &stream);
+	void preassignmentSelectiveDownload(Task* task, Task* preassigned, cv::cuda::Stream &stream);
 
 	// Non-blocking operation, that enqueue download of parameters data
-	void enqueueDownloadTaskParameters(Task* task, cv::gpu::Stream& stream);
+	void enqueueDownloadTaskParameters(Task* task, cv::cuda::Stream& stream);
 
 	// delete GPU space used by parameters
 	void deleteOutputParameters(Task* task);

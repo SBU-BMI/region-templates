@@ -1309,7 +1309,7 @@ void expand_stages(const map<int, ArgumentBase*> &args,
 				// break loop of 'stages' since its content has changed
 				break;
 			} 
-			else
+			// else
 				// cout << "stage " << p.second->getName() << " have unmet dependencies " << endl;
 		}
 	}

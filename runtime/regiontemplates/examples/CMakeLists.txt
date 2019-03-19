@@ -4,13 +4,13 @@ project(ExamplesRT)
 #add_subdirectory("PipelineRTFS-NSF")
 
 #Difference analysis basic pipelines
-option(RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
 option(USE_FINE_GRAIN_SEG_TASKS "Enable use of fine grain segmentation tasks of NScale for tuning optimization" OFF)
 option(USE_HADOOPGIS "Compile HadoopGIS examples (Requires Hadoopgis)" OFF)
 
 if (RT_TUNING_NSCALE_EXAMPLE)
+    option(RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
+    add_subdirectory("PipelineRTFS-NS-Diff")
     if (USE_ACTIVE_HARMONY)
-        add_subdirectory("PipelineRTFS-NS-Diff")
         add_subdirectory("PipelineRTFS-SF")
         add_subdirectory("PipelineRTFS-NS-Diff-AH")
         add_subdirectory("PipelineRTFS-NS-Diff-AH-PRO")
