@@ -375,16 +375,16 @@ void RTPipelineComponentBase::addInputOutputDataRegion(
 		std::string regionTemplateName, std::string dataRegionName, int type) {
 	switch(type){
 		case RTPipelineComponentBase::INPUT:
-			this->input_data_regions.insert(std::make_pair<std::string, std::string>(regionTemplateName, dataRegionName));
+			this->input_data_regions.insert(std::make_pair<std::string, std::string>((std::string)regionTemplateName, (std::string)dataRegionName));
 			break;
 		case RTPipelineComponentBase::OUTPUT:
 
-			this->output_data_regions.insert(std::make_pair<std::string, std::string>(regionTemplateName, dataRegionName));
+			this->output_data_regions.insert(std::make_pair<std::string, std::string>((std::string)regionTemplateName, (std::string)dataRegionName));
 			break;
 
 		case RTPipelineComponentBase::INPUT_OUTPUT:
-			this->input_data_regions.insert(std::make_pair<std::string, std::string>(regionTemplateName, dataRegionName));
-			this->output_data_regions.insert(std::make_pair<std::string, std::string>(regionTemplateName, dataRegionName));
+			this->input_data_regions.insert(std::make_pair<std::string, std::string>((std::string)regionTemplateName, (std::string)dataRegionName));
+			this->output_data_regions.insert(std::make_pair<std::string, std::string>((std::string)regionTemplateName, (std::string)dataRegionName));
 			break;
 		default:
 			std::cout << "Error: unknown data region relation type (input, ouput,etc): "<< type << std::endl;
