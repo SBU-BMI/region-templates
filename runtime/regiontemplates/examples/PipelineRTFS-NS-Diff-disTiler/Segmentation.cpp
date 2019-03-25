@@ -10,8 +10,8 @@
 
 Segmentation::Segmentation() {
 	this->setComponentName("Segmentation");
-	this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::INPUT);//_OUTPUT
-	this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::OUTPUT);//_OUTPUT
+	this->addInputOutputDataRegion("img", "initial", RTPipelineComponentBase::INPUT);//_OUTPUT
+	this->addInputOutputDataRegion("img", "initial", RTPipelineComponentBase::OUTPUT);//_OUTPUT
 }
 
 Segmentation::~Segmentation() {
@@ -23,7 +23,7 @@ int Segmentation::run()
 
 	// Print name and id of the component instance
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
-	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
+	RegionTemplate * inputRt = this->getRegionTemplateInstance("img");
 
 	int parameterId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
 	int parameterSegId = ((ArgumentInt*)this->getArgument(1))->getArgValue();
@@ -46,7 +46,7 @@ int Segmentation::run()
 	if(inputRt != NULL){
 		DenseDataRegion2D *bgr = NULL;
 		try{
-			bgr = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("BGR", "", 0, parameterId));
+			bgr = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("initial", "normalized", 0, 1));
 			std::cout << "Segmentation. paramenterId: "<< parameterId<<std::endl;
 		}catch(...){
 			std::cout <<"ERROR SEGMENTATION " << std::endl;
@@ -56,9 +56,9 @@ int Segmentation::run()
 			std::cout << "Segmentation. BGR input id: "<< bgr->getId() << " paramenterId: "<< parameterId<<std::endl;
 			// Create output data region
 			DenseDataRegion2D *mask = new DenseDataRegion2D();
-			mask->setName("MASK");
-			mask->setId(bgr->getId());
-			mask->setVersion(parameterSegId);
+			mask->setName("initial");
+			mask->setId("segmented");
+			mask->setVersion(2);
 
 			inputRt->insertDataRegion(mask);
 			std::cout <<  "nDataRegions: after:" << inputRt->getNumDataRegions() << std::endl;

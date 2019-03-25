@@ -16,14 +16,12 @@
 
 RegionTemplate* getInputRT(std::string path) {
 	DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-	std::size_t lastBar = path.find_last_of("/\\");
-	std::size_t firstDot = path.find(".");
-	ddr2d->setName(path.substr(lastBar+1).substr(0, firstDot));
+	ddr2d->setName("initial");
 	ddr2d->setId("initial");
 	ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
 	ddr2d->setIsAppInput(true);
 	ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-	ddr2d->setInputFileName(path.substr(lastBar+1));
+	ddr2d->setInputFileName(path);
 
 	RegionTemplate *rt = new RegionTemplate();
 	rt->insertDataRegion(ddr2d);
@@ -82,14 +80,17 @@ Segmentation* genSegmentation(int versionSeg, int versionNorm,
 	return seg;
 }
 
-DiffMaskComp* genDiffMaskComp(int versionSeg, int segId, RegionTemplate* rt) {
+DiffMaskComp* genDiffMaskComp(int versionSeg, int segId, 
+	RegionTemplate* rtIn, RegionTemplate* rtMask) {
+
 	DiffMaskComp* diff = new DiffMaskComp();
 	// version of the data region that will be read. 
 	// It is created during the segmentation.
 	diff->addArgument(new ArgumentInt(versionSeg));
 
 	// region template name
-	diff->addRegionTemplateInstance(rt, rt->getName());
+	diff->addRegionTemplateInstance(rtIn, rtIn->getName());
+	diff->addRegionTemplateInstance(rtMask, rtMask->getName());
 	diff->addDependency(segId);
 
 	return diff;
@@ -103,9 +104,9 @@ int main (int argc, char **argv){
 	sysEnv.startupSystem(argc, argv, "libcomponentnsdiffdt.so");
 
 	// Instantiate the region template with the input image
-	RegionTemplate* inputRT = getInputRT("~/Desktop/tgca320m.tiff");
+	RegionTemplate* inputRT = getInputRT("/home/willian/Desktop/test.png");
 	inputRT->setName("img");
-	RegionTemplate* maskRT = getInputRT("~/Desktop/tgca320m.tiff");
+	RegionTemplate* maskRT = getInputRT("/home/willian/Desktop/test.mask.png");
 	maskRT->setName("mask");
 
 	// get parameters from the pipeline
@@ -116,7 +117,8 @@ int main (int argc, char **argv){
 	NormalizationComp* norm = genNormalization(versionNorm, inputRT);
 	Segmentation* seg = genSegmentation(versionSeg, 
 		versionNorm, norm->getId(), inputRT);
-	DiffMaskComp* diff = genDiffMaskComp(versionSeg, seg->getId(), inputRT);
+	DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
+		seg->getId(), inputRT, maskRT);
 	std::vector<int> diffComponentIds;
 	diffComponentIds.push_back(diff->getId());
 

@@ -5,7 +5,7 @@ DiffMaskComp::DiffMaskComp() {
 //	diffPercentage = 0.0;
     //task = new PixelCompare();
 	this->setComponentName("DiffMaskComp");
-	this->addInputOutputDataRegion("tile", "MASK", RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("img", "initial", RTPipelineComponentBase::INPUT);
 }
 
 DiffMaskComp::~DiffMaskComp() {
@@ -16,7 +16,8 @@ int DiffMaskComp::run()
 {
 	int parameterSegId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
 
-	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
+	RegionTemplate * inputRt = this->getRegionTemplateInstance("img");
+	RegionTemplate * maskRt = this->getRegionTemplateInstance("mask");
 
     float *diffPixels = (float *) malloc(2 * sizeof(float));
 	diffPixels[0] = 0;
@@ -27,9 +28,9 @@ int DiffMaskComp::run()
 	if(inputRt != NULL){
 
 		// Mask computed in segmentation using specific application parameter set
-		DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("MASK", "", 0, parameterSegId));
+		DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("initial", "", 0, parameterSegId));
 		// Mask used as a reference
-		DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("REF_MASK"));
+		DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D*>(maskRt->getDataRegion("initial"));
 
 		if(computed_mask != NULL && reference_mask != NULL){
 			// gambiarra

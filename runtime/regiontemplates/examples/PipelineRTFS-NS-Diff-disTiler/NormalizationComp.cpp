@@ -4,8 +4,8 @@
 
 NormalizationComp::NormalizationComp() {
 	this->setComponentName("NormalizationComp");
-	this->addInputOutputDataRegion("tile", "RAW", RTPipelineComponentBase::INPUT);
-	this->addInputOutputDataRegion("tile", "BGR", RTPipelineComponentBase::OUTPUT);
+	this->addInputOutputDataRegion("img", "initial", RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("img", "initial", RTPipelineComponentBase::OUTPUT);
 }
 
 NormalizationComp::~NormalizationComp() {
@@ -16,7 +16,7 @@ int NormalizationComp::run()
 {
 
 	// Print name and id of the component instance
-	RegionTemplate * inputRt = this->getRegionTemplateInstance("tile");
+	RegionTemplate * inputRt = this->getRegionTemplateInstance("img");
 	int parameterId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
 	ArgumentFloatArray* args = ((ArgumentFloatArray*)this->getArgument(1));
 
@@ -24,14 +24,14 @@ int NormalizationComp::run()
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 
 	if(inputRt != NULL){
-		DenseDataRegion2D *raw = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("RAW"));
+		DenseDataRegion2D *raw = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("initial"));
 		if(raw != NULL){
 			// Create output data region
 			DenseDataRegion2D *bgr = new DenseDataRegion2D();
 			// set outpu data region identifier
-			bgr->setName("BGR");
-			bgr->setId(raw->getId());
-			bgr->setVersion(parameterId);
+			bgr->setName("initial");
+			bgr->setId("normalized");
+			bgr->setVersion(1);
 
 			// insert data region into region template
 			inputRt->insertDataRegion(bgr);
