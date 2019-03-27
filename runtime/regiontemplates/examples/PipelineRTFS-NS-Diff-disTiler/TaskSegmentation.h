@@ -15,8 +15,6 @@
 #include "Util.h"
 #include "FileUtils.h"
 
-
-
 class TaskSegmentation: public Task {
 private:
 	DenseDataRegion2D* bgr;

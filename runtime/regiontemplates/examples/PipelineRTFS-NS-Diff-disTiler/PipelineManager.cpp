@@ -104,9 +104,9 @@ int main (int argc, char **argv){
 	sysEnv.startupSystem(argc, argv, "libcomponentnsdiffdt.so");
 
 	// Instantiate the region template with the input image
-	RegionTemplate* inputRT = getInputRT("/home/willian/Desktop/test.png");
+	RegionTemplate* inputRT = getInputRT("/home/willian/Desktop/tgca170m.tiff");
 	inputRT->setName("img");
-	RegionTemplate* maskRT = getInputRT("/home/willian/Desktop/test.mask.png");
+	RegionTemplate* maskRT = getInputRT("/home/willian/Desktop/tgca170m.mask.tiff");
 	maskRT->setName("mask");
 
 	// get parameters from the pipeline

@@ -16,8 +16,8 @@ int DiffMaskComp::run()
 {
 	int parameterSegId = ((ArgumentInt*)this->getArgument(0))->getArgValue();
 
-	RegionTemplate * inputRt = this->getRegionTemplateInstance("img");
-	RegionTemplate * maskRt = this->getRegionTemplateInstance("mask");
+	RegionTemplate* inputRt = this->getRegionTemplateInstance("img");
+	RegionTemplate* maskRt = this->getRegionTemplateInstance("mask");
 
     float *diffPixels = (float *) malloc(2 * sizeof(float));
 	diffPixels[0] = 0;
@@ -28,7 +28,7 @@ int DiffMaskComp::run()
 	if(inputRt != NULL){
 
 		// Mask computed in segmentation using specific application parameter set
-		DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("initial", "", 0, parameterSegId));
+		DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("initial", "segmented", 0, 2));
 		// Mask used as a reference
 		DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D*>(maskRt->getDataRegion("initial"));
 

@@ -533,6 +533,32 @@ Mat imreconstruct(const Mat& seeds, const Mat& image, int connectivity) {
 
 }
 
+template<typename T>
+Mat invert(const Mat &img) {
+    // write the raw image
+    CV_Assert(img.channels() == 1);
+
+    if (std::numeric_limits<T>::is_integer) {
+
+        if (std::numeric_limits<T>::is_signed) {
+            Mat output;
+            bitwise_not(img, output);
+            return output + 1;
+        } else {
+            // unsigned int
+            return std::numeric_limits<T>::max() - img;
+        }
+
+    } else {
+        // floating point type
+        return -img;
+    }
+}
+template Mat invert<unsigned char>(const Mat &);
+template Mat invert<float>(const Mat &);
+template Mat invert<int>(const Mat &);  // for imfillholes
+template Mat invert<unsigned short int>(const Mat &);
+
 template <typename T>
 Mat imfillHoles(const Mat& image, bool binary, int connectivity) {
 	CV_Assert(image.channels() == 1);
@@ -577,7 +603,7 @@ Mat imfillHoles(const Mat& image, bool binary, int connectivity) {
 	copyMakeBorder(marker2, marker, 1, 1, 1, 1, BORDER_CONSTANT, mx);
 
 	// now do the work...
-	mask = nscale::PixelOperations::invert<T>(mask);
+	mask = invert<T>(mask);
 
 //	uint64_t t1 = cci::common::event::timestampInUS();
 	Mat output;
@@ -597,7 +623,7 @@ Mat imfillHoles(const Mat& image, bool binary, int connectivity) {
 //	uint64_t t2 = cci::common::event::timestampInUS();
 	//TODO: TEMP std::cout << "    imfill hole imrecon took " << t2-t1 << "ms" << std::endl;
 
-	output = nscale::PixelOperations::invert<T>(output);
+	output = invert<T>(output);
 
 	return output(roi);
 }
@@ -640,6 +666,24 @@ Mat bwareaopen2(const Mat& image, bool labeled, bool flatten, int minSize, int m
 
 }
 
+Mat getBackground(const std::vector<Mat>& bgr, 
+	unsigned char blue, unsigned char green, unsigned char red, 
+	::cciutils::SimpleCSVLogger *logger, 
+	::cciutils::cv::IntermediateResultHandler *iresHandler) {
+
+	return (bgr[0] > blue) & (bgr[1] > green) & (bgr[2] > red);
+}
+
+Mat getBackground(const Mat& img, unsigned char blue, 
+	unsigned char green, unsigned char red, ::cciutils::SimpleCSVLogger *logger, 
+	::cciutils::cv::IntermediateResultHandler *iresHandler) {
+	CV_Assert(img.channels() == 3);
+
+	std::vector<Mat> bgr;
+	split(img, bgr);
+	return getBackground(bgr, blue, green, red, logger, iresHandler);
+}
+
 int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue, 
 		unsigned char green, unsigned char red, double T1, double T2, 
 		unsigned char G1, int minSize, int maxSize, unsigned char G2, 
@@ -653,8 +697,7 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 	split(img, bgr);
 	if (logger) logger->logTimeSinceLastLog("toRGB");
 
-	Mat background = ::nscale::HistologicalEntities::getBackground(bgr, blue, 
-		green, red,logger, iresHandler);
+	Mat background = getBackground(bgr, blue, green, red,logger, iresHandler);
 
 	int bgArea = countNonZero(background);
 	float ratio = (float)bgArea / (float)(img.size().area());
@@ -672,8 +715,7 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 	if (logger) logger->logTimeSinceLastLog("background");
 	if (iresHandler) iresHandler->saveIntermediate(background, 1);
 
-	Mat rbc = getRBC(bgr, T1, T2, logger, 
-		iresHandler);
+	Mat rbc = getRBC(bgr, T1, T2, logger, iresHandler);
 	if (logger) logger->logTimeSinceLastLog("RBC");
 	int rbcPixelCount = countNonZero(rbc);
 	if (logger) logger->log("RBCPixCount", rbcPixelCount);
@@ -687,10 +729,8 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
     rc_recon = imreconstruct(rc_open,rc);
     diffIm = rc-rc_recon;
 	 */
-
-	Mat rc = ::nscale::PixelOperations::invert<unsigned char>(bgr[2]);
+	Mat rc = invert<unsigned char>(bgr[2]);
 	if (logger) logger->logTimeSinceLastLog("invert");
-
 	uint64_t t1 = cci::common::event::timestampInUS();
 //	std::cout << "RBC detection: " << t1-t0 << std::endl; 
 
@@ -844,14 +884,14 @@ Mat imhmin(const Mat& image, T h, int connectivity) {
 		I2 = imcomplement(I2);
 	 *
 	 */
-	Mat mask = nscale::PixelOperations::invert<T>(image);
+	Mat mask = invert<T>(image);
 	Mat marker = mask - h;
 
 //	imwrite("in-imrecon-float-marker.exr", marker);
 //	imwrite("in-imrecon-float-mask.exr", mask);
 
 	Mat output = imreconstruct<T>(marker, mask, connectivity);
-	return nscale::PixelOperations::invert<T>(output);
+	return invert<T>(output);
 }
 template DllExport Mat imhmin(const Mat& image, unsigned char h, int connectivity);
 template DllExport Mat imhmin(const Mat& image, float h, int connectivity);
@@ -938,7 +978,7 @@ Mat_<unsigned char> localMinima(const Mat& image, int connectivity) {
 	// only works for intensity images.
 	CV_Assert(image.channels() == 1);
 
-	Mat cimage = nscale::PixelOperations::invert<T>(image);
+	Mat cimage = invert<T>(image);
 	return localMaxima<T>(cimage, connectivity);
 }
 template DllExport Mat_<unsigned char> localMinima<float>(const Mat& image, int connectivity);
@@ -1167,7 +1207,6 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 	seg_big.copyTo(seg_nonoverlap, (watermask >= 0));
 	if (logger) logger->logTimeSinceLastLog("water to mask");
 	if (iresHandler) iresHandler->saveIntermediate(seg_nonoverlap, 21);
-std::cout << "qqqqqqqqqqqqqqqqqqqqqqqqqqqqq"<< std::endl;
 //// ERODE has been replaced with border finding and moved into watershed.
 //	Mat twm(seg_nonoverlap.rows + 2, seg_nonoverlap.cols + 2, seg_nonoverlap.type());
 //	Mat t_nonoverlap = Mat::zeros(twm.size(), twm.type());
@@ -1198,7 +1237,6 @@ int segmentNuclei(const Mat& img, Mat& output, unsigned char blue,
 	int reconConnectivity, int watershedConnectivity,
 	::cciutils::SimpleCSVLogger *logger, 
 	::cciutils::cv::IntermediateResultHandler *iresHandler) {
-
 	// image in BGR format
 	if (!img.data) return ::nscale::HistologicalEntities::INVALID_IMAGE;
 
@@ -1212,7 +1250,6 @@ int segmentNuclei(const Mat& img, Mat& output, unsigned char blue,
 	if (findCandidateResult != ::nscale::HistologicalEntities::CONTINUE) {
 		return findCandidateResult;
 	}
-std::cout << "rrrrrrrrrrrrrrrrrrrrrrrrrr"<< std::endl;
 
 	Mat seg_nohole = imfillHoles<unsigned char>(seg_norbc, true, 4);
 	if (logger) logger->logTimeSinceLastLog("fillHoles2");
@@ -1231,7 +1268,6 @@ std::cout << "rrrrrrrrrrrrrrrrrrrrrrrrrr"<< std::endl;
 	if (sepResult != ::nscale::HistologicalEntities::CONTINUE) {
 		return sepResult;
 	}
-std::cout << "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"<< std::endl;
 
 	int compcount2;
 	// MASK approach
@@ -1249,7 +1285,6 @@ std::cout << "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"<< std::endl;
 		fillHolesConnectivity);
 	// LABEL approach - upstream erode does not support 32S
 	if (logger) logger->logTimeSinceLastLog("fillHolesLast");
-std::cout << "ccccccccccccccccccccccccccccccccc"<< std::endl;
 //	if (logger) logger->endSession();
 
 ///	// MASK approach

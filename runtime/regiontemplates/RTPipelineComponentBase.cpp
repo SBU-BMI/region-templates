@@ -217,11 +217,21 @@ PipelineComponentBase* RTPipelineComponentBase::clone() {
 
 RegionTemplate* RTPipelineComponentBase::getRegionTemplateInstance(std::string dataRegionName) {
 	RegionTemplate *retRegionTemplate = NULL;
+
+	// std::cout << "==========================================" << std::endl;
+	// std::cout << "RTs:" << std::endl;
+	// for (std::pair<std::string, RegionTemplate*> p : this->regionTemplates) {
+	// 	std::cout << "name: " << p.first << std::endl;
+	// }
+	// std::cout << "==========================================" << std::endl;
+
 	std::map<std::string, RegionTemplate*>::iterator it;
 	it=this->regionTemplates.find(dataRegionName);
 	if(it != this->regionTemplates.end()){
 		retRegionTemplate = it->second;
 	}
+
+	// std::cout << "finding " << dataRegionName << " = " << retRegionTemplate << std::endl;
 	return retRegionTemplate;
 }
 
