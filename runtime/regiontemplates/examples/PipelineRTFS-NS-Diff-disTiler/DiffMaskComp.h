@@ -1,8 +1,8 @@
-
 #ifndef DIFF_MASK_COMP_H_
 #define DIFF_MASK_COMP_H_
 
 #include "RTPipelineComponentBase.h"
+#include "regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h"
 
 class DiffMaskComp : public RTPipelineComponentBase {
 private:

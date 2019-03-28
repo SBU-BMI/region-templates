@@ -46,10 +46,10 @@ cv::Mat segFG(cv::Mat I, cv::Mat M)
     split(I, bgr);
 
     // Convert RG image to float
-    Size s = bgr[0].size();
-    Mat bd(s, CV_32FC1);
-    Mat gd(s, CV_32FC1);
-    Mat rd(s, CV_32FC1);
+    cv::Size s = bgr[0].size();
+    cv::Mat bd(s, CV_32FC1);
+    cv::Mat gd(s, CV_32FC1);
+    cv::Mat rd(s, CV_32FC1);
     bgr[0].convertTo(bd, bd.type(), 1.0, 0.0);
     bgr[1].convertTo(gd, gd.type(), 1.0, 0.0);
     bgr[2].convertTo(rd, rd.type(), 1.0, 0.0);
@@ -175,8 +175,8 @@ void PixelClass(cv::Mat I, cv::Mat o_fg, cv::Mat o_bg, cv::Mat& o_fg_lab, cv::Ma
     //	    fg_lab = rgb2lab(fg_rgb);
 
     // copy BRG foreground image to fg_bgr, and convert it to float
-    Size s = I.size();
-    Mat float_bgr(s, CV_32FC1);
+    cv::Size s = I.size();
+    cv::Mat float_bgr(s, CV_32FC1);
     I.convertTo(float_bgr, float_bgr.type(), 1.0, 0.0);
     float_bgr /= 255;
     cv::Mat LAB = bgr2Lab(float_bgr);
@@ -434,6 +434,32 @@ cv::Mat lab2BGR(cv::Mat LAB)
     return BGR;
 }
 
+template<typename T>
+cv::Mat invert(const cv::Mat &img) {
+    // write the raw image
+    CV_Assert(img.channels() == 1);
+
+    if (std::numeric_limits<T>::is_integer) {
+
+        if (std::numeric_limits<T>::is_signed) {
+            cv::Mat output;
+            bitwise_not(img, output);
+            return output + 1;
+        } else {
+            // unsigned int
+            return std::numeric_limits<T>::max() - img;
+        }
+
+    } else {
+        // floating point type
+        return -img;
+    }
+}
+template cv::Mat invert<unsigned char>(const cv::Mat &);
+template cv::Mat invert<float>(const cv::Mat &);
+template cv::Mat invert<int>(const cv::Mat &);  // for imfillholes
+template cv::Mat invert<unsigned short int>(const cv::Mat &);
+
 cv::Mat norm(const cv::Mat& originalI, float targetMean[3], float targetStd[3])
 {
     // Output normalized image
@@ -454,7 +480,7 @@ cv::Mat norm(const cv::Mat& originalI, float targetMean[3], float targetStd[3])
     //cv::imwrite("segOut.ppm", o_fg);
 
     //	o_bg = imcomplement(o_fg);
-    cv::Mat o_bg = nscale::PixelOperations::invert<unsigned char>(o_fg);
+    cv::Mat o_bg = invert<unsigned char>(o_fg);
 
     //cv::imwrite("o_bg.ppm", o_bg);
 

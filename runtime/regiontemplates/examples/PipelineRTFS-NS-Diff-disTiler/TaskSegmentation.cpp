@@ -33,7 +33,7 @@ TaskSegmentation::~TaskSegmentation() {
 	if(bgr != NULL) delete bgr;
 }
 
-int segmentNuclei(const Mat& img, Mat& output, unsigned char blue, 
+int segmentNuclei(const cv::Mat& img, cv::Mat& output, unsigned char blue, 
 	unsigned char green, unsigned char red, double T1, double T2, 
 	unsigned char G1, int minSize, int maxSize, unsigned char G2, int minSizePl, 
 	int minSizeSeg, int maxSizeSeg,  int fillHolesConnectivity, 
@@ -73,7 +73,7 @@ bool TaskSegmentation::run(int procType, int tid) {
 /*****************************************************************************/
 
 template <typename T>
-inline void propagateBinary(const Mat& image, Mat& output, std::queue<int>& xQ, std::queue<int>& yQ,
+inline void propagateBinary(const cv::Mat& image, cv::Mat& output, std::queue<int>& xQ, std::queue<int>& yQ,
 		int x, int y, T* iPtr, T* oPtr, const T& foreground) {
 	if ((oPtr[x] == 0) && (iPtr[x] != 0)) {
 		oPtr[x] = foreground;
@@ -83,21 +83,21 @@ inline void propagateBinary(const Mat& image, Mat& output, std::queue<int>& xQ, 
 }
 
 template
-void propagateBinary(const Mat&, Mat&, std::queue<int>&, std::queue<int>&,
+void propagateBinary(const cv::Mat&, cv::Mat&, std::queue<int>&, std::queue<int>&,
 		int, int, unsigned char* iPtr, unsigned char* oPtr, const unsigned char&);
 template
-void propagateBinary(const Mat&, Mat&, std::queue<int>&, std::queue<int>&,
+void propagateBinary(const cv::Mat&, cv::Mat&, std::queue<int>&, std::queue<int>&,
 		int, int, float* iPtr, float* oPtr, const float&);
 
 template <typename T>
-Mat imreconstructBinary(const Mat& seeds, const Mat& image, int connectivity) {
+cv::Mat imreconstructBinary(const cv::Mat& seeds, const cv::Mat& image, int connectivity) {
 	CV_Assert(image.channels() == 1);
 	CV_Assert(seeds.channels() == 1);
 
-	Mat output(seeds.size() + Size(2,2), seeds.type());
-	copyMakeBorder(seeds, output, 1, 1, 1, 1, BORDER_CONSTANT, 0);
-	Mat input(image.size() + Size(2,2), image.type());
-	copyMakeBorder(image, input, 1, 1, 1, 1, BORDER_CONSTANT, 0);
+	cv::Mat output(seeds.size() + cv::Size(2,2), seeds.type());
+	copyMakeBorder(seeds, output, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
+	cv::Mat input(image.size() + cv::Size(2,2), image.type());
+	copyMakeBorder(image, input, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
 
 	T pval, ival;
 	int xminus, xplus, yminus, yplus;
@@ -228,13 +228,13 @@ Mat imreconstructBinary(const Mat& seeds, const Mat& image, int connectivity) {
 //	uint64_t t3 = cci::common::event::timestampInUS();
 	//std::cout << "    queue time = " << t3-t2 << "ms for " << count << " queued" << std::endl;
 
-	return output(Range(1, maxy), Range(1, maxx));
+	return output(cv::Range(1, maxy), cv::Range(1, maxx));
 }
-template DllExport Mat imreconstructBinary<unsigned char>(const Mat& seeds, const Mat& binaryImage, int connectivity);
+template DllExport cv::Mat imreconstructBinary<unsigned char>(const cv::Mat& seeds, const cv::Mat& binaryImage, int connectivity);
 
 
 template <typename T>
-Mat bwselect(const Mat& binaryImage, const Mat& seeds, int connectivity) {
+cv::Mat bwselect(const cv::Mat& binaryImage, const cv::Mat& seeds, int connectivity) {
 	CV_Assert(binaryImage.channels() == 1);
 	CV_Assert(seeds.channels() == 1);
 	// only works for binary images.  ~I and max-I are the same....
@@ -249,7 +249,7 @@ Mat bwselect(const Mat& binaryImage, const Mat& seeds, int connectivity) {
 	 * see imfill function.
 	 */
 
-	Mat marker = Mat::zeros(seeds.size(), seeds.type());
+	cv::Mat marker = cv::Mat::zeros(seeds.size(), seeds.type());
 	binaryImage.copyTo(marker, seeds);
 
 	marker = imreconstructBinary<T>(marker, binaryImage, connectivity);
@@ -257,7 +257,7 @@ Mat bwselect(const Mat& binaryImage, const Mat& seeds, int connectivity) {
 	return marker & binaryImage;
 }
 
-Mat getRBC(const std::vector<Mat>& bgr,  double T1, double T2,
+cv::Mat getRBC(const std::vector<cv::Mat>& bgr,  double T1, double T2,
 		::cciutils::SimpleCSVLogger *logger=NULL, 
 		::cciutils::cv::IntermediateResultHandler *iresHandler=NULL) {
 	CV_Assert(bgr.size() == 3);
@@ -279,37 +279,37 @@ Mat getRBC(const std::vector<Mat>& bgr,  double T1, double T2,
 	std::cout.precision(5);
 //	double T1 = 5.0;
 //	double T2 = 4.0;
-	Size s = bgr[0].size();
-	Mat bd(s, CV_32FC1);
-	Mat gd(s, bd.type());
-	Mat rd(s, bd.type());
+	cv::Size s = bgr[0].size();
+	cv::Mat bd(s, CV_32FC1);
+	cv::Mat gd(s, bd.type());
+	cv::Mat rd(s, bd.type());
 
 	bgr[0].convertTo(bd, bd.type(), 1.0, FLT_EPSILON);
 	bgr[1].convertTo(gd, gd.type(), 1.0, FLT_EPSILON);
 	bgr[2].convertTo(rd, rd.type(), 1.0, 0.0);
 
-	Mat imR2G = rd / gd;
-	Mat imR2B = (rd / bd) > 1.0;
+	cv::Mat imR2G = rd / gd;
+	cv::Mat imR2B = (rd / bd) > 1.0;
 
 	if (iresHandler) iresHandler->saveIntermediate(imR2G, 101);
 	if (iresHandler) iresHandler->saveIntermediate(imR2B, 102);
 
-	Mat bw1 = imR2G > T1;
-	Mat bw2 = imR2G > T2;
-	Mat rbc;
+	cv::Mat bw1 = imR2G > T1;
+	cv::Mat bw2 = imR2G > T2;
+	cv::Mat rbc;
 	if (countNonZero(bw1) > 0) {
 //		imwrite("test/in-bwselect-marker.pgm", bw2);
 //		imwrite("test/in-bwselect-mask.pgm", bw1);
 		rbc = bwselect<unsigned char>(bw2, bw1, 8) & imR2B;
 	} else {
-		rbc = Mat::zeros(bw2.size(), bw2.type());
+		rbc = cv::Mat::zeros(bw2.size(), bw2.type());
 	}
 
 	return rbc;
 }
 
 template <typename T>
-Mat morphOpen(const Mat& image, const Mat& kernel) {
+cv::Mat morphOpen(const cv::Mat& image, const cv::Mat& kernel) {
 	CV_Assert(kernel.rows == kernel.cols);
 	CV_Assert(kernel.rows > 1);
 	CV_Assert((kernel.rows % 2) == 1);
@@ -319,22 +319,22 @@ Mat morphOpen(const Mat& image, const Mat& kernel) {
 	// can't use morphologyEx.  the erode phase is not creating a border even though the method signature makes it appear that way.
 	// because of this, and the fact that erode and dilate need different border values, have to do the erode and dilate myself.
 	//	morphologyEx(image, seg_open, CV_MOP_OPEN, disk3, Point(1,1)); //, Point(-1, -1), 1, BORDER_REFLECT);
-	Mat t_image;
+	cv::Mat t_image;
 
-	copyMakeBorder(image, t_image, bw, bw, bw, bw, BORDER_CONSTANT, std::numeric_limits<unsigned char>::max());
+	copyMakeBorder(image, t_image, bw, bw, bw, bw, cv::BORDER_CONSTANT, std::numeric_limits<unsigned char>::max());
 //	if (bw > 1)	imwrite("test-input-cpu.ppm", t_image);
-	Mat t_erode = Mat::zeros(t_image.size(), t_image.type());
+	cv::Mat t_erode = cv::Mat::zeros(t_image.size(), t_image.type());
 	erode(t_image, t_erode, kernel);
 //	if (bw > 1) imwrite("test-erode-cpu.ppm", t_erode);
 
-	Mat erode_roi = t_erode(Rect(bw, bw, image.cols, image.rows));
-	Mat t_erode2;
-	copyMakeBorder(erode_roi,t_erode2, bw, bw, bw, bw, BORDER_CONSTANT, std::numeric_limits<unsigned char>::min());
+	cv::Mat erode_roi = t_erode(cv::Rect(bw, bw, image.cols, image.rows));
+	cv::Mat t_erode2;
+	copyMakeBorder(erode_roi,t_erode2, bw, bw, bw, bw, cv::BORDER_CONSTANT, std::numeric_limits<unsigned char>::min());
 //	if (bw > 1)	imwrite("test-input2-cpu.ppm", t_erode2);
-	Mat t_open = Mat::zeros(t_erode2.size(), t_erode2.type());
+	cv::Mat t_open = cv::Mat::zeros(t_erode2.size(), t_erode2.type());
 	dilate(t_erode2, t_open, kernel);
 //	if (bw > 1) imwrite("test-open-cpu.ppm", t_open);
-	Mat open = t_open(Rect(bw, bw,image.cols, image.rows));
+	cv::Mat open = t_open(cv::Rect(bw, bw,image.cols, image.rows));
 
 	t_open.release();
 	t_erode2.release();
@@ -343,10 +343,10 @@ Mat morphOpen(const Mat& image, const Mat& kernel) {
 
 	return open;
 }
-template DllExport Mat morphOpen<unsigned char>(const Mat& image, const Mat& kernel);
+template DllExport cv::Mat morphOpen<unsigned char>(const cv::Mat& image, const cv::Mat& kernel);
 
 template <typename T>
-inline void propagate(const Mat& image, Mat& output, std::queue<int>& xQ, std::queue<int>& yQ,
+inline void propagate(const cv::Mat& image, cv::Mat& output, std::queue<int>& xQ, std::queue<int>& yQ,
 		int x, int y, T* iPtr, T* oPtr, const T& pval) {
 
 	T qval = oPtr[x];
@@ -359,15 +359,15 @@ inline void propagate(const Mat& image, Mat& output, std::queue<int>& xQ, std::q
 }
 
 template <typename T>
-Mat imreconstruct(const Mat& seeds, const Mat& image, int connectivity) {
+cv::Mat imreconstruct(const cv::Mat& seeds, const cv::Mat& image, int connectivity) {
 	CV_Assert(image.channels() == 1);
 	CV_Assert(seeds.channels() == 1);
 
 
-	Mat output(seeds.size() + Size(2,2), seeds.type());
-	copyMakeBorder(seeds, output, 1, 1, 1, 1, BORDER_CONSTANT, 0);
-	Mat input(image.size() + Size(2,2), image.type());
-	copyMakeBorder(image, input, 1, 1, 1, 1, BORDER_CONSTANT, 0);
+	cv::Mat output(seeds.size() + cv::Size(2,2), seeds.type());
+	copyMakeBorder(seeds, output, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
+	cv::Mat input(image.size() + cv::Size(2,2), image.type());
+	copyMakeBorder(image, input, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
 
 	T pval, preval;
 	int xminus, xplus, yminus, yplus;
@@ -529,19 +529,19 @@ Mat imreconstruct(const Mat& seeds, const Mat& image, int connectivity) {
 
 //	std::cout <<  count << " queue entries "<< std::endl;
 
-	return output(Range(1, maxy), Range(1, maxx));
+	return output(cv::Range(1, maxy), cv::Range(1, maxx));
 
 }
 
 template<typename T>
-Mat invert(const Mat &img) {
+cv::Mat invert(const cv::Mat &img) {
     // write the raw image
     CV_Assert(img.channels() == 1);
 
     if (std::numeric_limits<T>::is_integer) {
 
         if (std::numeric_limits<T>::is_signed) {
-            Mat output;
+            cv::Mat output;
             bitwise_not(img, output);
             return output + 1;
         } else {
@@ -554,16 +554,16 @@ Mat invert(const Mat &img) {
         return -img;
     }
 }
-template Mat invert<unsigned char>(const Mat &);
-template Mat invert<float>(const Mat &);
-template Mat invert<int>(const Mat &);  // for imfillholes
-template Mat invert<unsigned short int>(const Mat &);
+template cv::Mat invert<unsigned char>(const cv::Mat &);
+template cv::Mat invert<float>(const cv::Mat &);
+template cv::Mat invert<int>(const cv::Mat &);  // for imfillholes
+template cv::Mat invert<unsigned short int>(const cv::Mat &);
 
 template <typename T>
-Mat imfillHoles(const Mat& image, bool binary, int connectivity) {
+cv::Mat imfillHoles(const cv::Mat& image, bool binary, int connectivity) {
 	CV_Assert(image.channels() == 1);
 
-	/* MatLAB imfill hole code:
+	/* cv::MatLAB imfill hole code:
     if islogical(I)
         mask = uint8(I);
     else
@@ -591,22 +591,22 @@ Mat imfillHoles(const Mat& image, bool binary, int connectivity) {
 
 	T mn = cci::common::type::min<T>();
 	T mx = std::numeric_limits<T>::max();
-	Rect roi = Rect(1, 1, image.cols, image.rows);
+	cv::Rect roi = cv::Rect(1, 1, image.cols, image.rows);
 
 	// copy the input and pad with -inf.
-	Mat mask(image.size() + Size(2,2), image.type());
-	copyMakeBorder(image, mask, 1, 1, 1, 1, BORDER_CONSTANT, mn);
+	cv::Mat mask(image.size() + cv::Size(2,2), image.type());
+	copyMakeBorder(image, mask, 1, 1, 1, 1, cv::BORDER_CONSTANT, mn);
 	// create marker with inf inside and -inf at border, and take its complement
-	Mat marker;
-	Mat marker2(image.size(), image.type(), Scalar(mn));
-	// them make the border - OpenCV does not replicate the values when one Mat is a region of another.
-	copyMakeBorder(marker2, marker, 1, 1, 1, 1, BORDER_CONSTANT, mx);
+	cv::Mat marker;
+	cv::Mat marker2(image.size(), image.type(), cv::Scalar(mn));
+	// them make the border - OpenCV does not replicate the values when one cv::Mat is a region of another.
+	copyMakeBorder(marker2, marker, 1, 1, 1, 1, cv::BORDER_CONSTANT, mx);
 
 	// now do the work...
 	mask = invert<T>(mask);
 
 //	uint64_t t1 = cci::common::event::timestampInUS();
-	Mat output;
+	cv::Mat output;
 	if (binary == true) {
 //		imwrite("in-imrecon-binary-marker.pgm", marker);
 //		imwrite("in-imrecon-binary-mask.pgm", mask);
@@ -627,11 +627,11 @@ Mat imfillHoles(const Mat& image, bool binary, int connectivity) {
 
 	return output(roi);
 }
-template DllExport Mat imfillHoles<unsigned char>(const Mat& image, bool binary, int connectivity);
-template DllExport Mat imfillHoles<int>(const Mat& image, bool binary, int connectivity);
+template DllExport cv::Mat imfillHoles<unsigned char>(const cv::Mat& image, bool binary, int connectivity);
+template DllExport cv::Mat imfillHoles<int>(const cv::Mat& image, bool binary, int connectivity);
 
 // inclusive min, exclusive max
-Mat bwareaopen2(const Mat& image, bool labeled, bool flatten, int minSize, int maxSize, int connectivity, int& count) {
+cv::Mat bwareaopen2(const cv::Mat& image, bool labeled, bool flatten, int minSize, int maxSize, int connectivity, int& count) {
 	// only works for binary images.
 	CV_Assert(image.channels() == 1);
 	// only works for binary images.
@@ -641,13 +641,13 @@ Mat bwareaopen2(const Mat& image, bool labeled, bool flatten, int minSize, int m
 		CV_Assert(image.type() == CV_32S);
 
 	//copy, to make data continuous.
-	Mat input = Mat::zeros(image.size(), image.type());
+	cv::Mat input = cv::Mat::zeros(image.size(), image.type());
 	image.copyTo(input);
-	Mat_<int> output = Mat_<int>::zeros(input.size());
+	cv::Mat_<int> output = cv::Mat_<int>::zeros(input.size());
 
 	::nscale::ConnComponents cc;
 	if (labeled == false) {
-		Mat_<int> temp = Mat_<int>::zeros(input.size());
+		cv::Mat_<int> temp = cv::Mat_<int>::zeros(input.size());
 		cc.label((unsigned char*)input.data, input.cols, input.rows, (int *)temp.data, -1, connectivity);
 		count = cc.areaThresholdLabeled((int *)temp.data, temp.cols, temp.rows, (int *)output.data, -1, minSize, maxSize);
 		temp.release();
@@ -657,7 +657,7 @@ Mat bwareaopen2(const Mat& image, bool labeled, bool flatten, int minSize, int m
 
 	input.release();
 	if (flatten == true) {
-		Mat O2 = Mat::zeros(output.size(), CV_8U);
+		cv::Mat O2 = cv::Mat::zeros(output.size(), CV_8U);
 		O2 = output > -1;
 		output.release();
 		return O2;
@@ -666,7 +666,7 @@ Mat bwareaopen2(const Mat& image, bool labeled, bool flatten, int minSize, int m
 
 }
 
-Mat getBackground(const std::vector<Mat>& bgr, 
+cv::Mat getBackground(const std::vector<cv::Mat>& bgr, 
 	unsigned char blue, unsigned char green, unsigned char red, 
 	::cciutils::SimpleCSVLogger *logger, 
 	::cciutils::cv::IntermediateResultHandler *iresHandler) {
@@ -674,17 +674,17 @@ Mat getBackground(const std::vector<Mat>& bgr,
 	return (bgr[0] > blue) & (bgr[1] > green) & (bgr[2] > red);
 }
 
-Mat getBackground(const Mat& img, unsigned char blue, 
+cv::Mat getBackground(const cv::Mat& img, unsigned char blue, 
 	unsigned char green, unsigned char red, ::cciutils::SimpleCSVLogger *logger, 
 	::cciutils::cv::IntermediateResultHandler *iresHandler) {
 	CV_Assert(img.channels() == 3);
 
-	std::vector<Mat> bgr;
+	std::vector<cv::Mat> bgr;
 	split(img, bgr);
 	return getBackground(bgr, blue, green, red, logger, iresHandler);
 }
 
-int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue, 
+int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned char blue, 
 		unsigned char green, unsigned char red, double T1, double T2, 
 		unsigned char G1, int minSize, int maxSize, unsigned char G2, 
 		int fillHolesConnectivity, int reconConnectivity,
@@ -693,11 +693,11 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 
 	uint64_t t0 = cci::common::event::timestampInUS();
 
-	std::vector<Mat> bgr;
+	std::vector<cv::Mat> bgr;
 	split(img, bgr);
 	if (logger) logger->logTimeSinceLastLog("toRGB");
 
-	Mat background = getBackground(bgr, blue, green, red,logger, iresHandler);
+	cv::Mat background = getBackground(bgr, blue, green, red,logger, iresHandler);
 
 	int bgArea = countNonZero(background);
 	float ratio = (float)bgArea / (float)(img.size().area());
@@ -715,7 +715,7 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 	if (logger) logger->logTimeSinceLastLog("background");
 	if (iresHandler) iresHandler->saveIntermediate(background, 1);
 
-	Mat rbc = getRBC(bgr, T1, T2, logger, iresHandler);
+	cv::Mat rbc = getRBC(bgr, T1, T2, logger, iresHandler);
 	if (logger) logger->logTimeSinceLastLog("RBC");
 	int rbcPixelCount = countNonZero(rbc);
 	if (logger) logger->log("RBCPixCount", rbcPixelCount);
@@ -729,14 +729,14 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
     rc_recon = imreconstruct(rc_open,rc);
     diffIm = rc-rc_recon;
 	 */
-	Mat rc = invert<unsigned char>(bgr[2]);
+	cv::Mat rc = invert<unsigned char>(bgr[2]);
 	if (logger) logger->logTimeSinceLastLog("invert");
 	uint64_t t1 = cci::common::event::timestampInUS();
 //	std::cout << "RBC detection: " << t1-t0 << std::endl; 
 
-	Mat rc_open(rc.size(), rc.type());
-	//Mat disk19 = getStructuringElement(MORPH_ELLIPSE, Size(19,19));
-	// (for 4, 6, and 8 connected, they are approximations).
+	cv::Mat rc_open(rc.size(), rc.type());
+	//cv::Mat disk19 = getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(19,19));
+	// (for 4, 6, and 8 connected, they are approxicv::Mations).
 	unsigned char disk19raw[361] = {
 			0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
 			0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
@@ -758,7 +758,7 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 			0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
 			0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
 	std::vector<unsigned char> disk19vec(disk19raw, disk19raw+361);
-	Mat disk19(disk19vec);
+	cv::Mat disk19(disk19vec);
 	disk19 = disk19.reshape(1, 19);
 	rc_open = morphOpen<unsigned char>(rc, disk19);
 //	morphologyEx(rc, rc_open, CV_MOP_OPEN, disk19, Point(-1, -1), 1);
@@ -773,12 +773,12 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 //	imwrite("in-imrecon-gray-mask.pgm", rc);
 // END  generating test data
 
-	Mat rc_recon = imreconstruct<unsigned char>(rc_open, rc, 
+	cv::Mat rc_recon = imreconstruct<unsigned char>(rc_open, rc, 
 		reconConnectivity);
 	if (iresHandler) iresHandler->saveIntermediate(rc_recon, 4);
 
 
-	Mat diffIm = rc - rc_recon;
+	cv::Mat diffIm = rc - rc_recon;
 //	imwrite("test/out-redchannelvalleys.ppm", diffIm);
 	if (logger) logger->logTimeSinceLastLog("reconToNuclei");
 	int rc_openPixelCount = countNonZero(rc_open);
@@ -793,12 +793,12 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
  */
 	// it is now a parameter
 	//unsigned char G1 = 80;
-	Mat diffIm2 = diffIm > G1;
+	cv::Mat diffIm2 = diffIm > G1;
 	if (logger) logger->logTimeSinceLastLog("threshold1");
 	if (iresHandler) iresHandler->saveIntermediate(diffIm2, 6);
 
 //	imwrite("in-fillHolesDump.ppm", diffIm2);
-	Mat bw1 = imfillHoles<unsigned char>(diffIm2, true, 
+	cv::Mat bw1 = imfillHoles<unsigned char>(diffIm2, true, 
 		fillHolesConnectivity);
 //	imwrite("test/out-rcvalleysfilledholes.ppm", bw1);
 	if (logger) logger->logTimeSinceLastLog("fillHoles1");
@@ -829,11 +829,11 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 	int compcount2;
 
 //#if defined (USE_UF_CCL)
-	Mat bw1_t = bwareaopen2(bw1, false, true, minSize, 
+	cv::Mat bw1_t = bwareaopen2(bw1, false, true, minSize, 
 		maxSize, 8, compcount2);
 //	printf(" cpu compcount 11-1000 = %d\n", compcount2);
 //#else
-//	Mat bw1_t = ::nscale::bwareaopen<unsigned char>(bw1, 11, 1000, 8, compcount);
+//	cv::Mat bw1_t = ::nscale::bwareaopen<unsigned char>(bw1, 11, 1000, 8, compcount);
 //#endif
 	if (logger) logger->logTimeSinceLastLog("areaThreshold1");
 	bw1.release();
@@ -845,7 +845,7 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 
 	// It is now a parameter
 	//unsigned char G2 = 45;
-	Mat bw2 = diffIm > G2;
+	cv::Mat bw2 = diffIm > G2;
 	if (iresHandler) iresHandler->saveIntermediate(bw2, 9);
 
 	/*
@@ -871,12 +871,12 @@ int plFindNucleusCandidates(const Mat& img, Mat& seg_norbc, unsigned char blue,
 }
 
 template <typename T>
-Mat imhmin(const Mat& image, T h, int connectivity) {
+cv::Mat imhmin(const cv::Mat& image, T h, int connectivity) {
 	// only works for intensity images.
 	CV_Assert(image.channels() == 1);
 
 	//	IMHMIN(I,H) suppresses all minima in I whose depth is less than h
-	// MatLAB implementation:
+	// cv::MatLAB implementation:
 	/**
 	 *
 		I = imcomplement(I);
@@ -884,26 +884,26 @@ Mat imhmin(const Mat& image, T h, int connectivity) {
 		I2 = imcomplement(I2);
 	 *
 	 */
-	Mat mask = invert<T>(image);
-	Mat marker = mask - h;
+	cv::Mat mask = invert<T>(image);
+	cv::Mat marker = mask - h;
 
 //	imwrite("in-imrecon-float-marker.exr", marker);
 //	imwrite("in-imrecon-float-mask.exr", mask);
 
-	Mat output = imreconstruct<T>(marker, mask, connectivity);
+	cv::Mat output = imreconstruct<T>(marker, mask, connectivity);
 	return invert<T>(output);
 }
-template DllExport Mat imhmin(const Mat& image, unsigned char h, int connectivity);
-template DllExport Mat imhmin(const Mat& image, float h, int connectivity);
-template DllExport Mat imhmin(const Mat& image, unsigned short int h, int connectivity);
+template DllExport cv::Mat imhmin(const cv::Mat& image, unsigned char h, int connectivity);
+template DllExport cv::Mat imhmin(const cv::Mat& image, float h, int connectivity);
+template DllExport cv::Mat imhmin(const cv::Mat& image, unsigned short int h, int connectivity);
 
 template <typename T>
-Mat_<unsigned char> localMaxima(const Mat& image, int connectivity) {
+cv::Mat_<unsigned char> localMaxima(const cv::Mat& image, int connectivity) {
 	CV_Assert(image.channels() == 1);
 
 	// use morphologic reconstruction.
-	Mat marker = image - 1;
-	Mat_<unsigned char> candidates =
+	cv::Mat marker = image - 1;
+	cv::Mat_<unsigned char> candidates =
 			marker < imreconstruct<T>(marker, image, connectivity);
 //	candidates marked as 0 because floodfill with mask will fill only 0's
 //	return (image - imreconstruct(marker, image, 8)) >= (1 - std::numeric_limits<T>::epsilon());
@@ -913,10 +913,10 @@ Mat_<unsigned char> localMaxima(const Mat& image, int connectivity) {
 	// first pad the border
 	T mn = cci::common::type::min<T>();
 	T mx = std::numeric_limits<unsigned char>::max();
-	Mat_<unsigned char> output(candidates.size() + Size(2,2));
-	copyMakeBorder(candidates, output, 1, 1, 1, 1, BORDER_CONSTANT, mx);
-	Mat input(image.size() + Size(2,2), image.type());
-	copyMakeBorder(image, input, 1, 1, 1, 1, BORDER_CONSTANT, mn);
+	cv::Mat_<unsigned char> output(candidates.size() + cv::Size(2,2));
+	copyMakeBorder(candidates, output, 1, 1, 1, 1, cv::BORDER_CONSTANT, mx);
+	cv::Mat input(image.size() + cv::Size(2,2), image.type());
+	copyMakeBorder(image, input, 1, 1, 1, 1, cv::BORDER_CONSTANT, mn);
 
 	int maxy = input.rows-1;
 	int maxx = input.cols-1;
@@ -924,12 +924,12 @@ Mat_<unsigned char> localMaxima(const Mat& image, int connectivity) {
 	T val;
 	T *iPtr, *iPtrMinus, *iPtrPlus;
 	unsigned char *oPtr;
-	Rect reg(1, 1, image.cols, image.rows);
-	Scalar zero(0);
-	Scalar smx(mx);
-//	Range xrange(1, maxx);
-//	Range yrange(1, maxy);
-	Mat inputBlock = input(reg);
+	cv::Rect reg(1, 1, image.cols, image.rows);
+	cv::Scalar zero(0);
+	cv::Scalar smx(mx);
+//	cv::Range xrange(1, maxx);
+//	cv::Range yrange(1, maxy);
+	cv::Mat inputBlock = input(reg);
 
 	// next iterate over image, and set candidates that are non-max to 0 (via floodfill)
 	for (int y = 1; y < maxy; ++y) {
@@ -953,7 +953,7 @@ Mat_<unsigned char> localMaxima(const Mat& image, int connectivity) {
 			// 4 connected
 			if ((val < iPtrMinus[x]) || (val < iPtrPlus[x]) || (val < iPtr[xminus]) || (val < iPtr[xplus])) {
 				// flood with type minimum value (only time when the whole image may have mn is if it's flat)
-				floodFill(inputBlock, output, cv::Point(xminus, y-1), smx, &reg, zero, zero, FLOODFILL_FIXED_RANGE | FLOODFILL_MASK_ONLY | connectivity);
+				floodFill(inputBlock, output, cv::Point(xminus, y-1), smx, &reg, zero, zero, cv::FLOODFILL_FIXED_RANGE | cv::FLOODFILL_MASK_ONLY | connectivity);
 				continue;
 			}
 
@@ -961,7 +961,7 @@ Mat_<unsigned char> localMaxima(const Mat& image, int connectivity) {
 			if (connectivity == 8) {
 				if ((val < iPtrMinus[xminus]) || (val < iPtrMinus[xplus]) || (val < iPtrPlus[xminus]) || (val < iPtrPlus[xplus])) {
 					// flood with type minimum value (only time when the whole image may have mn is if it's flat)
-					floodFill(inputBlock, output, cv::Point(xminus, y-1), smx, &reg, zero, zero, FLOODFILL_FIXED_RANGE | FLOODFILL_MASK_ONLY | connectivity);
+					floodFill(inputBlock, output, cv::Point(xminus, y-1), smx, &reg, zero, zero, cv::FLOODFILL_FIXED_RANGE | cv::FLOODFILL_MASK_ONLY | connectivity);
 					continue;
 				}
 			}
@@ -970,31 +970,31 @@ Mat_<unsigned char> localMaxima(const Mat& image, int connectivity) {
 	}
 	return output(reg) == 0;  // similar to bitwise not.
 }
-template DllExport Mat_<unsigned char> localMaxima<float>(const Mat& image, int connectivity);
-template DllExport Mat_<unsigned char> localMaxima<unsigned char>(const Mat& image, int connectivity);
+template DllExport cv::Mat_<unsigned char> localMaxima<float>(const cv::Mat& image, int connectivity);
+template DllExport cv::Mat_<unsigned char> localMaxima<unsigned char>(const cv::Mat& image, int connectivity);
 
 template <typename T>
-Mat_<unsigned char> localMinima(const Mat& image, int connectivity) {
+cv::Mat_<unsigned char> localMinima(const cv::Mat& image, int connectivity) {
 	// only works for intensity images.
 	CV_Assert(image.channels() == 1);
 
-	Mat cimage = invert<T>(image);
+	cv::Mat cimage = invert<T>(image);
 	return localMaxima<T>(cimage, connectivity);
 }
-template DllExport Mat_<unsigned char> localMinima<float>(const Mat& image, int connectivity);
-template DllExport Mat_<unsigned char> localMinima<unsigned char>(const Mat& image, int connectivity);
+template DllExport cv::Mat_<unsigned char> localMinima<float>(const cv::Mat& image, int connectivity);
+template DllExport cv::Mat_<unsigned char> localMinima<unsigned char>(const cv::Mat& image, int connectivity);
 
-Mat_<int> bwlabel2(const Mat& binaryImage, int connectivity, bool relab) {
+cv::Mat_<int> bwlabel2(const cv::Mat& binaryImage, int connectivity, bool relab) {
 	CV_Assert(binaryImage.channels() == 1);
 	// only works for binary images.
 	CV_Assert(binaryImage.type() == CV_8U);
 
 	//copy, to make data continuous.
-	Mat input = Mat::zeros(binaryImage.size(), binaryImage.type());
+	cv::Mat input = cv::Mat::zeros(binaryImage.size(), binaryImage.type());
 	binaryImage.copyTo(input);
 
 	::nscale::ConnComponents cc;
-	Mat_<int> output = Mat_<int>::zeros(input.size());
+	cv::Mat_<int> output = cv::Mat_<int>::zeros(input.size());
 	cc.label((unsigned char*) input.data, input.cols, input.rows, (int *)output.data, -1, connectivity);
 
   // Relabel if requested
@@ -1012,13 +1012,13 @@ Mat_<int> bwlabel2(const Mat& binaryImage, int connectivity, bool relab) {
 }
 
 template <typename T>
-Mat border(Mat& img, T background) {
+cv::Mat border(cv::Mat& img, T background) {
 
 	// SPECIFIC FOR OPEN CV CPU WATERSHED
 	CV_Assert(img.channels() == 1);
 	CV_Assert(std::numeric_limits<T>::is_integer);
 
-	Mat result(img.size(), img.type());
+	cv::Mat result(img.size(), img.type());
 	T *ptr, *ptrm1, *res;
 
 	for(int y=1; y< img.rows; y++){
@@ -1040,38 +1040,38 @@ Mat border(Mat& img, T background) {
 	return result;
 }
 
-template Mat border<int>(Mat&, int background);
-template Mat border<unsigned char>(Mat&, unsigned char background);
+template cv::Mat border<int>(cv::Mat&, int background);
+template cv::Mat border<unsigned char>(cv::Mat&, unsigned char background);
 
 
-Mat_<int> watershed2(const Mat& origImage, const Mat_<float>& image, int connectivity) {
+cv::Mat_<int> watershed2(const cv::Mat& origImage, const cv::Mat_<float>& image, int connectivity) {
 	// only works for intensity images.
 	CV_Assert(image.channels() == 1);
 	CV_Assert(origImage.channels() == 3);
 
 	/*
-	 * MatLAB implementation:
+	 * cv::MatLAB implementation:
 		cc = bwconncomp(imregionalmin(A, conn), conn);
 		L = watershed_meyer(A,conn,cc);
 
 	 */
 //	long long int t1, t2;
 //	t1 = ::cci::common::event::timestampInUS();
-	Mat minima = localMinima<float>(image, connectivity);
+	cv::Mat minima = localMinima<float>(image, connectivity);
 //	t2 = ::cci::common::event::timestampInUS();
 //	printf("    cpu localMinima = %lld\n", t2-t1);
 
 //	t1 = ::cci::common::event::timestampInUS();
 	// watershed is sensitive to label values.  need to relabel.
-	Mat_<int> labels = bwlabel2(minima, connectivity, true);
+	cv::Mat_<int> labels = bwlabel2(minima, connectivity, true);
 //	t2 = ::cci::common::event::timestampInUS();
 //	printf("    cpu UF bwlabel2 = %lld\n", t2-t1);
 
 
 // need borders, else get edges at edge.
-	Mat input, temp, output;
-	copyMakeBorder(labels, temp, 1, 1, 1, 1, BORDER_CONSTANT, Scalar_<int>(0));
-	copyMakeBorder(origImage, input, 1, 1, 1, 1, BORDER_CONSTANT, Scalar(0, 0, 0));
+	cv::Mat input, temp, output;
+	copyMakeBorder(labels, temp, 1, 1, 1, 1, cv::BORDER_CONSTANT, cv::Scalar_<int>(0));
+	copyMakeBorder(origImage, input, 1, 1, 1, 1, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
 //	t1 = ::cci::common::event::timestampInUS();
 
@@ -1086,10 +1086,10 @@ Mat_<int> watershed2(const Mat& origImage, const Mat_<float>& image, int connect
 //	t2 = ::cci::common::event::timestampInUS();
 //	printf("    CPU watershed border fix = %lld\n", t2-t1);
 
-	return output(Rect(1,1, image.cols, image.rows));
+	return output(cv::Rect(1,1, image.cols, image.rows));
 }
 
-int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, int minSizePl, int watershedConnectivity,
+int plSeparateNuclei(const cv::Mat& img, const cv::Mat& seg_open, cv::Mat& seg_nonoverlap, int minSizePl, int watershedConnectivity,
 		::cciutils::SimpleCSVLogger *logger, ::cciutils::cv::IntermediateResultHandler *iresHandler) {
 	/*
 	 *
@@ -1098,19 +1098,19 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 	// bwareaopen is done as a area threshold.
 	int compcount2;
 //#if defined (USE_UF_CCL)
-	Mat seg_big_t = bwareaopen2(seg_open, false, true, minSizePl, std::numeric_limits<int>::max(), 8, compcount2);
+	cv::Mat seg_big_t = bwareaopen2(seg_open, false, true, minSizePl, std::numeric_limits<int>::max(), 8, compcount2);
 //	printf(" cpu compcount 30-1000 = %d\n", compcount2);
 
 //#else
-//	Mat seg_big_t = ::nscale::bwareaopen<unsigned char>(seg_open, 30, std::numeric_limits<int>::max(), 8, compcount2);
+//	cv::Mat seg_big_t = ::nscale::bwareaopen<unsigned char>(seg_open, 30, std::numeric_limits<int>::max(), 8, compcount2);
 //#endif
 	if (logger) logger->logTimeSinceLastLog("30To1000");
 	if (iresHandler) iresHandler->saveIntermediate(seg_big_t, 14);
 
 
-	Mat disk3 = getStructuringElement(MORPH_ELLIPSE, Size(3,3));
+	cv::Mat disk3 = getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3,3));
 
-	Mat seg_big = Mat::zeros(seg_big_t.size(), seg_big_t.type());
+	cv::Mat seg_big = cv::Mat::zeros(seg_big_t.size(), seg_big_t.type());
 	dilate(seg_big_t, seg_big, disk3);
 	if (iresHandler) iresHandler->saveIntermediate(seg_big, 15);
 
@@ -1125,7 +1125,7 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 		 *
 	 *
 	 */
-	// distance transform:  matlab code is doing this:
+	// distance transform:  cv::Matlab code is doing this:
 	// invert the image so nuclei candidates are holes
 	// compute the distance (distance of nuclei pixels to background)
 	// negate the distance.  so now background is still 0, but nuclei pixels have negative distances
@@ -1134,12 +1134,12 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 	// really just want the distance map.  CV computes distance to 0.
 	// background is 0 in output.
 	// then invert to create basins
-	Mat dist(seg_big.size(), CV_32FC1);
+	cv::Mat dist(seg_big.size(), CV_32FC1);
 
 //	imwrite("seg_big.pbm", seg_big);
 
 	// opencv: compute the distance to nearest zero
-	// matlab: compute the distance to the nearest non-zero
+	// cv::Matlab: compute the distance to the nearest non-zero
 	distanceTransform(seg_big, dist, CV_DIST_L2, CV_DIST_MASK_PRECISE);
 	double mmin, mmax;
 	minMaxLoc(dist, &mmin, &mmax);
@@ -1152,9 +1152,9 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 //	cciutils::cv::imwriteRaw("test/out-dist", dist);
 
 	// then set the background to -inf and do imhmin
-	//Mat distance = Mat::zeros(dist.size(), dist.type());
+	//cv::Mat distance = cv::Mat::zeros(dist.size(), dist.type());
 	// appears to work better with -inf as background
-	Mat distance(dist.size(), dist.type(), -std::numeric_limits<float>::max());
+	cv::Mat distance(dist.size(), dist.type(), -std::numeric_limits<float>::max());
 	dist.copyTo(distance, seg_big);
 //	cciutils::cv::imwriteRaw("test/out-distance", distance);
 	if (logger) logger->logTimeSinceLastLog("distTransform");
@@ -1165,7 +1165,7 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 	// then do imhmin. (prevents small regions inside bigger regions)
 //	imwrite("in-imhmin.ppm", distance);
 
-	Mat distance2 = imhmin<float>(distance, 1.0f, 8);
+	cv::Mat distance2 = imhmin<float>(distance, 1.0f, 8);
 	if (logger) logger->logTimeSinceLastLog("imhmin");
 	if (iresHandler) iresHandler->saveIntermediate(distance2, 18);
 
@@ -1180,11 +1180,11 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 		seg_nonoverlap = seg_big;
      *
 	 */
-	Mat nuclei = Mat::zeros(img.size(), img.type());
-//	Mat distance3 = distance2 + (mmax + 1.0);
-//	Mat dist4 = Mat::zeros(distance3.size(), distance3.type());
+	cv::Mat nuclei = cv::Mat::zeros(img.size(), img.type());
+//	cv::Mat distance3 = distance2 + (mmax + 1.0);
+//	cv::Mat dist4 = cv::Mat::zeros(distance3.size(), distance3.type());
 //	distance3.copyTo(dist4, seg_big);
-//	Mat dist5(dist4.size(), CV_8U);
+//	cv::Mat dist5(dist4.size(), CV_8U);
 //	dist4.convertTo(dist5, CV_8U, (std::numeric_limits<unsigned char>::max() / mmax));
 //	cvtColor(dist5, nuclei, CV_GRAY2BGR);
 	img.copyTo(nuclei, seg_big);
@@ -1194,29 +1194,29 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 	// watershed in openCV requires labels.  input foreground > 0, 0 is background
 	// critical to use just the nuclei and not the whole image - else get a ring surrounding the regions.
 //#if defined (USE_UF_CCL)
-	Mat watermask = watershed2(nuclei, distance2, watershedConnectivity);
+	cv::Mat watermask = watershed2(nuclei, distance2, watershedConnectivity);
 //#else
-//	Mat watermask = ::nscale::watershed(nuclei, distance2, 8);
+//	cv::Mat watermask = ::nscale::watershed(nuclei, distance2, 8);
 //#endif
 //	cciutils::cv::imwriteRaw("test/out-watershed", watermask);
 	if (logger) logger->logTimeSinceLastLog("watershed");
 	if (iresHandler) iresHandler->saveIntermediate(watermask, 20);
 
 // MASK approach
-	seg_nonoverlap = Mat::zeros(seg_big.size(), seg_big.type());
+	seg_nonoverlap = cv::Mat::zeros(seg_big.size(), seg_big.type());
 	seg_big.copyTo(seg_nonoverlap, (watermask >= 0));
 	if (logger) logger->logTimeSinceLastLog("water to mask");
 	if (iresHandler) iresHandler->saveIntermediate(seg_nonoverlap, 21);
 //// ERODE has been replaced with border finding and moved into watershed.
-//	Mat twm(seg_nonoverlap.rows + 2, seg_nonoverlap.cols + 2, seg_nonoverlap.type());
-//	Mat t_nonoverlap = Mat::zeros(twm.size(), twm.type());
+//	cv::Mat twm(seg_nonoverlap.rows + 2, seg_nonoverlap.cols + 2, seg_nonoverlap.type());
+//	cv::Mat t_nonoverlap = cv::Mat::zeros(twm.size(), twm.type());
 //	//ERODE to fix border
 //	if (seg_nonoverlap.type() == CV_32S)
-//		copyMakeBorder(seg_nonoverlap, twm, 1, 1, 1, 1, BORDER_CONSTANT, Scalar_<int>(std::numeric_limits<int>::max()));
+//		copyMakeBorder(seg_nonoverlap, twm, 1, 1, 1, 1, cv::BORDER_CONSTANT, Scalar_<int>(std::numeric_limits<int>::max()));
 //	else
-//		copyMakeBorder(seg_nonoverlap, twm, 1, 1, 1, 1, BORDER_CONSTANT, Scalar_<unsigned char>(std::numeric_limits<unsigned char>::max()));
+//		copyMakeBorder(seg_nonoverlap, twm, 1, 1, 1, 1, cv::BORDER_CONSTANT, Scalar_<unsigned char>(std::numeric_limits<unsigned char>::max()));
 //	erode(twm, t_nonoverlap, disk3);
-//	seg_nonoverlap = t_nonoverlap(Rect(1,1,seg_nonoverlap.cols, seg_nonoverlap.rows));
+//	seg_nonoverlap = t_nonoverlap(cv::Rect(1,1,seg_nonoverlap.cols, seg_nonoverlap.rows));
 //	if (logger) logger->logTimeSinceLastLog("watershed erode");
 //	if (iresHandler) iresHandler->saveIntermediate(seg_nonoverlap, 22);
 //	twm.release();
@@ -1230,20 +1230,20 @@ int plSeparateNuclei(const Mat& img, const Mat& seg_open, Mat& seg_nonoverlap, i
 
 }
 
-int segmentNuclei(const Mat& img, Mat& output, unsigned char blue, 
+int segmentNuclei(const cv::Mat& img, cv::Mat& output, unsigned char blue, 
 	unsigned char green, unsigned char red, double T1, double T2, 
 	unsigned char G1, int minSize, int maxSize, unsigned char G2, int minSizePl, 
 	int minSizeSeg, int maxSizeSeg,  int fillHolesConnectivity, 
 	int reconConnectivity, int watershedConnectivity,
 	::cciutils::SimpleCSVLogger *logger, 
 	::cciutils::cv::IntermediateResultHandler *iresHandler) {
-	// image in BGR format
+	// image in BGR forcv::Mat
 	if (!img.data) return ::nscale::HistologicalEntities::INVALID_IMAGE;
 
 	if (logger) logger->logT0("start");
 	if (iresHandler) iresHandler->saveIntermediate(img, 0);
 
-	Mat seg_norbc;
+	cv::Mat seg_norbc;
 	int findCandidateResult = plFindNucleusCandidates(img, seg_norbc, blue, 
 		green, red, T1, T2, G1, minSize, maxSize, G2,  fillHolesConnectivity, 
 		reconConnectivity, logger, iresHandler);
@@ -1251,17 +1251,17 @@ int segmentNuclei(const Mat& img, Mat& output, unsigned char blue,
 		return findCandidateResult;
 	}
 
-	Mat seg_nohole = imfillHoles<unsigned char>(seg_norbc, true, 4);
+	cv::Mat seg_nohole = imfillHoles<unsigned char>(seg_norbc, true, 4);
 	if (logger) logger->logTimeSinceLastLog("fillHoles2");
 	if (iresHandler) iresHandler->saveIntermediate(seg_nohole, 12);
 
-	Mat disk3 = getStructuringElement(MORPH_ELLIPSE, Size(3,3));
-	Mat seg_open = morphOpen<unsigned char>(seg_nohole, disk3);
+	cv::Mat disk3 = getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3,3));
+	cv::Mat seg_open = morphOpen<unsigned char>(seg_nohole, disk3);
 	if (logger) logger->logTimeSinceLastLog("openBlobs");
 	if (iresHandler) iresHandler->saveIntermediate(seg_open, 13);
 
 
-	Mat seg_nonoverlap;
+	cv::Mat seg_nonoverlap;
 	int sepResult = plSeparateNuclei(img, 
 		seg_open, seg_nonoverlap, minSizePl, watershedConnectivity, logger, 
 		iresHandler);
@@ -1271,7 +1271,7 @@ int segmentNuclei(const Mat& img, Mat& output, unsigned char blue,
 
 	int compcount2;
 	// MASK approach
-	Mat seg = bwareaopen2(seg_nonoverlap, false, true, minSizeSeg, 
+	cv::Mat seg = bwareaopen2(seg_nonoverlap, false, true, minSizeSeg, 
 		maxSizeSeg, 4, compcount2);
 
 	if (logger) logger->logTimeSinceLastLog("20To1000");

@@ -1,4 +1,3 @@
-#include <regiontemplates/comparativeanalysis/pixelcompare/PixelCompare.h>
 #include "DiffMaskComp.h"
 
 DiffMaskComp::DiffMaskComp() {

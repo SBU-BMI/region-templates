@@ -4,8 +4,8 @@
 
 NormalizationComp::NormalizationComp() {
 	this->setComponentName("NormalizationComp");
-	this->addInputOutputDataRegion("img", "initial", RTPipelineComponentBase::INPUT);
-	this->addInputOutputDataRegion("img", "initial", RTPipelineComponentBase::OUTPUT);
+	this->addInputOutputDataRegion("img", "tile0", RTPipelineComponentBase::INPUT);
+	this->addInputOutputDataRegion("img", "tile0", RTPipelineComponentBase::OUTPUT);
 }
 
 NormalizationComp::~NormalizationComp() {
@@ -24,12 +24,12 @@ int NormalizationComp::run()
 	std::cout << "Executing component: " << this->getComponentName() << " instance id: " << this->getId() <<std::endl;
 
 	if(inputRt != NULL){
-		DenseDataRegion2D *raw = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("initial"));
+		DenseDataRegion2D *raw = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion("tile0", "initial"));
 		if(raw != NULL){
 			// Create output data region
 			DenseDataRegion2D *bgr = new DenseDataRegion2D();
 			// set outpu data region identifier
-			bgr->setName("initial");
+			bgr->setName("tile0");
 			bgr->setId("normalized");
 			bgr->setVersion(1);
 
