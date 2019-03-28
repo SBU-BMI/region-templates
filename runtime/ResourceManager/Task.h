@@ -17,7 +17,10 @@
 #include "ExecEngineConstants.h"
 #include "TaskArgument.h"
 
+#ifdef WITH_CUDA
 #include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
+#endif
+
 
 class ExecutionEngine;
 class Task;

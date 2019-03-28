@@ -186,12 +186,12 @@ void ThreadPool::initExecution()
 	pthread_mutex_unlock(&initExecutionMutex);
 }
 
+#ifdef WITH_CUDA
 void ThreadPool::enqueueUploadTaskParameters(Task* task, cv::cuda::Stream& stream) {
 	for(int i = 0; i < task->getNumberArguments(); i++){
 		task->getArgument(i)->upload(stream);
 	}
 }
-
 
 void ThreadPool::downloadTaskOutputParameters(Task* task, cv::cuda::Stream& stream) {
 	for(int i = 0; i < task->getNumberArguments(); i++){
@@ -220,7 +220,9 @@ void ThreadPool::deleteOutputParameters(Task* task) {
 		task->getArgument(i)->deleteGPUData();
 	}
 }
+#endif
 
+#ifdef WITH_CUDA
 void ThreadPool::preassignmentSelectiveDownload(Task* task, Task* preAssigned, cv::cuda::Stream& stream) {
 	vector<int> downloadingTasksIds;
 
@@ -256,7 +258,7 @@ void ThreadPool::preassignmentSelectiveDownload(Task* task, Task* preAssigned, c
 	}
 
 }
-
+#endif
 
 void ThreadPool::processTasks(int procType, int tid)
 {

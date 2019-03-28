@@ -28,7 +28,9 @@ void DenseDataRegion2D::allocData(int x, int y, int type, int device) {
 		this->dataCPU.create(x, y, type);
 		(this->dataCPU) = cv::Scalar(0);
 	}else if(Environment::GPU == device){
+#ifdef WITH_CUDA
 		this->dataGPU.create(x, y, type);
+#endif
 	}else{
 		std::cout << __FILE__ << ":" << __LINE__ << ": unknown type" << std::endl;
 	}
@@ -39,7 +41,9 @@ void DenseDataRegion2D::releaseData(int device) {
 	if(Environment::CPU == device){
 		this->dataCPU.release();
 	}else if(Environment::GPU == device){
+#ifdef WITH_CUDA
 		this->dataGPU.release();
+#endif
 	}else{
 		std::cout << __FILE__ << ":" << __LINE__ << ": unknown type" << std::endl;
 	}

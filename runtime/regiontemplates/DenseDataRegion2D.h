@@ -17,7 +17,9 @@
 // OpenCV library includes
 #include "cv.hpp"
 // #include "opencv2/gpu/gpu.hpp" // old opencv 2.4
+#ifdef WITH_CUDA
 #include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
+#endif
 //using namespace cv;
 
 //#include <cv.h>
@@ -29,7 +31,9 @@
 class DenseDataRegion2D: public DataRegion {
 private:
 	cv::Mat dataCPU;
+#ifdef WITH_CUDA
 	cv::cuda::GpuMat dataGPU;
+#endif
 
 	// used to store chunks of data loaded in memory
 	std::map<BoundingBox, cv::Mat, BBComparator > chunkedDataCaching;

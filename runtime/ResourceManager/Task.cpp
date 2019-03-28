@@ -149,6 +149,7 @@ int Task::getArgumentId(int index) {
 	return id;
 }
 
+#ifdef WITH_CUDA
 int Task::uploadArgument(int index, cv::cuda::Stream& stream) {
 	if(index >= 0 && index < this->taskArguments.size()){
 		taskArguments[index]->upload(stream);
@@ -162,6 +163,7 @@ int Task::downloadArgument(int index, cv::cuda::Stream& stream) {
 	}
 	return 0;
 }
+#endif
 
 int Task::getNumberArguments() {
 	return taskArguments.size();

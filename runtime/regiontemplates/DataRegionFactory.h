@@ -16,7 +16,9 @@
 //#include "cv.hpp"
 //#include "opencv2/gpu/gpu.hpp"
 // #include "highgui.h" // old opencv 2.4
+#ifdef WITH_CUDA
 #include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
+#endif
 
 #include <string>
 #include <sstream>
