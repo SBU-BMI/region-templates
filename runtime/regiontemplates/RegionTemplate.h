@@ -92,6 +92,9 @@ public:
 	bool isLazyRead() const;
 	void setLazyRead(bool lazyRead);
 
+	// Tiling functions
+	void generateTile(std::string origDdrName, std::string newDdrName, int xi, int yi, int xo, int yo);
+
 };
 
 #ifdef MATLAB_INTEGRATION

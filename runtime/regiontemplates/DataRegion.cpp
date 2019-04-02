@@ -26,6 +26,8 @@ DataRegion::DataRegion() {
 
 	this->bb.setLb(Point(0,0,0));
 	this->bb.setUb(Point(0,0,0));
+
+	this->isSvs = false;
 }
 
 DataRegion::~DataRegion() {
@@ -78,6 +80,10 @@ void DataRegion::setVersion(int version) {
 
 void DataRegion::setType(int type) {
 	this->regionType = type;
+}
+
+void DataRegion::setSvs() {
+	this->isSvs = true;
 }
 
 bool DataRegion::write() {
@@ -156,6 +162,10 @@ int DataRegion::serialize(char* buff) {
 	// pack data region ROI
 	bb = this->getROI();
 	serialized_bytes += bb.serialize(buff+serialized_bytes);
+
+	// pack isSvs
+	memcpy(buff+serialized_bytes, &this->isSvs, sizeof(bool));
+	serialized_bytes += sizeof(bool);
 
 	// pack cache leve in which data is stored
 	memcpy(buff+serialized_bytes, &this->cacheLevel, sizeof(int));
@@ -276,6 +286,12 @@ int DataRegion::deserialize(char* buff) {
 	deserialized_bytes += ROI.deserialize(buff+deserialized_bytes);
 	this->setROI(ROI);
 
+	// unpack
+	bool isSvs;
+	memcpy(&isSvs, buff+deserialized_bytes, sizeof(bool));
+	deserialized_bytes += sizeof(bool);
+	this->isSvs = isSvs;
+
 	// unpack cache level
 	this->setCacheLevel(((int*)(buff+deserialized_bytes))[0]);
 	deserialized_bytes += sizeof(int);
@@ -393,6 +409,9 @@ int DataRegion::serializationSize() {
 	// space to store ROI
 	bb = this->getROI();
 	size_bytes += bb.size();
+
+	// to store isSvs
+	size_bytes += sizeof(bool);
 
 	// size of cache level
 	size_bytes += sizeof(int);

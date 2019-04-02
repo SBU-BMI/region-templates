@@ -54,6 +54,8 @@ private:
 	int outputType;
 	int outputExtension;
 
+	bool isSvs;
+
 	friend class Cache;
 	friend class CacheComponent;
 	friend class RTPipelineComponentBase;
@@ -123,6 +125,8 @@ public:
 	void setId(std::string id);
 	const BoundingBox& getROI() const;
 	void setROI(const BoundingBox& roi);
+
+	void setSvs();
 
 	void print();
 	int getOutputExtension() const;

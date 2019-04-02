@@ -491,3 +491,7 @@ bool RegionTemplate::deleteDataRegion(std::string drName, std::string drId,
 	}
 	return true;
 }
+
+void RegionTemplate::generateTile(std::string origDdrName, std::string newDdrName, int xi, int yi, int xo, int yo) {
+	exit(-1); // TODO
+}
