@@ -4,11 +4,8 @@ project(ExamplesRT)
 #add_subdirectory("PipelineRTFS-NSF")
 
 #Difference analysis basic pipelines
-option(USE_FINE_GRAIN_SEG_TASKS "Enable use of fine grain segmentation tasks of NScale for tuning optimization" OFF)
-option(USE_HADOOPGIS "Compile HadoopGIS examples (Requires Hadoopgis)" OFF)
-
+option(RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
 if (RT_TUNING_NSCALE_EXAMPLE)
-    option(RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
     option(DISTRIBUTED_TILLING_EXAMPLE "Enable compilation of a disTiler tool example" OFF)
     add_subdirectory("PipelineRTFS-NS-Diff")
     if (USE_ACTIVE_HARMONY)
@@ -19,6 +16,7 @@ if (RT_TUNING_NSCALE_EXAMPLE)
     if(DISTRIBUTED_TILLING_EXAMPLE)
         add_subdirectory("PipelineRTFS-NS-Diff-disTiler")
     endif(DISTRIBUTED_TILLING_EXAMPLE)
+    option(USE_HADOOPGIS "Compile HadoopGIS examples (Requires Hadoopgis)" OFF)
     if (USE_HADOOPGIS)
         find_path(HADOOPGIS_BUILD_DIR REQUIRED)
         set(HADOOPGIS_SCRIPTS_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}) #the script path is the same as the executables path
@@ -49,6 +47,8 @@ if (RT_TUNING_NSCALE_EXAMPLE)
         endif (USE_ACTIVE_HARMONY)
 
     endif (USE_HADOOPGIS)
+
+    option(USE_FINE_GRAIN_SEG_TASKS "Enable use of fine grain segmentation tasks of NScale for tuning optimization" OFF)
     if (USE_FINE_GRAIN_SEG_TASKS)
         add_subdirectory("PipelineRTFS-NS-Diff-FGO")
     endif ()

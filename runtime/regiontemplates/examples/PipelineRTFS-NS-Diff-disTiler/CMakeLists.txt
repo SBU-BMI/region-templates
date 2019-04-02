@@ -24,17 +24,11 @@ include_directories(${nscalesrcdir}/common)
 include_directories(${nscalesrcdir}/features)
 include_directories(${nscalesrcdir}/normalization)
 
-# # Find and import OpenJpeg
-# find_path(Jpeg_INSTALLATION_PATH include/jpeglib.h)
-# if(NOT Jpeg_INSTALLATION_PATH)
-#    message(FATAL_ERROR "Please enter the installation path of Jpeg, i.e., the one after --prefix= when configuring Jpeg")
-# endif(NOT Jpeg_INSTALLATION_PATH)
-
-# include_directories(${Jpeg_INSTALLATION_PATH}/include/)
-
-# set(JpegLibs
-#   ${Jpeg_INSTALLATION_PATH}/lib/libjpeg.so
-#   )
+# # glib include --- NOT REQUIRED YET
+# find_path(GLIB_BUILD_PATH REQUIRED)
+# include_directories(${GLIB_BUILD_PATH}/include/glib-2.0)
+# include_directories(${GLIB_BUILD_PATH}/lib/glib-2.0/include)
+# link_directories(${GLIB_BUILD_PATH}/lib)
 
 # Find and import OpenSlide
 find_path(OPENSLIDE_SRC_DIR REQUIRED)

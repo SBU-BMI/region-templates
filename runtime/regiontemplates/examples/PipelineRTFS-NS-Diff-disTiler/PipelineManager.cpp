@@ -12,6 +12,7 @@
 #include "DiffMaskComp.h"
 
 #include "openslide.h"
+// #include <glib.h>
 
 RegionTemplate* getInputRT(std::string path) {
     DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
@@ -102,6 +103,68 @@ int findArgPos(string s, int argc, char** argv) {
     return -1;
 }
 
+int32_t getLargestLevel(openslide_t *osr) {
+    int32_t levels = openslide_get_level_count(osr);
+    int64_t w, h;
+
+    int64_t maxSize = -1;
+    int32_t maxLevel = -1;
+
+    for (int32_t l=0; l<levels; l++) {
+        openslide_get_level_dimensions(osr, l, &w, &h);
+        if (h*w > maxSize) {
+            maxSize = h*w;
+            maxLevel = l;
+        }
+    }
+
+    return maxLevel;
+}
+
+void osrRegionToCVMat(openslide_t* osr, int xi, int yi, 
+    int xo, int yo, int level, cv::Mat& thisTile) {
+
+    uint32_t* osrRegion = new uint32_t[(xo-xi)*(yo-yi)];
+    openslide_read_region(osr, osrRegion, xi, yi, level, (xo-xi), (yo-yi));
+
+    thisTile = cv::Mat((yo-yi), (xo-xi), CV_8UC3, cv::Scalar(0, 0, 0));
+    int64_t numOfPixelPerTile = thisTile.total();
+
+    for (int64_t it = 0; it < numOfPixelPerTile; ++it) {
+        uint32_t p = osrRegion[it];
+
+        uint8_t a = (p >> 24) & 0xFF;
+        uint8_t r = (p >> 16) & 0xFF;
+        uint8_t g = (p >> 8) & 0xFF;
+        uint8_t b = p & 0xFF;
+
+        switch (a) {
+            case 0:
+                r = 0;
+                b = 0;
+                g = 0;
+                break;
+            case 255:
+                // no action needed
+                break;
+            default:
+                r = (r * 255 + a / 2) / a;
+                g = (g * 255 + a / 2) / a;
+                b = (b * 255 + a / 2) / a;
+                break;
+        }
+
+        // write back
+        thisTile.at<cv::Vec3b>(it)[0] = b;
+        thisTile.at<cv::Vec3b>(it)[1] = g;
+        thisTile.at<cv::Vec3b>(it)[2] = r;
+    }
+
+    delete[] osrRegion;
+
+    return;
+}
+
 int main (int argc, char **argv){
     // Handler to the distributed execution system environment
     SysEnv sysEnv;
@@ -178,20 +241,14 @@ int main (int argc, char **argv){
 
         imgFilePath = inputFolderPath + imgBasename + ".svs";
         openslide_t *osr = openslide_open(imgFilePath.c_str());
-        std::cout << "read" << std::endl;
-        // int magnification = gth818n::getMagnification(osr);
 
-        // int64_t largestSizeW = 0;
-        // int64_t largestSizeH = 0;
-        // int32_t levelOfLargestSize = 0;
+        int32_t maxLevel = getLargestLevel(osr);
+        int xi = 300, yi = 150;
+        int xo = 5500, yo = 4000;
+        cv::Mat tile;
+        osrRegionToCVMat(osr, xi, yi, xo, yo, maxLevel, tile);
 
-        // gth818n::getLargestLevelSize(osr, levelOfLargestSize, largestSizeW, largestSizeH);
-
-        // std::cout<<"Largest level: "<< levelOfLargestSize<<" has size: "<<largestSizeW<<", "<<largestSizeH<<std::endl;
-
-        // int64_t nTileW = largestSizeW/tileSize + 1;
-        // int64_t nTileH = largestSizeH/tileSize + 1;
-
+        cv::imwrite("tileTest.png", tile);
 
         return -1;
 
