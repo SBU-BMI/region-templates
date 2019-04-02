@@ -24,6 +24,28 @@ include_directories(${nscalesrcdir}/common)
 include_directories(${nscalesrcdir}/features)
 include_directories(${nscalesrcdir}/normalization)
 
+# # Find and import OpenJpeg
+# find_path(Jpeg_INSTALLATION_PATH include/jpeglib.h)
+# if(NOT Jpeg_INSTALLATION_PATH)
+#    message(FATAL_ERROR "Please enter the installation path of Jpeg, i.e., the one after --prefix= when configuring Jpeg")
+# endif(NOT Jpeg_INSTALLATION_PATH)
+
+# include_directories(${Jpeg_INSTALLATION_PATH}/include/)
+
+# set(JpegLibs
+#   ${Jpeg_INSTALLATION_PATH}/lib/libjpeg.so
+#   )
+
+# Find and import OpenSlide
+find_path(OPENSLIDE_SRC_DIR REQUIRED)
+include_directories(${OPENSLIDE_SRC_DIR})
+link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
+set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
+
+
+
+
+
 # Make sure the compiler can find the library in runtime system directory
 link_directories(${Runtime_SOURCE_DIR})
 
@@ -54,6 +76,7 @@ target_link_libraries("${libname}" runtimesystem)
 target_link_libraries("${libname}" regiontemplates)
 # target_link_libraries("${libname}" ${OpenCV_LIBS})
 target_link_libraries("${libname}" segment normalization featuresAll)
+target_link_libraries("${libname}" openslide)
         
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-NS-Diff-disTiler PipelineManager.cpp)

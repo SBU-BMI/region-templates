@@ -11,6 +11,8 @@
 #include "Segmentation.h"
 #include "DiffMaskComp.h"
 
+#include "openslide.h"
+
 RegionTemplate* getInputRT(std::string path) {
     DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
     ddr2d->setName("initial");
@@ -173,6 +175,32 @@ int main (int argc, char **argv){
         sysEnv.executeComponent(seg);
         sysEnv.executeComponent(diff);
     } else {
+
+        imgFilePath = inputFolderPath + imgBasename + ".svs";
+        openslide_t *osr = openslide_open(imgFilePath.c_str());
+        std::cout << "read" << std::endl;
+        // int magnification = gth818n::getMagnification(osr);
+
+        // int64_t largestSizeW = 0;
+        // int64_t largestSizeH = 0;
+        // int32_t levelOfLargestSize = 0;
+
+        // gth818n::getLargestLevelSize(osr, levelOfLargestSize, largestSizeW, largestSizeH);
+
+        // std::cout<<"Largest level: "<< levelOfLargestSize<<" has size: "<<largestSizeW<<", "<<largestSizeH<<std::endl;
+
+        // int64_t nTileW = largestSizeW/tileSize + 1;
+        // int64_t nTileH = largestSizeH/tileSize + 1;
+
+
+        return -1;
+
+
+
+
+
+
+
         // break initial images into tiles
         DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
         ddr2d->setName("tile0");
@@ -181,7 +209,7 @@ int main (int argc, char **argv){
         BoundingBox b;
         Point p;
         ddr2d->setROI(BoundingBox(Point(0,0,0), Point(200,200,2)));
-        ddr2d->insertBB2IdElement(ddr2d->getROI(), "initial"); // link roi with orig?
+        ddr2d->insertBB2IdElement(ddr2d->getROI(), "initial");
         // ddr2d->insertBB2IdElement(ddr2d->getROI(), "tile0-bb2ide");
         ddr2d->setId("initial");
         inputRT->insertDataRegion(ddr2d);
