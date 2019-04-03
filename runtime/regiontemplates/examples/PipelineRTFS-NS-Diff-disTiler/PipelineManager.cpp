@@ -68,17 +68,15 @@ NormalizationComp* genNormalization(RegionTemplate* rt, std::string ddrName) {
     return norm;
 }
 
-Segmentation* genSegmentation(int versionSeg, int versionNorm, 
-    int normId, RegionTemplate* rt) {
+Segmentation* genSegmentation(int normId, RegionTemplate* rt, 
+    std::string ddrName) {
 
     Segmentation* seg = new Segmentation();
+
+    seg->setIo(rt->getName(), ddrName);
     
-    // Version of the data region read. Each parameter instance 
-    //   in norm creates a output w/ different version
-    seg->addArgument(new ArgumentInt(versionNorm));
-    
-    // Version of the data region outputted by the segmentation stage
-    seg->addArgument(new ArgumentInt(versionSeg));
+    seg->addArgument(new ArgumentString(rt->getName()));
+    seg->addArgument(new ArgumentString(ddrName));
 
     // Add remaining (application specific) parameters:
     seg->addArgument(new ArgumentInt(220));   // Blue channel
@@ -96,6 +94,7 @@ Segmentation* genSegmentation(int versionSeg, int versionNorm,
     seg->addArgument(new ArgumentInt(4));     // fill holes element
     seg->addArgument(new ArgumentInt(8));     // recon element
     seg->addArgument(new ArgumentInt(8));     // watershed
+
 
     seg->addRegionTemplateInstance(rt, rt->getName());
     seg->addDependency(normId);
@@ -250,8 +249,8 @@ int main (int argc, char **argv){
 
         // Instantiate stages
         NormalizationComp* norm = genNormalization(inputRT, REF_DDR_NAME);
-        Segmentation* seg = genSegmentation(versionSeg, 
-            versionNorm, norm->getId(), inputRT);
+        Segmentation* seg = genSegmentation(norm->getId(), 
+            inputRT, REF_DDR_NAME);
         DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
             seg->getId(), inputRT, maskRT);
         diffComponentIds.push_back(diff->getId());
@@ -302,8 +301,8 @@ int main (int argc, char **argv){
 
                 // Instantiate the stages for each tile
                 NormalizationComp* norm = genNormalization(inputRT, tilename);
-                Segmentation* seg = genSegmentation(versionSeg, 
-                    versionNorm, norm->getId(), inputRT);
+                Segmentation* seg = genSegmentation(norm->getId(), 
+                    inputRT, tilename);
                 DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
                     seg->getId(), inputRT, maskRT);
                 diffComponentIds.push_back(diff->getId());
@@ -332,8 +331,8 @@ int main (int argc, char **argv){
 
                 // Instantiate the stages for each tile
                 NormalizationComp* norm = genNormalization(inputRT, tilename);
-                Segmentation* seg = genSegmentation(versionSeg, 
-                    versionNorm, norm->getId(), inputRT);
+                Segmentation* seg = genSegmentation(norm->getId(), 
+                    inputRT, tilename);
                 DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
                     seg->getId(), inputRT, maskRT);
                 diffComponentIds.push_back(diff->getId());
@@ -362,8 +361,8 @@ int main (int argc, char **argv){
 
                 // Instantiate the stages for each tile
                 NormalizationComp* norm = genNormalization(inputRT, tilename);
-                Segmentation* seg = genSegmentation(versionSeg, 
-                    versionNorm, norm->getId(), inputRT);
+                Segmentation* seg = genSegmentation(norm->getId(), 
+                    inputRT, tilename);
                 DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
                     seg->getId(), inputRT, maskRT);
                 diffComponentIds.push_back(diff->getId());
@@ -391,8 +390,8 @@ int main (int argc, char **argv){
 
             // Instantiate the stages for each tile
                 NormalizationComp* norm = genNormalization(inputRT, tilename);
-            Segmentation* seg = genSegmentation(versionSeg, 
-                versionNorm, norm->getId(), inputRT);
+            Segmentation* seg = genSegmentation(norm->getId(), 
+                inputRT, tilename);
             DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
                 seg->getId(), inputRT, maskRT);
             diffComponentIds.push_back(diff->getId());

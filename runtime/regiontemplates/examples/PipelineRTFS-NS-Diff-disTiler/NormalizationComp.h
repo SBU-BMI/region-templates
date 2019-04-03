@@ -14,17 +14,17 @@
 
 class NormalizationComp : public RTPipelineComponentBase {
 private:
-	cv::Mat inputImage;
-	cv::Mat bgr;
+    cv::Mat inputImage;
+    cv::Mat bgr;
 
 public:
-	NormalizationComp();
-	virtual ~NormalizationComp();
+    NormalizationComp();
+    virtual ~NormalizationComp();
 
     // Add the required RT and DR to the stage
     void setIo(std::string rtName, std::string ddrName);
 
-	int run();
+    int run();
 };
 
 #endif /* NORMALIZATION_COMP_H_ */
