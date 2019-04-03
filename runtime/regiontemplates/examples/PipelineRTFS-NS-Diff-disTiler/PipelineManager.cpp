@@ -14,12 +14,12 @@
 
 #include "openslide.h"
 
-#define REF_DDR_NAME initial
+static const std::string REF_DDR_NAME = "initial";
 
 RegionTemplate* getInputRT(std::string path) {
     DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-    ddr2d->setName("REF_DDR_NAME");
-    ddr2d->setId("REF_DDR_NAME");
+    ddr2d->setName(REF_DDR_NAME);
+    ddr2d->setId(REF_DDR_NAME);
     ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
     ddr2d->setIsAppInput(true);
     ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
@@ -34,8 +34,8 @@ RegionTemplate* getInputRT(std::string path) {
 // TODO:
 RegionTemplate* getInputRT(openslide_t* osr) {
     // DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-    // ddr2d->setName("REF_DDR_NAME");
-    // ddr2d->setId("REF_DDR_NAME");
+    // ddr2d->setName(REF_DDR_NAME);
+    // ddr2d->setId(REF_DDR_NAME);
     // ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
     // ddr2d->setIsAppInput(true);
     // ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
@@ -49,7 +49,8 @@ RegionTemplate* getInputRT(openslide_t* osr) {
     return NULL;
 }
 
-NormalizationComp* genNormalization(int versionNorm, RegionTemplate* rt) {
+NormalizationComp* genNormalization(RegionTemplate* rt, std::string ddrName) {
+
     // Normalization args
     ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray();
     targetMeanAux->addArgValue(ArgumentFloat(-0.632356));
@@ -58,8 +59,10 @@ NormalizationComp* genNormalization(int versionNorm, RegionTemplate* rt) {
 
     // Instantiate the pipeline
     NormalizationComp* norm = new NormalizationComp();
-    norm->addArgument(new ArgumentInt(versionNorm));
+    norm->setIo(rt->getName(), ddrName);
     norm->addArgument(targetMeanAux);
+    norm->addArgument(new ArgumentString(rt->getName()));
+    norm->addArgument(new ArgumentString(ddrName));
     norm->addRegionTemplateInstance(rt, rt->getName());
 
     return norm;
@@ -246,7 +249,7 @@ int main (int argc, char **argv){
         int versionSeg=0; // REMOVAL CANDIDATE-------------------------------->
 
         // Instantiate stages
-        NormalizationComp* norm = genNormalization(versionNorm, inputRT);
+        NormalizationComp* norm = genNormalization(inputRT, REF_DDR_NAME);
         Segmentation* seg = genSegmentation(versionSeg, 
             versionNorm, norm->getId(), inputRT);
         DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
@@ -294,11 +297,11 @@ int main (int argc, char **argv){
                     + ":" + std::to_string(yo) + ">";
 
                 // Create tiles for each RT
-                inputRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
-                maskRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
+                inputRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
+                maskRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
 
                 // Instantiate the stages for each tile
-                NormalizationComp* norm = genNormalization(versionNorm, inputRT);
+                NormalizationComp* norm = genNormalization(inputRT, tilename);
                 Segmentation* seg = genSegmentation(versionSeg, 
                     versionNorm, norm->getId(), inputRT);
                 DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
@@ -324,11 +327,11 @@ int main (int argc, char **argv){
                     + ":" + std::to_string(yo) + ">";
 
                 // Create tiles for each RT
-                inputRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
-                maskRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
+                inputRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
+                maskRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
 
                 // Instantiate the stages for each tile
-                NormalizationComp* norm = genNormalization(versionNorm, inputRT);
+                NormalizationComp* norm = genNormalization(inputRT, tilename);
                 Segmentation* seg = genSegmentation(versionSeg, 
                     versionNorm, norm->getId(), inputRT);
                 DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
@@ -354,11 +357,11 @@ int main (int argc, char **argv){
                     + ":" + std::to_string(yo) + ">";
 
                 // Create tiles for each RT
-                inputRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
-                maskRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
+                inputRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
+                maskRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
 
                 // Instantiate the stages for each tile
-                NormalizationComp* norm = genNormalization(versionNorm, inputRT);
+                NormalizationComp* norm = genNormalization(inputRT, tilename);
                 Segmentation* seg = genSegmentation(versionSeg, 
                     versionNorm, norm->getId(), inputRT);
                 DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
@@ -383,11 +386,11 @@ int main (int argc, char **argv){
                 + ":" + std::to_string(yo) + ">";
 
             // Create tiles for each RT
-            inputRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
-            maskRT->generateTile("REF_DDR_NAME", tilename, xi, yi, xo, yo);
+            inputRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
+            maskRT->generateTile(REF_DDR_NAME, tilename, xi, yi, xo, yo);
 
             // Instantiate the stages for each tile
-            NormalizationComp* norm = genNormalization(versionNorm, inputRT);
+                NormalizationComp* norm = genNormalization(inputRT, tilename);
             Segmentation* seg = genSegmentation(versionSeg, 
                 versionNorm, norm->getId(), inputRT);
             DiffMaskComp* diff = genDiffMaskComp(versionSeg, 
