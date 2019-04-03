@@ -48,18 +48,18 @@ int Segmentation::run() {
 
     RegionTemplate * inputRt = this->getRegionTemplateInstance(rtName);
 
-    if(inputRt != NULL){
+    if(inputRt != NULL) {
         DenseDataRegion2D *bgr = NULL;
         try{
             bgr = dynamic_cast<DenseDataRegion2D*>(inputRt->getDataRegion(
                 ddrName, NORM_DDR_OUTPUT_NAME, 0, NORM_DDR_OUTPUT_ID));
             std::cout << "Segmentation. paramenterId: "
                 << NORM_DDR_OUTPUT_ID << std::endl;
-        }catch(...){
+        } catch (...) {
             std::cout << "ERROR SEGMENTATION " << std::endl;
             bgr=NULL;
         }
-        if(bgr != NULL){
+        if(bgr != NULL) {
             std::cout << "Segmentation. BGR input id: "<< bgr->getId() 
                 << " paramenterId: "<< NORM_DDR_OUTPUT_ID << std::endl;
             // Create output data region
@@ -72,22 +72,24 @@ int Segmentation::run() {
             std::cout <<  "nDataRegions: after:" 
                 << inputRt->getNumDataRegions() << std::endl;
 
-
             // Create processing task
             TaskSegmentation * segTask = new TaskSegmentation(bgr, mask, 
-                (unsigned char) blue, (unsigned char) green, (unsigned char) red, 
-                (double) T1, (double) T2, (unsigned char) G1, (unsigned char) G2, 
-                minSize, maxSize, minSizePl, minSizeSeg, maxSizeSeg, 
-                fillHolesConn, reconConn, watershedConn);
+                (unsigned char) blue, (unsigned char) green, 
+                (unsigned char) red, (double) T1, (double) T2, 
+                (unsigned char) G1, (unsigned char) G2, minSize, maxSize, 
+                minSizePl, minSizeSeg, maxSizeSeg, fillHolesConn, 
+                reconConn, watershedConn);
 
             this->executeTask(segTask);
 
-        }else{
-            std::cout << __FILE__ << ":" << __LINE__ <<" DR == NULL" << std::endl;
+        } else {
+            std::cout << __FILE__ << ":" << __LINE__ 
+                <<" DR == NULL" << std::endl;
         }
 
-    }else{
-        std::cout << __FILE__ << ":" << __LINE__ <<" RT == NULL" << std::endl;
+    } else {
+        std::cout << __FILE__ << ":" << __LINE__ 
+            << " RT == NULL" << std::endl;
     }
 
     return 0;
