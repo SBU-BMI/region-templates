@@ -271,3 +271,54 @@ bool DenseDataRegion2D::empty() {
 void DenseDataRegion2D::insertChukedData(BoundingBox bb, cv::Mat data) {
 	this->chunkedDataCaching.insert(std::pair<BoundingBox, cv::Mat>(bb, data));
 }
+
+void DenseDataRegion2D::serializationHook(char* buff, int& serialized_bytes) {
+	// size = rows * columns * channels * sizeof type
+	cv::Mat m = this->getData();
+
+    // add basic fields of a mat
+    int rows = m.rows;
+    int cols = m.cols;
+    int type = m.type();
+    int channels = m.channels();
+
+    memcpy(&(buff[serialized_bytes+0*sizeof(int)]), &rows, sizeof(int));
+    memcpy(&(buff[serialized_bytes+1*sizeof(int)]), &cols, sizeof(int));
+    memcpy(&(buff[serialized_bytes+2*sizeof(int)]), &type, sizeof(int));
+    memcpy(&(buff[serialized_bytes+3*sizeof(int)]), &channels, sizeof(int));
+
+    // mat data need to be contiguous in order to use memcpy
+    if(!m.isContinuous()){ 
+        m = m.clone();
+    }
+
+    // copy actual data to buffer
+    memcpy(&(buff[serialized_bytes+4*sizeof(int)]), m.data, m.total()*m.channels());
+
+    // add mat size, number of rows, columns, channels and data type size
+    serialized_bytes += m.total() * m.elemSize();
+    serialized_bytes += 4*sizeof(int);
+}
+
+void DenseDataRegion2D::deserializationHook(char* buff, int& deserialized_bytes) {
+	// get the basic fields of the mat
+    int rows, cols, type, channels;
+    memcpy(&rows, &(buff[deserialized_bytes+0*sizeof(int)]), sizeof(int));
+    memcpy(&cols, &(buff[deserialized_bytes+1*sizeof(int)]), sizeof(int));
+    memcpy(&type, &(buff[deserialized_bytes+2*sizeof(int)]), sizeof(int));
+    memcpy(&channels, &(buff[deserialized_bytes+3*sizeof(int)]), sizeof(int));
+
+    // create the new mat with the basic fields and the actual data
+    // a new buffer must be created since buff will be freed later on
+    char* mBuff = new char[rows*cols*channels]; 
+    memcpy(mBuff, &(buff[deserialized_bytes+4*sizeof(int)]), rows*cols*channels);
+    cv::Mat m = cv::Mat(rows, cols, type, mBuff);
+    this->setData(m);
+
+	deserialized_bytes += m.total() * m.elemSize() + 4*sizeof(int);
+}
+
+int DenseDataRegion2D::serializationSizeHook() {
+	cv::Mat m = this->getData();
+    return m.total() * m.elemSize() + 4*sizeof(int);
+}

@@ -206,6 +206,8 @@ int DataRegion::serialize(char* buff) {
 		bb2IdIt++;
 	}
 
+	serializationHook(buff, serialized_bytes);
+
 	return serialized_bytes;
 }
 
@@ -329,6 +331,8 @@ int DataRegion::deserialize(char* buff) {
 		this->insertBB2IdElement(bb, id);
 	}
 
+	deserializationHook(buff, deserialized_bytes);
+
 	return deserialized_bytes;
 }
 
@@ -443,7 +447,21 @@ int DataRegion::serializationSize() {
 		bb2IdIt++;
 	}
 
+	size_bytes += serializationSizeHook();
+
 	return size_bytes;
+}
+
+void DataRegion::serializationHook(char* buff, int& serialized_bytes) {
+	
+}
+
+void DataRegion::deserializationHook(char* buff, int& deserialized_bytes) {
+
+}
+
+int DataRegion::serializationSizeHook() {
+	return 0;
 }
 
 const BoundingBox& DataRegion::getROI() const {

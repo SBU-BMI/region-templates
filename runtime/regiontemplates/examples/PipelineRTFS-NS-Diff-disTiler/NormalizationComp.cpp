@@ -59,7 +59,7 @@ int NormalizationComp::run() {
 
         } else {
             std::cout << __FILE__ << ":" << __LINE__ 
-                <<" Data Region is == NULL" << std::endl;
+                <<" Data Region is == NULL, named: " << ddrName << std::endl;
         }
 
     } else {
