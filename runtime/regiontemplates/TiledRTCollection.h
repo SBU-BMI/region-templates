@@ -11,12 +11,12 @@
 
 #include "RegionTemplate.h"
 
-static const std::string REF_DDR_NAME = "initial";
 static const std::string TILE_EXT = ".tiff";
 
 class TiledRTCollection {
 private:
     std::string name;
+    std::string refDDRName;
     std::string tilesPath;
     bool tiled;
     std::vector<std::list<cv::Rect_<int64_t>>> tiles;
@@ -30,7 +30,8 @@ protected:
     virtual void customTiling();
 
 public:
-    TiledRTCollection(std::string name, std::string tilesPath);
+    TiledRTCollection(std::string name, std::string refDDRName, 
+        std::string tilesPath);
     ~TiledRTCollection();
 
     void addImage(std::string path);

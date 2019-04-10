@@ -20,6 +20,10 @@ bool PixelCompare::run(int procType, int tid) {
 
     int diffPixels = 0;
     if (image1.rows == image2.rows && image1.cols == image2.cols && image1.rows > 0 && image1.cols > 0) {
+        if (image1.type() == CV_8UC3)
+            cv::cvtColor(image1, image1, cv::COLOR_RGB2GRAY);
+        if (image2.type() == CV_8UC3)
+            cv::cvtColor(image2, image2, cv::COLOR_RGB2GRAY);
         diffPixels = countNonZero(image1 != image2);
     } else {
         diffPixels = max(image1.rows * image1.cols, image2.rows * image2.cols);

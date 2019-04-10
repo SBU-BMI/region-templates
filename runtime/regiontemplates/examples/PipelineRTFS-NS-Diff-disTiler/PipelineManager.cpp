@@ -11,6 +11,7 @@
 #include "NormalizationComp.h"
 #include "Segmentation.h"
 #include "DiffMaskComp.h"
+#include "TiledRTCollection.h"
 
 #include "openslide.h"
 
@@ -238,7 +239,19 @@ int main (int argc, char **argv){
         inputFolderPath = argv[findArgPos("-p", argc, argv)+1];
     }
 
+    // For this test we only use a single input and output images
+    std::string imgFilePath = inputFolderPath + imgBasename + ".svs";
+    std::string maskFilePath = inputFolderPath + imgBasename + ".mask.tiff";
+    
+    // Generate TRTCs
+    std::string tmpPath = "./";
+    TiledRTCollection tCollImg(IN_RT_NAME, REF_DDR_NAME, tmpPath);
+    tCollImg.addImage(imgFilePath);
+    TiledRTCollection tCollMask(MASK_RT_NAME, REF_DDR_NAME, tmpPath);
+    tCollMask.addImage(maskFilePath);
+
     std::vector<int> diffComponentIds;
+
     if (tSize == 0) { // no tiling
         // Instantiate the initial region template with the input image
         std::string imgFilePath = inputFolderPath + imgBasename + ".tiff";
@@ -264,59 +277,80 @@ int main (int argc, char **argv){
         sysEnv.executeComponent(diff);
 
     } else if (tSize > 0) { // regular tiling
-        // Instantiate the initial region template with the input image
-        std::string imgFilePath = inputFolderPath + imgBasename + ".svs";
-        openslide_t* osrImg = openslide_open(imgFilePath.c_str());
-        RegionTemplate* inputRT = new RegionTemplate();
-        inputRT->setName(IN_RT_NAME);
+        // Perform standard tiling i.e., no tiling at all
+        tCollImg.tileImages();
+        tCollMask.tileImages(tCollImg.getTiles());
 
-        // Instantiate the initial region template with the input mask image
-        std::string maskFilePath = inputFolderPath + imgBasename + ".mask.tiff";
-        openslide_t* osrMask = openslide_open(maskFilePath.c_str());
-        RegionTemplate* maskRT = new RegionTemplate();
-        maskRT->setName(MASK_RT_NAME);
+        for (int i=0; i<tCollImg.getNumRTs(); i++) {
+            // Get RTs
+            RegionTemplate* inputRT = tCollImg.getRT(i);
+            RegionTemplate* maskRT = tCollMask.getRT(i);
 
-        // Get input image info
-        int32_t maxLevel = getLargestLevel(osrImg);
-        int64_t h, w;
-        openslide_get_level_dimensions(osrImg, maxLevel, &w, &h);
+            // Instantiate stages
+            NormalizationComp* norm = genNormalization(inputRT, REF_DDR_NAME);
+            Segmentation* seg = genSegmentation(norm->getId(), 
+                inputRT, REF_DDR_NAME);
+            DiffMaskComp* diff = genDiffMaskComp(seg->getId(), 
+                inputRT, maskRT, REF_DDR_NAME);
+            diffComponentIds.push_back(diff->getId());
 
-        int xTiles = floor(w/tSize);
-        int yTiles = floor(h/tSize);
+            // add stages to execution
+            sysEnv.executeComponent(norm);
+            sysEnv.executeComponent(seg);
+            sysEnv.executeComponent(diff);
 
-        // Create regular tiles
-        // for (int ti=0; ti<yTiles; ti++) {
-        //     for (int tj=0; tj<xTiles; tj++) {
-        int ti=0;
-        int tj=0;
-                int xi = tj*tSize;
-                int xo = xi+tSize-1;
-                int yi = ti*tSize;
-                int yo = yi+tSize-1;
-                std::string tilename = "t" + std::to_string(xi) + "-" 
-                    + std::to_string(xo) + "x" + std::to_string(yi) 
-                    + "-" + std::to_string(yo);
+        }
 
-                // Create tiles for each RT
-                inputRT->insertDataRegion(getDDRTile(osrImg, xi, yi, 
-                    xo, yo, maxLevel, tilename, REF_DDR_NAME));
-                // maskRT->insertDataRegion(getDDRTile(osrMask, xi, yi, 
-                //     xo, yo, 0, REF_DDR_NAME, tilename));
 
-                // Instantiate the stages for each tile
-                NormalizationComp* norm = genNormalization(inputRT, tilename);
-                Segmentation* seg = genSegmentation(norm->getId(), 
-                    inputRT, tilename);
-                DiffMaskComp* diff = genDiffMaskComp(seg->getId(), 
-                    inputRT, maskRT, REF_DDR_NAME);
-                diffComponentIds.push_back(diff->getId());
+        // openslide_t* osrImg = openslide_open(imgFilePath.c_str());
+        // RegionTemplate* inputRT = new RegionTemplate();
+        // inputRT->setName(IN_RT_NAME);
 
-                // add stages to execution
-                sysEnv.executeComponent(norm);
-                sysEnv.executeComponent(seg);
-                // sysEnv.executeComponent(diff);
-        //     }
-        // }
+        // openslide_t* osrMask = openslide_open(maskFilePath.c_str());
+        // RegionTemplate* maskRT = new RegionTemplate();
+        // maskRT->setName(MASK_RT_NAME);
+
+        // // Get input image info
+        // int32_t maxLevel = getLargestLevel(osrImg);
+        // int64_t h, w;
+        // openslide_get_level_dimensions(osrImg, maxLevel, &w, &h);
+
+        // int xTiles = floor(w/tSize);
+        // int yTiles = floor(h/tSize);
+
+        // // Create regular tiles
+        // // for (int ti=0; ti<yTiles; ti++) {
+        // //     for (int tj=0; tj<xTiles; tj++) {
+        // int ti=0;
+        // int tj=0;
+        //         int xi = tj*tSize;
+        //         int xo = xi+tSize-1;
+        //         int yi = ti*tSize;
+        //         int yo = yi+tSize-1;
+        //         std::string tilename = "t" + std::to_string(xi) + "-" 
+        //             + std::to_string(xo) + "x" + std::to_string(yi) 
+        //             + "-" + std::to_string(yo);
+
+        //         // Create tiles for each RT
+        //         inputRT->insertDataRegion(getDDRTile(osrImg, xi, yi, 
+        //             xo, yo, maxLevel, tilename, REF_DDR_NAME));
+        //         // maskRT->insertDataRegion(getDDRTile(osrMask, xi, yi, 
+        //         //     xo, yo, 0, REF_DDR_NAME, tilename));
+
+        //         // Instantiate the stages for each tile
+        //         NormalizationComp* norm = genNormalization(inputRT, tilename);
+        //         Segmentation* seg = genSegmentation(norm->getId(), 
+        //             inputRT, tilename);
+        //         DiffMaskComp* diff = genDiffMaskComp(seg->getId(), 
+        //             inputRT, maskRT, REF_DDR_NAME);
+        //         diffComponentIds.push_back(diff->getId());
+
+        //         // add stages to execution
+        //         sysEnv.executeComponent(norm);
+        //         sysEnv.executeComponent(seg);
+        //         // sysEnv.executeComponent(diff);
+        // //     }
+        // // }
 
         // // Create irregular border tiles for the last vertical column
         // if (w/tSize > xTiles) {

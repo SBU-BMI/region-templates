@@ -71,18 +71,39 @@ bool isSVS(std::string path) {
     return path.substr(l+1).compare(".svs") == 0;
 }
 
+void cleanup(std::string path) {
+    std::string cmd = "rm -rf " + path;
+    const int dir_err = system(cmd.c_str());
+    if (dir_err == -1) {
+        std::cout << "Error cleaning up. " << __FILE__ 
+            << ":" << __LINE__ << std::endl;
+        exit(1);
+    }
+}
+
 /*****************************************************************************/
 /****************************** Class methods ********************************/
 /*****************************************************************************/
 
-TiledRTCollection::TiledRTCollection(std::string name, std::string tilesPath) {
+TiledRTCollection::TiledRTCollection(std::string name, 
+    std::string refDDRName, std::string tilesPath) {
+
     this->tiled = false;
     this->name = name;
+    this->refDDRName = refDDRName;
     this->tilesPath = tilesPath;
+
+    std::string cmd = "mkdir " + this->tilesPath + "/" + name;
+    const int dir_err = system(cmd.c_str());
+    if (dir_err == -1) {
+        std::cout << "Error creating directory. " << __FILE__ << ":" 
+            << __LINE__ << std::endl;
+        exit(1);
+    }
 }
 
 TiledRTCollection::~TiledRTCollection() {
-
+    cleanup(this->tilesPath + "/" + name);
 }
 
 void TiledRTCollection::addImage(std::string path) {
@@ -117,8 +138,11 @@ void TiledRTCollection::customTiling() {
             w = mat.cols;
         }
 
-        // Create the full roi
+        // Create the full roi and add it to the roi's vector
         cv::Rect_<int64_t> roi(0, 0, w, h);
+        cv::Rect_<int64_t> rois[] = {roi};
+        this->tiles.push_back(std::list<cv::Rect_<int64_t>>(rois, 
+            rois + sizeof(rois)/sizeof(cv::Rect_<int64_t>)));
 
         // Create a tile file
         cv::Mat tile;
@@ -127,14 +151,14 @@ void TiledRTCollection::customTiling() {
         } else {
             tile = mat(roi);
         }
-        std::string path = tilesPath;
+        std::string path = this->tilesPath + "/" + name + "/";
         path += "/i" + to_string(i) + TILE_EXT;
         cv::imwrite(path, tile);
 
         // Create new RT tile from roi
         DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-        ddr2d->setName(REF_DDR_NAME);
-        ddr2d->setId(REF_DDR_NAME);
+        ddr2d->setName(refDDRName);
+        ddr2d->setId(refDDRName);
         ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
         ddr2d->setIsAppInput(true);
         ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
@@ -159,6 +183,7 @@ void TiledRTCollection::tileImages() {
     if (this->tiled) {
         std::cout << "RT collection already tiled. Cannot re-tile it. " 
             << __FILE__ << ":" << __LINE__ << std::endl;
+        cleanup(this->tilesPath + "/" + name);
         exit(-1);
         // return;
     }
@@ -171,8 +196,7 @@ void TiledRTCollection::tileImages() {
     this->tiled = true;
 }
 
-// Performs the autoTiler algorithm while updating the internal tiles 
-//   representation std::vector<std::list<cv::Rect_<int64_t>>>
+// Performs the tiling using a previously tiled TRTC
 void TiledRTCollection::tileImages(
     std::vector<std::list<cv::Rect_<int64_t>>> tiles) {
 
@@ -180,14 +204,17 @@ void TiledRTCollection::tileImages(
     if (this->tiled) {
         std::cout << "RT collection already tiled. Cannot re-tile it. " 
             << __FILE__ << ":" << __LINE__ << std::endl;
+        cleanup(this->tilesPath + "/" + name);
         exit(-1);
         // return;
     }
 
     // The number of internal masks' paths and input tilings must match
     if (tiles.size() != initialPaths.size()) {
-        std::cout << "Internal masks' paths and input tilings size mismatch. " 
-            << __FILE__ << ":" << __LINE__ << std::endl;
+        std::cout << "Internal masks' paths and input tilings size mismatch. "
+            << "Expected "  << initialPaths.size() << " but got " << tiles.size()
+            << ". " << __FILE__ << ":" << __LINE__ << std::endl;
+        cleanup(this->tilesPath + "/" + name);
         exit(-1);
         // return;
     }
@@ -217,14 +244,14 @@ void TiledRTCollection::tileImages(
             } else {
                 tile = mat(r);
             }
-            std::string path = tilesPath;
+            std::string path = this->tilesPath + "/" + name + "/";
             path += "/i" + to_string(i) + "t" + to_string(j++) + TILE_EXT;
             cv::imwrite(path, tile);
 
             // Create new RT tile from ROI r
             DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-            ddr2d->setName(REF_DDR_NAME);
-            ddr2d->setId(REF_DDR_NAME);
+            ddr2d->setName(refDDRName);
+            ddr2d->setId(refDDRName);
             ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
             ddr2d->setIsAppInput(true);
             ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
@@ -246,5 +273,11 @@ void TiledRTCollection::tileImages(
 }
 
 std::vector<std::list<cv::Rect_<int64_t>>> TiledRTCollection::getTiles() {
+    if (!this->tiled) {
+        std::cout << "Tiles not yet generated. " 
+            << __FILE__ << ":" << __LINE__ << std::endl;
+        cleanup(this->tilesPath + "/" + name);
+        exit(-1);
+    }
     return tiles;
 }
