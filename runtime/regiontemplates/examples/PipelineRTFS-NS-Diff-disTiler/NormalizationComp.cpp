@@ -22,12 +22,6 @@ int NormalizationComp::run() {
     std::string ddrName = ((ArgumentString*)this->getArgument(2))->getArgValue();
     RegionTemplate * inputRt = this->getRegionTemplateInstance(rtName);
 
-    // Add the RT to the stage
-    this->addInputOutputDataRegion(rtName, ddrName, 
-        RTPipelineComponentBase::INPUT);
-    this->addInputOutputDataRegion(rtName, ddrName, 
-        RTPipelineComponentBase::OUTPUT);
-
     // Print name and id of the component instance
     std::cout << "Executing component: " << this->getComponentName() 
         << " instance id: " << this->getId() <<std::endl;

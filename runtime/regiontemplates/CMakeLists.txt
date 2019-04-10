@@ -57,13 +57,22 @@ if(USE_ACTIVE_HARMONY)
 	include_directories(${ahsrcdir}/include/)
 endif(USE_ACTIVE_HARMONY)
 
+option (RTEMPLATES_EXAMPLES "Enable compilation of Region Templates examples" OFF)
+
+if(RTEMPLATES_EXAMPLES)
+	add_subdirectory("examples")
+endif(RTEMPLATES_EXAMPLES)
+
+# add TiledRTCollection and required libs if compiled
+if(DISTRIBUTED_TILLING_EXAMPLE)
+	set(librtemplates ${librtemplates} TiledRTCollection.cpp)
+endif(DISTRIBUTED_TILLING_EXAMPLE)
+
 #data spaces path
 #link_directories(${RegionTemplate_SOURCE_DIR}/external-src/dataspaces-ib-1.03beta/)
 
 # Add rule to generate the RegionTemplates, as a shared library 
 add_library("${libname}" SHARED ${librtemplates})
-
-#set_target_properties("${libname}" PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}") 
 target_link_libraries("${libname}" ${MPI_LIBRARIES} ${OpenCV_LIBS})
 
 if (USE_ACTIVE_HARMONY)
@@ -72,17 +81,21 @@ if (USE_ACTIVE_HARMONY)
 	target_link_libraries("${libname}" ${ahsrcdir}/lib/libharmony.a)
 endif (USE_ACTIVE_HARMONY)
 
+# add TiledRTCollection and required libs if compiled
+if(DISTRIBUTED_TILLING_EXAMPLE)
+	# Find and import OpenSlide
+	find_path(OPENSLIDE_SRC_DIR REQUIRED)
+	include_directories(${OPENSLIDE_SRC_DIR})
+	link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
+	set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
+	target_link_libraries("${libname}" openslide)
+endif(DISTRIBUTED_TILLING_EXAMPLE)
+
 #if(USE_DATA_SPACES)
 #	target_link_libraries("${libname}" -ldspacesAll -lrdmacm)
 #endif(USE_DATA_SPACES)
 
 #target_link_libraries("${libname}" runtimesystem)
-
-option (RTEMPLATES_EXAMPLES "Enable compilation of Region Templates examples" OFF)
-
-if(RTEMPLATES_EXAMPLES)
-	add_subdirectory("examples")
-endif(RTEMPLATES_EXAMPLES)
 
 
 option (RTEMPLATES_UNIT_TESTS "Enable compilation of Region Templates unit tests" OFF)
