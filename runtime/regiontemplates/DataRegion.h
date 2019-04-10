@@ -81,11 +81,6 @@ protected:
 	bool isModified() const;
 	void setModified(bool modified);
 
-	// Hook for derived classes to add data to be serialized
-	virtual void serializationHook(char* buff, int& serialized_bytes);
-	virtual void deserializationHook(char* buff, int& deserialized_bytes);
-	virtual int serializationSizeHook();
-
 public:
 	// output storage extensions
 	static const int PBM = 1;

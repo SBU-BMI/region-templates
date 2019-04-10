@@ -65,7 +65,7 @@ endif(RTEMPLATES_EXAMPLES)
 
 # add TiledRTCollection and required libs if compiled
 if(DISTRIBUTED_TILLING_EXAMPLE)
-	set(librtemplates ${librtemplates} TiledRTCollection.cpp)
+	set(librtemplates ${librtemplates} TiledRTCollection.cpp RegTiledRTCollection.cpp)
 endif(DISTRIBUTED_TILLING_EXAMPLE)
 
 #data spaces path

@@ -38,12 +38,6 @@ private:
 	// used to store chunks of data loaded in memory
 	std::map<BoundingBox, cv::Mat, BBComparator > chunkedDataCaching;
 
-protected:
-	// Hook on base class for this classe to add data to be serialized
-	void serializationHook(char* buff, int& serialized_bytes);
-	void deserializationHook(char* buff, int& deserialized_bytes);
-	int serializationSizeHook();
-
 public:
 	DenseDataRegion2D();
 	virtual ~DenseDataRegion2D();

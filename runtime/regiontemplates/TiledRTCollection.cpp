@@ -164,8 +164,8 @@ void TiledRTCollection::customTiling() {
         ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
         ddr2d->setInputFileName(path);
         RegionTemplate* newRT = new RegionTemplate();
-        newRT->insertDataRegion(ddr2d);
         newRT->setName(this->name);
+        newRT->insertDataRegion(ddr2d);
 
         this->rts.push_back(newRT);
 

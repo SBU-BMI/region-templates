@@ -15,15 +15,16 @@ static const std::string TILE_EXT = ".tiff";
 
 class TiledRTCollection {
 private:
+    bool tiled;
+
+protected:
     std::string name;
     std::string refDDRName;
     std::string tilesPath;
-    bool tiled;
+    std::vector<std::string> initialPaths;
     std::vector<std::list<cv::Rect_<int64_t>>> tiles;
     std::vector<RegionTemplate*> rts;
-    std::vector<std::string> initialPaths;
 
-protected:
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
     //   tile containing the full image.
@@ -47,5 +48,15 @@ public:
     std::vector<std::list<cv::Rect_<int64_t>>> getTiles();
 
 };
+
+/*****************************************************************************/
+/***************************** Helper functions ******************************/
+/*****************************************************************************/
+
+void cleanup(std::string path);
+bool isSVS(std::string path);
+int32_t getLargestLevel(openslide_t *osr);
+void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 
+    int level, cv::Mat& thisTile);
 
 #endif
