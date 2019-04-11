@@ -46,7 +46,7 @@ bool TaskSegmentation::run(int procType, int tid) {
 	cv::Mat outMask;
 
 	uint64_t t1 = Util::ClockGetTimeProfile();
-
+	// std::cout << "Input " << inputImage.rows << "x" << inputImage.cols << std::endl;
 	std::cout << "TaskSegmentation: " << (int)blue << ":"<< (int)green 
 		<< ":"<< (int)red << ":"<< T1<< ":"<< T2<< ":"<< (int)G1<< ":"
 		<< minSize<< ":"<< maxSize<< ":"<< (int)G2<< ":"<< minSizePl
@@ -63,6 +63,7 @@ bool TaskSegmentation::run(int procType, int tid) {
 
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
+	// std::cout << "Output " << outMask.rows << "x" << outMask.cols << std::endl;
 	std::cout << "Task Segmentation time elapsed: "<< t2-t1 << std::endl;
 }
 

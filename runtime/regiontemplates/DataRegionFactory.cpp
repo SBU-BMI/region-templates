@@ -209,6 +209,20 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 					if (chunkData.empty()) {
 						std::cout << "Failed to read as image:" << inputFile << std::endl;
 
+						// Check if the file actually exists
+						// Prevents segfault when trying to read the
+						// result of an empty operation. e.g., segmentation
+						// returns an empty mat if the input is background,
+						// making the next stage, which inputs seg output,
+						// trying to read an inexistent image file
+						std::ifstream f(inputFile.c_str());
+						if (!f.good()) {
+#ifdef DEBUG
+							std::cout << "File don't exist." << std::endl;
+#endif
+							return true;
+						}
+
 //						inputFile = "";
 //						if(!path.empty())inputFile.append(path);
 //						inputFile.append(dr2D->getName());

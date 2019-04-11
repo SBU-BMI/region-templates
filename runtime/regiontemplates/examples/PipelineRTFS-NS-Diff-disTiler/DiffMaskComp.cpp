@@ -47,7 +47,7 @@ int DiffMaskComp::run() {
 
         std::cout << "Looking for DR " << inDdrName << "." 
             << SEGM_DDR_OUTPUT_NAME << std::endl;
-        if(reference_mask != NULL) {
+        if(computed_mask != NULL && reference_mask != NULL) {
             // gambiarra
             diffPixels[0] =  this->getId();
             TaskDiffMask *tDiffMask = new PixelCompare(

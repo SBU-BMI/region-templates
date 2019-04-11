@@ -22,6 +22,7 @@
 
 #include <string>
 #include <sstream>
+#include <fstream>
 
 #ifdef WITH_DATA_SPACES
 
