@@ -22,7 +22,7 @@ protected:
     std::string refDDRName;
     std::string tilesPath;
     std::vector<std::string> initialPaths;
-    std::vector<std::list<cv::Rect_<int64_t>>> tiles;
+    std::vector<std::list<cv::Rect_<int64_t> > > tiles;
     // vector<pair<DR name, actual RT object with the only DR>
     std::vector<std::pair<std::string, RegionTemplate*> > rts;
 
