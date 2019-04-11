@@ -14,13 +14,6 @@
 
 class RegTiledRTCollection : public TiledRTCollection {
 private:
-    // std::string name;
-    // std::string refDDRName;
-    // std::string tilesPath;
-    // bool tiled;
-    // std::vector<std::list<cv::Rect_<int64_t>>> tiles;
-    // std::vector<RegionTemplate*> rts;
-    // std::vector<std::string> initialPaths;
     int64_t tw;
     int64_t th;
 
@@ -33,19 +26,6 @@ protected:
 public:
     RegTiledRTCollection(std::string name, std::string refDDRName, 
         std::string tilesPath, int64_t tw, int64_t th);
-    // ~RegTiledRTCollection();
-
-    // void addImage(std::string path);
-    // RegionTemplate* getRT(int id);
-    // int getNumRTs() {
-    //     return rts.size();
-    // }
-
-    // void tileImages();
-
-    // // tiling methods for mask tiling, based on a previous tiling
-    // void tileImages(std::vector<std::list<cv::Rect_<int64_t>>> tiles);
-    // std::vector<std::list<cv::Rect_<int64_t>>> getTiles();
 
 };
 

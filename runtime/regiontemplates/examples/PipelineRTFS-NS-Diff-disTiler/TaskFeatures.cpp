@@ -22,4 +22,6 @@ bool TaskFeatures::run(int procType, int tid) {
 	uint64_t t2 = Util::ClockGetTimeProfile();
 
 	std::cout << "Task Feature Computation time elapsed: "<< t2-t1 << std::endl;
+
+	return true;
 }

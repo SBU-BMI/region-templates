@@ -18,7 +18,7 @@ public:
 
     // Add the required RT and DR to the stage
     void setIo(std::string inRtName, std::string maskRtName, 
-        std::string ddrName);
+        std::string inDdrName, std::string maskDdrName);
     
     int run();
     //void setTask(TaskDiffMask* task);

@@ -110,7 +110,7 @@ void TiledRTCollection::addImage(std::string path) {
     initialPaths.push_back(path);
 }
 
-RegionTemplate* TiledRTCollection::getRT(int id) {
+std::pair<std::string, RegionTemplate*> TiledRTCollection::getRT(int id) {
     return rts[id];
 }
 
@@ -118,6 +118,9 @@ RegionTemplate* TiledRTCollection::getRT(int id) {
 // Defaults to returning the input images with a single
 //   tile containing the full image.
 void TiledRTCollection::customTiling() {
+    // Only a single name is required since there is only one tile
+    std::string drName = to_string(0);
+
     // Go through all images
     for (int i=0; i<initialPaths.size(); i++) {
         bool isSvs = isSVS(initialPaths[i]);
@@ -157,7 +160,7 @@ void TiledRTCollection::customTiling() {
 
         // Create new RT tile from roi
         DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-        ddr2d->setName(refDDRName);
+        ddr2d->setName(drName);
         ddr2d->setId(refDDRName);
         ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
         ddr2d->setIsAppInput(true);
@@ -167,7 +170,8 @@ void TiledRTCollection::customTiling() {
         newRT->setName(this->name);
         newRT->insertDataRegion(ddr2d);
 
-        this->rts.push_back(newRT);
+        this->rts.push_back(
+            std::pair<std::string, RegionTemplate*>(drName, newRT));
 
         // Close .svs file
         if (isSvs) {
@@ -199,6 +203,9 @@ void TiledRTCollection::tileImages() {
 // Performs the tiling using a previously tiled TRTC
 void TiledRTCollection::tileImages(
     std::vector<std::list<cv::Rect_<int64_t>>> tiles) {
+
+    // Only a single name is required since there is only one tile
+    std::string drName = to_string(0);
 
     // A tiling process can only occur once
     if (this->tiled) {
@@ -250,7 +257,7 @@ void TiledRTCollection::tileImages(
 
             // Create new RT tile from ROI r
             DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-            ddr2d->setName(refDDRName);
+            ddr2d->setName(drName);
             ddr2d->setId(refDDRName);
             ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
             ddr2d->setIsAppInput(true);
@@ -260,7 +267,8 @@ void TiledRTCollection::tileImages(
             newRT->insertDataRegion(ddr2d);
             newRT->setName(this->name);
 
-            this->rts.push_back(newRT);
+            this->rts.push_back(
+                std::pair<std::string, RegionTemplate*>(drName, newRT));
         }
 
         // Close .svs file

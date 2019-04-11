@@ -152,15 +152,16 @@ Segmentation* genSegmentation(int normId, RegionTemplate* rt,
 }
 
 DiffMaskComp* genDiffMaskComp(int segId, RegionTemplate* rtIn, 
-    RegionTemplate* rtMask, std::string ddrName) {
+    RegionTemplate* rtMask, std::string inDdrName, std::string maskDdrName) {
 
     DiffMaskComp* diff = new DiffMaskComp();
 
-    diff->setIo(rtIn->getName(), rtMask->getName(), ddrName);
+    diff->setIo(rtIn->getName(), rtMask->getName(), inDdrName, maskDdrName);
 
     diff->addArgument(new ArgumentString(rtIn->getName()));
     diff->addArgument(new ArgumentString(rtMask->getName()));
-    diff->addArgument(new ArgumentString(ddrName));
+    diff->addArgument(new ArgumentString(inDdrName));
+    diff->addArgument(new ArgumentString(maskDdrName));
 
 
     // region template name
@@ -277,15 +278,17 @@ int main (int argc, char **argv){
     // Generate the pipelines for each tile
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
         // Get RTs
-        RegionTemplate* inputRT = tCollImg->getRT(i);
-        RegionTemplate* maskRT = tCollMask->getRT(i);
+        std::string inputRTDRname = tCollImg->getRT(i).first;
+        RegionTemplate* inputRT = tCollImg->getRT(i).second;
+        std::string maskRTDRname = tCollMask->getRT(i).first;
+        RegionTemplate* maskRT = tCollMask->getRT(i).second;
 
         // Instantiate stages
-        NormalizationComp* norm = genNormalization(inputRT, REF_DDR_NAME);
+        NormalizationComp* norm = genNormalization(inputRT, inputRTDRname);
         Segmentation* seg = genSegmentation(norm->getId(), 
-            inputRT, REF_DDR_NAME);
+            inputRT, inputRTDRname);
         DiffMaskComp* diff = genDiffMaskComp(seg->getId(), 
-            inputRT, maskRT, REF_DDR_NAME);
+            inputRT, maskRT, inputRTDRname, maskRTDRname);
         diffComponentIds.push_back(diff->getId());
 
         // add stages to execution

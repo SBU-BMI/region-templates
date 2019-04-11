@@ -23,7 +23,8 @@ protected:
     std::string tilesPath;
     std::vector<std::string> initialPaths;
     std::vector<std::list<cv::Rect_<int64_t>>> tiles;
-    std::vector<RegionTemplate*> rts;
+    // vector<pair<DR name, actual RT object with the only DR>
+    std::vector<std::pair<std::string, RegionTemplate*> > rts;
 
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
@@ -36,7 +37,7 @@ public:
     ~TiledRTCollection();
 
     void addImage(std::string path);
-    RegionTemplate* getRT(int id);
+    std::pair<std::string, RegionTemplate*> getRT(int id);
     int getNumRTs() {
         return rts.size();
     }

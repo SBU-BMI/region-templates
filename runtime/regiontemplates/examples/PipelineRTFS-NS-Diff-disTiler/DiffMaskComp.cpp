@@ -9,11 +9,11 @@ DiffMaskComp::~DiffMaskComp() {
 }
 
 void DiffMaskComp::setIo(std::string inRtName, std::string maskRtName, 
-    std::string ddrName) {
+    std::string inDdrName, std::string maskDdrName) {
     
-    this->addInputOutputDataRegion(inRtName, ddrName, 
+    this->addInputOutputDataRegion(inRtName, inDdrName, 
         RTPipelineComponentBase::INPUT);
-    this->addInputOutputDataRegion(maskRtName, ddrName, 
+    this->addInputOutputDataRegion(maskRtName, maskDdrName, 
         RTPipelineComponentBase::INPUT);
 }
 
@@ -22,8 +22,10 @@ int DiffMaskComp::run() {
         ((ArgumentString*)this->getArgument(0))->getArgValue();
     std::string maskRtName = 
         ((ArgumentString*)this->getArgument(1))->getArgValue();
-    std::string ddrName = 
+    std::string inDdrName = 
         ((ArgumentString*)this->getArgument(2))->getArgValue();
+    std::string maskDdrName = 
+        ((ArgumentString*)this->getArgument(3))->getArgValue();
 
     RegionTemplate* inputRt = this->getRegionTemplateInstance(inRtName);
     RegionTemplate* maskRt = this->getRegionTemplateInstance(maskRtName);
@@ -36,14 +38,16 @@ int DiffMaskComp::run() {
     if(inputRt != NULL) {
         // Mask computed in segmentation using specific application parameter set
         DenseDataRegion2D *computed_mask = dynamic_cast<DenseDataRegion2D*>(
-            inputRt->getDataRegion(ddrName, SEGM_DDR_OUTPUT_NAME, 0, 
+            inputRt->getDataRegion(inDdrName, SEGM_DDR_OUTPUT_NAME, 0, 
             SEGM_DDR_OUTPUT_ID));
 
         // Mask used as a reference
         DenseDataRegion2D *reference_mask = dynamic_cast<DenseDataRegion2D*>(
-            maskRt->getDataRegion(ddrName));
+            maskRt->getDataRegion(maskDdrName));
 
-        if(computed_mask != NULL && reference_mask != NULL) {
+        std::cout << "Looking for DR " << inDdrName << "." 
+            << SEGM_DDR_OUTPUT_NAME << std::endl;
+        if(reference_mask != NULL) {
             // gambiarra
             diffPixels[0] =  this->getId();
             TaskDiffMask *tDiffMask = new PixelCompare(
@@ -51,7 +55,7 @@ int DiffMaskComp::run() {
             this->executeTask(tDiffMask);
         } else {
             std::cout << "DiffMaskComp: did not find data regions: " << std::endl;
-            inputRt->print();
+            // inputRt->print();
         }
     } else {
         std::cout << "\tTASK diff mask: Did not find RT named tile"<< std::endl;

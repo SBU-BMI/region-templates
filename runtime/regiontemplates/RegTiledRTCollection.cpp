@@ -20,6 +20,7 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
 
 
 void RegTiledRTCollection::customTiling() {
+    std::string drName;
     // Go through all images
     for (int i=0; i<initialPaths.size(); i++) {
         bool isSvs = isSVS(initialPaths[i]);
@@ -48,6 +49,7 @@ void RegTiledRTCollection::customTiling() {
         std::list<cv::Rect_<int64_t>> rois;
 
         // Create regular tiles
+        int drId = 0;
         for (int ti=0; ti<yTiles; ti++) {
             for (int tj=0; tj<xTiles; tj++) {
                 // Create the roi for the current tile
@@ -69,8 +71,9 @@ void RegTiledRTCollection::customTiling() {
                 cv::imwrite(path, tile);
                 
                 // Create new RT tile from roi
+                std::string drName = "t" + to_string(drId++);
                 DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-                ddr2d->setName(refDDRName);
+                ddr2d->setName(drName);
                 ddr2d->setId(refDDRName);
                 ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
                 ddr2d->setIsAppInput(true);
@@ -80,7 +83,8 @@ void RegTiledRTCollection::customTiling() {
                 newRT->insertDataRegion(ddr2d);
                 newRT->setName(this->name);
 
-                this->rts.push_back(newRT);
+                this->rts.push_back(
+                    std::pair<std::string, RegionTemplate*>(drName, newRT));
 
                 // Close .svs file
                 if (isSvs) {
@@ -91,9 +95,5 @@ void RegTiledRTCollection::customTiling() {
 
         // Add the current image tiles to the tiles vector
         this->tiles.push_back(rois);
-
-
-
-
     }
 }
