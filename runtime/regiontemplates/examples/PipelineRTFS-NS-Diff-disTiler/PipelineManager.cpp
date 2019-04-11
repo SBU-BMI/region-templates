@@ -207,11 +207,13 @@ int main (int argc, char **argv){
     // get args
     if (argc < 5) {
         std::cout << "Usage: ./exec [-t <sqr_dim>] -i <input_basename> "
-            << "-p <path>" << std::endl;
+            << "-m <mask_basename> -p <path>" << std::endl;
         std::cout << "\t-t: Break images into sqr_dim sized squares for "
-            << "execution, i.e., don't use disTiler" << std::endl;
-        std::cout << "\t-i: Root name of the input images. There must be "
-            << "at least two images: <basename>.tiff and <basename>.mask.tiff" 
+            << "execution, i.e., don't use disTiler. 0 for no tiling." 
+            << std::endl;
+        std::cout << "\t-i: Full name of the input image. It can be .svs files." 
+            << std::endl;
+        std::cout << "\t-m: Full name of the mask image. It can be .svs files." 
             << std::endl;
         std::cout << "\t-p: Path of all input images" << std::endl;
         exit(0);
@@ -232,6 +234,15 @@ int main (int argc, char **argv){
         imgBasename = argv[findArgPos("-i", argc, argv)+1];
     }
 
+    // Mask images
+    string maskBasename;
+    if (findArgPos("-m", argc, argv) == -1) {
+        cout << "Missing mask basename." << endl;
+        return 0;
+    } else {
+        maskBasename = argv[findArgPos("-m", argc, argv)+1];
+    }
+
     // Input images
     string inputFolderPath;
     if (findArgPos("-p", argc, argv) == -1) {
@@ -242,10 +253,8 @@ int main (int argc, char **argv){
     }
 
     // For this test we only use a single input and output images
-    std::string ext = imgBasename.substr(imgBasename.find_last_of("."));
-    imgBasename = imgBasename.substr(0, imgBasename.find_last_of("."));
-    std::string imgFilePath = inputFolderPath + imgBasename + ext;
-    std::string maskFilePath = inputFolderPath + imgBasename + ".mask" + ext;
+    std::string imgFilePath = inputFolderPath + imgBasename;
+    std::string maskFilePath = inputFolderPath + maskBasename;
     
     TiledRTCollection* tCollImg;
     TiledRTCollection* tCollMask;
@@ -262,7 +271,13 @@ int main (int argc, char **argv){
             REF_DDR_NAME, tmpPath, tSize, tSize);
         tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, tSize, tSize);
-    }
+    } 
+    // else if (tSize < 0) { // irregular area autotiler 
+    //     tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+    //         REF_DDR_NAME, tmpPath, tSize, tSize);
+    //     tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
+    //         REF_DDR_NAME, tmpPath, tSize, tSize);
+    // }
 
     // Add the images to be tiled
     tCollImg->addImage(imgFilePath);
@@ -295,7 +310,6 @@ int main (int argc, char **argv){
         sysEnv.executeComponent(norm);
         sysEnv.executeComponent(seg);
         sysEnv.executeComponent(diff);
-
     }
 
     // End Creating Dependency Graph
