@@ -220,7 +220,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 #ifdef DEBUG
 							std::cout << "File don't exist." << std::endl;
 #endif
-							return true;
+							return false;
 						}
 
 //						inputFile = "";

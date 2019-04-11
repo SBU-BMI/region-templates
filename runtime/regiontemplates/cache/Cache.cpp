@@ -373,7 +373,7 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drNam
 						std::cout << "Unknown data region type" << std::endl;
 						exit(1);
 						break;
-				}
+				} 
 				//DenseDataRegion2D * ddr2D = new DenseDataRegion2D();
 				retValue->setName(drName);
 				retValue->setId(drId);
@@ -422,6 +422,9 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drNam
 
 				}
 
+			} else if (i+1 == this->cacheLayers.size()) {
+				// if it is not an input and it cannot br found, it doesn't exist
+				return retValue;
 			}
 		}
 	}
