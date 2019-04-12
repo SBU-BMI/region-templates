@@ -1,5 +1,5 @@
-#ifndef REG_TILED_RT_COLLECTION_H_
-#define REG_TILED_RT_COLLECTION_H_
+#ifndef IRREG_TILED_RT_COLLECTION_H_
+#define IRREG_TILED_RT_COLLECTION_H_
 
 #include <string>
 #include <list>
@@ -10,12 +10,12 @@
 #include "openslide.h"
 
 #include "TiledRTCollection.h"
-#include "RegionTemplate.h"
+#include "BGMasker.h"
 
-class RegTiledRTCollection : public TiledRTCollection {
+class IrregTiledRTCollection : public TiledRTCollection {
 private:
-    int64_t tw;
-    int64_t th;
+    int border;
+    BGMasker* bgm;
 
 protected:
     // Template method hook for a custom tiling method.
@@ -24,8 +24,8 @@ protected:
     void customTiling();
 
 public:
-    RegTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t tw, int64_t th);
+    IrregTiledRTCollection(std::string name, std::string refDDRName, 
+        std::string tilesPath, int border, BGMasker* bgm);
 
 };
 

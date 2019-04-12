@@ -14,6 +14,7 @@
 
 #include "TiledRTCollection.h"
 #include "RegTiledRTCollection.h"
+#include "IrregTiledRTCollection.h"
 #include "BGMasker.h"
 #include "ThresholdBGMasker.h"
 
@@ -279,17 +280,19 @@ int main (int argc, char **argv){
         int erode = 60;
         BGMasker* bgm = new ThresholdBGMasker(bgThr, erode);
 
-        // Masking test
-        cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
-        cv::imwrite("./testmask.png", mask);
-        exit(9);
+
+        // // Masking test
+        // cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
+        // cv::imwrite("./testmask.png", mask);
+        // exit(9);
+
 
         int border = 10; // pixels to be added to the borders of the tiles
 
-        // tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-        //     REF_DDR_NAME, tmpPath, border, bgm);
-        // tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
-        //     REF_DDR_NAME, tmpPath, border, bgm);
+        tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+            REF_DDR_NAME, tmpPath, border, bgm);
+        tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
+            REF_DDR_NAME, tmpPath, border, bgm);
     }
 
     // Add the images to be tiled

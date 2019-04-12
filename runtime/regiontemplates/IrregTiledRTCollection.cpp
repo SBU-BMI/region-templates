@@ -5,26 +5,42 @@
 /*****************************************************************************/
 /*****************************************************************************/
 
+// This representation makes the algorithms easier to implement and understand
+typedef struct rect_t {
+    int64_t xi, yi;
+    int64_t xo, yo;
+} rect_t;
+
+struct rect_tCompX{
+    bool operator()(const rect_t& a, const rect_t& b) {
+        return a.xi < b.xi || (a.xi == b.xi && 
+            (a.xo != b.xo || a.yi != b.yi || a.yo != b.yo));
+    }
+};
+
+struct rect_tCompY{
+    bool operator()(const rect_t& a, const rect_t& b) {
+        return a.yo < b.yo || (a.yo == b.yo && 
+            (a.xo != b.xo || a.yi != b.yi || a.xi != b.xi));
+    }
+};
+
 /*****************************************************************************/
 /**                             Inside Overlap                              **/
 /*****************************************************************************/
 
-inline bool isInside(int x, int y, cv::Rect_<int64_t> r2) {
-    int64_t xf = r2.x + r2.width;
-    int64_t yf = r2.y + r2.height;
-    return r2.x <= x && r2.y <= y && xf >= x && yf >= y;
+inline bool isInside(int64_t x, int64_t y, rect_t r2) {
+    return r2.xi <= x && r2.yi <= y && r2.xo >= x && r2.yo >= y;
 }
 
-inline bool isInside(cv::Rect_<int64_t> r1, cv::Rect_<int64_t> r2) {
-    int64_t xf = r1.x + r1.width;
-    int64_t yf = r1.y + r1.height;
-    return isInside(r1.x, r1.y, r2) && isInside(xf, yf, r2);
+inline bool isInside(rect_t r1, rect_t r2) {
+    return isInside(r1.xi, r1.yi, r2) && isInside(r1.xo, r1.yo, r2);
 }
 
-void removeInsideOvlp(std::list<cv::Rect_<int64_t> >& output) {
+void removeInsideOvlp(std::list<rect_t>& output) {
     // first create an array for parallelization
     int outS = output.size();
-    cv::Rect_<int64_t> outArray[outS];
+    rect_t outArray[outS];
     std::copy(output.begin(), output.end(), outArray);
 
     // create an array of tags for non repeated regions
@@ -57,32 +73,22 @@ void removeInsideOvlp(std::list<cv::Rect_<int64_t> >& output) {
 /**                              Side Overlap                               **/
 /*****************************************************************************/
 
-inline bool hOvlp(cv::Rect_<int64_t> big, cv::Rect_<int64_t> small) {
-    int64_t bxo = big.x + big.width;
-    int64_t byo = big.y + big.height;
-    int64_t sxo = small.x + small.width;
-    int64_t syo = small.y + small.height;
-
-    return big.y <= small.y && byo >= syo 
-        && ((big.x < small.x && bxo > small.x)
-        || (big.x < sxo && bxo > sxo));
+inline bool hOvlp(rect_t big, rect_t small) {
+    return big.yi <= small.yi && big.yo >= small.yo 
+        && ((big.xi < small.xi && big.xo > small.xi)
+        || (big.xi < small.xo && big.xo > small.xo));
 }
 
-inline bool vOvlp(cv::Rect_<int64_t> big, cv::Rect_<int64_t> small) {
-    int64_t bxo = big.x + big.width;
-    int64_t byo = big.y + big.height;
-    int64_t sxo = small.x + small.width;
-    int64_t syo = small.y + small.height;
-
-    return big.x <= small.x && bxo >= sxo 
-        && ((big.y < small.y && byo > small.y)
-        || (big.y < syo && byo > syo));
+inline bool vOvlp(rect_t big, rect_t small) {
+    return big.xi <= small.xi && big.xo >= small.xo 
+        && ((big.yi < small.yi && big.yo > small.yi)
+        || (big.yi < small.yo && big.yo > small.yo));
 }
 
-void removeSideOvlp(std::list<cv::Rect_<int64_t> >& output) {
+void removeSideOvlp(std::list<rect_t>& output) {
     // first create an array for parallelization
     int outS = output.size();
-    cv::Rect_<int64_t> outArray[outS];
+    rect_t outArray[outS];
     std::copy(output.begin(), output.end(), outArray);
 
     // compare each element with each other, checking if it's inside any
@@ -96,16 +102,15 @@ void removeSideOvlp(std::list<cv::Rect_<int64_t> >& output) {
 
                 // find which is the big one
                 big = i; small = j;
-                if (outArray[i].y > outArray[j].y) {
+                if (outArray[i].yi > outArray[j].yi) {
                     big = j; small = i;
                 }
 
                 // remove the overlapping of small with big
-                if (outArray[small].x > outArray[big].x) // big left
-                    outArray[small].x = outArray[big].x + outArray[big].width;
+                if (outArray[small].xi > outArray[big].xi) // big left
+                    outArray[small].xi = outArray[big].xo;
                 else // big on the right
-                    outArray[small].width = outArray[big].x - outArray[small].x;
-                    // outArray[small].xo = outArray[big].x;
+                    outArray[small].xo = outArray[big].xi;
             }
             // check if there is a vertical overlapping
             if (vOvlp(outArray[i], outArray[j]) 
@@ -113,16 +118,15 @@ void removeSideOvlp(std::list<cv::Rect_<int64_t> >& output) {
 
                 // find which is the big one
                 big = i; small = j;
-                if (outArray[i].x > outArray[j].x) {
+                if (outArray[i].xi > outArray[j].xi) {
                     big = j; small = i;
                 }
 
                 // remove the overlapping of small with big
-                if (outArray[small].y > outArray[big].y) // big up
-                    outArray[small].y = outArray[big].y + outArray[big].height;
+                if (outArray[small].yi > outArray[big].yi) // big up
+                    outArray[small].yi = outArray[big].yo;
                 else // big is the down region
-                    outArray[small].width = outArray[big].x - outArray[small].x;
-                    // outArray[small].yo = outArray[big].y;
+                    outArray[small].yo = outArray[big].yi;
             }
         }
     }
@@ -138,20 +142,18 @@ void removeSideOvlp(std::list<cv::Rect_<int64_t> >& output) {
 /**                            Diagonal Overlap                             **/
 /*****************************************************************************/
 
-inline int area (cv::Rect_<int64_t> r) {
-    return r.width * r.height;
+inline int64_t area (rect_t r) {
+    return (r.xo-r.xi) * (r.yo-r.yi);
 }
 
-void removeDiagOvlp(std::list<cv::Rect_<int64_t> >& ovlpCand, 
-    std::list<cv::Rect_<int64_t> >& nonMod) {
-
+void removeDiagOvlp(std::list<rect_t>& ovlpCand, std::list<rect_t>& nonMod) {
     // first create an array for parallelization
     int outS = ovlpCand.size();
-    cv::Rect_<int64_t> outArray[outS];
+    rect_t outArray[outS];
     std::copy(ovlpCand.begin(), ovlpCand.end(), outArray);
 
     // array for the replaced 3 new blocks for every initial block
-    cv::Rect_<int64_t> outRepArray[outS][3];
+    rect_t outRepArray[outS][3];
 
     // marker array for showing which blocks were to be replaced
     bool outRepArrayR[outS];
@@ -165,13 +167,11 @@ void removeDiagOvlp(std::list<cv::Rect_<int64_t> >& ovlpCand,
     #pragma omp parallel for
     for (int i=0; i<outS; i++) {
         for (int j=0; j<outS; j++) {
-            cv::Rect_<int64_t> b = outArray[i];
-            cv::Rect_<int64_t> s = outArray[j];
+            rect_t b = outArray[i];
+            rect_t s = outArray[j];
 
             // break the big block if there is a diagonal overlap
-            if (b.x > s.x && b.x < s.x+s.width 
-                && b.y+b.height > s.y && b.y+b.height < s.y+s.height) {
-
+            if (b.xi > s.xi && b.xi < s.xo && b.yo > s.yi && b.yo < s.yo) {
                 // big on upper right diagonal
                 // only break down if <i> is the big block of a diagonal overlap
                 if (area(outArray[i]) < area(outArray[j])) {
@@ -179,21 +179,10 @@ void removeDiagOvlp(std::list<cv::Rect_<int64_t> >& ovlpCand,
                     continue;
                 }
                 outRepArrayR[i] = true;
-                outRepArray[i][0] = cv::Rect_<int64_t>(
-                    b.x, b.y, s.x+s.width-b.x, s.y-b.y);
-                outRepArray[i][1] = cv::Rect_<int64_t>(
-                    s.x+s.width, b.y, b.x+b.width-s.x-s.width, 
-                    b.y+b.height-s.y);
-                outRepArray[i][2] = cv::Rect_<int64_t>(
-                    s.x+s.width, s.y, b.x+b.width-s.x-s.width, 
-                    b.y+b.height-s.y-s.width);
-
-                // outRepArray[i][0] = {b.xi, b.yi, s.xo, s.yi};
-                // outRepArray[i][1] = {s.xo, b.y, b.xo, s.y};
-                // outRepArray[i][2] = {s.xo, s.y, b.xo, b.yo};
-            } else if (b.x+b.width > s.x && b.x+b.width < s.x+s.width 
-                && b.y+b.height > s.y && b.y+b.height < s.y+s.height) {
-
+                outRepArray[i][0] = {b.xi, b.yi, s.xo, s.yi};
+                outRepArray[i][1] = {s.xo, b.yi, b.xo, s.yi};
+                outRepArray[i][2] = {s.xo, s.yi, b.xo, b.yo};
+            } else if (b.xo > s.xi && b.xo < s.xo && b.yo > s.yi && b.yo < s.yo) {
                 // big on upper left
                 // only break down if <i> is the big block of a diagonal overlap
                 if (area(outArray[i]) < area(outArray[j])) {
@@ -201,19 +190,10 @@ void removeDiagOvlp(std::list<cv::Rect_<int64_t> >& ovlpCand,
                     continue;
                 }
                 outRepArrayR[i] = true;
-                outRepArray[i][0] = cv::Rect_<int64_t>(
-                    b.x, b.y,s.x-b.x, s.y-b.y);
-                outRepArray[i][1] = cv::Rect_<int64_t>(
-                    s.x, b.y, b.x+b.width-s.x, s.y-b.y);
-                outRepArray[i][2] = cv::Rect_<int64_t>(
-                    b.x, s.y, s.x-b.x, s.y-b.y);
-
-                // outRepArray[i][0] = {b.x, b.y, s.x, s.y};
-                // outRepArray[i][1] = {s.x, b.y, b.xo, s.y};
-                // outRepArray[i][2] = {b.x, s.y, s.x, b.yo};
-            } else if (b.x > s.x && b.x < s.x+s.width 
-                && b.y > s.y && b.y < s.y+s.height) {
-
+                outRepArray[i][0] = {b.xi, b.yi, s.xi, s.yi};
+                outRepArray[i][1] = {s.xi, b.yi, b.xo, s.yi};
+                outRepArray[i][2] = {b.xi, s.yi, s.xi, b.yo};
+            } else if (b.xi > s.xi && b.xi < s.xo && b.yi > s.yi && b.yi < s.yo) {
                 // big on bottom right
                 // only break down if <i> is the big block of a diagonal overlap
                 if (area(outArray[i]) < area(outArray[j])) {
@@ -221,21 +201,10 @@ void removeDiagOvlp(std::list<cv::Rect_<int64_t> >& ovlpCand,
                     continue;
                 }
                 outRepArrayR[i] = true;
-                outRepArray[i][0] = cv::Rect_<int64_t>(
-                    s.x+s.width, b.y, b.x+b.width-s.x, s.y+s.height-b.y);
-                outRepArray[i][1] = cv::Rect_<int64_t>(
-                    b.x, s.y+s.height, s.y+s.width-b.x, 
-                    b.y+b.height-s.y-s.height);
-                outRepArray[i][2] = cv::Rect_<int64_t>(
-                    s.x+s.width, s.y+s.height, b.x+b.width-s.x-s.width, 
-                    b.y+b.height-s.y-s.height);
-
-                // outRepArray[i][0] = {s.xo, b.y, b.xo, s.yo};
-                // outRepArray[i][1] = {b.x, s.yo, s.xo, b.yo};
-                // outRepArray[i][2] = {s.xo, s.yo, b.xo, b.yo};
-            } else if (b.x+b.width > s.x && b.x+b.width < s.x+s.width 
-                && b.y > s.y && b.y < s.y+s.height) {
-
+                outRepArray[i][0] = {s.xo, b.yi, b.xo, s.yo};
+                outRepArray[i][1] = {b.xi, s.yo, s.xo, b.yo};
+                outRepArray[i][2] = {s.xo, s.yo, b.xo, b.yo};
+            } else if (b.xo > s.xi && b.xo < s.xo && b.yi > s.yi && b.yi < s.yo) {
                 // big on bottom left
                 // only break down if <i> is the big block of a diagonal overlap
                 if (area(outArray[i]) < area(outArray[j])) {
@@ -243,18 +212,9 @@ void removeDiagOvlp(std::list<cv::Rect_<int64_t> >& ovlpCand,
                     continue;
                 }
                 outRepArrayR[i] = true;
-                outRepArray[i][0] = cv::Rect_<int64_t>(
-                    b.x, b.y, s.x-b.x-b.width, s.y+s.width-b.y);
-                outRepArray[i][1] = cv::Rect_<int64_t>(
-                    s.x, s.y+s.height, s.x-b.x-b.width, 
-                    b.y+b.height-s.y-s.height);
-                outRepArray[i][2] = cv::Rect_<int64_t>(
-                    b.x, s.y+s.height, b.x+b.width-s.x, 
-                    b.y+b.height-s.y-s.height);
-
-                // outRepArray[i][0] = {b.x, b.y, s.x, s.yo};
-                // outRepArray[i][1] = {s.x, s.yo, b.xo, b.yo};
-                // outRepArray[i][2] = {b.x, s.yo, s.x, b.yo};
+                outRepArray[i][0] = {b.xi, b.yi, s.xi, s.yo};
+                outRepArray[i][1] = {s.xi, s.yo, b.xo, b.yo};
+                outRepArray[i][2] = {b.xi, s.yo, s.xi, b.yo};
             }
         }
     }
@@ -277,19 +237,16 @@ void removeDiagOvlp(std::list<cv::Rect_<int64_t> >& ovlpCand,
 /*****************************************************************************/
 /**                          Background Generator                           **/
 /*****************************************************************************/
-/*****************************************************************************/
 
 // yi = oldY
 // yo = min(r,cur)
 // xo = width
-void newBlocks(std::list<cv::Rect_<int64_t>>& out, 
-    std::multiset<cv::Rect_<int64_t>,rect_tCompX> cur, 
-    int yi, int yh, int xw) {
-    // int yi, int yo, int xo) {
+void newBlocks(std::list<rect_t>& out, std::multiset<rect_t,rect_tCompX> cur, 
+    int64_t yi, int64_t yo, int64_t xo) {
 
-    int xi = 0;
-    for (cv::Rect_<int64_t> r : cur) {
-        cv::Rect_<int64_t> newR(xi, yi, r.xi, yo);
+    int64_t xi = 0;
+    for (rect_t r : cur) {
+        rect_t newR = {xi, yi, r.xi, yo};
         // don't add lines i.e. zero area rect
         if (newR.xi != newR.xo && newR.yi != newR.yo)
             out.push_back(newR);
@@ -303,9 +260,9 @@ void newBlocks(std::list<cv::Rect_<int64_t>>& out,
 }
 
 void generateBackground(std::list<rect_t>& dense, 
-    std::list<rect_t>& output, int maxCols, cv::Mat& input) {
+    std::list<rect_t>& output, int64_t maxCols, cv::Mat& input) {
 
-    int oldY = 0;
+    int64_t oldY = 0;
     std::multiset<rect_t,rect_tCompX> curX;
     std::multiset<rect_t,rect_tCompY> curY;
 
@@ -352,10 +309,9 @@ void generateBackground(std::list<rect_t>& dense,
 /**                             Full AutoTiler                              **/
 /*****************************************************************************/
 
-std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& input, int border, 
-    int bgThreshold, int erosionSize) {
+std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& input, int border) {
 
-    std::list<cv::Rect_<int64_t> > output;
+    std::list<rect_t> output;
 
     // merge regions of interest together and mark them separately
     cv::Mat stats, centroids;
@@ -363,18 +319,20 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& input, int border,
 
     double maxLabel;
     cv::minMaxLoc(input, NULL, &maxLabel);
+#ifdef DEBUG
     std::cout << "[autoTiler] Image size: " 
         << input.cols << "x" << input.rows << std::endl;
     std::cout << "[autoTiler] Initial dense regions: " << maxLabel << std::endl;
+#endif
     
     // generate the list of dense areas
-    std::list<cv::Rect_<int64_t> > ovlpCand;
+    std::list<rect_t> ovlpCand;
     for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
         int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
         int yi = stats.at<int>(i, cv::CC_STAT_TOP);
         int xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
         int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
-        cv::Rect_<int64_t> rr(xi, yi, xw, yh);
+        rect_t rr = {.xi=xi, .yi=yi, .xo=xi+xw, .yo=yi+yh};
         ovlpCand.push_back(rr);
     }
 
@@ -391,28 +349,40 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& input, int border,
     }
     
     // sort the list of dense regions by its y coordinate (using lambda)
-    std::list<cv::Rect_<int64_t> > dense(output);
+    std::list<rect_t> dense(output);
     
     // generate the background regions
     generateBackground(dense, output, input.cols, input);
 
+#ifdef DEBUG
     std::cout << "[autoTiler] Total regions to process: " 
         << output.size() << std::endl;
     cv::Mat final = input.clone();
+#endif
         
-    // add a border to all rect regions
+    // add a border to all rect regions and create cv list formated output
+    std::list<cv::Rect_<int64_t> > cvOutput;
     for (std::list<rect_t>::iterator r=output.begin(); r!=output.end(); r++) {
-        r->xi = std::max(r->xi-border, 0);
-        r->xo = std::min(r->xo+border, input.cols);
-        r->yi = std::max(r->yi-border, 0);
-        r->yo = std::min(r->yo+border, input.rows);
+        r->xi = std::max(r->xi-border, (int64_t)0);
+        r->xo = std::min(r->xo+border, (int64_t)input.cols);
+        r->yi = std::max(r->yi-border, (int64_t)0);
+        r->yo = std::min(r->yo+border, (int64_t)input.rows);
 
+        cvOutput.push_back(cv::Rect_<int64_t>(
+            r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+
+#ifdef DEBUG
         // draw areas for verification
         cv::rectangle(final, cv::Point(r->xi,r->yi), 
             cv::Point(r->xo,r->yo),(0,0,0),3);
+#endif
     }
+    
+#ifdef DEBUG
+    cv::imwrite("./maskf.png", final);
+#endif
 
-    return output;
+    return cvOutput;
 }
 
 /*****************************************************************************/
@@ -420,15 +390,15 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& input, int border,
 /*****************************************************************************/
 /*****************************************************************************/
 
-RegTiledRTCollection::RegTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int64_t tw, 
-    int64_t th) : TiledRTCollection(name, refDDRName, tilesPath) {
+IrregTiledRTCollection::IrregTiledRTCollection(std::string name, 
+    std::string refDDRName, std::string tilesPath, int border, 
+    BGMasker* bgm) : TiledRTCollection(name, refDDRName, tilesPath) {
 
-    this->tw = tw;
-    this->th = th;
+    this->border = border;
+    this->bgm = bgm;
 }
 
-void RegTiledRTCollection::customTiling() {
+void IrregTiledRTCollection::customTiling() {
     std::string drName;
     // Go through all images
     for (int i=0; i<initialPaths.size(); i++) {
@@ -456,16 +426,19 @@ void RegTiledRTCollection::customTiling() {
             w = mat.cols;
         }
 
-        std::List<Rect_<int64_t> > tiles = autoTiler(mat);
+        // Performs the threshold analysis and then tile the image
+        cv::Mat thMask = bgm->bgMask(mat);
+        std::list<cv::Rect_<int64_t> > tiles = autoTiler(thMask, this->border);
 
-        int i=0;
-        for (Rect_<int64_t> tile : tiles) {
+        // Actually tile the image given the list of ROIs
+        int drId=0;
+        for (cv::Rect_<int64_t> tile : tiles) {
             std::string path = tilesPath + "/" + name + "/";
-            path += "t" + to_string(i);
+            path += "t" + to_string(drId);
             cv::imwrite(path, mat(tile));
             
             // Create new RT tile from roi
-            std::string drName = "t" + to_string(i);
+            std::string drName = "t" + to_string(drId);
             DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
             ddr2d->setName(drName);
             ddr2d->setId(refDDRName);
@@ -481,7 +454,7 @@ void RegTiledRTCollection::customTiling() {
             rois.push_back(tile);
             rts.push_back(
                 std::pair<std::string, RegionTemplate*>(drName, newRT));
-            i++;
+            drId++;
         }
 
         // Close .svs file
