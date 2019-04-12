@@ -25,6 +25,21 @@ struct rect_tCompY{
     }
 };
 
+inline bool isInsideNI(int64_t x, int64_t y, rect_t r2) {
+    return r2.xi < x && r2.yi < y && r2.xo > x && r2.yo > y;
+}
+
+inline bool isInsideNI(rect_t r1, rect_t r2) {
+    return isInsideNI(r1.xi, r1.yi, r2) && isInsideNI(r1.xo, r1.yo, r2);
+}
+
+inline bool overlaps(rect_t r1, rect_t r2) {
+    return isInsideNI(r1.xi, r1.yi, r2) || isInsideNI(r1.xi, r1.yo, r2) ||
+        isInsideNI(r1.xo, r1.yi, r2) || isInsideNI(r1.xo, r1.yo, r2) ||
+        isInsideNI(r2.xi, r2.yi, r1) || isInsideNI(r2.xi, r2.yo, r1) ||
+        isInsideNI(r2.xo, r2.yi, r1) || isInsideNI(r2.xo, r2.yo, r1);
+}
+
 /*****************************************************************************/
 /**                             Inside Overlap                              **/
 /*****************************************************************************/
@@ -309,21 +324,22 @@ void generateBackground(std::list<rect_t>& dense,
 /**                             Full AutoTiler                              **/
 /*****************************************************************************/
 
-std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& input, int border) {
+std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask, 
+    int border, const cv::Mat* input = NULL) {
 
     std::list<rect_t> output;
 
     // merge regions of interest together and mark them separately
     cv::Mat stats, centroids;
-    cv::connectedComponentsWithStats(input, input, stats, centroids);
+    cv::connectedComponentsWithStats(mask, mask, stats, centroids);
 
     double maxLabel;
-    cv::minMaxLoc(input, NULL, &maxLabel);
-#ifdef DEBUG
+    cv::minMaxLoc(mask, NULL, &maxLabel);
+// #ifdef DEBUG
     std::cout << "[autoTiler] Image size: " 
-        << input.cols << "x" << input.rows << std::endl;
+        << mask.cols << "x" << mask.rows << std::endl;
     std::cout << "[autoTiler] Initial dense regions: " << maxLabel << std::endl;
-#endif
+// #endif
     
     // generate the list of dense areas
     std::list<rect_t> ovlpCand;
@@ -352,34 +368,72 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& input, int border) {
     std::list<rect_t> dense(output);
     
     // generate the background regions
-    generateBackground(dense, output, input.cols, input);
+    generateBackground(dense, output, mask.cols, mask);
 
-#ifdef DEBUG
+// #ifdef DEBUG
     std::cout << "[autoTiler] Total regions to process: " 
         << output.size() << std::endl;
-    cv::Mat final = input.clone();
+    cv::Mat final;
+    if (input != NULL)
+        final = input->clone();
+// #endif
+
+#ifdef DEBUG
+    // Verification if there are any overlapping ROIs remaining
+    for (std::list<rect_t>::iterator 
+        r1=output.begin(); r1!=output.end(); r1++) {
+
+        for (std::list<rect_t>::iterator 
+            r2=output.begin(); r2!=output.end(); r2++) {
+            
+            // Overlap is only checked if the ROIs are different
+            if (r1 != r2) {
+                if (overlaps(*r1, *r2)) {
+                    std::cout << "=========OVERLAP:" << std::endl;
+                    std::cout << "r1: (" << r1->xi << "," << r1->yi << "), (" 
+                        << r1->xo << "," << r1->yo << ")" << std::endl;
+                    std::cout << "r2: (" << r2->xi << "," << r2->yi << "), (" 
+                        << r2->xo << "," << r2->yo << ")" << std::endl;
+                    // exit(-10);
+                }
+            }
+        }
+
+        // draw areas for verification
+        if (input != NULL)
+            cv::rectangle(final, cv::Point(r1->xi,r1->yi), 
+                cv::Point(r1->xo,r1->yo),(0,0,0),3);
+    }
+#endif
+
+#ifdef DEBUG
+    if (input != NULL)
+        cv::imwrite("./maskNoBorder.png", final);
 #endif
         
     // add a border to all rect regions and create cv list formated output
     std::list<cv::Rect_<int64_t> > cvOutput;
     for (std::list<rect_t>::iterator r=output.begin(); r!=output.end(); r++) {
         r->xi = std::max(r->xi-border, (int64_t)0);
-        r->xo = std::min(r->xo+border, (int64_t)input.cols);
+        r->xo = std::min(r->xo+border, (int64_t)mask.cols);
         r->yi = std::max(r->yi-border, (int64_t)0);
-        r->yo = std::min(r->yo+border, (int64_t)input.rows);
+        r->yo = std::min(r->yo+border, (int64_t)mask.rows);
 
         cvOutput.push_back(cv::Rect_<int64_t>(
             r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
 
 #ifdef DEBUG
         // draw areas for verification
-        cv::rectangle(final, cv::Point(r->xi,r->yi), 
-            cv::Point(r->xo,r->yo),(0,0,0),3);
+        if (input != NULL)
+            cv::rectangle(final, cv::Point(r->xi,r->yi), 
+                cv::Point(r->xo,r->yo),(0,0,0),3);
 #endif
     }
-    
+
 #ifdef DEBUG
-    cv::imwrite("./maskf.png", final);
+    if (input != NULL) {
+        cv::imwrite("./maskf.png", final);
+    }
 #endif
 
     return cvOutput;
@@ -428,13 +482,14 @@ void IrregTiledRTCollection::customTiling() {
 
         // Performs the threshold analysis and then tile the image
         cv::Mat thMask = bgm->bgMask(mat);
-        std::list<cv::Rect_<int64_t> > tiles = autoTiler(thMask, this->border);
+        std::list<cv::Rect_<int64_t> > tiles = autoTiler(
+            thMask, this->border, &mat);
 
         // Actually tile the image given the list of ROIs
         int drId=0;
         for (cv::Rect_<int64_t> tile : tiles) {
             std::string path = tilesPath + "/" + name + "/";
-            path += "t" + to_string(drId);
+            path += "t" + to_string(drId) + TILE_EXT;
             cv::imwrite(path, mat(tile));
             
             // Create new RT tile from roi

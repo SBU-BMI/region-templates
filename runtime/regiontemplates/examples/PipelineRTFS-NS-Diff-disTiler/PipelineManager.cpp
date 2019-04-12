@@ -287,7 +287,7 @@ int main (int argc, char **argv){
         // exit(9);
 
 
-        int border = 10; // pixels to be added to the borders of the tiles
+        int border = 0; // pixels to be added to the borders of the tiles
 
         tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
