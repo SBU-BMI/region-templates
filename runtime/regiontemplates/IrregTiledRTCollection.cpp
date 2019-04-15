@@ -7,8 +7,26 @@
 
 // This representation makes the algorithms easier to implement and understand
 typedef struct rect_t {
+    rect_t() : isBg(false) {}
+    rect_t(int64_t ixi, int64_t iyi, int64_t ixo, int64_t iyo) : 
+        xi(ixi), yi(iyi), xo(ixo), yo(iyo), isBg(false) {}
+    rect_t(int64_t ixi, int64_t iyi, int64_t ixo, int64_t iyo, bool bg) :
+        xi(ixi), yi(iyi), xo(ixo), yo(iyo), isBg(bg) {}
+    
+    bool operator==(const rect_t r) const{
+        if(r.xi == xi && r.xo == xo 
+            && r.yi == yi && r.yo == yo 
+            && r.isBg == isBg) return true;
+        else return false;
+    }
+
+    bool operator!=(const rect_t r) const{
+        return !(*this == r);
+    }
+
     int64_t xi, yi;
     int64_t xo, yo;
+    bool isBg;
 } rect_t;
 
 struct rect_tCompX{
@@ -261,7 +279,7 @@ void newBlocks(std::list<rect_t>& out, std::multiset<rect_t,rect_tCompX> cur,
 
     int64_t xi = 0;
     for (rect_t r : cur) {
-        rect_t newR = {xi, yi, r.xi, yo};
+        rect_t newR = {xi, yi, r.xi, yo, true};
         // don't add lines i.e. zero area rect
         if (newR.xi != newR.xo && newR.yi != newR.yo)
             out.push_back(newR);
@@ -275,7 +293,7 @@ void newBlocks(std::list<rect_t>& out, std::multiset<rect_t,rect_tCompX> cur,
 }
 
 void generateBackground(std::list<rect_t>& dense, 
-    std::list<rect_t>& output, int64_t maxCols, cv::Mat& input) {
+    std::list<rect_t>& output, int64_t maxCols) {
 
     int64_t oldY = 0;
     std::multiset<rect_t,rect_tCompX> curX;
@@ -318,6 +336,36 @@ void generateBackground(std::list<rect_t>& dense,
             curY.erase(curY.begin());
         }
     }
+}
+
+void bgMerging(std::list<rect_t>& output) {
+    // // sort the ROIs list by the top of each area
+    // output.sort([](const rect_t& a, const rect_t& b) { return a.yi < b.yi;});
+
+    for (std::list<rect_t>::iterator i = output.begin(); 
+        i != output.end(); i++) {
+
+        for (std::list<rect_t>::iterator j = output.begin(); 
+            j != output.end(); j++) {        
+
+            // We cannot merge the same regions or non-bg regions
+            if (*i != *j && i->isBg && j->isBg) {
+                // Check for vertical bordering (i on top of j)
+                if (i->xi == j->xi && i->yo == j->yi && i->xo == j->xo) {
+                    i->yo = j->yo;
+                    j = output.erase(j);
+                }
+
+                // Check for horizontal bordering (i left to j)
+                if (i->xo == j->xi && i->yi == j->yi && i->yo == j->yo) {
+                    i->xo = j->xo;
+                    j = output.erase(j);
+                }
+            }
+        }
+        
+    }
+    
 }
 
 /*****************************************************************************/
@@ -368,7 +416,10 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask,
     std::list<rect_t> dense(output);
     
     // generate the background regions
-    generateBackground(dense, output, mask.cols, mask);
+    generateBackground(dense, output, mask.cols);
+
+    // Perform merging of background areas
+    bgMerging(output);
 
 // #ifdef DEBUG
     std::cout << "[autoTiler] Total regions to process: " 
@@ -410,7 +461,7 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask,
     if (input != NULL)
         cv::imwrite("./maskNoBorder.png", final);
 #endif
-        
+     
     // add a border to all rect regions and create cv list formated output
     std::list<cv::Rect_<int64_t> > cvOutput;
     for (std::list<rect_t>::iterator r=output.begin(); r!=output.end(); r++) {
@@ -422,19 +473,19 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask,
         cvOutput.push_back(cv::Rect_<int64_t>(
             r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
 
-#ifdef DEBUG
+// #ifdef DEBUG
         // draw areas for verification
         if (input != NULL)
             cv::rectangle(final, cv::Point(r->xi,r->yi), 
                 cv::Point(r->xo,r->yo),(0,0,0),3);
-#endif
+// #endif
     }
 
-#ifdef DEBUG
+// #ifdef DEBUG
     if (input != NULL) {
         cv::imwrite("./maskf.png", final);
     }
-#endif
+// #endif
 
     return cvOutput;
 }
