@@ -17,12 +17,12 @@ cv::Mat ThresholdBGMasker::bgMask(cv::Mat img) {
     cv::threshold(img, mask, bgThr, CV_MAX_PIX_VAL, CV_THR_BIN_INV); 
     
     // erode the threshold mask
-    cv::Mat eElement = cv::getStructuringElement(cv::MORPH_RECT,
-        cv::Size(erode, erode));
     cv::Mat dElement = cv::getStructuringElement(cv::MORPH_RECT,
-        cv::Size(2*dilate + 1, 2*dilate+1));
-    cv::erode(mask, mask, eElement);
+        cv::Size(2*dilate, 2*dilate));
+    cv::Mat eElement = cv::getStructuringElement(cv::MORPH_RECT,
+        cv::Size(2*dilate+2, 2*dilate+2));
     cv::dilate(mask, mask, dElement);
+    cv::erode(mask, mask, eElement);
 
     return mask;
 };

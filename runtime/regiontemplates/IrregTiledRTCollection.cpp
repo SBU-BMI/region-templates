@@ -127,9 +127,10 @@ void removeSideOvlp(std::list<rect_t>& output) {
     // compare each element with each other, checking if it's inside any
     #pragma omp parallel for
     for (int i=0; i<outS; i++) {
-        int big, small;
+        int big=-1, small=-1;
         for (int j=0; j<outS; j++) {
-            // check if there is a horizontal overlapping
+
+            // Checks if there is a horizontal overlapping
             if (hOvlp(outArray[i], outArray[j]) 
                 || hOvlp(outArray[i], outArray[j])) {
 
@@ -145,7 +146,7 @@ void removeSideOvlp(std::list<rect_t>& output) {
                 else // big on the right
                     outArray[small].xo = outArray[big].xi;
             }
-            // check if there is a vertical overlapping
+            // Checks if there is a vertical overlapping
             if (vOvlp(outArray[i], outArray[j]) 
                 || vOvlp(outArray[i], outArray[j])) {
 
@@ -167,7 +168,9 @@ void removeSideOvlp(std::list<rect_t>& output) {
     // clear the old elements and add only the unique regions
     output.clear();
     for (int i=0; i<outS; i++) {
-        output.push_back(outArray[i]);
+        // Only adds elements which have an actual area > 0
+        if (outArray[i].xi != outArray[i].xo && outArray[i].yi != outArray[i].yo)
+            output.push_back(outArray[i]);
     }
 }
 
@@ -342,30 +345,36 @@ void bgMerging(std::list<rect_t>& output) {
     // // sort the ROIs list by the top of each area
     // output.sort([](const rect_t& a, const rect_t& b) { return a.yi < b.yi;});
 
-    for (std::list<rect_t>::iterator i = output.begin(); 
-        i != output.end(); i++) {
+    bool merged = true;
 
-        for (std::list<rect_t>::iterator j = output.begin(); 
-            j != output.end(); j++) {        
+    while (merged) {
+        merged = false;
+        for (std::list<rect_t>::iterator i = output.begin(); 
+            i != output.end(); i++) {
 
-            // We cannot merge the same regions or non-bg regions
-            if (*i != *j && i->isBg && j->isBg) {
-                // Check for vertical bordering (i on top of j)
-                if (i->xi == j->xi && i->yo == j->yi && i->xo == j->xo) {
-                    i->yo = j->yo;
-                    j = output.erase(j);
-                }
+            for (std::list<rect_t>::iterator j = output.begin(); 
+                j != output.end(); j++) {        
 
-                // Check for horizontal bordering (i left to j)
-                if (i->xo == j->xi && i->yi == j->yi && i->yo == j->yo) {
-                    i->xo = j->xo;
-                    j = output.erase(j);
+                // We cannot merge the same regions or non-bg regions
+                if (*i != *j && i->isBg && j->isBg) {
+                // if (*i != *j) {
+                    // Check for vertical bordering (i on top of j)
+                    if (i->xi == j->xi && i->yo == j->yi && i->xo == j->xo) {
+                        i->yo = j->yo;
+                        j = output.erase(j);
+                        merged = true;
+                    }
+
+                    // Check for horizontal bordering (i left to j)
+                    if (i->xo == j->xi && i->yi == j->yi && i->yo == j->yo) {
+                        i->xo = j->xo;
+                        j = output.erase(j);
+                        merged = true;
+                    }
                 }
             }
         }
-        
     }
-    
 }
 
 /*****************************************************************************/
@@ -381,25 +390,32 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask,
     cv::Mat stats, centroids;
     cv::connectedComponentsWithStats(mask, mask, stats, centroids);
 
+    // Get number of initial dense regions
     double maxLabel;
     cv::minMaxLoc(mask, NULL, &maxLabel);
+
+    // generate the list of dense areas
+    std::list<rect_t> ovlpCand;
+    int minArea = 500;
+    // int minArea = 0;
+    for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
+        // std::cout << "area: " << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
+        if (stats.at<int>(i, cv::CC_STAT_AREA) > minArea) { // ignore small areas
+            int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
+            int yi = stats.at<int>(i, cv::CC_STAT_TOP);
+            int xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
+            int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
+            rect_t rr = {.xi=xi, .yi=yi, .xo=xi+xw, .yo=yi+yh};
+            ovlpCand.push_back(rr);
+        }
+    }
+
 // #ifdef DEBUG
     std::cout << "[autoTiler] Image size: " 
         << mask.cols << "x" << mask.rows << std::endl;
     std::cout << "[autoTiler] Initial dense regions: " << maxLabel << std::endl;
 // #endif
     
-    // generate the list of dense areas
-    std::list<rect_t> ovlpCand;
-    for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
-        int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
-        int yi = stats.at<int>(i, cv::CC_STAT_TOP);
-        int xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
-        int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
-        rect_t rr = {.xi=xi, .yi=yi, .xo=xi+xw, .yo=yi+yh};
-        ovlpCand.push_back(rr);
-    }
-
     // keep trying to remove overlapping regions until there is none
     while (!ovlpCand.empty()) {
         // remove regions that are overlapping within another bigger region
