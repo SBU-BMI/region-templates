@@ -1,7 +1,8 @@
 #include "ThresholdBGMasker.h"
 
-ThresholdBGMasker::ThresholdBGMasker(int bgThr, int erode) {
+ThresholdBGMasker::ThresholdBGMasker(int bgThr, int dilate, int erode) {
     this->bgThr = bgThr;
+    this->dilate = dilate;
     this->erode = erode;
 }
 
@@ -16,9 +17,12 @@ cv::Mat ThresholdBGMasker::bgMask(cv::Mat img) {
     cv::threshold(img, mask, bgThr, CV_MAX_PIX_VAL, CV_THR_BIN_INV); 
     
     // erode the threshold mask
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT,
-        cv::Size(2*erode + 1, 2*erode+1));
-    cv::dilate(mask, mask, element);
+    cv::Mat eElement = cv::getStructuringElement(cv::MORPH_RECT,
+        cv::Size(erode, erode));
+    cv::Mat dElement = cv::getStructuringElement(cv::MORPH_RECT,
+        cv::Size(2*dilate + 1, 2*dilate+1));
+    cv::erode(mask, mask, eElement);
+    cv::dilate(mask, mask, dElement);
 
     return mask;
 };

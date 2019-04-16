@@ -264,6 +264,7 @@ int main (int argc, char **argv){
     TiledRTCollection* tCollMask;
     std::string tmpPath = "./";
     std::vector<int> diffComponentIds;
+    int border = 5; // pixels to be added to the borders of the tiles
 
     if (tSize == 0) { // no tiling
         // Generate TRTCs for the standard tiling i.e., no tilingat all
@@ -272,15 +273,19 @@ int main (int argc, char **argv){
     } else if (tSize > 0) { // regular tiling
         // Generate TRTCs for tiling with square tiles of tSize x tSize
         tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
-            REF_DDR_NAME, tmpPath, tSize, tSize);
+            REF_DDR_NAME, tmpPath, tSize, tSize, border);
         tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
-            REF_DDR_NAME, tmpPath, tSize, tSize);
+            REF_DDR_NAME, tmpPath, tSize, tSize, border);
     } else if (tSize < 0) { // irregular area autotiler 
         int bgThr = 50;
-        int erode = 60;
-        BGMasker* bgm = new ThresholdBGMasker(bgThr, erode);
+        int erode = 2;
+        int dilate = 60;
+        BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
 
-        int border = 0; // pixels to be added to the borders of the tiles
+        // // Masking test
+        // cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
+        // cv::imwrite("./testmask.png", mask);
+        // exit(9);
 
         tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
