@@ -66,9 +66,27 @@ int32_t getLargestLevel(openslide_t *osr) {
     return maxLevel;
 }
 
+int32_t getSmallestLevel(openslide_t *osr) {
+    int32_t levels = openslide_get_level_count(osr);
+    int64_t w, h;
+
+    int64_t minSize = INT_MAX;
+    int32_t minLevel = -1;
+
+    for (int32_t l=0; l<levels; l++) {
+        openslide_get_level_dimensions(osr, l, &w, &h);
+        if (h*w < minSize) {
+            minSize = h*w;
+            minLevel = l;
+        }
+    }
+
+    return minLevel;
+}
+
 bool isSVS(std::string path) {
     std::size_t l = path.find_last_of(".");
-    return path.substr(l+1).compare(".svs") == 0;
+    return path.substr(l).compare(".svs") == 0;
 }
 
 void cleanup(std::string path) {

@@ -24,84 +24,6 @@ static const std::string IN_RT_NAME = "img";
 static const std::string MASK_RT_NAME = "mask";
 static const std::string REF_DDR_NAME = "initial";
 
-void osrRegionToCVMat(openslide_t* osr, int xi, int yi, 
-    int xo, int yo, int level, cv::Mat& thisTile) {
-
-    uint32_t* osrRegion = new uint32_t[(xo-xi+1)*(yo-yi+1)];
-    openslide_read_region(osr, osrRegion, xi, yi, level, (xo-xi+1), (yo-yi+1));
-
-    thisTile = cv::Mat((yo-yi+1), (xo-xi+1), CV_8UC3, cv::Scalar(0, 0, 0));
-    int64_t numOfPixelPerTile = thisTile.total();
-
-    for (int64_t it = 0; it < numOfPixelPerTile; ++it) {
-        uint32_t p = osrRegion[it];
-
-        uint8_t a = (p >> 24) & 0xFF;
-        uint8_t r = (p >> 16) & 0xFF;
-        uint8_t g = (p >> 8) & 0xFF;
-        uint8_t b = p & 0xFF;
-
-        switch (a) {
-            case 0:
-                r = 0;
-                b = 0;
-                g = 0;
-                break;
-            case 255:
-                // no action needed
-                break;
-            default:
-                r = (r * 255 + a / 2) / a;
-                g = (g * 255 + a / 2) / a;
-                b = (b * 255 + a / 2) / a;
-                break;
-        }
-
-        // write back
-        thisTile.at<cv::Vec3b>(it)[0] = b;
-        thisTile.at<cv::Vec3b>(it)[1] = g;
-        thisTile.at<cv::Vec3b>(it)[2] = r;
-    }
-
-    delete[] osrRegion;
-
-    return;
-}
-
-RegionTemplate* getInputRT(std::string path) {
-    DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-    ddr2d->setName(REF_DDR_NAME);
-    ddr2d->setId(REF_DDR_NAME);
-    ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
-    ddr2d->setIsAppInput(true);
-    ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-    ddr2d->setInputFileName(path);
-
-    RegionTemplate *rt = new RegionTemplate();
-    rt->insertDataRegion(ddr2d);
-
-    return rt;
-}
-
-DenseDataRegion2D* getDDRTile(openslide_t* osr, int xi, int yi, 
-    int xo, int yo, int level, std::string ddName, std::string ddrId) {
-
-    DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-    ddr2d->setName(ddName);
-    ddr2d->setId(ddrId);
-    ddr2d->setInputType(DataSourceType::DATA_SPACES);
-    ddr2d->setIsAppInput(true);
-    ddr2d->setOutputType(DataSourceType::DATA_SPACES);
-
-    // add cv::Mat to the new ddr2d
-    cv::Mat tile;
-    osrRegionToCVMat(osr, xi, yi, xo, yo, level, tile);
-
-    ddr2d->setData(tile);
-
-    return ddr2d;
-}
-
 NormalizationComp* genNormalization(RegionTemplate* rt, std::string ddrName) {
 
     // Normalization args
@@ -236,6 +158,11 @@ int main (int argc, char **argv){
         return 0;
     } else {
         imgBasename = argv[findArgPos("-i", argc, argv)+1];
+        std::size_t l = imgBasename.find_last_of(".");
+        if (imgBasename.substr(l).compare(".svs") != 0) {
+            cout << "Input image not svs." << endl;
+            return 0;
+        }
     }
 
     // Mask images
@@ -245,6 +172,11 @@ int main (int argc, char **argv){
         return 0;
     } else {
         maskBasename = argv[findArgPos("-m", argc, argv)+1];
+        std::size_t l = maskBasename.find_last_of(".");
+        // if (maskBasename.substr(l).compare(".svs") != 0) {
+        //     cout << "Mask image not svs." << endl;
+        //     return 0;
+        // }
     }
 
     // Input images
@@ -277,14 +209,14 @@ int main (int argc, char **argv){
         tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, tSize, tSize, border);
     } else if (tSize < 0) { // irregular area autotiler 
-        int bgThr = 50;
+        int bgThr = 100;
         int erode = 4;
         int dilate = 10;
         BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
 
         // Masking test
-        cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
-        cv::imwrite("./testmask.png", mask);
+        // cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
+        // cv::imwrite("./testmask.png", mask);
         // exit(9);
 
         tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 

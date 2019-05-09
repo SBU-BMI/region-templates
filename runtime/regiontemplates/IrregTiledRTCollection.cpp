@@ -399,7 +399,8 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask,
     int minArea = 500;
     // int minArea = 0;
     for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
-        // std::cout << "area: " << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
+        // std::cout << "area: " 
+        //    << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
         if (stats.at<int>(i, cv::CC_STAT_AREA) > minArea) { // ignore small areas
             int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
             int yi = stats.at<int>(i, cv::CC_STAT_TOP);
@@ -533,31 +534,62 @@ void IrregTiledRTCollection::customTiling() {
         int64_t w = -1;
         int64_t h = -1;
         openslide_t* osr;
+        int32_t osrMinLevel = -1;
         int32_t osrMaxLevel = -1;
-        cv::Mat mat;
+        float ratiow;
+        float ratioh; 
+        cv::Mat maskMat;
         if (isSvs) {
             osr = openslide_open(initialPaths[i].c_str());
+
+            // Gets info of largest image
             osrMaxLevel = getLargestLevel(osr);
             openslide_get_level_dimensions(osr, osrMaxLevel, &w, &h);
+            ratiow = w;
+            ratioh = h;
+
+            // Opens smallest image as a cv mat
+            osrMinLevel = getSmallestLevel(osr);
+            openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
             cv::Rect_<int64_t> roi(0, 0, w, h);
-            osrRegionToCVMat(osr, roi, osrMaxLevel, mat);
+            osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
+
+            // Calculates the ratio between largest and smallest 
+            // images' dimensions for later conversion
+            ratiow /= w;
+            ratioh /= h;
         } else {
-            mat = cv::imread(initialPaths[i]);
-            h = mat.rows;
-            w = mat.cols;
+            maskMat = cv::imread(initialPaths[i]);
+            h = maskMat.rows;
+            w = maskMat.cols;
         }
 
         // Performs the threshold analysis and then tile the image
-        cv::Mat thMask = bgm->bgMask(mat);
+        cv::Mat thMask = bgm->bgMask(maskMat);
         std::list<cv::Rect_<int64_t> > tiles = autoTiler(
-            thMask, this->border, &mat);
+            thMask, this->border, &maskMat);
 
         // Actually tile the image given the list of ROIs
         int drId=0;
         for (cv::Rect_<int64_t> tile : tiles) {
+            // Creates tile name
             std::string path = tilesPath + "/" + name + "/";
             path += "t" + to_string(drId) + TILE_EXT;
-            cv::imwrite(path, mat(tile));
+
+            if (isSvs) {
+                // Converts the tile roi for the bigger image
+                tile.x *= ratiow;
+                tile.width *= ratiow;
+                tile.y *= ratioh;
+                tile.height *= ratioh;
+
+                // Gets actual region from full svs file
+                cv::Mat curMat;
+                osrRegionToCVMat(osr, tile, osrMaxLevel, curMat);
+                cv::imwrite(path, curMat);
+            } else {
+                cv::imwrite(path, maskMat(tile));
+            }
             
             // Create new RT tile from roi
             std::string drName = "t" + to_string(drId);
