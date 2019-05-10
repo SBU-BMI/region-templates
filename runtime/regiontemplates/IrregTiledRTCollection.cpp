@@ -606,7 +606,7 @@ void IrregTiledRTCollection::customTiling() {
 
             // Add the tile and the RT to the internal containers
             rois.push_back(tile);
-            rts.push_back(
+            this->rts.push_back(
                 std::pair<std::string, RegionTemplate*>(drName, newRT));
             drId++;
         }

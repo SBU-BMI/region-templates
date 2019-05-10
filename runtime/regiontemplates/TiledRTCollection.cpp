@@ -4,6 +4,7 @@
 /***************************** Helper functions ******************************/
 /*****************************************************************************/
 
+// REPLICATED CODE
 void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 
     int level, cv::Mat& thisTile) {
 
@@ -48,6 +49,7 @@ void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r,
     return;
 }
 
+// REPLICATED CODE
 int32_t getLargestLevel(openslide_t *osr) {
     int32_t levels = openslide_get_level_count(osr);
     int64_t w, h;

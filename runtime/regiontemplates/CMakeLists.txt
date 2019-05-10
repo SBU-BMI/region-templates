@@ -65,8 +65,11 @@ endif(RTEMPLATES_EXAMPLES)
 
 # add TiledRTCollection and required libs if compiled
 if(DISTRIBUTED_TILLING_EXAMPLE)
+	# Tiling classes
 	set(librtemplates ${librtemplates} TiledRTCollection.cpp 
 		RegTiledRTCollection.cpp ThresholdBGMasker.cpp IrregTiledRTCollection.cpp)
+	# SVS DataRegion classes
+	set(librtemplates ${librtemplates} DenseSvsDataRegion2D.cpp)
 endif(DISTRIBUTED_TILLING_EXAMPLE)
 
 #data spaces path
