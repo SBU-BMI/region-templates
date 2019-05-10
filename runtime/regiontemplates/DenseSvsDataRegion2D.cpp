@@ -62,6 +62,7 @@ void osrRegionToCVMat2(openslide_t* osr, cv::Rect_<int64_t> r,
 }
 
 void DenseSvsDataRegion2D::getMatMetadata() {
+std::cout << "getM of tile " << this->roi.x << "," << this->roi.y << std::endl;
     if (this->svsFile != NULL) {
         this->svsFile = openslide_open(this->getInputFileName().c_str());
     }
@@ -86,6 +87,7 @@ void DenseSvsDataRegion2D::getMatMetadata() {
 }
 
 void DenseSvsDataRegion2D::getMatData() {
+std::cout << "getD of tile " << this->roi.x << "," << this->roi.y << std::endl;
     if (!hasMetadata) {
         getMatMetadata();
     }

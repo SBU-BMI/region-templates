@@ -219,8 +219,11 @@ int main (int argc, char **argv){
         // cv::imwrite("./testmask.png", mask);
         // exit(9);
 
-        tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-            REF_DDR_NAME, tmpPath, border, bgm);
+        // tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+        //     REF_DDR_NAME, tmpPath, border, bgm);
+        tCollImg = new IrregTiledRTCollection(MASK_RT_NAME, 
+            REF_DDR_NAME, imgFilePath, border, bgm);
+        ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
         tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
     }

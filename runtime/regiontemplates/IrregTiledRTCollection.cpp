@@ -518,6 +518,7 @@ IrregTiledRTCollection::IrregTiledRTCollection(std::string name,
 
     this->border = border;
     this->bgm = bgm;
+    this->lazyTiles = false;
 }
 
 void IrregTiledRTCollection::customTiling() {
@@ -572,10 +573,13 @@ void IrregTiledRTCollection::customTiling() {
         // Actually tile the image given the list of ROIs
         int drId=0;
         for (cv::Rect_<int64_t> tile : tiles) {
-            // Creates tile name
-            std::string path = tilesPath + "/" + name + "/";
-            path += "t" + to_string(drId) + TILE_EXT;
+            // Creates the tile name for the original svs file, if lazy
+            std::string path = this->tilesPath;
+            if (!lazyTiles)
+                // Creates tile name for early written tiles
+                path += "/" + this->name + "/t" + to_string(drId) + TILE_EXT;
 
+            DenseDataRegion2D *ddr2d;
             if (isSvs) {
                 // Converts the tile roi for the bigger image
                 tile.x *= ratiow;
@@ -583,17 +587,31 @@ void IrregTiledRTCollection::customTiling() {
                 tile.y *= ratioh;
                 tile.height *= ratioh;
 
-                // Gets actual region from full svs file
-                cv::Mat curMat;
-                osrRegionToCVMat(osr, tile, osrMaxLevel, curMat);
-                cv::imwrite(path, curMat);
+                // If tiles are to be read lazily, don't write the actual file
+                if (!lazyTiles) {
+                    // Generates a regular data region which requires an
+                    // early written input image file
+                    ddr2d = new DenseDataRegion2D();
+
+                    // Gets actual region from full svs file and 
+                    // writes it to file
+                    cv::Mat curMat;
+                    osrRegionToCVMat(osr, tile, osrMaxLevel, curMat);
+                    cv::imwrite(path, curMat);
+                } else {
+                    // Creates the ddr2d as a svs data region for
+                    // lazy read/write of input file
+                    ddr2d = new DenseSvsDataRegion2D(tile);
+                    ddr2d->setInputFileName(path);
+                }
             } else {
-                cv::imwrite(path, maskMat(tile));
+                ddr2d = new DenseDataRegion2D();
+                if (!lazyTiles)
+                    cv::imwrite(path, maskMat(tile));
             }
             
             // Create new RT tile from roi
             std::string drName = "t" + to_string(drId);
-            DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
             ddr2d->setName(drName);
             ddr2d->setId(refDDRName);
             ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
