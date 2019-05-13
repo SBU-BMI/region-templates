@@ -64,13 +64,13 @@ if(RTEMPLATES_EXAMPLES)
 endif(RTEMPLATES_EXAMPLES)
 
 # add TiledRTCollection and required libs if compiled
-if(DISTRIBUTED_TILLING_EXAMPLE)
+if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 	# Tiling classes
 	set(librtemplates ${librtemplates} TiledRTCollection.cpp 
 		RegTiledRTCollection.cpp ThresholdBGMasker.cpp IrregTiledRTCollection.cpp)
 	# SVS DataRegion classes
 	set(librtemplates ${librtemplates} DenseSvsDataRegion2D.cpp)
-endif(DISTRIBUTED_TILLING_EXAMPLE)
+endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 #data spaces path
 #link_directories(${RegionTemplate_SOURCE_DIR}/external-src/dataspaces-ib-1.03beta/)
@@ -86,14 +86,14 @@ if (USE_ACTIVE_HARMONY)
 endif (USE_ACTIVE_HARMONY)
 
 # add TiledRTCollection and required libs if compiled
-if(DISTRIBUTED_TILLING_EXAMPLE)
+if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 	# Find and import OpenSlide
 	find_path(OPENSLIDE_SRC_DIR REQUIRED)
 	include_directories(${OPENSLIDE_SRC_DIR})
 	link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
 	set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
 	target_link_libraries("${libname}" openslide)
-endif(DISTRIBUTED_TILLING_EXAMPLE)
+endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 #if(USE_DATA_SPACES)
 #	target_link_libraries("${libname}" -ldspacesAll -lrdmacm)

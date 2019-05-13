@@ -10,12 +10,24 @@ set(ExecEngine_VERSION_MINOR 1)
 # Source files used by Execution Engine
 set(libsrcs Task.cpp TasksQueue.cpp ExecutionEngine.cpp ThreadPool.cpp TrackDependencies.cpp TaskArgument.cpp)
 
+
 # Find threads package which is linked to the execution engine library
 find_package( Threads REQUIRED )
 find_package( OpenCV REQUIRED )
 
 # Add rule to generate execution engine, as a shared library (.so)
 add_library("${libname}" SHARED ${libsrcs})
+
+# add the required libs for svs if compiled
+if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
+    # Find and import OpenSlide
+    find_path(OPENSLIDE_SRC_DIR REQUIRED)
+    include_directories(${OPENSLIDE_SRC_DIR})
+    link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
+    set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
+    target_link_libraries("${libname}" openslide)
+    message(${OPENSLIDE_SRC_DIR})
+endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 # Link Pthreads stuff to the execution engine
 target_link_libraries("${libname}" ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBS})

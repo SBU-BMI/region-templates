@@ -22,6 +22,16 @@ find_package(MPI REQUIRED)
 find_package(OpenCV REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
 
+# add the required libs for svs if compiled
+if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
+    # Find and import OpenSlide
+    find_path(OPENSLIDE_SRC_DIR REQUIRED)
+    include_directories(${OPENSLIDE_SRC_DIR})
+    link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
+    add_definitions(-DUSE_DISTRIBUTED_TILLING_EXAMPLE)
+    message("with OpenSlide")
+endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
+
 set(USE_CUDA OFF CACHE BOOL "Include NVidia CUDA Runtime support")
 if(USE_CUDA)
     find_package(CUDA 4.0)
