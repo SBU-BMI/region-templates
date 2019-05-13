@@ -13,7 +13,8 @@ TaskNormalization::~TaskNormalization() {
 cv::Mat norm(const cv::Mat& originalI, float targetMean[3], float targetStd[3]);
 
 bool TaskNormalization::run(int procType, int tid) {
-	cv::Mat inputImage = ((DenseSvsDataRegion2D*)this->raw)->getData(this->curExecEngine);
+	// cv::Mat inputImage = ((DenseSvsDataRegion2D*)this->raw)->getData(this->curExecEngine);
+    cv::Mat inputImage = this->raw->getData();
 	// target values computed from the reference image
 
 	float targetStd[3] = {0.26235, 0.0514831, 0.0114217};

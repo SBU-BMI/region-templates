@@ -4,6 +4,7 @@ DenseSvsDataRegion2D::DenseSvsDataRegion2D(cv::Rect_<int64_t> roi)
     : DenseDataRegion2D() {
 
     this->roi = roi;
+    this->setType(DataRegionType::DENSE_SVS_REGION_2D);
 }
 
 // REPLICATED CODE
@@ -51,10 +52,13 @@ void osrRegionToCVMat2(openslide_t* osr, cv::Rect_<int64_t> r,
     return;
 }
 
-cv::Mat DenseSvsDataRegion2D::getData(ExecutionEngine* env) {
-    std::cout << "[DenseSvsDataRegion2D] getData" << std::endl;
+void DenseSvsDataRegion2D::printRoi() {
+    std::cout << "[DenseSvsDataRegion2D] printRoi" << std::endl;
     std::cout << "tile: " << this->roi.x << "," << this->roi.y 
         << ":" << this->roi.width << "," << this->roi.height << std::endl;
+}
+
+cv::Mat DenseSvsDataRegion2D::getData(ExecutionEngine* env) {
     // Gets the svs file pointer from local env cache
     openslide_t* svsFile = env->getSvsPointer(this->getInputFileName());
 

@@ -112,7 +112,7 @@ TiledRTCollection::TiledRTCollection(std::string name,
     this->name = name;
     this->refDDRName = refDDRName;
     this->tilesPath = tilesPath;
-    // this->lazyTiling = false;
+    this->lazyTiling = false;
 }
 
 TiledRTCollection::~TiledRTCollection() {

@@ -574,9 +574,10 @@ void IrregTiledRTCollection::customTiling() {
         for (cv::Rect_<int64_t> tile : tiles) {
             // Creates the tile name for the original svs file, if lazy
             std::string path = this->tilesPath;
-            if (!lazyTiling)
+            if (!lazyTiling) {
                 // Creates tile name for early written tiles
                 path += "/" + this->name + "/t" + to_string(drId) + TILE_EXT;
+            }
 
             DenseDataRegion2D *ddr2d;
             if (isSvs) {

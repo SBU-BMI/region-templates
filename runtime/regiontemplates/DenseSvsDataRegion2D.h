@@ -10,6 +10,7 @@
 class DenseSvsDataRegion2D: public DenseDataRegion2D {
 public:
     DenseSvsDataRegion2D(cv::Rect_<int64_t> roi);
+    void printRoi();
 
     cv::Mat getData(ExecutionEngine* env);
 };
