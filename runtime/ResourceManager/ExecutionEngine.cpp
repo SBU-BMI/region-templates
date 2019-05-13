@@ -25,6 +25,13 @@ ExecutionEngine::~ExecutionEngine() {
 	delete threadPool;
 	delete tasksQueue;
 	delete trackDependencies;
+
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
+	for (std::pair<std::string, openslide_t*> p : svsPointersCache) {
+		openslide_close(p.second);
+	}
+#endif
+
 }
 
 //void *ExecutionEngine::getGPUTempData(int tid){
@@ -106,5 +113,21 @@ void ExecutionEngine::endTransaction()
 	this->trackDependencies->endTransaction();
 }
 
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
+openslide_t* ExecutionEngine::getSvsPointer(std::string path) {
+	std::map<std::string, openslide_t*>::iterator it = svsPointersCache.find(path);
+	openslide_t* osr;
 
+	// If the pointer wasn't on cache, opens it
+	if (it == svsPointersCache.end()) {
+		osr = openslide_open(path.c_str());
+		svsPointersCache[path] = osr;
+		std::cout << "[ExecutionEngine] New svs: " << path << std::endl;
+	} else {
+		osr = it->second;
+		std::cout << "[ExecutionEngine] Existing svs: " << path << std::endl;
+	}
+	return osr;
+}
+#endif
 

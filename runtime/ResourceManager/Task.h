@@ -59,9 +59,6 @@ class Task {
 		// Grants access to this class for execution engine.
 		friend class ExecutionEngine;
 
-		// Pointer to the Execution Engine that is responsible for this task.
-		ExecutionEngine *curExecEngine;
-
 		// Simple setter for the task id
 		void setId(int id);
 
@@ -70,6 +67,10 @@ class Task {
 		// However, it has to be defined here because we can't typecast the Task pointer available
 		// during the execution to an object of type CallBackTask.
 		bool callBackDepsReady;
+
+	protected:
+		// Pointer to the Execution Engine that is responsible for this task.
+		ExecutionEngine *curExecEngine;
 
 	public:
 
