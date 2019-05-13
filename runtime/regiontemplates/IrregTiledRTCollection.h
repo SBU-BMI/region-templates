@@ -17,7 +17,6 @@ class IrregTiledRTCollection : public TiledRTCollection {
 private:
     int border;
     BGMasker* bgm;
-    bool lazyTiles;
 
 protected:
     // Template method hook for a custom tiling method.
@@ -28,8 +27,6 @@ protected:
 public:
     IrregTiledRTCollection(std::string name, std::string refDDRName, 
         std::string tilesPath, int border, BGMasker* bgm);
-
-    void setLazyReading() {this->lazyTiles = true;}
 
 };
 

@@ -112,14 +112,7 @@ TiledRTCollection::TiledRTCollection(std::string name,
     this->name = name;
     this->refDDRName = refDDRName;
     this->tilesPath = tilesPath;
-
-    std::string cmd = "mkdir " + this->tilesPath + "/" + name;
-    const int dir_err = system(cmd.c_str());
-    if (dir_err == -1) {
-        std::cout << "Error creating directory. " << __FILE__ << ":" 
-            << __LINE__ << std::endl;
-        exit(1);
-    }
+    // this->lazyTiling = false;
 }
 
 TiledRTCollection::~TiledRTCollection() {
@@ -212,6 +205,16 @@ void TiledRTCollection::tileImages() {
         // return;
     }
 
+    // if (!lazyTiling) {
+        std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
+        const int dir_err = system(cmd.c_str());
+        if (dir_err == -1) {
+            std::cout << "Error creating directory. " << __FILE__ << ":" 
+                << __LINE__ << std::endl;
+            exit(1);
+        }
+    // }
+
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
     //   tile containing the full image.
@@ -223,6 +226,16 @@ void TiledRTCollection::tileImages() {
 // Performs the tiling using a previously tiled TRTC
 void TiledRTCollection::tileImages(
     std::vector<std::list<cv::Rect_<int64_t>>> tiles) {
+
+    // if (!lazyTiling) {
+        std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
+        const int dir_err = system(cmd.c_str());
+        if (dir_err == -1) {
+            std::cout << "Error creating directory. " << __FILE__ << ":" 
+                << __LINE__ << std::endl;
+            exit(1);
+        }
+    // }
 
     // Only a single name is required since there is only one tile
     std::string drName = to_string(0);
@@ -271,7 +284,7 @@ void TiledRTCollection::tileImages(
             } else {
                 tile = mat(r);
             }
-            std::string path = this->tilesPath + "/" + name + "/";
+            std::string path = this->tilesPath + name;
             path += "/i" + to_string(i) + "t" + to_string(j++) + TILE_EXT;
             cv::imwrite(path, tile);
 

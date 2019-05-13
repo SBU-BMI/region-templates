@@ -518,7 +518,6 @@ IrregTiledRTCollection::IrregTiledRTCollection(std::string name,
 
     this->border = border;
     this->bgm = bgm;
-    this->lazyTiles = false;
 }
 
 void IrregTiledRTCollection::customTiling() {
@@ -575,7 +574,7 @@ void IrregTiledRTCollection::customTiling() {
         for (cv::Rect_<int64_t> tile : tiles) {
             // Creates the tile name for the original svs file, if lazy
             std::string path = this->tilesPath;
-            if (!lazyTiles)
+            if (!lazyTiling)
                 // Creates tile name for early written tiles
                 path += "/" + this->name + "/t" + to_string(drId) + TILE_EXT;
 
@@ -588,7 +587,7 @@ void IrregTiledRTCollection::customTiling() {
                 tile.height *= ratioh;
 
                 // If tiles are to be read lazily, don't write the actual file
-                if (!lazyTiles) {
+                if (!lazyTiling) {
                     // Generates a regular data region which requires an
                     // early written input image file
                     ddr2d = new DenseDataRegion2D();
@@ -606,7 +605,7 @@ void IrregTiledRTCollection::customTiling() {
                 }
             } else {
                 ddr2d = new DenseDataRegion2D();
-                if (!lazyTiles)
+                if (!lazyTiling)
                     cv::imwrite(path, maskMat(tile));
             }
             

@@ -122,10 +122,10 @@ openslide_t* ExecutionEngine::getSvsPointer(std::string path) {
 	if (it == svsPointersCache.end()) {
 		osr = openslide_open(path.c_str());
 		svsPointersCache[path] = osr;
-		std::cout << "[ExecutionEngine] New svs: " << path << std::endl;
+		// std::cout << "[ExecutionEngine] New svs: " << path << std::endl;
 	} else {
 		osr = it->second;
-		std::cout << "[ExecutionEngine] Existing svs: " << path << std::endl;
+		// std::cout << "[ExecutionEngine] Existing svs: " << path << std::endl;
 	}
 	return osr;
 }

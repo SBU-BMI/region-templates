@@ -183,6 +183,20 @@ int DataRegion::serialize(char* buff) {
 	memcpy(buff+serialized_bytes, &this->cachedDataSize, sizeof(long));
 	serialized_bytes +=sizeof(long);
 
+	// roi of svs files
+	int64_t x = this->roi.x;
+    memcpy(buff+serialized_bytes, &x, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t y = this->roi.y;
+    memcpy(buff+serialized_bytes, &y, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t w = this->roi.width;
+    memcpy(buff+serialized_bytes, &w, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t h = this->roi.height;
+    memcpy(buff+serialized_bytes, &h, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+
 	// pack the number of chunks in which the data
 	// regions is divided
 	int nChunks = bb2Id.size();
@@ -308,6 +322,17 @@ int DataRegion::deserialize(char* buff) {
 	this->setCachedDataSize(((long*)(buff+deserialized_bytes))[0]);
 	deserialized_bytes += sizeof(long);
 
+	// roi of svs files
+	int64_t x = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t y = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t w = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t h = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    this->roi = cv::Rect_<int64_t>(x, y, w, h);
+
 	// unpack the number of chunks in which the data
 	// regions is divided
 	// extract output data source type
@@ -424,6 +449,9 @@ int DataRegion::serializationSize() {
 
 	// size of cachedDataSize
 	size_bytes += sizeof(long);
+
+	// roi of svs files
+    size_bytes += 4 * sizeof(int64_t);
 
 	// pack the number of chunks in which the data
 	// regions is divided

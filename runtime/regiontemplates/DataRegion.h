@@ -72,6 +72,9 @@ protected:
 	// use to know if a given data region was changed by a component, thus to know if it has to be sent to storage
 	bool modified;
 
+	// ROI bounding box for svs files
+	cv::Rect_<int64_t> roi;
+
 	int getCacheLevel() const;
 	void setCacheLevel(int cacheLevel);
 	int getCacheType() const;
