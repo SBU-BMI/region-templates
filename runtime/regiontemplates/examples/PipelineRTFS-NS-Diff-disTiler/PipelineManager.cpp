@@ -234,6 +234,7 @@ int main (int argc, char **argv){
 
     // Perform standard tiling i.e., no tiling at all
     tCollImg->tileImages();
+    std::cout << "here" << std::endl;
     tCollMask->tileImages(tCollImg->getTiles());
 
     std::cout << "[PielineManager] Number of tiles created: " 
