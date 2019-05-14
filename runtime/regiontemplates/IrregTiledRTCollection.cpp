@@ -603,6 +603,7 @@ void IrregTiledRTCollection::customTiling() {
                     // lazy read/write of input file
                     ddr2d = new DenseSvsDataRegion2D(tile);
                     ddr2d->setInputFileName(path);
+                    ddr2d->setType(DataRegionType::DENSE_SVS_REGION_2D);
                 }
             } else {
                 ddr2d = new DenseDataRegion2D();

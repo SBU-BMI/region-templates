@@ -61,6 +61,7 @@ private:
 	friend class RTPipelineComponentBase;
 	friend class Manager;
 	friend class RegionTemplate;
+	friend class DataRegionFactory;
 
 protected:
 	// cache level, type, and id of the worker in which it is stored

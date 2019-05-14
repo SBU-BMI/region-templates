@@ -61,9 +61,10 @@ private:
 	virtual ~DataRegionType();
 
 public:
-	static const int DENSE_REGION_2D 	= 1; // Dense matrix representation
+	static const int DENSE_REGION_2D 	 = 1; // Dense matrix representation
 	static const int REGION_2D_UNALIGNED = 2;
-	static const int DENSE_REGION_3D 	= 3; // Dense (cube) array of matrices
+	static const int DENSE_REGION_3D 	 = 3; // Dense (cube) array of matrices
+	static const int DENSE_SVS_REGION_2D = 4; // Svs input image
 };
 
 class DataSourceType{

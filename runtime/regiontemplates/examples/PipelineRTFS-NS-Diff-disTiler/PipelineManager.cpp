@@ -188,6 +188,12 @@ int main (int argc, char **argv){
         inputFolderPath = argv[findArgPos("-p", argc, argv)+1];
     }
 
+    // Regular tiling?
+    bool lazyTileRead = false;
+    if (findArgPos("-l", argc, argv) != -1) {
+        lazyTileRead = true;
+    }
+
     // For this test we only use a single input and output images
     std::string imgFilePath = inputFolderPath + imgBasename;
     std::string maskFilePath = inputFolderPath + maskBasename;
@@ -219,11 +225,14 @@ int main (int argc, char **argv){
         // cv::imwrite("./testmask.png", mask);
         // exit(9);
 
-        tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-            REF_DDR_NAME, tmpPath, border, bgm);
-        // tCollImg = new IrregTiledRTCollection(MASK_RT_NAME, 
-        //     REF_DDR_NAME, imgFilePath, border, bgm);
-        // ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
+        if (lazyTileRead) {
+            tCollImg = new IrregTiledRTCollection(MASK_RT_NAME, 
+                REF_DDR_NAME, imgFilePath, border, bgm);
+            ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
+        } else {
+            tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+                REF_DDR_NAME, tmpPath, border, bgm);
+        }
         tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
     }

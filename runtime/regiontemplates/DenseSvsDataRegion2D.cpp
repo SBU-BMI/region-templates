@@ -4,7 +4,6 @@ DenseSvsDataRegion2D::DenseSvsDataRegion2D(cv::Rect_<int64_t> roi)
     : DenseDataRegion2D() {
 
     this->roi = roi;
-    this->setType(DataRegionType::DENSE_SVS_REGION_2D);
 }
 
 // REPLICATED CODE
