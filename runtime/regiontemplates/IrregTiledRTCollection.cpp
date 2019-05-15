@@ -579,7 +579,7 @@ void IrregTiledRTCollection::customTiling() {
                 path += "/" + this->name + "/t" + to_string(drId) + TILE_EXT;
             }
 
-            DenseDataRegion2D *ddr2d;
+            DataRegion *dr;
             if (isSvs) {
                 // Converts the tile roi for the bigger image
                 tile.x *= ratiow;
@@ -591,7 +591,7 @@ void IrregTiledRTCollection::customTiling() {
                 if (!lazyTiling) {
                     // Generates a regular data region which requires an
                     // early written input image file
-                    ddr2d = new DenseDataRegion2D();
+                    dr = new DenseDataRegion2D();
 
                     // Gets actual region from full svs file and 
                     // writes it to file
@@ -599,28 +599,27 @@ void IrregTiledRTCollection::customTiling() {
                     osrRegionToCVMat(osr, tile, osrMaxLevel, curMat);
                     cv::imwrite(path, curMat);
                 } else {
-                    // Creates the ddr2d as a svs data region for
+                    // Creates the dr as a svs data region for
                     // lazy read/write of input file
-                    ddr2d = new DenseSvsDataRegion2D(tile);
-                    ddr2d->setInputFileName(path);
-                    ddr2d->setType(DataRegionType::DENSE_SVS_REGION_2D);
+                    dr = new SvsDataRegion();
+                    ((SvsDataRegion*)dr)->setRoi(tile);
                 }
             } else {
-                ddr2d = new DenseDataRegion2D();
+                dr = new DenseDataRegion2D();
                 if (!lazyTiling)
                     cv::imwrite(path, maskMat(tile));
             }
             
             // Create new RT tile from roi
             std::string drName = "t" + to_string(drId);
-            ddr2d->setName(drName);
-            ddr2d->setId(refDDRName);
-            ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
-            ddr2d->setIsAppInput(true);
-            ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-            ddr2d->setInputFileName(path);
+            dr->setName(drName);
+            dr->setId(refDDRName);
+            dr->setInputType(DataSourceType::FILE_SYSTEM);
+            dr->setIsAppInput(true);
+            dr->setOutputType(DataSourceType::FILE_SYSTEM);
+            dr->setInputFileName(path);
             RegionTemplate* newRT = new RegionTemplate();
-            newRT->insertDataRegion(ddr2d);
+            newRT->insertDataRegion(dr);
             newRT->setName(name);
 
             // Add the tile and the RT to the internal containers

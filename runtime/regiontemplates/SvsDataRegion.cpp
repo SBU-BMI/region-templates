@@ -1,9 +1,58 @@
-#include "DenseSvsDataRegion2D.h"
+#include "SvsDataRegion.h"
 
-DenseSvsDataRegion2D::DenseSvsDataRegion2D(cv::Rect_<int64_t> roi) 
-    : DenseDataRegion2D() {
+SvsDataRegion::SvsDataRegion() {
+    this->setType(DataRegionType::DENSE_SVS_REGION_2D);
+    this->setSvs();
+}
 
+void SvsDataRegion::setRoi(cv::Rect_<int64_t> roi) {
     this->roi = roi;
+}
+
+int SvsDataRegion::serialize(char* buff) {
+    int serialized_bytes = DataRegion::serialize(buff);
+
+    // roi of svs files
+    int64_t x = this->roi.x;
+    memcpy(buff+serialized_bytes, &x, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t y = this->roi.y;
+    memcpy(buff+serialized_bytes, &y, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t w = this->roi.width;
+    memcpy(buff+serialized_bytes, &w, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t h = this->roi.height;
+    memcpy(buff+serialized_bytes, &h, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+
+    return serialized_bytes;
+}
+
+int SvsDataRegion::deserialize(char* buff) {
+    int deserialized_bytes = DataRegion::deserialize(buff);
+
+    // roi of svs files
+    int64_t x = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t y = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t w = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t h = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    this->roi = cv::Rect_<int64_t>(x, y, w, h);
+
+    return deserialized_bytes;
+}
+
+int SvsDataRegion::serializationSize() {
+    int size_bytes = DataRegion::serializationSize();
+
+    // roi of svs files
+    size_bytes += 4 * sizeof(int64_t);
+
+    return size_bytes;
 }
 
 // REPLICATED CODE
@@ -51,13 +100,13 @@ void osrRegionToCVMat2(openslide_t* osr, cv::Rect_<int64_t> r,
     return;
 }
 
-void DenseSvsDataRegion2D::printRoi() {
-    std::cout << "[DenseSvsDataRegion2D] printRoi" << std::endl;
+void SvsDataRegion::printRoi() {
+    std::cout << "[SvsDataRegion] printRoi" << std::endl;
     std::cout << "tile: " << this->roi.x << "," << this->roi.y 
         << ":" << this->roi.width << "," << this->roi.height << std::endl;
 }
 
-cv::Mat DenseSvsDataRegion2D::getData(ExecutionEngine* env) {
+cv::Mat SvsDataRegion::getData(ExecutionEngine* env) {
     // Gets the svs file pointer from local env cache
     openslide_t* svsFile = env->getSvsPointer(this->getInputFileName());
 
@@ -75,9 +124,9 @@ cv::Mat DenseSvsDataRegion2D::getData(ExecutionEngine* env) {
         }
     }
 
+    // Extracts the roi of the svs file into a mat
     cv::Mat mat;
     osrRegionToCVMat2(svsFile, this->roi, maxLevel, mat);
-    this->setData(mat);
 
-    return DenseDataRegion2D::getData();
+    return mat;
 }

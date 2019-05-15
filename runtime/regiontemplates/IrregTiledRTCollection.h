@@ -9,7 +9,7 @@
 
 #include "openslide.h"
 
-#include "DenseSvsDataRegion2D.h"
+#include "SvsDataRegion.h"
 #include "TiledRTCollection.h"
 #include "BGMasker.h"
 

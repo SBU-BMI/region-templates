@@ -73,9 +73,6 @@ protected:
 	// use to know if a given data region was changed by a component, thus to know if it has to be sent to storage
 	bool modified;
 
-	// ROI bounding box for svs files
-	cv::Rect_<int64_t> roi;
-
 	int getCacheLevel() const;
 	void setCacheLevel(int cacheLevel);
 	int getCacheType() const;
@@ -116,9 +113,9 @@ public:
 	std::pair<BoundingBox, std::string> getBB2IdElement(int index);
 	int getBB2IdSize();
 
-	int serialize(char* buff);
-	int deserialize(char* buff);
-	int serializationSize();
+	virtual int serialize(char* buff);
+	virtual int deserialize(char* buff);
+	virtual int serializationSize();
 
 	int getInputType() const;
 	void setInputType(int inputType);

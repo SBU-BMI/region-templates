@@ -68,8 +68,8 @@ if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 	# Tiling classes
 	set(librtemplates ${librtemplates} TiledRTCollection.cpp 
 		RegTiledRTCollection.cpp ThresholdBGMasker.cpp IrregTiledRTCollection.cpp)
-	# SVS DataRegion classes
-	set(librtemplates ${librtemplates} DenseSvsDataRegion2D.cpp)
+	# SVS DataRegion class for lazy tiling using svs images
+	set(librtemplates ${librtemplates} SvsDataRegion.cpp)
 endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 #data spaces path

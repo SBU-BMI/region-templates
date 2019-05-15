@@ -16,7 +16,7 @@ bool TaskNormalization::run(int procType, int tid) {
     // Gets data based on whether the origin is a svs lazily read file
     cv::Mat inputImage;
     if (this->raw->getType() == DataRegionType::DENSE_SVS_REGION_2D)
-        inputImage = ((DenseSvsDataRegion2D*)this->raw)->getData(this->curExecEngine);
+        inputImage = ((SvsDataRegion*)this->raw)->getData(this->curExecEngine);
     else
         inputImage = this->raw->getData();
 

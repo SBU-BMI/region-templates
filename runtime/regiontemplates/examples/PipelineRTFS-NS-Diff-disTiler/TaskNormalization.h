@@ -3,7 +3,7 @@
 
 #include "Task.h"
 #include "DenseDataRegion2D.h"
-#include "DenseSvsDataRegion2D.h"
+#include "SvsDataRegion.h"
 
 #include "opencv2/opencv.hpp"
 // #include "opencv2/gpu/gpu.hpp" // old opencv 2.4
