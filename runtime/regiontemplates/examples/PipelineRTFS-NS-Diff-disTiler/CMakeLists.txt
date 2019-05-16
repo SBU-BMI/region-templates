@@ -24,21 +24,15 @@ include_directories(${nscalesrcdir}/common)
 include_directories(${nscalesrcdir}/features)
 include_directories(${nscalesrcdir}/normalization)
 
-# # glib include --- NOT REQUIRED YET
-# find_path(GLIB_BUILD_PATH REQUIRED)
-# include_directories(${GLIB_BUILD_PATH}/include/glib-2.0)
-# include_directories(${GLIB_BUILD_PATH}/lib/glib-2.0/include)
-# link_directories(${GLIB_BUILD_PATH}/lib)
+# Autotiling headers
+include_directories(${AutoTiling_SOURCE_DIR})
+link_directories(${AutoTiling_SOURCE_DIR})
 
 # Find and import OpenSlide
 find_path(OPENSLIDE_SRC_DIR REQUIRED)
 include_directories(${OPENSLIDE_SRC_DIR})
 link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
 set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
-
-
-
-
 
 # Make sure the compiler can find the library in runtime system directory
 link_directories(${Runtime_SOURCE_DIR})
@@ -71,6 +65,7 @@ target_link_libraries("${libname}" regiontemplates)
 # target_link_libraries("${libname}" ${OpenCV_LIBS})
 target_link_libraries("${libname}" segment normalization featuresAll)
 target_link_libraries("${libname}" openslide)
+target_link_libraries("${libname}" autotiling)
         
 # Create executable to be built from the files listed
 add_executable(PipelineRTFS-NS-Diff-disTiler PipelineManager.cpp)
@@ -79,3 +74,4 @@ add_dependencies(PipelineRTFS-NS-Diff-disTiler copyCacheConfdt)
 # Link the executable to the runtime system library
 target_link_libraries(PipelineRTFS-NS-Diff-disTiler runtimesystem "${libname}")
 target_link_libraries(PipelineRTFS-NS-Diff-disTiler regiontemplates)
+target_link_libraries(PipelineRTFS-NS-Diff-disTiler autotiling)

@@ -15,8 +15,8 @@
 #include "TiledRTCollection.h"
 #include "RegTiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
-#include "BGMasker.h"
-#include "ThresholdBGMasker.h"
+#include "costFuncs/BGMasker.h"
+#include "costFuncs/ThresholdBGMasker.h"
 
 #include "openslide.h"
 

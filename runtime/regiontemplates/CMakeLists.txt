@@ -65,11 +65,11 @@ endif(RTEMPLATES_EXAMPLES)
 
 # add TiledRTCollection and required libs if compiled
 if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
-	# Tiling classes
-	set(librtemplates ${librtemplates} TiledRTCollection.cpp 
-		RegTiledRTCollection.cpp ThresholdBGMasker.cpp IrregTiledRTCollection.cpp)
+	# # Tiling classes
+	# set(librtemplates ${librtemplates} TiledRTCollection.cpp 
+	# 	RegTiledRTCollection.cpp ThresholdBGMasker.cpp IrregTiledRTCollection.cpp)
 	# SVS DataRegion class for lazy tiling using svs images
-	set(librtemplates ${librtemplates} SvsDataRegion.cpp)
+	# set(librtemplates ${librtemplates} SvsDataRegion.cpp)
 endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 #data spaces path
@@ -87,12 +87,15 @@ endif (USE_ACTIVE_HARMONY)
 
 # add TiledRTCollection and required libs if compiled
 if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
-	# Find and import OpenSlide
-	find_path(OPENSLIDE_SRC_DIR REQUIRED)
-	include_directories(${OPENSLIDE_SRC_DIR})
-	link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
-	set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
-	target_link_libraries("${libname}" openslide)
+	# # Find and import OpenSlide
+	# find_path(OPENSLIDE_SRC_DIR REQUIRED)
+	# include_directories(${OPENSLIDE_SRC_DIR})
+	# link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
+	# set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
+	# target_link_libraries("${libname}" openslide)
+	add_subdirectory("autoTiling")
+	target_link_libraries("${libname}" ${autotiling})
+	include_directories(${AutoTiling_SOURCE_DIR})
 endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 #if(USE_DATA_SPACES)

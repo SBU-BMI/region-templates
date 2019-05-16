@@ -10,6 +10,7 @@
 #include "openslide.h"
 
 #include "RegionTemplate.h"
+#include "svs/svsUtils.h"
 
 static const std::string TILE_EXT = ".tiff";
 
@@ -61,10 +62,5 @@ public:
 /*****************************************************************************/
 
 void cleanup(std::string path);
-bool isSVS(std::string path);
-int32_t getLargestLevel(openslide_t *osr);
-int32_t getSmallestLevel(openslide_t *osr);
-void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 
-    int level, cv::Mat& thisTile);
 
 #endif

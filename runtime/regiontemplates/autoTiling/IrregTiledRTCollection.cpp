@@ -535,7 +535,7 @@ void IrregTiledRTCollection::customTiling() {
         int64_t h = -1;
         openslide_t* osr;
         int32_t osrMinLevel = -1;
-        int32_t osrMaxLevel = -1;
+        int32_t osrMaxLevel = 0; // svs standard: max level = 0
         float ratiow;
         float ratioh; 
         cv::Mat maskMat;
@@ -543,13 +543,12 @@ void IrregTiledRTCollection::customTiling() {
             osr = openslide_open(initialPaths[i].c_str());
 
             // Gets info of largest image
-            osrMaxLevel = getLargestLevel(osr);
-            openslide_get_level_dimensions(osr, osrMaxLevel, &w, &h);
+            openslide_get_level0_dimensions(osr, &w, &h);
             ratiow = w;
             ratioh = h;
 
             // Opens smallest image as a cv mat
-            osrMinLevel = getSmallestLevel(osr);
+            osrMinLevel = openslide_get_level_count(osr) - 1; // last level
             openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
             cv::Rect_<int64_t> roi(0, 0, w, h);
             osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);

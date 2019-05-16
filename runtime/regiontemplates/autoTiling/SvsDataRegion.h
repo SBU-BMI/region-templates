@@ -3,6 +3,7 @@
 
 #include "ExecutionEngine.h"
 #include "DenseDataRegion2D.h"
+#include "svs/svsUtils.h"
 
 #include "openslide.h"
 #include <opencv/cv.hpp>

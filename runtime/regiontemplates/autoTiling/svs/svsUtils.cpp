@@ -1,12 +1,13 @@
-#include "SvsDataRegion.h"
+#include "svsUtils.h"
 
-SvsDataRegion::SvsDataRegion() {
-    this->setType(DataRegionType::DENSE_SVS_REGION_2D);
-    this->setSvs();
+// Verifies whether the extension is .svs 
+bool isSVS(std::string path) {
+    std::size_t l = path.find_last_of(".");
+    return path.substr(l).compare(".svs") == 0;
 }
 
-// REPLICATED CODE
-void osrRegionToCVMat2(openslide_t* osr, cv::Rect_<int64_t> r, 
+// Extracts a roi from osr described by r, outputting it into thisTile
+void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 
     int level, cv::Mat& thisTile) {
 
     uint32_t* osrRegion = new uint32_t[r.width * r.height];
@@ -48,29 +49,4 @@ void osrRegionToCVMat2(openslide_t* osr, cv::Rect_<int64_t> r,
     delete[] osrRegion;
 
     return;
-}
-
-cv::Mat SvsDataRegion::getData(ExecutionEngine* env) {
-    // Gets the svs file pointer from local env cache
-    openslide_t* svsFile = env->getSvsPointer(this->getInputFileName());
-
-    // REPLICATED CODE
-    // Gets the largest level
-    int32_t levels = openslide_get_level_count(svsFile);
-    int64_t w, h;
-    int64_t maxSize = -1;
-    int32_t maxLevel;
-    for (int32_t l=0; l<levels; l++) {
-        openslide_get_level_dimensions(svsFile, l, &w, &h);
-        if (h*w > maxSize) {
-            maxSize = h*w;
-            maxLevel = l;
-        }
-    }
-
-    // Extracts the roi of the svs file into a mat
-    cv::Mat mat;
-    osrRegionToCVMat2(svsFile, this->roi, maxLevel, mat);
-
-    return mat;
 }

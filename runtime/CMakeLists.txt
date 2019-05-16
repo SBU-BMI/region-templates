@@ -29,7 +29,8 @@ if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
     include_directories(${OPENSLIDE_SRC_DIR})
     link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
     add_definitions(-DUSE_DISTRIBUTED_TILLING_EXAMPLE)
-    message("with OpenSlide")
+    # Includes autotiling headers
+    include_directories(${AutoTiling_SOURCE_DIR})
 endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 set(USE_CUDA OFF CACHE BOOL "Include NVidia CUDA Runtime support")

@@ -37,10 +37,10 @@ void createTile(bool isSvs, cv:: Rect_<int64_t> roi, openslide_t* osr,
     rts.push_back(
         std::pair<std::string, RegionTemplate*>(drName, newRT));
 
-    // Close .svs file
-    if (isSvs) {
-        openslide_close(osr);
-    }
+    // // Close .svs file
+    // if (isSvs) {
+    //     openslide_close(osr);
+    // }
 }
 
 /*****************************************************************************/
@@ -71,12 +71,11 @@ void RegTiledRTCollection::customTiling() {
         int64_t w = -1;
         int64_t h = -1;
         openslide_t* osr;
-        int32_t osrMaxLevel = -1;
+        int32_t osrMaxLevel = 0; // svs standard: max level = 0
         cv::Mat mat;
         if (isSvs) {
             osr = openslide_open(initialPaths[i].c_str());
-            osrMaxLevel = getLargestLevel(osr);
-            openslide_get_level_dimensions(osr, osrMaxLevel, &w, &h);
+            openslide_get_level0_dimensions(osr, &w, &h);
         } else {
             mat = cv::imread(initialPaths[i]);
             h = mat.rows;
@@ -117,7 +116,6 @@ void RegTiledRTCollection::customTiling() {
                     this->refDDRName, this->rts);
             }
         }
-
 
         // Create irregular border tiles for the last vertical column
         if ((float)w/this->tw > xTiles) {
@@ -219,5 +217,10 @@ void RegTiledRTCollection::customTiling() {
 
         // Add the current image tiles to the tiles vector
         this->tiles.push_back(rois);
+
+        // // Close .svs file
+        if (isSvs) {
+            openslide_close(osr);
+        }
     }
 }

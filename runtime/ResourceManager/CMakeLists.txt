@@ -26,7 +26,6 @@ if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
     link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
     set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
     target_link_libraries("${libname}" openslide)
-    message(${OPENSLIDE_SRC_DIR})
 endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 # Link Pthreads stuff to the execution engine
