@@ -5,56 +5,6 @@ SvsDataRegion::SvsDataRegion() {
     this->setSvs();
 }
 
-void SvsDataRegion::setRoi(cv::Rect_<int64_t> roi) {
-    this->roi = roi;
-}
-
-int SvsDataRegion::serialize(char* buff) {
-    int serialized_bytes = DataRegion::serialize(buff);
-
-    // roi of svs files
-    int64_t x = this->roi.x;
-    memcpy(buff+serialized_bytes, &x, sizeof(int64_t));
-    serialized_bytes += sizeof(int64_t);
-    int64_t y = this->roi.y;
-    memcpy(buff+serialized_bytes, &y, sizeof(int64_t));
-    serialized_bytes += sizeof(int64_t);
-    int64_t w = this->roi.width;
-    memcpy(buff+serialized_bytes, &w, sizeof(int64_t));
-    serialized_bytes += sizeof(int64_t);
-    int64_t h = this->roi.height;
-    memcpy(buff+serialized_bytes, &h, sizeof(int64_t));
-    serialized_bytes += sizeof(int64_t);
-
-    return serialized_bytes;
-}
-
-int SvsDataRegion::deserialize(char* buff) {
-    int deserialized_bytes = DataRegion::deserialize(buff);
-
-    // roi of svs files
-    int64_t x = ((int64_t*)(buff+deserialized_bytes))[0];;
-    deserialized_bytes += sizeof(int64_t);
-    int64_t y = ((int64_t*)(buff+deserialized_bytes))[0];;
-    deserialized_bytes += sizeof(int64_t);
-    int64_t w = ((int64_t*)(buff+deserialized_bytes))[0];;
-    deserialized_bytes += sizeof(int64_t);
-    int64_t h = ((int64_t*)(buff+deserialized_bytes))[0];;
-    deserialized_bytes += sizeof(int64_t);
-    this->roi = cv::Rect_<int64_t>(x, y, w, h);
-
-    return deserialized_bytes;
-}
-
-int SvsDataRegion::serializationSize() {
-    int size_bytes = DataRegion::serializationSize();
-
-    // roi of svs files
-    size_bytes += 4 * sizeof(int64_t);
-
-    return size_bytes;
-}
-
 // REPLICATED CODE
 void osrRegionToCVMat2(openslide_t* osr, cv::Rect_<int64_t> r, 
     int level, cv::Mat& thisTile) {
@@ -98,12 +48,6 @@ void osrRegionToCVMat2(openslide_t* osr, cv::Rect_<int64_t> r,
     delete[] osrRegion;
 
     return;
-}
-
-void SvsDataRegion::printRoi() {
-    std::cout << "[SvsDataRegion] printRoi" << std::endl;
-    std::cout << "tile: " << this->roi.x << "," << this->roi.y 
-        << ":" << this->roi.width << "," << this->roi.height << std::endl;
 }
 
 cv::Mat SvsDataRegion::getData(ExecutionEngine* env) {

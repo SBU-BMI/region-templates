@@ -27,7 +27,7 @@ DataRegion::DataRegion() {
 	this->bb.setLb(Point(0,0,0));
 	this->bb.setUb(Point(0,0,0));
 
-	this->isSvs = false;
+	this->svs = false;
 }
 
 DataRegion::~DataRegion() {
@@ -83,7 +83,11 @@ void DataRegion::setType(int type) {
 }
 
 void DataRegion::setSvs() {
-	this->isSvs = true;
+	this->svs = true;
+}
+
+bool DataRegion::isSvs() {
+	return this->svs;
 }
 
 bool DataRegion::write() {
@@ -163,8 +167,8 @@ int DataRegion::serialize(char* buff) {
 	bb = this->getROI();
 	serialized_bytes += bb.serialize(buff+serialized_bytes);
 
-	// pack isSvs
-	memcpy(buff+serialized_bytes, &this->isSvs, sizeof(bool));
+	// pack svs
+	memcpy(buff+serialized_bytes, &this->svs, sizeof(bool));
 	serialized_bytes += sizeof(bool);
 
 	// pack cache leve in which data is stored
@@ -182,6 +186,20 @@ int DataRegion::serialize(char* buff) {
 	// size of the data stored w/ this data region
 	memcpy(buff+serialized_bytes, &this->cachedDataSize, sizeof(long));
 	serialized_bytes +=sizeof(long);
+
+	// roi of svs files
+    int64_t x = this->roi.x;
+    memcpy(buff+serialized_bytes, &x, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t y = this->roi.y;
+    memcpy(buff+serialized_bytes, &y, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t w = this->roi.width;
+    memcpy(buff+serialized_bytes, &w, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
+    int64_t h = this->roi.height;
+    memcpy(buff+serialized_bytes, &h, sizeof(int64_t));
+    serialized_bytes += sizeof(int64_t);
 
 	// pack the number of chunks in which the data
 	// regions is divided
@@ -213,7 +231,7 @@ int DataRegion::deserialize(char* buff) {
 	int deserialized_bytes = 0;
 
 	// extract data region type
-	int region_type =((int*)(buff+deserialized_bytes))[0];
+	this->regionType =((int*)(buff+deserialized_bytes))[0];
 	deserialized_bytes += sizeof(int);
 
 	// extract the size of the DR name
@@ -287,10 +305,10 @@ int DataRegion::deserialize(char* buff) {
 	this->setROI(ROI);
 
 	// unpack
-	bool isSvs;
-	memcpy(&isSvs, buff+deserialized_bytes, sizeof(bool));
+	bool svs;
+	memcpy(&svs, buff+deserialized_bytes, sizeof(bool));
 	deserialized_bytes += sizeof(bool);
-	this->isSvs = isSvs;
+	this->svs = svs;
 
 	// unpack cache level
 	this->setCacheLevel(((int*)(buff+deserialized_bytes))[0]);
@@ -307,6 +325,17 @@ int DataRegion::deserialize(char* buff) {
 	// unpack cachedDataSize
 	this->setCachedDataSize(((long*)(buff+deserialized_bytes))[0]);
 	deserialized_bytes += sizeof(long);
+
+	// roi of svs files
+    int64_t x = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t y = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t w = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    int64_t h = ((int64_t*)(buff+deserialized_bytes))[0];;
+    deserialized_bytes += sizeof(int64_t);
+    this->roi = cv::Rect_<int64_t>(x, y, w, h);
 
 	// unpack the number of chunks in which the data
 	// regions is divided
@@ -330,6 +359,20 @@ int DataRegion::deserialize(char* buff) {
 	}
 
 	return deserialized_bytes;
+}
+
+void DataRegion::setRoi(cv::Rect_<int64_t> roi) {
+    this->roi = roi;
+}
+
+cv::Rect_<int64_t> DataRegion::getRoi() {
+    return this->roi;
+}
+
+void DataRegion::printRoi() {
+    std::cout << "[DataRegion] printRoi" << std::endl;
+    std::cout << "tile: " << this->roi.x << "," << this->roi.y 
+        << ":" << this->roi.width << "," << this->roi.height << std::endl;
 }
 
 int DataRegion::getInputType() const {
@@ -410,7 +453,7 @@ int DataRegion::serializationSize() {
 	bb = this->getROI();
 	size_bytes += bb.size();
 
-	// to store isSvs
+	// to store svs
 	size_bytes += sizeof(bool);
 
 	// size of cache level
@@ -424,6 +467,9 @@ int DataRegion::serializationSize() {
 
 	// size of cachedDataSize
 	size_bytes += sizeof(long);
+
+	// roi of svs files
+    size_bytes += 4 * sizeof(int64_t);
 
 	// pack the number of chunks in which the data
 	// regions is divided

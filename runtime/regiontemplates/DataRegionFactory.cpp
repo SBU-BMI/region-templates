@@ -129,12 +129,9 @@ bool DataRegionFactory::readDr2DUn(DataRegion2DUnaligned* dr, std::string inputF
 	return true;
 }
 
-
 DataRegionFactory::~DataRegionFactory() {
 
 }
-
-
 
 bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::string path, bool ssd){
 	int drType = -1;
@@ -286,6 +283,22 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 
 			break;
 		}
+		// case DataRegionType::DENSE_SVS_REGION_2D: {
+		// 	SvsDataRegion* sdr = new SvsDataRegion();
+		// 	sdr->setRoi((*dataRegion)->getRoi());
+		// 	sdr->setName((*dataRegion)->getName());
+		// 	sdr->setId((*dataRegion)->getId());
+		// 	sdr->setTimestamp((*dataRegion)->getTimestamp());
+		// 	sdr->setVersion((*dataRegion)->getVersion());
+		// 	sdr->setIsAppInput((*dataRegion)->getIsAppInput());
+		// 	sdr->setInputFileName((*dataRegion)->getInputFileName());
+
+		// 	// delete data region passed as a parameter and replace it with the actual data region with the data
+		// 	delete (*dataRegion);
+		// 	(*dataRegion) = (DataRegion *) sdr;
+
+		// 	break;
+		// }
 		default:
 			std::cout << "readDDR2DFS: ERROR: Unknown Region template type: " << drType << std::endl;
 			exit(1);

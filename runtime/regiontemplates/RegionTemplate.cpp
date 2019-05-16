@@ -134,9 +134,9 @@ DataRegion* RegionTemplate::getDataRegion(std::string drName, std::string drId, 
 				retValue = (*listIt);
 //				std::cout << "found: "<< retValue->getName() << " "<< retValue->getId() <<" time: "<< retValue->getTimestamp()<< " version: "<< retValue->getVersion()<< std::endl;
 				// if required data region has not been loaded
-				if(retValue->empty() && (this->getLocation() == PipelineComponentBase::WORKER_SIDE)){
+				if(!retValue->isSvs() && retValue->empty() && (this->getLocation() == PipelineComponentBase::WORKER_SIDE)){
 					long long endRead, initRead = Util::ClockGetTime();
-
+					
 					Cache* auxCache = this->getCache();
 					//pthread_mutex_lock(&auxCache->globalLock);
 					if(auxCache != NULL){

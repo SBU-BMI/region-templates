@@ -11,6 +11,7 @@
 #include "DataRegion.h"
 #include "DenseDataRegion2D.h"
 #include "DataRegion2DUnaligned.h"
+#include "SvsDataRegion.h"
 
 // OpenCV library includes: used as an auxiliar lib to read/write data(images) to fs
 //#include "cv.hpp"

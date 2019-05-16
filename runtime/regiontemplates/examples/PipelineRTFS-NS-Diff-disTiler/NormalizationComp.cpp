@@ -27,8 +27,7 @@ int NormalizationComp::run() {
         << " instance id: " << this->getId() <<std::endl;
 
     if(inputRt != NULL) {
-        DenseDataRegion2D *raw = dynamic_cast<DenseDataRegion2D*>(
-            inputRt->getDataRegion(ddrName, INITIAL_DDR_INPUT_NAME));
+        DataRegion *raw = inputRt->getDataRegion(ddrName, INITIAL_DDR_INPUT_NAME);
         if(raw != NULL) {
             // Create output data region
             DenseDataRegion2D *bgr = new DenseDataRegion2D();

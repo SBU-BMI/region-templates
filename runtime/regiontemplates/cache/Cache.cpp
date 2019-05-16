@@ -369,6 +369,10 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drNam
 						retValue = new DataRegion2DUnaligned();
 						break;
 					}
+					// case DataRegionType::DENSE_SVS_REGION_2D:{
+					// 	retValue = new SvsDataRegion();
+					// 	break;
+					// }
 					default:
 						std::cout << "Unknown data region type" << std::endl;
 						exit(1);

@@ -16,13 +16,13 @@
 
 class TaskNormalization: public Task {
 private:
-	DenseDataRegion2D* raw;
+	DataRegion* raw;
 	DenseDataRegion2D* bgr;
 
 	float targetMean[3];
 
 public:
-	TaskNormalization(DenseDataRegion2D* raw, DenseDataRegion2D* bgr, float targetMean[3]);
+	TaskNormalization(DataRegion* raw, DenseDataRegion2D* bgr, float targetMean[3]);
 
 	virtual ~TaskNormalization();
 
