@@ -70,7 +70,6 @@ Segmentation* genSegmentation(int normId, RegionTemplate* rt,
     seg->addArgument(new ArgumentInt(8));     // recon element
     seg->addArgument(new ArgumentInt(8));     // watershed
 
-
     seg->addRegionTemplateInstance(rt, rt->getName());
     seg->addDependency(normId);
 
@@ -88,7 +87,6 @@ DiffMaskComp* genDiffMaskComp(int segId, RegionTemplate* rtIn,
     diff->addArgument(new ArgumentString(rtMask->getName()));
     diff->addArgument(new ArgumentString(inDdrName));
     diff->addArgument(new ArgumentString(maskDdrName));
-
 
     // region template name
     diff->addRegionTemplateInstance(rtIn, rtIn->getName());
@@ -226,7 +224,7 @@ int main (int argc, char **argv){
         // exit(9);
 
         if (lazyTileRead) {
-            tCollImg = new IrregTiledRTCollection(MASK_RT_NAME, 
+            tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
                 REF_DDR_NAME, imgFilePath, border, bgm);
             ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
         } else {
