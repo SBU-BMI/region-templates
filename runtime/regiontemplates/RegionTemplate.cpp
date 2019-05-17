@@ -134,7 +134,7 @@ DataRegion* RegionTemplate::getDataRegion(std::string drName, std::string drId, 
 				retValue = (*listIt);
 //				std::cout << "found: "<< retValue->getName() << " "<< retValue->getId() <<" time: "<< retValue->getTimestamp()<< " version: "<< retValue->getVersion()<< std::endl;
 				// if required data region has not been loaded
-				if(!retValue->isSvs() && retValue->empty() && (this->getLocation() == PipelineComponentBase::WORKER_SIDE)){
+				if(retValue->empty() && (this->getLocation() == PipelineComponentBase::WORKER_SIDE)){
 					long long endRead, initRead = Util::ClockGetTime();
 					
 					Cache* auxCache = this->getCache();
@@ -144,10 +144,12 @@ DataRegion* RegionTemplate::getDataRegion(std::string drName, std::string drId, 
 						std::cout << "auxCache->getDR: " << this->getName() << ":"<< this->getId() << ":"<< retValue->getName() << ":"<<  retValue->getId() << ":"<<  retValue->getTimestamp() << ":"<<  retValue->getVersion() << ":"<<  true << ":"<<  auxCache->getWorkerId() << ":"<<  retValue->getWorkerId() << std::endl;
 #endif
 
-						retValue = auxCache->getDR(this->getName(), this->getId(), retValue->getName(),
-												   retValue->getId(), retValue->getInputFileName(),
-												   retValue->getTimestamp(), retValue->getVersion(), retValue->getType(), true,
-												   retValue->getIsAppInput(), retValue->getInputFileName());
+						retValue = auxCache->getDR(this->getName(), this->getId(), retValue);
+													// , retValue->getName(),
+												 //   retValue->getId(), retValue->getInputFileName(),
+												 //   retValue->getTimestamp(), retValue->getVersion(), retValue->getType(), true,
+												 //   retValue->getIsAppInput(), retValue->getInputFileName(), retValue->isSvs(),
+												 //   retValue->getRoi());
 
 					}else{
 						std::cout << "RT::getDataRegion: CACHE is NULL. rtName: "<< this->getName() << std::endl;

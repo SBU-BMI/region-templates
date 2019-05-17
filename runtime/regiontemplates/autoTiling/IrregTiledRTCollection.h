@@ -9,7 +9,6 @@
 
 #include "openslide.h"
 
-#include "SvsDataRegion.h"
 #include "TiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
 

@@ -1,6 +1,6 @@
 #include "TaskNormalization.h"
 
-TaskNormalization::TaskNormalization(DataRegion* raw, DenseDataRegion2D* bgr, float targetMean[3]) {
+TaskNormalization::TaskNormalization(DenseDataRegion2D* raw, DenseDataRegion2D* bgr, float targetMean[3]) {
 	this->bgr = bgr;
 	this->raw = raw;
 	for(int i = 0; i < 3; i++) this->targetMean[i] = targetMean[i];
@@ -14,13 +14,14 @@ cv::Mat norm(const cv::Mat& originalI, float targetMean[3], float targetStd[3]);
 
 bool TaskNormalization::run(int procType, int tid) {
     // Gets data based on whether the origin is a svs lazily read file
-    cv::Mat inputImage;
-    if (this->raw->getType() == DataRegionType::DENSE_SVS_REGION_2D) {
-        inputImage = ((SvsDataRegion*)this->raw)->getData(this->curExecEngine);
-    }
-    else {
-        inputImage = ((DenseDataRegion2D*)this->raw)->getData();
-    }
+    cv::Mat inputImage = this->raw->getData();
+    // cv::Mat inputImage;
+    // if (this->raw->isSvs()) {
+    //     inputImage = ((SvsDataRegion*)this->raw)->getData(this->curExecEngine);
+    // }
+    // else {
+    //     inputImage = ((DenseDataRegion2D*)this->raw)->getData();
+    // }
 
 	// target values computed from the reference image
 	float targetStd[3] = {0.26235, 0.0514831, 0.0114217};

@@ -578,7 +578,7 @@ void IrregTiledRTCollection::customTiling() {
                 path += "/" + this->name + "/t" + to_string(drId) + TILE_EXT;
             }
 
-            DataRegion *dr;
+            DataRegion *dr = new DenseDataRegion2D();
             if (isSvs) {
                 // Converts the tile roi for the bigger image
                 tile.x *= ratiow;
@@ -588,10 +588,6 @@ void IrregTiledRTCollection::customTiling() {
 
                 // If tiles are to be read lazily, don't write the actual file
                 if (!lazyTiling) {
-                    // Generates a regular data region which requires an
-                    // early written input image file
-                    dr = new DenseDataRegion2D();
-
                     // Gets actual region from full svs file and 
                     // writes it to file
                     cv::Mat curMat;
@@ -600,11 +596,10 @@ void IrregTiledRTCollection::customTiling() {
                 } else {
                     // Creates the dr as a svs data region for
                     // lazy read/write of input file
-                    dr = new SvsDataRegion();
-                    ((SvsDataRegion*)dr)->setRoi(tile);
+                    dr->setRoi(tile);
+                    dr->setSvs();
                 }
             } else {
-                dr = new DenseDataRegion2D();
                 if (!lazyTiling)
                     cv::imwrite(path, maskMat(tile));
             }

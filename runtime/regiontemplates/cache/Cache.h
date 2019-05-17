@@ -9,6 +9,11 @@
 #define CACHE_H_
 
 #include "opencv2/opencv.hpp"
+
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
+#include "openslide.h"
+#endif
+
 #include "CacheComponent.h"
 #include <unistd.h>
 #include "Util.h"
@@ -41,6 +46,11 @@ private:
 	int getFirstGlobalCacheLevel() const;
 	void setFirstGlobalCacheLevel(int firstGlobalCacheLevel);
 
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
+	// Cache of openslide file pointers to avoid multiple opening of files
+	std::map<std::string, openslide_t*> svsPointersCache;
+#endif
+
 	friend class Worker;
 	friend class RegionTemplate;
 protected:
@@ -62,9 +72,11 @@ public:
 	// return the level in which it was stored.
 	int insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion, bool copyData=true,  int startLayer=0, bool isCacheOnRead=false);
 
-	DataRegion *getDR(std::string rtName, std::string rtId, std::string drName, std::string drId, std::string inputName,
-					  int timestamp = 0, int version = 0, int drType = DataRegionType::DENSE_REGION_2D, bool copyData = true, bool isLocal = true,
-					  std::string inputPath = "");
+	// DataRegion *getDR(std::string rtName, std::string rtId, std::string drName, std::string drId, std::string inputName,
+	// 				  int timestamp = 0, int version = 0, int drType = DataRegionType::DENSE_REGION_2D, bool copyData = true, bool isLocal = true,
+	// 				  std::string inputPath = "", bool isSvs = false);
+
+	DataRegion *getDR(std::string rtName, std::string rtId, DataRegion* dr, bool copyData = true);
 
 	bool deleteDR(std::string rtName, std::string rtId, std::string drName, std::string drId, int timestamp=0, int version=0);
 	int getCacheLevelType(int level); // is it global/local.
@@ -74,6 +86,12 @@ public:
 					 std::string inputFileName, int timestamp = 0, int version = 0, int fromLevel = 0,
 					 int toLevel = -1);
 
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
+	// Retrieves the file pointer of a specific svs file. If the
+	// file was not yet opened, opens it and adds the pointer to 
+	// the svsPointersCache
+	openslide_t* getSvsPointer(std::string path);
+#endif
 
 	// type
 	static const int GLOBAL = 1; // accessible from other nodes

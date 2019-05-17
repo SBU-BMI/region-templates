@@ -133,16 +133,16 @@ DataRegionFactory::~DataRegionFactory() {
 
 }
 
-bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::string path, bool ssd){
+bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, int chunkId, std::string path, bool ssd, Cache* c){
 	int drType = -1;
 	// it is application input, the type is provide when user creates the
 	// data region. Otherwise, a .loc file exists and it stores the data region type
-	if((*dataRegion)->getIsAppInput() == true){
-		drType = (*dataRegion)->getType();
+	if(inDr->getIsAppInput() == true){
+		drType = inDr->getType();
 
 	}else{
 		// returns -1 if lock file is not found
-		drType = DataRegionFactory::lockFileExists((*dataRegion), path);
+		drType = DataRegionFactory::lockFileExists(inDr, path);
 	}
 
 	if(drType == -1) return false; // means not an input and no lock file found
@@ -151,12 +151,12 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 	switch(drType){
 		case DataRegionType::DENSE_REGION_2D: {
 			DenseDataRegion2D *dr2D = new DenseDataRegion2D();//dynamic_cast<DenseDataRegion2D*>(dataRegion);
-			dr2D->setName((*dataRegion)->getName());
-			dr2D->setId((*dataRegion)->getId());
-			dr2D->setTimestamp((*dataRegion)->getTimestamp());
-			dr2D->setVersion((*dataRegion)->getVersion());
-			dr2D->setIsAppInput((*dataRegion)->getIsAppInput());
-			dr2D->setInputFileName((*dataRegion)->getInputFileName());
+			dr2D->setName(inDr->getName());
+			dr2D->setId(inDr->getId());
+			dr2D->setTimestamp(inDr->getTimestamp());
+			dr2D->setVersion(inDr->getVersion());
+			dr2D->setIsAppInput(inDr->getIsAppInput());
+			dr2D->setInputFileName(inDr->getInputFileName());
 
 
 			cv::Mat chunkData;
@@ -164,6 +164,35 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 			std::cout << "readDDR2DFS: dataRegion: " << dr2D->getName() << " id: " << dr2D->getId() << " version:" <<
 			dr2D->getVersion() << " outputExt: " << dr2D->getOutputExtension() << std::endl;
 #endif
+
+			if (inDr->isSvs()) {
+				if (c != NULL) {
+					// std::cout << std::boolalpha << (c==NULL) << std::endl;
+					// std::cout << inDr->getInputFileName() << std::endl;
+					// Gets the pointer 
+					openslide_t* svsFile = c->getSvsPointer(
+						inDr->getInputFileName());
+
+					// Extracts the roi of the svs file into chunkData
+					int32_t maxLevel = 0; // svs standard: maxlevel = 0
+					osrRegionToCVMat(svsFile, inDr->roi, maxLevel, 
+						chunkData);
+					dr2D->setData(chunkData);
+					// std::cout << "opened " << inDr->getInputFileName() 
+					// 	<< " of size " << chunkData.cols << " x " 
+					// 	<< chunkData.rows << std::endl;
+					// inDr->printRoi();
+					std::cout << std::boolalpha << (dr2D->empty()) << std::endl;
+				} else {
+					std::cout << "[DataRegionFactory] cache is null" << std::endl;
+				}
+
+				(*dataRegion) = (DataRegion *) dr2D;
+				return true;
+			}
+
+
+
 			if (dr2D->getOutputExtension() == DataRegion::XML) {
 				// if it is an Mat stored as a XML file
 				std::string inputFile;
@@ -262,43 +291,25 @@ bool DataRegionFactory::readDDR2DFS(DataRegion **dataRegion, int chunkId, std::s
 				}
 			}
 			// delete father class instance and attribute the specific data region read
-			delete (*dataRegion);
 			(*dataRegion) = (DataRegion *) dr2D;
 			break;
 		}
 		case DataRegionType::REGION_2D_UNALIGNED: {
 			DataRegion2DUnaligned *dr2DUn = new DataRegion2DUnaligned();//dynamic_cast<DataRegion2DUnaligned*>(dataRegion);
-			dr2DUn->setName((*dataRegion)->getName());
-			dr2DUn->setId((*dataRegion)->getId());
-			dr2DUn->setTimestamp((*dataRegion)->getTimestamp());
-			dr2DUn->setVersion((*dataRegion)->getVersion());
+			dr2DUn->setName(inDr->getName());
+			dr2DUn->setId(inDr->getId());
+			dr2DUn->setTimestamp(inDr->getTimestamp());
+			dr2DUn->setVersion(inDr->getVersion());
 
 			std::string inputFileName = createOutputFileName(dr2DUn, path, ".vec");
 
 			readDr2DUn(dr2DUn, inputFileName);
 
 			// delete data region passed as a parameter and replace it with the actual data region with the data
-			delete (*dataRegion);
 			(*dataRegion) = (DataRegion *) dr2DUn;
 
 			break;
 		}
-		// case DataRegionType::DENSE_SVS_REGION_2D: {
-		// 	SvsDataRegion* sdr = new SvsDataRegion();
-		// 	sdr->setRoi((*dataRegion)->getRoi());
-		// 	sdr->setName((*dataRegion)->getName());
-		// 	sdr->setId((*dataRegion)->getId());
-		// 	sdr->setTimestamp((*dataRegion)->getTimestamp());
-		// 	sdr->setVersion((*dataRegion)->getVersion());
-		// 	sdr->setIsAppInput((*dataRegion)->getIsAppInput());
-		// 	sdr->setInputFileName((*dataRegion)->getInputFileName());
-
-		// 	// delete data region passed as a parameter and replace it with the actual data region with the data
-		// 	delete (*dataRegion);
-		// 	(*dataRegion) = (DataRegion *) sdr;
-
-		// 	break;
-		// }
 		default:
 			std::cout << "readDDR2DFS: ERROR: Unknown Region template type: " << drType << std::endl;
 			exit(1);

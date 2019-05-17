@@ -264,7 +264,7 @@ DataRegion* CacheComponent::getDR(std::string rtName, std::string rtId,
 		retValue->setVersion(version);
 		retValue->setInputFileName(inputFileName);
 
-		bool retDRF = DataRegionFactory::readDDR2DFS(&retValue, -1, this->getPath(), this->getDevice() == Cache::SSD);
+		bool retDRF = DataRegionFactory::readDDR2DFS(retValue, &retValue, -1, this->getPath(), this->getDevice() == Cache::SSD);
 
 		if(retDRF == false) {
 			delete retValue;

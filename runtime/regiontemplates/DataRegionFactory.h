@@ -11,7 +11,8 @@
 #include "DataRegion.h"
 #include "DenseDataRegion2D.h"
 #include "DataRegion2DUnaligned.h"
-#include "SvsDataRegion.h"
+#include "Cache.h"
+#include "svs/svsUtils.h"
 
 // OpenCV library includes: used as an auxiliar lib to read/write data(images) to fs
 //#include "cv.hpp"
@@ -33,6 +34,7 @@ extern "C" {
 
 #endif
 class DenseDataRegion2D;
+class Cache;
 
 class DataRegionFactory {
 private:
@@ -50,7 +52,7 @@ private:
 	friend class CacheComponent;
 	friend class Cache;
 public:
-	static bool readDDR2DFS(DataRegion **dataRegion, int chunkId=-1, std::string path="", bool ssd=false);
+	static bool readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, int chunkId=-1, std::string path="", bool ssd=false, Cache* c=NULL);
 	static bool writeDDR2DFS(DataRegion *dataRegion, std::string path="", bool ssd=false);
 
 

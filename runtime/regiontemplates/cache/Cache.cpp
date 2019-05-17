@@ -28,6 +28,13 @@ Cache::~Cache() {
 		delete comp;
 		this->cacheLayers.pop_back();
 	}
+
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
+	// Close all svs file pointers
+	for (std::pair<std::string, openslide_t*> p : svsPointersCache) {
+		openslide_close(p.second);
+	}
+#endif
 }
 
 Cache::Cache(std::string confFile) {
@@ -324,9 +331,7 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 // Otherwise, we will have to find it into a global storage.
 
 
-DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drName, std::string drId,
-						 std::string inputFileName,
-						 int timestamp, int version, int drType, bool copyData, bool isInput, std::string inputPath) {
+DataRegion *Cache::getDR(std::string rtName, std::string rtId, DataRegion* dr, bool copyData) {
 
 	DataRegion* retValue = NULL;
 	long long init = Util::ClockGetTime();
@@ -337,8 +342,8 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drNam
 			// if DR is local to this cache or if cache layer is global, try to read it
 			//			if(isLocal || this->cacheLayers[i]->getType() == Cache::GLOBAL){
 			//this->cacheLayers[i]->lock();
-			retValue = this->cacheLayers[i]->getDR(rtName, rtId, drName, drId, inputFileName, timestamp, version,
-												   copyData, isInput);
+			retValue = this->cacheLayers[i]->getDR(rtName, rtId, dr->getName(), dr->getId(), dr->getInputFileName(), dr->getTimestamp(), dr->getVersion(),
+												   copyData, dr->getIsAppInput());
 			//this->cacheLayers[i]->unlock();
 
 			// update instrumentation
@@ -359,8 +364,8 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drNam
 			//pthread_mutex_unlock(&this->cacheLocks[i]);
 
 			// if it is not on any cache layer and is an input, lets read it
-			if(i+1 == this->cacheLayers.size() && isInput){
-				switch(drType){
+			if(i+1 == this->cacheLayers.size() && dr->getIsAppInput()){
+				switch(dr->getType()){
 					case DataRegionType::DENSE_REGION_2D:{
 						retValue = new DenseDataRegion2D();
 						break;
@@ -369,28 +374,25 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, std::string drNam
 						retValue = new DataRegion2DUnaligned();
 						break;
 					}
-					// case DataRegionType::DENSE_SVS_REGION_2D:{
-					// 	retValue = new SvsDataRegion();
-					// 	break;
-					// }
 					default:
 						std::cout << "Unknown data region type" << std::endl;
 						exit(1);
 						break;
 				} 
 				//DenseDataRegion2D * ddr2D = new DenseDataRegion2D();
-				retValue->setName(drName);
-				retValue->setId(drId);
-				retValue->setTimestamp(timestamp);
-				retValue->setVersion(version);
-				retValue->setIsAppInput(isInput);
-				retValue->setInputFileName(inputPath);
+				// retValue->setName(dr->getName());
+				// retValue->setId(dr->getId());
+				// retValue->setTimestamp(dr->getTimestamp());
+				// retValue->setVersion(dr->getVersion());
+				// retValue->setIsAppInput(dr->getIsAppInput());
+				// retValue->setInputFileName(dr->getInputFileName());
+				// if (dr->isSvs()) retValue->setSvs();
+				dr->printRoi();
 
-
-				DataRegionFactory::readDDR2DFS(&retValue, -1);
+				DataRegionFactory::readDDR2DFS(dr, &retValue, -1, "", false, this);
 
 				if(retValue->empty()){
-//					std::cout << "Empty input DR: " << retValue->getName() << " "<< retValue->getTimestamp() << " "<< retValue->getVersion() << std::endl;
+					std::cout << "Empty input DR: " << retValue->getName() << " "<< retValue->getTimestamp() << " "<< retValue->getVersion() << std::endl;
 					delete retValue;
 					retValue = NULL;
 					usleep(1000);
@@ -528,3 +530,19 @@ bool Cache::deleteDR(std::string rtName, std::string rtId, std::string drName,
 	}
 	return retValue;
 }
+
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
+openslide_t* Cache::getSvsPointer(std::string path) {
+	std::map<std::string, openslide_t*>::iterator it = this->svsPointersCache.find(path);
+	openslide_t* osr;
+
+	// If the pointer wasn't on cache, opens it
+	if (it == svsPointersCache.end()) {
+		osr = openslide_open(path.c_str());
+		svsPointersCache[path] = osr;
+	} else {
+		osr = it->second;
+	}
+	return osr;
+}
+#endif

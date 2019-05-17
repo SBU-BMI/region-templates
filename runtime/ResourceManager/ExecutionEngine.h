@@ -15,10 +15,6 @@
 #include "TrackDependencies.h"
 #include "ExecEngineConstants.h"
 
-#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
-#include "openslide.h"
-#endif
-
 //#define FCFS_QUEUE	1
 //#define PRIORITY_QUEUE	2
 class Task;
@@ -38,11 +34,6 @@ private:
 
 	// Pool of threads that are consuming tasks from the associated queue of tasks
 	ThreadPool *threadPool;
-
-#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
-	// Cache of openslide file pointers to avoid multiple opening of files
-	std::map<std::string, openslide_t*> svsPointersCache;
-#endif
 
 	TrackDependencies *trackDependencies;
 
@@ -109,13 +100,6 @@ public:
 	// of all other created within the calls of start and end transaction
 	void startTransaction(CallBackTaskBase *transactionTask);
 	void endTransaction();
-
-#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
-	// Retrieves the file pointer of a specific svs file. If the
-	// file was not yet opened, opens it and adds the pointer to 
-	// the svsPointersCache
-	openslide_t* getSvsPointer(std::string path);
-#endif
 
 };
 

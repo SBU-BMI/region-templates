@@ -3,7 +3,6 @@
 
 #include "Task.h"
 #include "DenseDataRegion2D.h"
-#include "SvsDataRegion.h"
 
 #include "opencv2/opencv.hpp"
 // #include "opencv2/gpu/gpu.hpp" // old opencv 2.4
@@ -16,13 +15,13 @@
 
 class TaskNormalization: public Task {
 private:
-	DataRegion* raw;
+	DenseDataRegion2D* raw;
 	DenseDataRegion2D* bgr;
 
 	float targetMean[3];
 
 public:
-	TaskNormalization(DataRegion* raw, DenseDataRegion2D* bgr, float targetMean[3]);
+	TaskNormalization(DenseDataRegion2D* raw, DenseDataRegion2D* bgr, float targetMean[3]);
 
 	virtual ~TaskNormalization();
 
