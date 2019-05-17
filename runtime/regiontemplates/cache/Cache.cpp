@@ -379,15 +379,6 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, DataRegion* dr, b
 						exit(1);
 						break;
 				} 
-				//DenseDataRegion2D * ddr2D = new DenseDataRegion2D();
-				// retValue->setName(dr->getName());
-				// retValue->setId(dr->getId());
-				// retValue->setTimestamp(dr->getTimestamp());
-				// retValue->setVersion(dr->getVersion());
-				// retValue->setIsAppInput(dr->getIsAppInput());
-				// retValue->setInputFileName(dr->getInputFileName());
-				// if (dr->isSvs()) retValue->setSvs();
-				dr->printRoi();
 
 				DataRegionFactory::readDDR2DFS(dr, &retValue, -1, "", false, this);
 

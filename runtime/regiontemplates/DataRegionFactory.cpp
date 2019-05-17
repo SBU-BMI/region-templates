@@ -167,8 +167,6 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 
 			if (inDr->isSvs()) {
 				if (c != NULL) {
-					// std::cout << std::boolalpha << (c==NULL) << std::endl;
-					// std::cout << inDr->getInputFileName() << std::endl;
 					// Gets the pointer 
 					openslide_t* svsFile = c->getSvsPointer(
 						inDr->getInputFileName());
@@ -178,20 +176,14 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 					osrRegionToCVMat(svsFile, inDr->roi, maxLevel, 
 						chunkData);
 					dr2D->setData(chunkData);
-					// std::cout << "opened " << inDr->getInputFileName() 
-					// 	<< " of size " << chunkData.cols << " x " 
-					// 	<< chunkData.rows << std::endl;
-					// inDr->printRoi();
-					std::cout << std::boolalpha << (dr2D->empty()) << std::endl;
 				} else {
 					std::cout << "[DataRegionFactory] cache is null" << std::endl;
+					exit(10);
 				}
 
 				(*dataRegion) = (DataRegion *) dr2D;
 				return true;
 			}
-
-
 
 			if (dr2D->getOutputExtension() == DataRegion::XML) {
 				// if it is an Mat stored as a XML file

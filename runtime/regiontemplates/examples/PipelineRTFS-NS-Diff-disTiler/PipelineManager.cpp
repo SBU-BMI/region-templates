@@ -7,6 +7,7 @@
 #include "SysEnv.h"
 #include "RegionTemplate.h"
 #include "BoundingBox.h"
+#include "Util.h"
 
 #include "NormalizationComp.h"
 #include "Segmentation.h"
@@ -23,6 +24,8 @@
 static const std::string IN_RT_NAME = "img";
 static const std::string MASK_RT_NAME = "mask";
 static const std::string REF_DDR_NAME = "initial";
+
+// #define NODIFF // Use this define to generate a segmented mask in the tmp dir
 
 NormalizationComp* genNormalization(RegionTemplate* rt, std::string ddrName) {
 
@@ -201,6 +204,9 @@ int main (int argc, char **argv){
     std::string tmpPath = "./";
     std::vector<int> diffComponentIds;
     int border = 0; // pixels to be added to the borders of the tiles
+        
+    // Tiling profile time
+    uint64_t initTime = Util::ClockGetTime();
 
     if (tSize == 0) { // no tiling
         // Generate TRTCs for the standard tiling i.e., no tiling at all
@@ -241,8 +247,17 @@ int main (int argc, char **argv){
 
     // Perform standard tiling i.e., no tiling at all
     tCollImg->tileImages();
-    std::cout << "here" << std::endl;
+#ifndef NODIFF
     tCollMask->tileImages(tCollImg->getTiles());
+#endif
+
+    uint64_t endTime = Util::ClockGetTime();
+    std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
+    std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
+    std::string rtSize = tSize >= 0 ? " with tile size " + to_string(tSize) : "";
+    std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
+        << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
+        << " seconds " << endTime << " -> " << endTime << std::endl;
 
     std::cout << "[PielineManager] Number of tiles created: " 
         << tCollImg->getNumRTs() << std::endl;
@@ -252,21 +267,27 @@ int main (int argc, char **argv){
         // Get RTs
         std::string inputRTDRname = tCollImg->getRT(i).first;
         RegionTemplate* inputRT = tCollImg->getRT(i).second;
+#ifndef NODIFF
         std::string maskRTDRname = tCollMask->getRT(i).first;
         RegionTemplate* maskRT = tCollMask->getRT(i).second;
+#endif
 
         // Instantiate stages
         NormalizationComp* norm = genNormalization(inputRT, inputRTDRname);
         Segmentation* seg = genSegmentation(norm->getId(), 
             inputRT, inputRTDRname);
+#ifndef NODIFF
         DiffMaskComp* diff = genDiffMaskComp(seg->getId(), 
             inputRT, maskRT, inputRTDRname, maskRTDRname);
         diffComponentIds.push_back(diff->getId());
+#endif
 
         // add stages to execution
         sysEnv.executeComponent(norm);
         sysEnv.executeComponent(seg);
+#ifndef NODIFF
         sysEnv.executeComponent(diff);
+#endif
     }
 
     // End Creating Dependency Graph
@@ -290,6 +311,14 @@ int main (int argc, char **argv){
     }
     std::cout << "Total diff: " << diff_f << " Secondary Metric: " 
         << secondaryMetric << std::endl;
+
+    // std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
+    // std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
+    // std::string rtSize = 
+    //     tSize >= 0 ? " with tile size " + to_string(tSize) : "";
+    // std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
+    //     << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
+    //     << " seconds " << endTime << " -> " << endTime << std::endl;
 
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
