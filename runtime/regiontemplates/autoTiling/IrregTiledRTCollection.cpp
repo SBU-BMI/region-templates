@@ -381,26 +381,29 @@ inline int cost(const cv::Mat& img) {
 }
 
 inline int cost(const cv::Mat& img, const rect_t& r) {
-    return cv::sum(img(cv::Range(r.xi, r.xo), cv::Range(r.yi, r.yo)))[0];
+    return cv::sum(img(cv::Range(r.yi, r.yo), cv::Range(r.xi, r.xo)))[0];
 }
 
-inline int cost(const cv::Mat& img, int xi, int xo, int yi, int yo) {
-    return cv::sum(img(cv::Range(xi, xo), cv::Range(yi, yo)))[0];
+inline int cost(const cv::Mat& img, int yi, int yo, int xi, int xo) {
+    return cv::sum(img(cv::Range(yi, yo), cv::Range(xi, xo)))[0];
 }
 
 inline bool between(int x, int init, int end) {
     return x >= init && x <= end;
 }
 
-// Functor for sorting a list of rect_t using the added cost of said
-// // region on the img parameter.
-// struct rect_tCostFunct{
-//     const cv::Mat& img;
-//     rect_tCostFunct(const cv::Mat& img) : img(img) {}
-//     bool operator()(const rect_t& a, const rect_t& b) {
-//         return cost(img, a) < cost(img, b);
-//     }
-// };
+// Functor for sorting a container of rect_t using the added cost of said
+// region on the img parameter.
+// NOTE: when instantiating container, use double parenthesis to avoid 
+// compiler confusion of the declared object with a function:
+// Cont<t1, rect_tCostFunct> obj((rect_tCostFunct(img)))
+struct rect_tCostFunct{
+    const cv::Mat& img;
+    rect_tCostFunct(const cv::Mat& img) : img(img) {}
+    bool operator()(const rect_t& a, const rect_t& b) {
+        return cost(img, a) > cost(img, b);
+    }
+};
 
 // Performs a binary sweep search across the input tile image, searching for 
 // a split on which the goal cost is found within an acc margin of error.
@@ -408,12 +411,7 @@ inline bool between(int x, int init, int end) {
 // and a horizontal sweep are performed, being returned the pair of regions
 // with the smallest difference between areas.
 void splitTile(const rect_t& r, const cv::Mat& img, int expCost, 
-    rect_t& newt1, rect_t& newt2, float acc=0.8) {
-
-    // Create a tile image and gets its initial full cost of the region
-    // cv::Mat imgReg = img(cv::Range(r.xi, r.xo), cv::Range(r.yi, r.yo));
-    // int fullCost = cost(imgReg);
-    int fullCost = cost(img, r);
+    rect_t& newt1, rect_t& newt2, float acc=0.2) {
 
     // Gets upper and lower bounds for the expected cost
     int upperCost = expCost + expCost*acc;
@@ -421,11 +419,23 @@ void splitTile(const rect_t& r, const cv::Mat& img, int expCost,
 
     int pivotLen = (r.xo - r.xi)/2;
     int pivotx = r.xi + pivotLen;
-    int cost1 = cost(img, r.xi, pivotx, r.yi, r.yo);
-    int cost2 = cost(img, pivotx+1, r.xo, r.yi, r.yo);
+    int cost1 = cost(img, r.yi, r.yo, r.xi, pivotx);
+    int cost2 = cost(img, r.yi, r.yo, pivotx+1, r.xo);
+
+    // std::cout << "[splitTile] initial size and full cost: " << (r.yo-r.yi)
+    //     << "," << (r.xo-r.xi) << ":" << cost(img, r) << std::endl;
+    // std::cout << "[splitTile] initial costs: " << cost1 
+    //     << ", " << cost2 << std::endl;
+    // std::cout << "[splitTile] expected cost: " << expCost << std::endl;
     
     while (!between(cost1, lowerCost, upperCost) 
-        && !between(cost2, lowerCost, upperCost)) {
+        && !between(cost2, lowerCost, upperCost)
+        && pivotLen > 0) {
+
+        // std::cout << "[splitTile] costs: " << cost1 
+        //     << ", " << cost2 << std::endl;
+        // std::cout << "[splitTile] pivot, len: " << pivotx 
+        //     << ", " << pivotLen << std::endl;
 
         // If the expected cost was not achieved, split the pivotLen
         // and try again, moving the pivot closer to the tile with
@@ -436,9 +446,12 @@ void splitTile(const rect_t& r, const cv::Mat& img, int expCost,
         else
             pivotx += pivotLen;
 
-        cost1 = cost(img, r.xi, pivotx, r.yi, r.yo);
-        cost2 = cost(img, pivotx+1, r.xo, r.yi, r.yo);
+        cost1 = cost(img, r.yi, r.yo, r.xi, pivotx);
+        cost2 = cost(img, r.yi, r.yo, pivotx+1, r.xo);
     }
+
+    // std::cout << "[splitTile] final costs: " << cost1 
+    //     << ", " << cost2 << std::endl;
 
     // Assigns the regions coordinates
     newt1.xi = r.xi; // newt1 is left and newt2 is right
@@ -455,7 +468,7 @@ void splitTile(const rect_t& r, const cv::Mat& img, int expCost,
 // pixel, the list of dense regions and the expected number of tiles which
 // should be attained after tiling. If nTiles is greater than the number of 
 // initial dense regions, no tiling will be performed.
-void denseTiling(const cv::Mat& img, std::list<rect_t> dense, int nTiles) {
+void denseTiling(const cv::Mat& img, std::list<rect_t>& dense, int nTiles) {
     // Check if tiling is required
     if (dense.size() >= nTiles) {
         std::cout << "[IrregTiledRTCollection] No dense tiling performed, " 
@@ -464,37 +477,51 @@ void denseTiling(const cv::Mat& img, std::list<rect_t> dense, int nTiles) {
         return;
     }
 
+    // std::cout << "[denseTiling] started with " << dense.size() 
+    //     << " to " << nTiles << std::endl;
+
     // Calculates the target average cost of a dense tile
     int avgCost = cv::sum(img)[0]/nTiles;
 
-    // Create a multimap of tiles with the cost of each tile as its key
-    // This is to avoid re-sorting of the dense list and enable O(1) access
-    std::multimap<int, rect_t> sDense;
+    // Create a multiset of tiles ordered by the cost function. This is to 
+    // avoid re-sorting of the dense list whilst enabling O(1) access
+    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img)));
     for (rect_t r : dense) {
-        sDense.insert(std::pair<int, rect_t>(cost(img, r), r));
+        sDense.insert(r);
     }
-    // // sort dense by the cost of tiles
-    // dense.sort(rect_tCostFunct(img));
 
-    // Keep breaking tiles until nTiles goal is reached
+    // Keeps breaking tiles until nTiles goal is reached
     while (sDense.size() < nTiles) {
-        rect_t newt1, newt2;
-        // Split tile with highest cost, generating a two new tiles, being 
-        // one of them with close to avgCost cost.
-        splitTile(sDense.begin()->second, img, avgCost, newt1, newt2);
+        // Gets the first region (highest cost) 
+        std::multiset<rect_t, rect_tCostFunct>::iterator dIt = sDense.begin();
 
-        // Remove the first tile and insert the two sub-tiles created from it
-        sDense.erase(sDense.begin());
-        sDense.insert(std::pair<int, rect_t>(cost(img, newt1), newt1));
-        sDense.insert(std::pair<int, rect_t>(cost(img, newt2), newt2));
+        // Splits tile with highest cost, generating a two new tiles, being 
+        // one of them with close to avgCost cost.
+        rect_t newt1, newt2;
+        if ((dIt->xo-dIt->xi) == 1 || (dIt->yo-dIt->yi) == 1) {
+            std::cout << "[IrregTiledRTCollection] Tile too small to split."
+                << std::endl;
+            exit(-1);
+        }
+        splitTile(*dIt, img, avgCost, newt1, newt2);
+
+        // Removes the first tile and insert the two sub-tiles created from it
+        sDense.erase(dIt);
+        sDense.insert(newt1);
+        sDense.insert(newt2);
     }
+
+    // Moves regions to the output list
+    dense.clear();
+    for (rect_t r : sDense)
+        dense.push_back(r);
 }
 
 /*****************************************************************************/
 /**                             Full AutoTiler                              **/
 /*****************************************************************************/
 
-std::list<cv::Rect_<int64_t> > autoTiler(const cv::Mat& mask, 
+std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask, 
     int border, int nTiles, const cv::Mat* input = NULL) {
 
     std::list<rect_t> output;
@@ -525,7 +552,7 @@ std::list<cv::Rect_<int64_t> > autoTiler(const cv::Mat& mask,
     }
 
 // #ifdef DEBUG
-    std::cout << "[autoTiler] Image size: " 
+    std::cout << "[autoTiler] Tiling image size: " 
         << mask.cols << "x" << mask.rows << std::endl;
     std::cout << "[autoTiler] Initial dense regions: " << maxLabel << std::endl;
 // #endif
@@ -636,6 +663,26 @@ IrregTiledRTCollection::IrregTiledRTCollection(std::string name,
     this->border = border;
     this->bgm = bgm;
     this->nTiles = nTiles;
+    hOnlyDenseSweep = false;
+    vOnlyDenseSweep = false;
+}
+
+void IrregTiledRTCollection::setHOnlySweep() {
+    if (vOnlyDenseSweep) {
+        std::cout << "[IrregTiledRTCollection] only one sweep strategy "
+            << "can be selected" << std::endl;
+        exit(-1);
+    }
+    this->hOnlyDenseSweep = true;
+}
+
+void IrregTiledRTCollection::setVOnlySweep() {
+    if (hOnlyDenseSweep) {
+        std::cout << "[IrregTiledRTCollection] only one sweep strategy "
+            << "can be selected" << std::endl;
+        exit(-1);
+    }
+    this->vOnlyDenseSweep = true;
 }
 
 void IrregTiledRTCollection::customTiling() {

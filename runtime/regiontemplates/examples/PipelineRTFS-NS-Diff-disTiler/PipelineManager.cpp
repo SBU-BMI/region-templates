@@ -136,13 +136,18 @@ int main (int argc, char **argv){
         std::cout << "Usage: ./exec [-t <sqr_dim>] -i <input_basename> "
             << "-m <mask_basename> -p <path>" << std::endl;
         std::cout << "\t-t: Break images into sqr_dim sized squares for "
-            << "execution, i.e., don't use disTiler. 0 for no tiling." 
+            << "execution, i.e., don't use disTiler. 0 for no tiling. " 
+            << "For irregular tiling omit this parameter."
             << std::endl;
-        std::cout << "\t-i: Full name of the input image. It can be .svs files." 
-            << std::endl;
-        std::cout << "\t-m: Full name of the mask image. It can be .svs files." 
-            << std::endl;
+        std::cout << "\t-i: Full name of the input image. "
+            << "It MUST be a .svs file." << std::endl;
+        std::cout << "\t-m: Full name of the mask image. "
+            << "It can be a .svs file." << std::endl;
         std::cout << "\t-p: Path of all input images" << std::endl;
+        std::cout << "\t-l: Whether input tiles should be generated lazily. " 
+            << "Only applicable for irregular tiling." << std::endl;
+        std::cout << "\t-nt: Number of expected dense tiles. " 
+            << "Only applicable for irregular tiling." << std::endl;
         exit(0);
     }
 
@@ -189,10 +194,16 @@ int main (int argc, char **argv){
         inputFolderPath = argv[findArgPos("-p", argc, argv)+1];
     }
 
-    // Regular tiling?
+    // Lazy tiling?
     bool lazyTileRead = false;
     if (findArgPos("-l", argc, argv) != -1) {
         lazyTileRead = true;
+    }
+
+    // Number of expected dense tiles for irregular tiling
+    int nTiles = 0;
+    if (findArgPos("-nt", argc, argv) != -1) {
+        nTiles = atoi(argv[findArgPos("-nt", argc, argv)+1]);
     }
 
     // For this test we only use a single input and output images
@@ -231,11 +242,11 @@ int main (int argc, char **argv){
 
         if (lazyTileRead) {
             tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-                REF_DDR_NAME, imgFilePath, border, bgm);
+                REF_DDR_NAME, imgFilePath, border, bgm, nTiles);
             ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
         } else {
             tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-                REF_DDR_NAME, tmpPath, border, bgm);
+                REF_DDR_NAME, tmpPath, border, bgm, nTiles);
         }
         tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
