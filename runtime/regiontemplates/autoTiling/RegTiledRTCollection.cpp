@@ -134,7 +134,7 @@ void RegTiledRTCollection::customTiling() {
 
             // Create the first tile file
             createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                this->tilesPath, this->name, i, 0, tj, drId++,
+                this->tilesPath, this->name, i, 0, xTiles, drId++,
                 this->refDDRName, this->rts);
 
             for (int ti=1; ti<yTiles; ti++) {
@@ -151,7 +151,7 @@ void RegTiledRTCollection::customTiling() {
 
                 // Create a tile file
                 createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                    this->tilesPath, this->name, i, ti, tj, drId++,
+                    this->tilesPath, this->name, i, ti, xTiles, drId++,
                     this->refDDRName, this->rts);
             }
         }
@@ -172,7 +172,7 @@ void RegTiledRTCollection::customTiling() {
 
             // Create the first tile file
             createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                this->tilesPath, this->name, i, ti, 0, drId++,
+                this->tilesPath, this->name, i, yTiles, 0, drId++,
                     this->refDDRName, this->rts);
 
             for (int tj=1; tj<xTiles; tj++) {
@@ -189,7 +189,7 @@ void RegTiledRTCollection::customTiling() {
 
                 // Create a tile file
                 createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                    this->tilesPath, this->name, i, ti, tj, drId++,
+                    this->tilesPath, this->name, i, yTiles, tj, drId++,
                     this->refDDRName, this->rts);
             }
         }
@@ -211,7 +211,7 @@ void RegTiledRTCollection::customTiling() {
 
             // Create a tile file
             createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                this->tilesPath, this->name, i, ti, tj, drId++,
+                this->tilesPath, this->name, i, yTiles, xTiles, drId++,
                 this->refDDRName, this->rts);
         }
 
