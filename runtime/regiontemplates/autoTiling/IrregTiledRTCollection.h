@@ -15,6 +15,7 @@
 class IrregTiledRTCollection : public TiledRTCollection {
 private:
     int border;
+    int nTiles; // Expected number of dense tiles by the end of te tiling
     BGMasker* bgm;
 
 protected:
@@ -25,7 +26,7 @@ protected:
 
 public:
     IrregTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int border, BGMasker* bgm);
+        std::string tilesPath, int border, BGMasker* bgm, int nTiles=0);
 };
 
 #endif
