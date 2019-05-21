@@ -417,51 +417,83 @@ void splitTile(const rect_t& r, const cv::Mat& img, int expCost,
     int upperCost = expCost + expCost*acc;
     int lowerCost = expCost - expCost*acc;
 
-    int pivotLen = (r.xo - r.xi)/2;
-    int pivotx = r.xi + pivotLen;
-    int cost1 = cost(img, r.yi, r.yo, r.xi, pivotx);
-    int cost2 = cost(img, r.yi, r.yo, pivotx+1, r.xo);
+    ///////////////////////////////////////////////////////////////////////////
+    // Horizontal sweeping
+    int pivotxLen = (r.xo - r.xi)/2;
+    int pivotx = r.xi + pivotxLen;
+    int cost1h = cost(img, r.yi, r.yo, r.xi, pivotx);
+    int cost2h = cost(img, r.yi, r.yo, pivotx+1, r.xo);
+    int areah;
 
-    // std::cout << "[splitTile] initial size and full cost: " << (r.yo-r.yi)
-    //     << "," << (r.xo-r.xi) << ":" << cost(img, r) << std::endl;
-    // std::cout << "[splitTile] initial costs: " << cost1 
-    //     << ", " << cost2 << std::endl;
-    // std::cout << "[splitTile] expected cost: " << expCost << std::endl;
-    
-    while (!between(cost1, lowerCost, upperCost) 
-        && !between(cost2, lowerCost, upperCost)
-        && pivotLen > 0) {
-
-        // std::cout << "[splitTile] costs: " << cost1 
-        //     << ", " << cost2 << std::endl;
-        // std::cout << "[splitTile] pivot, len: " << pivotx 
-        //     << ", " << pivotLen << std::endl;
+    // Finds through binary search the best horizontal pivot
+    while (!between(cost1h, lowerCost, upperCost) 
+        && !between(cost2h, lowerCost, upperCost)
+        && pivotxLen > 0) {
 
         // If the expected cost was not achieved, split the pivotLen
         // and try again, moving the pivot closer to the tile with
         // the greatest cost.
-        pivotLen /= 2;
-        if (cost1 > cost2)
-            pivotx -= pivotLen;
+        pivotxLen /= 2;
+        if (cost1h > cost2h)
+            pivotx -= pivotxLen;
         else
-            pivotx += pivotLen;
+            pivotx += pivotxLen;
 
-        cost1 = cost(img, r.yi, r.yo, r.xi, pivotx);
-        cost2 = cost(img, r.yi, r.yo, pivotx+1, r.xo);
+        cost1h = cost(img, r.yi, r.yo, r.xi, pivotx);
+        cost2h = cost(img, r.yi, r.yo, pivotx+1, r.xo);
     }
 
-    // std::cout << "[splitTile] final costs: " << cost1 
-    //     << ", " << cost2 << std::endl;
+    // Calculate difference between areas of new tiles 1 and 2
+    areah = abs((r.yo - r.yi)*(r.xo + r.xi + 2*pivotx));
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Vertical sweeping
+    int pivotyLen = (r.yo - r.yi)/2;
+    int pivoty = r.yi + pivotyLen;
+    int cost1v = cost(img, r.yi, pivoty, r.xi, r.xo);
+    int cost2v = cost(img, pivoty+1, r.yo, r.xi, r.xo);
+    int areav;
+
+    // Finds through binary search the best vertical pivot
+    while (!between(cost1v, lowerCost, upperCost) 
+        && !between(cost2v, lowerCost, upperCost)
+        && pivotyLen > 0) {
+
+        // If the expected cost was not achieved, split the pivotLen
+        // and try again, moving the pivot closer to the tile with
+        // the greatest cost.
+        pivotyLen /= 2;
+        if (cost1v > cost2v)
+            pivoty -= pivotyLen;
+        else
+            pivoty += pivotyLen;
+
+        cost1v = cost(img, r.yi, pivoty, r.xi, r.xo);
+        cost2v = cost(img, pivoty+1, r.yo, r.xi, r.xo);
+    }
+
+    // Calculate difference between areas of new tiles 1 and 2
+    areav = abs((r.xo - r.xi)*(r.yo + r.yi + 2*pivoty));
+
+    ///////////////////////////////////////////////////////////////////////////
     // Assigns the regions coordinates
     newt1.xi = r.xi; // newt1 is left and newt2 is right
-    newt1.xo = pivotx;
     newt1.yi = r.yi;
-    newt1.yo = r.yo;
-    newt2.xi = pivotx + 1;
     newt2.xo = r.xo; // newt1 is left and newt2 is right
-    newt2.yi = r.yi;
     newt2.yo = r.yo;
+
+    // Checks whether vertical or horizontal sweep results were better
+    if (areah < areav) {    
+        newt1.xo = pivotx;
+        newt2.xi = pivotx+1;
+        newt1.yo = r.yo;
+        newt2.yi = r.yi;
+    } else {
+        newt1.xo = r.xo;
+        newt2.xi = r.xi;
+        newt1.yo = pivoty;
+        newt2.yi = pivoty+1;
+    }
 }
 
 // Receives an input mask of the image containing the cost value of each
