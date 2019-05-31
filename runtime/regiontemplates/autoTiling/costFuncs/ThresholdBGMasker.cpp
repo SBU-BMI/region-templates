@@ -1,9 +1,8 @@
 #include "ThresholdBGMasker.h"
 
-ThresholdBGMasker::ThresholdBGMasker(int bgThr, int dilate, int erode) {
+ThresholdBGMasker::ThresholdBGMasker(int bgThr, int dilate) {
     this->bgThr = bgThr;
     this->dilate = dilate;
-    this->erode = erode;
 }
 
 cv::Mat ThresholdBGMasker::bgMask(cv::Mat img) {

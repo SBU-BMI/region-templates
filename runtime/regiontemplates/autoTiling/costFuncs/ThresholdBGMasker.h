@@ -15,10 +15,9 @@ class ThresholdBGMasker : public BGMasker {
 private:
     int bgThr;
     int dilate;
-    int erode;
     
 public:
-    ThresholdBGMasker(int bgThr, int dilate, int erode);
+    ThresholdBGMasker(int bgThr, int dilate);
 
     cv::Mat bgMask(cv::Mat img);
 };
