@@ -235,7 +235,7 @@ int main (int argc, char **argv){
         int dilate = 10;
         BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
 
-        // Masking test
+        // // Masking test
         // cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
         // cv::imwrite("./testmask.png", mask);
         // exit(9);
