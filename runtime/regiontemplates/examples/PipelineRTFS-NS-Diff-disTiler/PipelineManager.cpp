@@ -20,18 +20,17 @@
 #include "ThresholdBGRemStage.h"
 #include "LogSweepTilingStage.h"
 
-// #include "TiledRTCollection.h"
-// #include "RegTiledRTCollection.h"
-// #include "IrregTiledRTCollection.h"
 // #include "costFuncs/BGMasker.h"
 // #include "costFuncs/ThresholdBGMasker.h"
 
 static const std::string IN_RT_NAME = "img";
 static const std::string MASK_RT_NAME = "mask";
-// static const std::string REF_DDR_NAME = "initial";
+
+/*****************************************************************************/
+/**                            Stage Generators                             **/
+/*****************************************************************************/
 
 NormalizationComp* genNormalization(RegionTemplate* rt, std::string ddrName) {
-
     // Normalization args
     ArgumentFloatArray *targetMeanAux = new ArgumentFloatArray();
     targetMeanAux->addArgValue(ArgumentFloat(-0.632356));
@@ -102,12 +101,9 @@ DiffMaskComp* genDiffMaskComp(int segId, RegionTemplate* rtIn,
     return diff;
 }
 
-int findArgPos(string s, int argc, char** argv) {
-    for (int i=1; i<argc; i++)
-        if (string(argv[i]).compare(s)==0)
-            return i;
-    return -1;
-}
+/*****************************************************************************/
+/**                             Arguments Parsing                           **/
+/*****************************************************************************/
 
 // Possible stages of the tiling pipeline
 // Have their arg prefix commented by its size
@@ -157,12 +153,13 @@ void printHelp() {
         << "[options]... stages..." << std::endl;
     std::cout << std::endl;
     std::cout << "Options:" << std::endl;
-    std::cout << "-i   Input images path. Formated as 'path/<filename>' on " 
-        << " which there are two files on path: <filename>.svs (the input "
-        << "image) and <filename>.tiff (the mask image)." << std::endl;
-    std::cout << "" << std::endl;
-    std::cout << "" << std::endl;
-    std::cout << "" << std::endl;
+    std::cout << "  -i   Input images path. Formated as 'path/<filename>' on " 
+              << " which there are two files on path:" << std::endl
+              << "       <filename>.svs (the input image) and <filename>.tiff "
+              << "(the mask image)." << std::endl;
+    // std::cout << "" << std::endl;
+    // std::cout << "" << std::endl;
+    // std::cout << "" << std::endl;
 }
 
 // Returns a map of all found arguments' values by their arg id of stageArgs_t
@@ -214,29 +211,29 @@ void generateTilingPipeline(RTCollectionTilingPipeline* pipeline,
     for (int i = optind; i<argc; i++) {
         switch (str2stages_t(argv[i])) {
             case REG_TILING: {
-                stage = new RegularTilingStage();
-                if (args.find(REG_T_SIZE) != args.end())
-                    ((RegularTilingStage*)stage)->setTileSize(args.at(REG_T_SIZE));
+                // stage = new RegularTilingStage();
+                // if (args.find(REG_T_SIZE) != args.end())
+                //     ((RegularTilingStage*)stage)->setTileSize(args.at(REG_T_SIZE));
                 break;
             }
             case THR_BG_REM: {
-                stage = new ThresholdBGRemStage();
-                if (args.find(TBR_THRV) != args.end())
-                    ((ThresholdBGRemStage*)stage)->setThrhd(args.at(TBR_THRV));
-                if (args.find(TBR_THRO) != args.end())
-                    ((ThresholdBGRemStage*)stage)->setOrient(args.at(TBR_THRO));
-                if (args.find(TBR_DIL) != args.end())
-                    ((ThresholdBGRemStage*)stage)->setErode(args.at(TBR_DIL));
+                // stage = new ThresholdBGRemStage();
+                // if (args.find(TBR_THRV) != args.end())
+                //     ((ThresholdBGRemStage*)stage)->setThrhd(args.at(TBR_THRV));
+                // if (args.find(TBR_THRO) != arts.end())
+                //     ((ThresholdBGRemStage*)stage)->setOrient(args.at(TBR_THRO));
+                // if (args.find(TBR_DIL) != args.end())
+                //     ((ThresholdBGRemStage*)stage)->setErode(args.at(TBR_DIL));
                 break;
             }
             case LOG_SWEEP: {
-                stage = new LogSweepTilingStage();
-                if (args.find(LGS_NTILES) != args.end())
-                    ((LogSweepTilingStage*)stage)->setNTiles(args.at(LGS_NTILES));
-                if (args.find(LGS_MAXC) != args.end())
-                    ((LogSweepTilingStage*)stage)->setMaxC(args.at(LGS_MAXC));
-                if (args.find(LGS_VAR) != args.end())
-                    ((LogSweepTilingStage*)stage)->setVar(args.at(LGS_VAR));
+                // stage = new LogSweepTilingStage();
+                // if (args.find(LGS_NTILES) != args.end())
+                //     ((LogSweepTilingStage*)stage)->setNTiles(args.at(LGS_NTILES));
+                // if (args.find(LGS_MAXC) != args.end())
+                //     ((LogSweepTilingStage*)stage)->setMaxC(args.at(LGS_MAXC));
+                // if (args.find(LGS_VAR) != args.end())
+                //     ((LogSweepTilingStage*)stage)->setVar(args.at(LGS_VAR));
                 break;
             }
             case KD_TREE: {
@@ -254,11 +251,62 @@ void generateTilingPipeline(RTCollectionTilingPipeline* pipeline,
     }
 }
 
+/*****************************************************************************/
+/**                              Main Routine                               **/
+/*****************************************************************************/
+
 int main(int argc, char **argv){
+    // Handler to the distributed execution system environment
+    SysEnv sysEnv;
+
+    // Tells the system which libraries should be used
+    sysEnv.startupSystem(argc, argv, "libcomponentnsdiffdt.so");
+
     // Current version only reads a single image as a flag and many
     // arguments containing the tiling pipeline
     std::map<stageArgs_t, std::string> args = loadArgs(argc, argv);
+    if (args.find(ALL_IN_IMG) == args.end()) {
+        std::cout << "Need input images path(-i)." << std::endl;
+        printHelp();
+        return 0;
+    }
     std::string inputImgPath = args.at(ALL_IN_IMG);
+
+
+
+    // // Open image for tiling
+    // int64_t w = -1;
+    // int64_t h = -1;
+    // openslide_t* osr;
+    // int32_t osrMinLevel = -1;
+    // int32_t osrMaxLevel = 0; // svs standard: max level = 0
+    // float ratiow;
+    // float ratioh; 
+    // cv::Mat maskMat;
+    openslide_t* osr = openslide_open((inputImgPath + ".svs").c_str());
+    // openslide_detect_vendor((inputImgPath + ".svs").c_str());
+
+    //     // Gets info of largest image
+    //     openslide_get_level0_dimensions(osr, &w, &h);
+    //     ratiow = w;
+    //     ratioh = h;
+    //     std::cout << "=======" << w << ", " << h << std::endl;
+
+    //     // Opens smallest image as a cv mat
+    //     osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+    //     openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
+    //     cv::Rect_<int64_t> roi(0, 0, w, h);
+    //     std::cout << "------- " << osr << ", " << roi << ", " << osrMinLevel << ", " << maskMat << std::endl;
+    //     osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
+
+    //     // Calculates the ratio between largest and smallest 
+    //     // images' dimensions for later conversion
+    //     ratiow /= w;
+    //     ratioh /= h;
+
+
+
+
 
     // Instantiates a new RT collection tiling pipeline for the initial image
     RTCollectionTilingPipeline* inTilingPipeline 
@@ -281,15 +329,9 @@ int main(int argc, char **argv){
         = new RTCollectionTilingPipeline(MASK_RT_NAME);
     bool noDiff = false;
     if (!noDiff) { // Only needs mask if the is one
-        maskTilingPipeline->setImage(inputImgPath + ".tiff");
+        maskTilingPipeline->setImage(inputImgPath + ".mask.tiff");
         maskTilingPipeline->tile(inTilingPipeline);
     }
-
-    // Handler to the distributed execution system environment
-    SysEnv sysEnv;
-
-    // Tells the system which libraries should be used
-    sysEnv.startupSystem(argc, argv, "libcomponentnsdiffdt.so");
 
     // Generate the pipelines for each tile
     std::vector<int> diffComponentIds; // Diff result vector
@@ -347,233 +389,4 @@ int main(int argc, char **argv){
     sysEnv.finalizeSystem();
 
     return 0;
-
-
-
-
-
-
-
-//     // get args
-//     if (argc < 5) {
-//         std::cout << "Usage: ./exec [-t <sqr_dim>] -i <input_basename> "
-//             << "-m <mask_basename> -p <path>" << std::endl;
-//         std::cout << "\t-t: Break images into sqr_dim sized squares for "
-//             << "execution, i.e., don't use disTiler. 0 for no tiling. " 
-//             << "For irregular tiling omit this parameter."
-//             << std::endl;
-//         std::cout << "\t-i: Full name of the input image. "
-//             << "It MUST be a .svs file." << std::endl;
-//         std::cout << "\t-m: Full name of the mask image. "
-//             << "It can be a .svs file." << std::endl;
-//         std::cout << "\t-p: Path of all input images" << std::endl;
-//         std::cout << "\t-l: Whether input tiles should be generated lazily. " 
-//             << "Only applicable for irregular tiling." << std::endl;
-//         std::cout << "\t-nt: Number of expected dense tiles. " 
-//             << "Only applicable for irregular tiling." << std::endl;
-//         exit(0);
-//     }
-
-//     // Regular tiling?
-//     int tSize = -1;
-//     if (findArgPos("-t", argc, argv) != -1) {
-//         tSize = atoi(argv[findArgPos("-t", argc, argv)+1]);
-//     }
-
-//     // Input images
-//     string imgBasename;
-//     if (findArgPos("-i", argc, argv) == -1) {
-//         cout << "Missing image basename." << endl;
-//         return 0;
-//     } else {
-//         imgBasename = argv[findArgPos("-i", argc, argv)+1];
-//         std::size_t l = imgBasename.find_last_of(".");
-//         if (imgBasename.substr(l).compare(".svs") != 0) {
-//             cout << "Input image not svs." << endl;
-//             return 0;
-//         }
-//     }
-
-//     // Mask images
-//     string maskBasename;
-//     if (findArgPos("-m", argc, argv) == -1) {
-//         cout << "Missing mask basename." << endl;
-//         return 0;
-//     } else {
-//         maskBasename = argv[findArgPos("-m", argc, argv)+1];
-//         std::size_t l = maskBasename.find_last_of(".");
-//         // if (maskBasename.substr(l).compare(".svs") != 0) {
-//         //     cout << "Mask image not svs." << endl;
-//         //     return 0;
-//         // }
-//     }
-
-//     // Input images
-//     string inputFolderPath;
-//     if (findArgPos("-p", argc, argv) == -1) {
-//         cout << "Missing input images path." << endl;
-//         return 0;
-//     } else {
-//         inputFolderPath = argv[findArgPos("-p", argc, argv)+1];
-//     }
-
-//     // Lazy tiling?
-//     bool lazyTileRead = false;
-//     if (findArgPos("-l", argc, argv) != -1) {
-//         lazyTileRead = true;
-//     }
-
-//     // Number of expected dense tiles for irregular tiling
-//     int nTiles = 0;
-//     if (findArgPos("-nt", argc, argv) != -1) {
-//         nTiles = atoi(argv[findArgPos("-nt", argc, argv)+1]);
-//     }
-
-
-
-
-
-
-
-
-
-
-
-//     // For this test we only use a single input and output images
-//     std::string imgFilePath = inputFolderPath + imgBasename;
-//     std::string maskFilePath = inputFolderPath + maskBasename;
-    
-//     TiledRTCollection* tCollImg;
-//     TiledRTCollection* tCollMask;
-//     std::string tmpPath = "./";
-//     std::vector<int> diffComponentIds;
-//     int border = 0; // pixels to be added to the borders of the tiles
-        
-//     // Tiling profile time
-//     uint64_t initTime = Util::ClockGetTime();
-
-//     if (tSize == 0) { // no tiling
-//         // Generate TRTCs for the standard tiling i.e., no tiling at all
-//         tCollImg = new TiledRTCollection(IN_RT_NAME, REF_DDR_NAME, tmpPath);
-//         tCollMask = new TiledRTCollection(MASK_RT_NAME, REF_DDR_NAME, tmpPath);
-//     } else if (tSize > 0) { // regular tiling
-//         // Generate TRTCs for tiling with square tiles of tSize x tSize
-//         tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
-//             REF_DDR_NAME, tmpPath, tSize, tSize, border);
-//         tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
-//             REF_DDR_NAME, tmpPath, tSize, tSize, border);
-//     } else if (tSize < 0) { // irregular area autotiler 
-//         int bgThr = 100;
-//         int dilate = 10;
-//         BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate);
-
-//         // Masking test
-//         // cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
-//         // cv::imwrite("./testmask.png", mask);
-//         // exit(9);
-
-//         if (lazyTileRead) {
-//             tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-//                 REF_DDR_NAME, imgFilePath, border, bgm, nTiles);
-//             ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
-//         } else {
-//             tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-//                 REF_DDR_NAME, tmpPath, border, bgm, nTiles);
-//         }
-//         tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
-//             REF_DDR_NAME, tmpPath, border, bgm);
-//     }
-
-//     // Add the images to be tiled
-//     tCollImg->addImage(imgFilePath);
-//     tCollMask->addImage(maskFilePath);
-
-//     // Perform standard tiling i.e., no tiling at all
-//     tCollImg->tileImages();
-// #ifndef NODIFF
-//     tCollMask->tileImages(tCollImg->getTiles());
-// #endif
-
-//     uint64_t endTime = Util::ClockGetTime();
-//     std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
-//     std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
-//     std::string rtSize = tSize >= 0 ? " with tile size " + to_string(tSize) : "";
-//     std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
-//         << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
-//         << " seconds " << endTime << " -> " << endTime << std::endl;
-
-//     std::cout << "[PielineManager] Number of tiles created: " 
-//         << tCollImg->getNumRTs() << std::endl;
-
-
-
-
-
-
-
-//     // Generate the pipelines for each tile
-//     for (int i=0; i<tCollImg->getNumRTs(); i++) {
-//         // Get RTs
-//         std::string inputRTDRname = tCollImg->getRT(i).first;
-//         RegionTemplate* inputRT = tCollImg->getRT(i).second;
-// #ifndef NODIFF
-//         std::string maskRTDRname = tCollMask->getRT(i).first;
-//         RegionTemplate* maskRT = tCollMask->getRT(i).second;
-// #endif
-
-//         // Instantiate stages
-//         NormalizationComp* norm = genNormalization(inputRT, inputRTDRname);
-//         Segmentation* seg = genSegmentation(norm->getId(), 
-//             inputRT, inputRTDRname);
-// #ifndef NODIFF
-//         DiffMaskComp* diff = genDiffMaskComp(seg->getId(), 
-//             inputRT, maskRT, inputRTDRname, maskRTDRname);
-//         diffComponentIds.push_back(diff->getId());
-// #endif
-
-//         // add stages to execution
-//         sysEnv.executeComponent(norm);
-//         sysEnv.executeComponent(seg);
-// #ifndef NODIFF
-//         sysEnv.executeComponent(diff);
-// #endif
-//     }
-
-//     // End Creating Dependency Graph
-//     sysEnv.startupExecution();
-
-//     float diff_f = 0;
-//     float secondaryMetric = 0;
-//     for(int i = 0; i < diffComponentIds.size(); i++){
-//         char *resultData = sysEnv.getComponentResultData(diffComponentIds[i]);
-//         std::cout << "Diff Id: " << diffComponentIds[i] << " resultData -  ";
-//         if(resultData != NULL){
-//             std::cout << "size: " << ((int *) resultData)[0] 
-//                 << " Diff: " << ((float *) resultData)[1] 
-//                 << " Secondary Metric: " << ((float *) resultData)[2] 
-//                 << std::endl;
-//             diff_f += ((float *) resultData)[1];
-//             secondaryMetric += ((float *) resultData)[2];
-//         }else{
-//             std::cout << "NULL" << std::endl;
-//         }
-//     }
-//     std::cout << "Total diff: " << diff_f << " Secondary Metric: " 
-//         << secondaryMetric << std::endl;
-
-//     // std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
-//     // std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
-//     // std::string rtSize = 
-//     //     tSize >= 0 ? " with tile size " + to_string(tSize) : "";
-//     // std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
-//     //     << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
-//     //     << " seconds " << endTime << " -> " << endTime << std::endl;
-
-//     // Finalize all processes running and end execution
-//     sysEnv.finalizeSystem();
-
-//     return 0;
 }
-
-
-

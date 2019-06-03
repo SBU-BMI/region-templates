@@ -7,10 +7,7 @@
 
 #include <opencv/cv.hpp>
 
-// #include "openslide.h"
-
-// #include "TiledRTCollection.h"
-// #include "costFuncs/BGMasker.h"
+#include "openslide.h"
 
 #include "RegionTemplate.h"
 #include "TilingStage.h"

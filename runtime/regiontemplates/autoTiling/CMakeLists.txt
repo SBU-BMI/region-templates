@@ -13,9 +13,8 @@ set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
 # Source files
 # set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp 
 #     IrregTiledRTCollection.cpp costFuncs/ThresholdBGMasker.cpp 
-#     svs/svsUtils.cpp)
-set(libautotilingsrc RTCollectionTilingPipeline.cpp
-    svs/svsUtils.cpp)
+#     svs/svsUtils.cpp RTCollectionTilingPipeline.cpp)
+set(libautotilingsrc svs/svsUtils.cpp RTCollectionTilingPipeline.cpp)
 
 # Creates autotiling lib
 set(libname autotiling)

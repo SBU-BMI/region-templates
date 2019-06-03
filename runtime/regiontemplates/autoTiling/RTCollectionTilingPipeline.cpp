@@ -1,6 +1,7 @@
 #include "RTCollectionTilingPipeline.h"
 RTCollectionTilingPipeline::RTCollectionTilingPipeline(std::string rtName) {
     this->rtName = rtName;
+    this->border = 0;
 }
 
 void RTCollectionTilingPipeline::setImage(std::string imgPath) {
@@ -43,10 +44,15 @@ void RTCollectionTilingPipeline::tile() {
     float ratioh; 
     cv::Mat initialMat;
 
+    std::cout << this->imgPath.c_str() << std::endl;
+    std::cout << openslide_detect_vendor(this->imgPath.c_str()) << std::endl;
     osr = openslide_open(this->imgPath.c_str());
+    // std::cout << openslide_get_error(osr) << std::endl;
+    std::cout << "here" << std::endl;
 
     // Gets info of largest image
     openslide_get_level0_dimensions(osr, &w, &h);
+    std::cout << "=======" << w << ", " << h << std::endl;
     ratiow = w;
     ratioh = h;
 
@@ -54,6 +60,7 @@ void RTCollectionTilingPipeline::tile() {
     osrMinLevel = openslide_get_level_count(osr) - 1; // last level
     openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
     cv::Rect_<int64_t> roi(0, 0, w, h);
+    std::cout << "------- " << osr << ", " << roi << ", " << osrMinLevel << ", " << initialMat << std::endl;
     osrRegionToCVMat(osr, roi, osrMinLevel, initialMat);
 
     // Calculates the ratio between largest and smallest 
@@ -112,6 +119,8 @@ void RTCollectionTilingPipeline::tile() {
             std::pair<std::string, RegionTemplate*>(drName, newRT));
         drId++;
     }
+
+    std::cout << "done" << std::endl;
 
     // Close .svs file
     openslide_close(osr);
