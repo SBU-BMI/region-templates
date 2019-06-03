@@ -219,17 +219,17 @@ int main (int argc, char **argv){
     // Tiling profile time
     uint64_t initTime = Util::ClockGetTime();
 
-    if (tSize == 0) { // no tiling
-        // Generate TRTCs for the standard tiling i.e., no tiling at all
-        tCollImg = new TiledRTCollection(IN_RT_NAME, REF_DDR_NAME, tmpPath);
-        tCollMask = new TiledRTCollection(MASK_RT_NAME, REF_DDR_NAME, tmpPath);
-    } else if (tSize > 0) { // regular tiling
-        // Generate TRTCs for tiling with square tiles of tSize x tSize
-        tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
-            REF_DDR_NAME, tmpPath, tSize, tSize, border);
-        tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
-            REF_DDR_NAME, tmpPath, tSize, tSize, border);
-    } else if (tSize < 0) { // irregular area autotiler 
+    // if (tSize == 0) { // no tiling
+    //     // Generate TRTCs for the standard tiling i.e., no tiling at all
+    //     tCollImg = new TiledRTCollection(IN_RT_NAME, REF_DDR_NAME, tmpPath);
+    //     tCollMask = new TiledRTCollection(MASK_RT_NAME, REF_DDR_NAME, tmpPath);
+    // } else if (tSize > 0) { // regular tiling
+    //     // Generate TRTCs for tiling with square tiles of tSize x tSize
+    //     tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
+    //         REF_DDR_NAME, tmpPath, tSize, tSize, border);
+    //     tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
+    //         REF_DDR_NAME, tmpPath, tSize, tSize, border);
+    // } else if (tSize < 0) { // irregular area autotiler 
         int bgThr = 100;
         int erode = 4;
         int dilate = 10;
@@ -240,17 +240,18 @@ int main (int argc, char **argv){
         // cv::imwrite("./testmask.png", mask);
         // exit(9);
 
-        if (lazyTileRead) {
+        // if (lazyTileRead) {
             tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-                REF_DDR_NAME, imgFilePath, border, bgm, nTiles);
+                REF_DDR_NAME, imgFilePath, border, bgm, 
+                DENSE_BG_SEPARATOR, NO_TILER, nTiles);
             ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
-        } else {
-            tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-                REF_DDR_NAME, tmpPath, border, bgm, nTiles);
-        }
+        // } else {
+        //     tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+        //         REF_DDR_NAME, tmpPath, border, bgm, nTiles);
+        // }
         tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
-    }
+    // }
 
     // Add the images to be tiled
     tCollImg->addImage(imgFilePath);

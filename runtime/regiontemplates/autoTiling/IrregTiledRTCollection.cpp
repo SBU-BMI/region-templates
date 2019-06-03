@@ -381,14 +381,14 @@ void bgMerging(std::list<rect_t>& output) {
                     // Check for vertical bordering (i on top of j)
                     if (i->xi == j->xi && (i->yo == j->yi || i->yo == j->yi-1) 
                             && i->xo == j->xo) {
-                    // if (i->xi == j->xi && i->yo == j->yi && i->xo == j->xo) {
                         i->yo = j->yo;
                         j = output.erase(j);
                         merged = true;
                     }
 
                     // Check for horizontal bordering (i left to j)
-                    if (i->xo == j->xi && i->yi == j->yi && i->yo == j->yo) {
+                    if ((i->xo == j->xi || i->xo == j->xi-1) && i->yi == j->yi 
+                            && i->yo == j->yo) {
                         i->xo = j->xo;
                         j = output.erase(j);
                         merged = true;
@@ -528,45 +528,6 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, int expCost,
     }
 }
 
-void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles) {
-    // Calculates the target average cost of a dense tile
-    int avgCost = cv::sum(img)[0]/nTiles;
-
-    // Create a multiset of tiles ordered by the cost function. This is to 
-    // avoid re-sorting of the dense list whilst enabling O(1) access
-    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img)));
-    for (rect_t r : dense) {
-        sDense.insert(r);
-    }
-
-    cv::imwrite("./testmask.png", img);
-    // Keeps breaking tiles until nTiles goal is reached
-    while (sDense.size() < nTiles) {
-        // Gets the first region (highest cost) 
-        std::multiset<rect_t, rect_tCostFunct>::iterator dIt = sDense.begin();
-
-        // Splits tile with highest cost, generating a two new tiles, being 
-        // one of them with close to avgCost cost.
-        rect_t newt1, newt2;
-        if ((dIt->xo-dIt->xi) == 1 || (dIt->yo-dIt->yi) == 1) {
-            std::cout << "[IrregTiledRTCollection] Tile too small to split."
-                << std::endl;
-            exit(-1);
-        }
-        // splitTileLog(*dIt, img, avgCost, newt1, newt2);
-        splitTileLog(*dIt, img, cost(img, *dIt)/2, newt1, newt2);
-
-        // Removes the first tile and insert the two sub-tiles created from it
-        sDense.erase(dIt);
-        sDense.insert(newt1);
-        sDense.insert(newt2);
-    }
-
-    // Moves regions to the output list
-    dense.clear();
-    for (rect_t r : sDense)
-        dense.push_back(r);
-}
 
 void splitTileArea(rect_t initial, rect_t& newL, rect_t& newR, bool orient) {
     if (orient) {
@@ -587,7 +548,140 @@ void splitTileCost(const cv::Mat& img, rect_t initial, rect_t& newL,
     splitTileLog(initial, img, cost, newL, newR, 0.2, orient?1:-1);
 }
 
-void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles) {
+/*****************************************************************************/
+/**                         Autotiling Algorithms                           **/
+/*****************************************************************************/
+
+void tileDenseFromBG(cv::Mat& mask, std::list<rect_t>& dense, 
+    std::list<rect_t>& output, const cv::Mat* input = NULL) {
+
+    // merge regions of interest together and mark them separately
+    cv::Mat stats, centroids;
+    cv::connectedComponentsWithStats(mask, mask, stats, centroids);
+
+    // Get number of initial dense regions
+    double maxLabel;
+    cv::minMaxLoc(mask, NULL, &maxLabel);
+
+    // generate the list of dense areas
+    std::list<rect_t> ovlpCand;
+    int minArea = 500;
+    // int minArea = 0;
+    for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
+        // std::cout << "area: " 
+        //    << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
+        // Ignores small areas
+        if (stats.at<int>(i, cv::CC_STAT_AREA) > minArea) {
+            int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
+            int yi = stats.at<int>(i, cv::CC_STAT_TOP);
+            int xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
+            int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
+            rect_t rr = {.xi=xi, .yi=yi, .xo=xi+xw, .yo=yi+yh};
+            ovlpCand.push_back(rr);
+        }
+    }
+
+// #ifdef DEBUG
+    std::cout << "[tileDenseFromBG] Tiling image size: " 
+        << mask.cols << "x" << mask.rows << std::endl;
+    std::cout << "[tileDenseFromBG] Initial dense regions: " 
+        << maxLabel << std::endl;
+// #endif
+    
+    // keep trying to remove overlapping regions until there is none
+    while (!ovlpCand.empty()) {
+        // remove regions that are overlapping within another bigger region
+        removeInsideOvlp(ovlpCand);
+
+        // remove the overlap of two regions, side by side (vert and horz)
+        removeSideOvlp(ovlpCand);
+
+        // remove the diagonal overlaps
+        removeDiagOvlp(ovlpCand, dense);
+    }
+
+    // Creates a copy of the dense regions which can be consumed
+    std::list<rect_t> denseTmp(dense);
+    
+    // generate the background regions
+    generateBackground(denseTmp, output, mask.cols, mask.rows);
+
+    // Perform merging of background areas
+    bgMerging(output);
+
+// #ifdef DEBUG
+    std::cout << "[tileDenseFromBG] Total regions to process: " 
+        << output.size() << std::endl;
+    cv::Mat final;
+    if (input != NULL)
+        final = input->clone();
+
+    std::list<cv::Rect_<int64_t> > cvOutput;
+    for (std::list<rect_t>::iterator r=output.begin(); r!=output.end(); r++) {
+        // draw areas for verification
+        if (input != NULL) {
+            cv::rectangle(final, cv::Point(r->xi,r->yi), 
+                cv::Point(r->xo,r->yo),(0,0,0),3);
+        }
+    }
+
+    if (input != NULL) {
+        cv::imwrite("./maskNoBg.png", final);
+    }
+// #endif
+}
+
+void listCutting(const cv::Mat& img, std::list<rect_t>& dense, 
+    int nTiles, TilerAlg_t type) {
+
+    // Calculates the target average cost of a dense tile
+    int avgCost = cv::sum(img)[0]/nTiles;
+
+    // Create a multiset of tiles ordered by the cost function. This is to 
+    // avoid re-sorting of the dense list whilst enabling O(1) access
+    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img)));
+    for (rect_t r : dense) {
+        sDense.insert(r);
+    }
+
+    // Keeps breaking tiles until nTiles goal is reached
+    while (sDense.size() < nTiles) {
+        // Gets the first region (highest cost) 
+        std::multiset<rect_t, rect_tCostFunct>::iterator dIt = sDense.begin();
+
+        // Splits tile with highest cost, generating a two new tiles, being 
+        // one of them with close to avgCost cost.
+        rect_t newt1, newt2;
+        if ((dIt->xo-dIt->xi) == 1 || (dIt->yo-dIt->yi) == 1) {
+            std::cout << "[IrregTiledRTCollection] Tile too small to split."
+                << std::endl;
+            exit(-1);
+        }
+        if (type == LIST_ALG_HALF)
+            splitTileLog(*dIt, img, cost(img, *dIt)/2, newt1, newt2);
+        else if (type == LIST_ALG_EXPECT)
+            splitTileLog(*dIt, img, avgCost, newt1, newt2);
+        else {
+            std::cout << "[IrregTiledRTCollection] Bad listCutting alg type: "
+                << type << std::endl;
+            exit(-1);
+        }
+
+        // Removes the first tile and insert the two sub-tiles created from it
+        sDense.erase(dIt);
+        sDense.insert(newt1);
+        sDense.insert(newt2);
+    }
+
+    // Moves regions to the output list
+    dense.clear();
+    for (rect_t r : sDense)
+        dense.push_back(r);
+}
+
+void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense, 
+    int nTiles, TilerAlg_t type) {
+
     // Calculates the number of cuts tree levels required
     int levels = ceil(sqrt(nTiles/dense.size()));
     std::list<rect_t> result;
@@ -601,8 +695,15 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles) {
         for (int i=0; i<levels; i++) {
             for (rect_t r : *oldAreas) {
                 rect_t newL, newR;
-                // splitTileArea(r, newL, newR, orient);
-                splitTileCost(img, r, newL, newR, orient);
+                if (type == KD_TREE_ALG_AREA)
+                    splitTileArea(r, newL, newR, orient);
+                else if (type == KD_TREE_ALG_COST)
+                    splitTileCost(img, r, newL, newR, orient);
+                else {
+                    std::cout << "[IrregTiledRTCollection] Bad kdTreeCutting"
+                        << " alg type: " << type << std::endl;
+                    exit(-1);
+                }
                 newAreas->push_back(newL);
                 newAreas->push_back(newR);
             }
@@ -621,166 +722,6 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles) {
         dense.push_back(r);
 }
 
-// Receives an input mask of the image containing the cost value of each
-// pixel, the list of dense regions and the expected number of tiles which
-// should be attained after tiling. If nTiles is greater than the number of 
-// initial dense regions, no tiling will be performed.
-void denseTiling(const cv::Mat& img, std::list<rect_t>& dense, int nTiles) {
-    // Check if tiling is required
-    if (dense.size() >= nTiles) {
-        std::cout << "[IrregTiledRTCollection] No dense tiling performed, " 
-            << " wanted " << nTiles << " but already have " << dense.size()
-            << "tiles." << std::endl;
-        return;
-    }
-
-    listCutting(img, dense, nTiles);
-    // kdTreeCutting(img, dense, nTiles);
-
-}
-
-/*****************************************************************************/
-/**                             Full AutoTiler                              **/
-/*****************************************************************************/
-
-std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask, 
-    int border, int nTiles, const cv::Mat* input = NULL) {
-
-    std::list<rect_t> output;
-
-    // merge regions of interest together and mark them separately
-    cv::Mat stats, centroids;
-    cv::connectedComponentsWithStats(mask, mask, stats, centroids);
-
-    // Get number of initial dense regions
-    double maxLabel;
-    cv::minMaxLoc(mask, NULL, &maxLabel);
-
-    // generate the list of dense areas
-    std::list<rect_t> ovlpCand;
-    int minArea = 500;
-    // int minArea = 0;
-    for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
-        // std::cout << "area: " 
-        //    << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
-        if (stats.at<int>(i, cv::CC_STAT_AREA) > minArea) { // ignore small areas
-            int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
-            int yi = stats.at<int>(i, cv::CC_STAT_TOP);
-            int xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
-            int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
-            rect_t rr = {.xi=xi, .yi=yi, .xo=xi+xw, .yo=yi+yh};
-            ovlpCand.push_back(rr);
-        }
-    }
-
-// #ifdef DEBUG
-    std::cout << "[autoTiler] Tiling image size: " 
-        << mask.cols << "x" << mask.rows << std::endl;
-    std::cout << "[autoTiler] Initial dense regions: " << maxLabel << std::endl;
-// #endif
-    
-    // keep trying to remove overlapping regions until there is none
-    while (!ovlpCand.empty()) {
-        // remove regions that are overlapping within another bigger region
-        removeInsideOvlp(ovlpCand);
-
-        // remove the overlap of two regions, side by side (vert and horz)
-        removeSideOvlp(ovlpCand);
-
-        // remove the diagonal overlaps
-        removeDiagOvlp(ovlpCand, output);
-    }
-
-    // Perform tiling of dense regions
-    if (nTiles > 0) {
-        // cv::cvtColor(mask, mask, cv::COLOR_RGB2GRAY);
-        mask.convertTo(mask, CV_8U);
-        cv::threshold(mask, mask, 0, 255, cv::THRESH_BINARY);
-        cv::imwrite("./maskbin.png", mask);
-        denseTiling(mask, output, nTiles);
-    }
-    
-    // Creates a copy of the dense regions which can be consumed
-    std::list<rect_t> dense(output);
-    
-    // generate the background regions
-    generateBackground(dense, output, mask.cols, mask.rows);
-
-    // Perform merging of background areas
-    bgMerging(output);
-
-// #ifdef DEBUG
-    std::cout << "[autoTiler] Total regions to process: " 
-        << output.size() << std::endl;
-    cv::Mat final;
-    if (input != NULL)
-        final = input->clone();
-// #endif
-
-#ifdef DEBUG
-    // Verification if there are any overlapping ROIs remaining
-    for (std::list<rect_t>::iterator 
-        r1=output.begin(); r1!=output.end(); r1++) {
-
-        for (std::list<rect_t>::iterator 
-            r2=output.begin(); r2!=output.end(); r2++) {
-            
-            // Overlap is only checked if the ROIs are different
-            if (r1 != r2) {
-                if (overlaps(*r1, *r2)) {
-                    std::cout << "=========OVERLAP:" << std::endl;
-                    std::cout << "r1: (" << r1->xi << "," << r1->yi << "), (" 
-                        << r1->xo << "," << r1->yo << ")" << std::endl;
-                    std::cout << "r2: (" << r2->xi << "," << r2->yi << "), (" 
-                        << r2->xo << "," << r2->yo << ")" << std::endl;
-                    // exit(-10);
-                }
-            }
-        }
-
-        // draw areas for verification
-        if (input != NULL)
-            cv::rectangle(final, cv::Point(r1->xi,r1->yi), 
-                cv::Point(r1->xo,r1->yo),(0,0,0),3);
-    }
-#endif
-
-#ifdef DEBUG
-    if (input != NULL)
-        cv::imwrite("./maskNoBorder.png", final);
-#endif
-     
-    // add a border to all rect regions and create cv list formated output
-    std::list<cv::Rect_<int64_t> > cvOutput;
-    for (std::list<rect_t>::iterator r=output.begin(); r!=output.end(); r++) {
-        r->xi = std::max(r->xi-border, (int64_t)0);
-        r->xo = std::min(r->xo+border, (int64_t)mask.cols);
-        r->yi = std::max(r->yi-border, (int64_t)0);
-        r->yo = std::min(r->yo+border, (int64_t)mask.rows);
-
-        cvOutput.push_back(cv::Rect_<int64_t>(
-            r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
-
-// #ifdef DEBUG
-        // draw areas for verification
-        if (input != NULL) {
-            // cv::rectangle(final, cv::Point(r->xi,r->yi), 
-            //     cv::Point(r->xo,r->yo),(0,0,0),3);
-            cv::rectangle(final, cv::Point(r->xi,r->yi), 
-                cv::Point(r->xo,r->yo),(0,0,0),3);
-        }
-// #endif
-    }
-
-// #ifdef DEBUG
-    if (input != NULL) {
-        cv::imwrite("./maskf.png", final);
-    }
-// #endif
-
-    return cvOutput;
-}
-
 /*****************************************************************************/
 /****************************** Class methods ********************************/
 /*****************************************************************************/
@@ -788,31 +729,14 @@ std::list<cv::Rect_<int64_t> > autoTiler(cv::Mat& mask,
 
 IrregTiledRTCollection::IrregTiledRTCollection(std::string name, 
     std::string refDDRName, std::string tilesPath, int border, BGMasker* bgm, 
-    int nTiles) : TiledRTCollection(name, refDDRName, tilesPath) {
+    PreTilerAlg_t preTier, TilerAlg_t tilingAlg, int nTiles) 
+        : TiledRTCollection(name, refDDRName, tilesPath) {
 
     this->border = border;
     this->bgm = bgm;
     this->nTiles = nTiles;
-    hOnlyDenseSweep = false;
-    vOnlyDenseSweep = false;
-}
-
-void IrregTiledRTCollection::setHOnlySweep() {
-    if (vOnlyDenseSweep) {
-        std::cout << "[IrregTiledRTCollection] only one sweep strategy "
-            << "can be selected" << std::endl;
-        exit(-1);
-    }
-    this->hOnlyDenseSweep = true;
-}
-
-void IrregTiledRTCollection::setVOnlySweep() {
-    if (hOnlyDenseSweep) {
-        std::cout << "[IrregTiledRTCollection] only one sweep strategy "
-            << "can be selected" << std::endl;
-        exit(-1);
-    }
-    this->vOnlyDenseSweep = true;
+    this->preTier = preTier;
+    this->tilingAlg = tilingAlg;
 }
 
 void IrregTiledRTCollection::customTiling() {
@@ -858,10 +782,80 @@ void IrregTiledRTCollection::customTiling() {
             w = maskMat.cols;
         }
 
-        // Performs the threshold analysis and then tile the image
-        cv::Mat thMask = bgm->bgMask(maskMat);
-        std::list<cv::Rect_<int64_t> > tiles = autoTiler(
-            thMask, this->border, this->nTiles, &maskMat);
+        // Perfeorms the preTiling if required
+        std::list<rect_t> finalTiles;
+        std::list<rect_t> preTiledAreas;
+        cv::Mat thMask = maskMat;
+        switch (this->preTier) {
+            case DENSE_BG_SEPARATOR: {
+                thMask = bgm->bgMask(maskMat);
+                tileDenseFromBG(thMask, preTiledAreas, finalTiles, &maskMat);
+                thMask.convertTo(thMask, CV_8U);
+                cv::threshold(thMask, thMask, 0, 255, cv::THRESH_BINARY);
+                break;
+            }
+            case NO_PRE_TILER: { // just return the full image as a single tile
+                preTiledAreas.push_back({0, 0, maskMat.cols, maskMat.rows});
+            }
+        }
+
+        if (preTiledAreas.size() >= this->nTiles) {
+            std::cout << "[IrregTiledRTCollection] No dense tiling"
+                << " performed, wanted " << this->nTiles 
+                << " but already have " << preTiledAreas.size()
+                << " tiles." << std::endl;
+            finalTiles.insert(finalTiles.end(), 
+                preTiledAreas.begin(), preTiledAreas.end());
+        } else {
+            switch (this->tilingAlg) {
+                case LIST_ALG_EXPECT: {
+                    listCutting(thMask, preTiledAreas, 
+                        this->nTiles, this->tilingAlg);
+                    break;
+                }
+                case LIST_ALG_HALF: {
+                    listCutting(thMask, preTiledAreas, 
+                        this->nTiles, this->tilingAlg);
+                    break;
+                }
+                case KD_TREE_ALG_AREA: {
+                    kdTreeCutting(thMask, preTiledAreas,
+                        this->nTiles, this->tilingAlg);
+                    break;
+                }
+                case KD_TREE_ALG_COST: {
+                    kdTreeCutting(thMask, preTiledAreas,
+                        this->nTiles, this->tilingAlg);
+                    break;
+                }
+            }
+            // Send resulting tiles to the final output
+            finalTiles.insert(finalTiles.end(), 
+                preTiledAreas.begin(), preTiledAreas.end());
+        }
+
+        // Convert rect_t to cv::Rect_ and add borders
+        std::list<cv::Rect_<int64_t> > tiles;
+        for (std::list<rect_t>::iterator r=finalTiles.begin(); 
+                r!=finalTiles.end(); r++) {
+
+            r->xi = std::max(r->xi-this->border, (int64_t)0);
+            r->xo = std::min(r->xo+this->border, (int64_t)thMask.cols);
+            r->yi = std::max(r->yi-this->border, (int64_t)0);
+            r->yo = std::min(r->yo+this->border, (int64_t)thMask.rows);
+
+            tiles.push_back(cv::Rect_<int64_t>(
+                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+
+// #ifdef DEBUG
+            cv::rectangle(maskMat, cv::Point(r->xi,r->yi), 
+                cv::Point(r->xo,r->yo),(0,0,0),3);
+// #endif
+        }
+
+// #ifdef DEBUG
+        cv::imwrite("./maskf.png", maskMat);
+// #endif
 
         // Actually tile the image given the list of ROIs
         int drId=0;

@@ -12,13 +12,27 @@
 #include "TiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
 
+enum PreTilerAlg_t {
+    NO_PRE_TILER,
+    DENSE_BG_SEPARATOR,
+};
+
+enum TilerAlg_t {
+    NO_TILER,
+    LIST_ALG_HALF,
+    LIST_ALG_EXPECT,
+    KD_TREE_ALG_AREA,
+    KD_TREE_ALG_COST,
+};
+
 class IrregTiledRTCollection : public TiledRTCollection {
 private:
     int border;
     int nTiles; // Expected number of dense tiles by the end of te tiling
     BGMasker* bgm;
-    bool hOnlyDenseSweep;
-    bool vOnlyDenseSweep;
+
+    PreTilerAlg_t preTier;
+    TilerAlg_t tilingAlg;
 
 protected:
     // Template method hook for a custom tiling method.
@@ -28,13 +42,9 @@ protected:
 
 public:
     IrregTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int border, BGMasker* bgm, int nTiles=0);
-
-    // Setters for vertical or horizontal only sweeping on dense tiling
-    // At most one of them can be set
-    void setHOnlySweep();
-    void setVOnlySweep();
-
+        std::string tilesPath, int border, BGMasker* bgm, 
+        PreTilerAlg_t preTier=NO_PRE_TILER, TilerAlg_t tilingAlg=NO_TILER, 
+        int nTiles=0);
 };
 
 #endif
