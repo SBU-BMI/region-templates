@@ -125,6 +125,7 @@ int32_t getLargestLevel(openslide_t *osr) {
 }
 
 int main (int argc, char **argv){
+    uint64_t initFullTime = Util::ClockGetTime();
     // Handler to the distributed execution system environment
     SysEnv sysEnv;
 
@@ -144,10 +145,10 @@ int main (int argc, char **argv){
         std::cout << "\t-m: Full name of the mask image. "
             << "It can be a .svs file." << std::endl;
         std::cout << "\t-p: Path of all input images" << std::endl;
-        std::cout << "\t-l: Whether input tiles should be generated lazily. " 
-            << "Only applicable for irregular tiling." << std::endl;
-        std::cout << "\t-nt: Number of expected dense tiles. " 
-            << "Only applicable for irregular tiling." << std::endl;
+        // std::cout << "\t-l: Whether input tiles should be generated lazily. " 
+        //     << "Only applicable for irregular tiling." << std::endl;
+        // std::cout << "\t-nt: Number of expected dense tiles. " 
+        //     << "Only applicable for irregular tiling." << std::endl;
         exit(0);
     }
 
@@ -195,15 +196,29 @@ int main (int argc, char **argv){
     }
 
     // Lazy tiling?
-    bool lazyTileRead = false;
-    if (findArgPos("-l", argc, argv) != -1) {
-        lazyTileRead = true;
-    }
+    bool lazyTileRead = true; // TODO: disable non-lazy tiling
+    // if (findArgPos("-l", argc, argv) != -1) {
+    //     lazyTileRead = true;
+    // }
 
     // Number of expected dense tiles for irregular tiling
     int nTiles = 0;
-    if (findArgPos("-nt", argc, argv) != -1) {
-        nTiles = atoi(argv[findArgPos("-nt", argc, argv)+1]);
+    if (findArgPos("-t", argc, argv) != -1) {
+        nTiles = atoi(argv[findArgPos("-t", argc, argv)+1]);
+    }
+
+    // Number of expected dense tiles for irregular tiling
+    PreTilerAlg_t preTilerAlg = NO_PRE_TILER;
+    if (findArgPos("-r", argc, argv) != -1) {
+        preTilerAlg = static_cast<PreTilerAlg_t>(
+            atoi(argv[findArgPos("-r", argc, argv)+1]));
+    }
+
+    // Number of expected dense tiles for irregular tiling
+    TilerAlg_t tilerAlg = NO_TILER;
+    if (findArgPos("-l", argc, argv) != -1) {
+        tilerAlg = static_cast<TilerAlg_t>(
+            atoi(argv[findArgPos("-l", argc, argv)+1]));
     }
 
     // For this test we only use a single input and output images
@@ -215,47 +230,66 @@ int main (int argc, char **argv){
     std::string tmpPath = "./";
     std::vector<int> diffComponentIds;
     int border = 0; // pixels to be added to the borders of the tiles
-        
-    // Tiling profile time
-    uint64_t initTime = Util::ClockGetTime();
 
-    // if (tSize == 0) { // no tiling
-    //     // Generate TRTCs for the standard tiling i.e., no tiling at all
-    //     tCollImg = new TiledRTCollection(IN_RT_NAME, REF_DDR_NAME, tmpPath);
-    //     tCollMask = new TiledRTCollection(MASK_RT_NAME, REF_DDR_NAME, tmpPath);
-    // } else if (tSize > 0) { // regular tiling
-    //     // Generate TRTCs for tiling with square tiles of tSize x tSize
-    //     tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
-    //         REF_DDR_NAME, tmpPath, tSize, tSize, border);
-    //     tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
-    //         REF_DDR_NAME, tmpPath, tSize, tSize, border);
-    // } else if (tSize < 0) { // irregular area autotiler 
+    if (tilerAlg == FIXED_GRID_TILING) {
+        tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
+            REF_DDR_NAME, tmpPath, nTiles, nTiles, border);
+        tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
+            REF_DDR_NAME, tmpPath, nTiles, nTiles, border);
+    } else {
         int bgThr = 100;
         int erode = 4;
         int dilate = 10;
         BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
 
-        // // Masking test
-        // cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
-        // cv::imwrite("./testmask.png", mask);
-        // exit(9);
-
-        // if (lazyTileRead) {
-            tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-                REF_DDR_NAME, imgFilePath, border, bgm, 
-                DENSE_BG_SEPARATOR, NO_TILER, nTiles);
-            ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
-        // } else {
-        //     tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
-        //         REF_DDR_NAME, tmpPath, border, bgm, nTiles);
-        // }
+        tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+            REF_DDR_NAME, imgFilePath, border, bgm, 
+            preTilerAlg, tilerAlg, nTiles);
+        ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
         tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
-    // }
+    }
+
+    // // if (tSize == 0) { // no tiling
+    // //     // Generate TRTCs for the standard tiling i.e., no tiling at all
+    // //     tCollImg = new TiledRTCollection(IN_RT_NAME, REF_DDR_NAME, tmpPath);
+    // //     tCollMask = new TiledRTCollection(MASK_RT_NAME, REF_DDR_NAME, tmpPath);
+    // // } else if (tSize > 0) { // regular tiling
+    // //     // Generate TRTCs for tiling with square tiles of tSize x tSize
+    // //     tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
+    // //         REF_DDR_NAME, tmpPath, tSize, tSize, border);
+    // //     tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
+    // //         REF_DDR_NAME, tmpPath, tSize, tSize, border);
+    // // } else if (tSize < 0) { // irregular area autotiler 
+    //     int bgThr = 100;
+    //     int erode = 4;
+    //     int dilate = 10;
+    //     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
+
+    //     // // Masking test
+    //     // cv::Mat mask = bgm->bgMask(cv::imread(imgFilePath));
+    //     // cv::imwrite("./testmask.png", mask);
+    //     // exit(9);
+
+    //     // if (lazyTileRead) {
+    //         tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+    //             REF_DDR_NAME, imgFilePath, border, bgm, 
+    //             DENSE_BG_SEPARATOR, NO_TILER, nTiles);
+    //         ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
+    //     // } else {
+    //     //     tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
+    //     //         REF_DDR_NAME, tmpPath, border, bgm, nTiles);
+    //     // }
+    //     tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
+    //         REF_DDR_NAME, tmpPath, border, bgm);
+    // // }
 
     // Add the images to be tiled
     tCollImg->addImage(imgFilePath);
     tCollMask->addImage(maskFilePath);
+
+    // Tiling profile time
+    uint64_t initTileTime = Util::ClockGetTime();
 
     // Perform standard tiling i.e., no tiling at all
     tCollImg->tileImages();
@@ -263,16 +297,18 @@ int main (int argc, char **argv){
     tCollMask->tileImages(tCollImg->getTiles());
 #endif
 
-    uint64_t endTime = Util::ClockGetTime();
-    std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
-    std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
-    std::string rtSize = tSize >= 0 ? " with tile size " + to_string(tSize) : "";
-    std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
-        << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
-        << " seconds " << endTime << " -> " << endTime << std::endl;
+    uint64_t endTileTime = Util::ClockGetTime();
+    std::cout << "[PROFILING][TTIME]" 
+        << (endTileTime-initTileTime) << std::endl;
+    // std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
+    // std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
+    // std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
+    //     << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
+    //     << " seconds " << endTime << " -> " << endTime << std::endl;
 
-    std::cout << "[PielineManager] Number of tiles created: " 
-        << tCollImg->getNumRTs() << std::endl;
+    std::cout << "[PROFILING][NTILES]" << tCollImg->getNumRTs() << std::endl;
+    // std::cout << "[PielineManager] Number of tiles created: " 
+    //     << tCollImg->getNumRTs() << std::endl;
 
     // Generate the pipelines for each tile
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
@@ -331,6 +367,10 @@ int main (int argc, char **argv){
     // std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
     //     << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
     //     << " seconds " << endTime << " -> " << endTime << std::endl;
+
+    uint64_t endFullTime = Util::ClockGetTime();
+    std::cout << "[PROFILING][FULLTIME]" 
+        << (endFullTime-initFullTime) << std::endl;
 
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();

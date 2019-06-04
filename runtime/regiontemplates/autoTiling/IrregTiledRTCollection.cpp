@@ -722,6 +722,20 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
         dense.push_back(r);
 }
 
+void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name) {
+    float mean = 0;
+    for (rect_t r : rs)
+        mean += cost(img, r);
+    mean /= rs.size();
+
+    float var = 0;
+    for (rect_t r : rs)
+        var += pow(cost(img, r)-mean, 2);
+    
+    std::cout << "[PROFILING][" << name << "]" 
+        << (sqrt(var/(rs.size()-1))) << std::endl;
+}
+
 /*****************************************************************************/
 /****************************** Class methods ********************************/
 /*****************************************************************************/
@@ -790,22 +804,23 @@ void IrregTiledRTCollection::customTiling() {
             case DENSE_BG_SEPARATOR: {
                 thMask = bgm->bgMask(maskMat);
                 tileDenseFromBG(thMask, preTiledAreas, finalTiles, &maskMat);
-                thMask.convertTo(thMask, CV_8U);
-                cv::threshold(thMask, thMask, 0, 255, cv::THRESH_BINARY);
                 break;
             }
             case NO_PRE_TILER: { // just return the full image as a single tile
                 preTiledAreas.push_back({0, 0, maskMat.cols, maskMat.rows});
+                break;
             }
         }
+        
+        // Ensure that thMask is a binary mat
+        thMask.convertTo(thMask, CV_8U);
+        cv::threshold(thMask, thMask, 0, 255, cv::THRESH_BINARY);
 
         if (preTiledAreas.size() >= this->nTiles) {
             std::cout << "[IrregTiledRTCollection] No dense tiling"
                 << " performed, wanted " << this->nTiles 
                 << " but already have " << preTiledAreas.size()
                 << " tiles." << std::endl;
-            finalTiles.insert(finalTiles.end(), 
-                preTiledAreas.begin(), preTiledAreas.end());
         } else {
             switch (this->tilingAlg) {
                 case LIST_ALG_EXPECT: {
@@ -829,10 +844,17 @@ void IrregTiledRTCollection::customTiling() {
                     break;
                 }
             }
-            // Send resulting tiles to the final output
-            finalTiles.insert(finalTiles.end(), 
-                preTiledAreas.begin(), preTiledAreas.end());
+
+            // Gets std-dev of dense tiles' sizes
+            stddev(preTiledAreas, thMask, "DENSESTDDEV");
+
         }
+        // Send resulting tiles to the final output
+        finalTiles.insert(finalTiles.end(), 
+            preTiledAreas.begin(), preTiledAreas.end());
+
+        // Gets std-dev of all tiles' sizes
+        stddev(finalTiles, thMask, "ALLSTDDEV");
 
         // Convert rect_t to cv::Rect_ and add borders
         std::list<cv::Rect_<int64_t> > tiles;

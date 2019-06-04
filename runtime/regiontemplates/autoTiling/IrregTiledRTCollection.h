@@ -23,6 +23,7 @@ enum TilerAlg_t {
     LIST_ALG_EXPECT,
     KD_TREE_ALG_AREA,
     KD_TREE_ALG_COST,
+    FIXED_GRID_TILING, // Here only for testing: parameter on PipelineManager
 };
 
 class IrregTiledRTCollection : public TiledRTCollection {
