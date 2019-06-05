@@ -692,6 +692,7 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
         newAreas = new std::list<rect_t>();
         oldAreas->push_back(initial);
         bool orient = false;
+        int curTiles = 0;
         for (int i=0; i<levels; i++) {
             for (rect_t r : *oldAreas) {
                 rect_t newL, newR;
@@ -706,7 +707,12 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
                 }
                 newAreas->push_back(newL);
                 newAreas->push_back(newR);
+                if (curTiles++ >= nTiles)
+                    break;
             }
+            // Adds the remaining areas if curTiles reached nTiles
+            newAreas->insert(newAreas->end(), 
+                oldAreas->begin(), oldAreas->end());
             orient = !orient;
             tmp = oldAreas;
             oldAreas = newAreas;
@@ -772,37 +778,32 @@ void IrregTiledRTCollection::customTiling() {
         float ratiow;
         float ratioh; 
         cv::Mat maskMat;
-        if (isSvs) {
-            osr = openslide_open(initialPaths[i].c_str());
 
-            // Gets info of largest image
-            openslide_get_level0_dimensions(osr, &w, &h);
-            ratiow = w;
-            ratioh = h;
+        // Opens svs input file
+        osr = openslide_open(initialPaths[i].c_str());
 
-            // Opens smallest image as a cv mat
-            osrMinLevel = openslide_get_level_count(osr) - 1; // last level
-            openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
-            cv::Rect_<int64_t> roi(0, 0, w, h);
-            osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
+        // Gets info of largest image
+        openslide_get_level0_dimensions(osr, &w, &h);
+        ratiow = w;
+        ratioh = h;
 
-            // Calculates the ratio between largest and smallest 
-            // images' dimensions for later conversion
-            ratiow /= w;
-            ratioh /= h;
-        } else {
-            maskMat = cv::imread(initialPaths[i]);
-            h = maskMat.rows;
-            w = maskMat.cols;
-        }
+        // Opens smallest image as a cv mat
+        osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+        openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
+        cv::Rect_<int64_t> roi(0, 0, w, h);
+        osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
+
+        // Calculates the ratio between largest and smallest 
+        // images' dimensions for later conversion
+        ratiow /= w;
+        ratioh /= h;
 
         // Perfeorms the preTiling if required
         std::list<rect_t> finalTiles;
         std::list<rect_t> preTiledAreas;
-        cv::Mat thMask = maskMat;
+        cv::Mat thMask = bgm->bgMask(maskMat);
         switch (this->preTier) {
             case DENSE_BG_SEPARATOR: {
-                thMask = bgm->bgMask(maskMat);
                 tileDenseFromBG(thMask, preTiledAreas, finalTiles, &maskMat);
                 break;
             }
@@ -884,36 +885,18 @@ void IrregTiledRTCollection::customTiling() {
         for (cv::Rect_<int64_t> tile : tiles) {
             // Creates the tile name for the original svs file, if lazy
             std::string path = this->tilesPath;
-            if (!lazyTiling) {
-                // Creates tile name for early written tiles
-                path += "/" + this->name + "/t" + to_string(drId) + TILE_EXT;
-            }
 
+            // Converts the tile roi for the bigger image
             DataRegion *dr = new DenseDataRegion2D();
-            if (isSvs) {
-                // Converts the tile roi for the bigger image
-                tile.x *= ratiow;
-                tile.width *= ratiow;
-                tile.y *= ratioh;
-                tile.height *= ratioh;
+            tile.x *= ratiow;
+            tile.width *= ratiow;
+            tile.y *= ratioh;
+            tile.height *= ratioh;
 
-                // If tiles are to be read lazily, don't write the actual file
-                if (!lazyTiling) {
-                    // Gets actual region from full svs file and 
-                    // writes it to file
-                    cv::Mat curMat;
-                    osrRegionToCVMat(osr, tile, osrMaxLevel, curMat);
-                    cv::imwrite(path, curMat);
-                } else {
-                    // Creates the dr as a svs data region for
-                    // lazy read/write of input file
-                    dr->setRoi(tile);
-                    dr->setSvs();
-                }
-            } else {
-                if (!lazyTiling)
-                    cv::imwrite(path, maskMat(tile));
-            }
+            // Creates the dr as a svs data region for
+            // lazy read/write of input file
+            dr->setRoi(tile);
+            dr->setSvs();
             
             // Create new RT tile from roi
             std::string drName = "t" + to_string(drId);
