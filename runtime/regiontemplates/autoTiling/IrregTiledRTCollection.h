@@ -4,6 +4,7 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <cmath> // log()
 
 #include <opencv/cv.hpp>
 

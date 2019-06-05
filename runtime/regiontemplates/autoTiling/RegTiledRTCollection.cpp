@@ -4,7 +4,7 @@
 /***************************** Helper functions ******************************/
 /*****************************************************************************/
 
-void createTile(bool isSvs, cv:: Rect_<int64_t> roi, openslide_t* osr,
+void createTile(bool isSvs, cv::Rect_<int64_t> roi, openslide_t* osr,
     int32_t osrMaxLevel, cv::Mat mat, std::string tilesPath, std::string name,
     int i, int ti, int tj, int drId, std::string refDDRName, 
     std::vector<std::pair<std::string, RegionTemplate*> >& rts) {
@@ -36,11 +36,27 @@ void createTile(bool isSvs, cv:: Rect_<int64_t> roi, openslide_t* osr,
 
     rts.push_back(
         std::pair<std::string, RegionTemplate*>(drName, newRT));
+}
 
-    // // Close .svs file
-    // if (isSvs) {
-    //     openslide_close(osr);
-    // }
+inline int cost(const cv::Mat& img, const cv::Rect_<int64_t>& r) {
+    return cv::sum(img(cv::Range(r.y, r.y+r.height), 
+                       cv::Range(r.x, r.x+r.width)))[0];
+}
+
+void stddev(std::list<cv::Rect_<int64_t>> rs, 
+    const cv::Mat& img, std::string name) {
+
+    float mean = 0;
+    for (cv::Rect_<int64_t> r : rs)
+        mean += cost(img, r);
+    mean /= rs.size();
+
+    float var = 0;
+    for (cv::Rect_<int64_t> r : rs)
+        var += pow(cost(img, r)-mean, 2);
+    
+    std::cout << "[PROFILING][" << name << "]" 
+        << (sqrt(var/(rs.size()-1))) << std::endl;
 }
 
 /*****************************************************************************/
@@ -85,6 +101,8 @@ void RegTiledRTCollection::customTiling() {
         if (isSvs) {
             osr = openslide_open(initialPaths[i].c_str());
             openslide_get_level0_dimensions(osr, &w, &h);
+            cv::Rect_<int64_t> roi(0, 0, w, h);
+            osrRegionToCVMat(osr, roi, 0, mat);
         } else {
             mat = cv::imread(initialPaths[i]);
             h = mat.rows;
@@ -251,9 +269,12 @@ void RegTiledRTCollection::customTiling() {
         // Add the current image tiles to the tiles vector
         this->tiles.push_back(rois);
 
-        // // Close .svs file
+        // Close .svs file
         if (isSvs) {
             openslide_close(osr);
         }
+
+        // Gets std-dev of dense tiles' sizes
+        stddev(rois, mat, "ALLSTDDEV");
     }
 }

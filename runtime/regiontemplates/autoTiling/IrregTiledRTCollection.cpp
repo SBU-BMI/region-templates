@@ -403,19 +403,20 @@ void bgMerging(std::list<rect_t>& output) {
 /**                          Dense Regions Tiling                           **/
 /*****************************************************************************/
 
-inline int cost(const cv::Mat& img) {
+inline int64_t cost(const cv::Mat& img) {
     return cv::sum(img)[0];
 }
 
-inline int cost(const cv::Mat& img, const rect_t& r) {
+inline int64_t cost(const cv::Mat& img, const rect_t& r) {
     return cv::sum(img(cv::Range(r.yi, r.yo), cv::Range(r.xi, r.xo)))[0];
 }
 
-inline int cost(const cv::Mat& img, int yi, int yo, int xi, int xo) {
+inline int64_t cost(const cv::Mat& img, int64_t yi, int64_t yo, 
+        int64_t xi, int64_t xo) {
     return cv::sum(img(cv::Range(yi, yo), cv::Range(xi, xo)))[0];
 }
 
-inline bool between(int x, int init, int end) {
+inline bool between(int64_t x, int64_t init, int64_t end) {
     return x >= init && x <= end;
 }
 
@@ -683,7 +684,7 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
     int nTiles, TilerAlg_t type) {
 
     // Calculates the number of cuts tree levels required
-    int levels = ceil(sqrt(nTiles/dense.size()));
+    int levels = ceil(log(nTiles/dense.size())/log(2));
     std::list<rect_t> result;
 
     for (rect_t initial : dense) {
@@ -693,26 +694,35 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
         oldAreas->push_back(initial);
         bool orient = false;
         int curTiles = 0;
-        for (int i=0; i<levels; i++) {
-            for (rect_t r : *oldAreas) {
+        for (int i=0; i<levels && curTiles<nTiles; i++) {
+            for (std::list<rect_t>::iterator r=oldAreas->begin(); 
+                r!=oldAreas->end(); r++) {
+
                 rect_t newL, newR;
                 if (type == KD_TREE_ALG_AREA)
-                    splitTileArea(r, newL, newR, orient);
+                    splitTileArea(*r, newL, newR, orient);
                 else if (type == KD_TREE_ALG_COST)
-                    splitTileCost(img, r, newL, newR, orient);
+                    splitTileCost(img, *r, newL, newR, orient);
                 else {
                     std::cout << "[IrregTiledRTCollection] Bad kdTreeCutting"
                         << " alg type: " << type << std::endl;
                     exit(-1);
                 }
-                newAreas->push_back(newL);
-                newAreas->push_back(newR);
-                if (curTiles++ >= nTiles)
+                // avoids the creation of a null tile
+                if (area(newL) > 0 && area(newR) > 0) { 
+                    newAreas->push_back(newL);
+                    newAreas->push_back(newR);
+                    curTiles++;
+                } else {
+                    newAreas->push_back(*r);
+                }
+
+                if (curTiles >= nTiles) {
+                    newAreas->insert(r++, oldAreas->begin(), oldAreas->end());
                     break;
+                }
             }
             // Adds the remaining areas if curTiles reached nTiles
-            newAreas->insert(newAreas->end(), 
-                oldAreas->begin(), oldAreas->end());
             orient = !orient;
             tmp = oldAreas;
             oldAreas = newAreas;
@@ -724,8 +734,9 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
 
     // Moves regions to the output list
     dense.clear();
-    for (rect_t r : result)
+    for (rect_t r : result) {
         dense.push_back(r);
+    }
 }
 
 void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name) {
