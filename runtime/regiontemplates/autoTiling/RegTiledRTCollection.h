@@ -15,7 +15,8 @@ class RegTiledRTCollection : public TiledRTCollection {
 private:
     int64_t tw;
     int64_t th;
-    int border;
+    int64_t border;
+    int64_t nTiles;
 
 protected:
     // Template method hook for a custom tiling method.
@@ -25,7 +26,9 @@ protected:
 
 public:
     RegTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t tw, int64_t th, int border);
+        std::string tilesPath, int64_t tw, int64_t th, int64_t border);
+    RegTiledRTCollection(std::string name, std::string refDDRName, 
+        std::string tilesPath, int64_t nTiles, int64_t border);
 };
 
 #endif

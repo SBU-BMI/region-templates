@@ -48,8 +48,8 @@ void createTile(bool isSvs, cv:: Rect_<int64_t> roi, openslide_t* osr,
 /*****************************************************************************/
 
 RegTiledRTCollection::RegTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int64_t tw, 
-    int64_t th, int border) : TiledRTCollection(name, refDDRName, tilesPath) {
+    std::string refDDRName, std::string tilesPath, int64_t tw, int64_t th, 
+    int64_t border) : TiledRTCollection(name, refDDRName, tilesPath) {
 
     if (border > tw || border > th) {
         std::cout << "Border cannot be greater than a tile width" << std::endl;
@@ -59,6 +59,15 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
     this->border = border;
     this->tw = tw;
     this->th = th;
+    this->nTiles = 0;
+}
+
+RegTiledRTCollection::RegTiledRTCollection(std::string name, 
+    std::string refDDRName, std::string tilesPath, int64_t nTiles, 
+    int64_t border) : TiledRTCollection(name, refDDRName, tilesPath) {
+
+    this->border = border;
+    this->nTiles = nTiles;
 }
 
 void RegTiledRTCollection::customTiling() {
@@ -80,6 +89,30 @@ void RegTiledRTCollection::customTiling() {
             mat = cv::imread(initialPaths[i]);
             h = mat.rows;
             w = mat.cols;
+        }
+
+        // Calculates the tiles sizes given the nTiles
+        if (this->nTiles != 0) {
+            // Finds the best fit for square tiles that match nTiles by the 
+            // equation:
+            //    nTiles = nx(number of divisions on x) * ny(same on y)
+            //    e.g., 6 tiles organized as a 2x3 grid has nx=2 and ny=3
+            // Assuming that nx = k and ny = nTiles/k (arbitrary k with 
+            // 1<=k<=nTiles) we must find k that minimizes the sum of all 
+            // circumferences of the generated tiles, thus making them square.
+            // Being Sc(sum of circumferences) = 2(tw+th)*(nx*ny), and taking 
+            // the first derivative Sc'=0 we have that the value of k for 
+            // Sc minimal is:
+            float k = sqrt((float)this->nTiles*(float)h/(float)w);
+
+            // As such, we can calculate the tiles sizes
+            this->tw = min(floor((float)k*(float)w/(float)this->nTiles), 
+                (float)w);
+            this->th = min(floor((float)h/k), (float)h);
+            // std::cout << "w: " << w << ", h: " << h << std::endl;
+            // std::cout << "k = " << k << ", sizes = " << this->tw 
+            //     << ", " << this->th << std::endl;
+            // std::cout << "nx: " << k << ", ny: " << nTiles/k << std::endl;
         }
 
         // Determine the number of tile levels to be had

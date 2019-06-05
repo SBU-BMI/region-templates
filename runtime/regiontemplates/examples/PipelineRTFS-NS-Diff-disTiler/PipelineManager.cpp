@@ -233,9 +233,9 @@ int main (int argc, char **argv){
 
     if (tilerAlg == FIXED_GRID_TILING) {
         tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
-            REF_DDR_NAME, tmpPath, nTiles, nTiles, border);
+            REF_DDR_NAME, tmpPath, nTiles, border);
         tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
-            REF_DDR_NAME, tmpPath, nTiles, nTiles, border);
+            REF_DDR_NAME, tmpPath, nTiles, border);
     } else {
         int bgThr = 100;
         int erode = 4;
