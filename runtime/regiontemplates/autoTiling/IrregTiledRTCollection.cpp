@@ -898,7 +898,6 @@ void IrregTiledRTCollection::customTiling() {
             std::string path = this->tilesPath;
 
             // Converts the tile roi for the bigger image
-            DataRegion *dr = new DenseDataRegion2D();
             tile.x *= ratiow;
             tile.width *= ratiow;
             tile.y *= ratioh;
@@ -906,6 +905,7 @@ void IrregTiledRTCollection::customTiling() {
 
             // Creates the dr as a svs data region for
             // lazy read/write of input file
+            DataRegion *dr = new DenseDataRegion2D();
             dr->setRoi(tile);
             dr->setSvs();
             

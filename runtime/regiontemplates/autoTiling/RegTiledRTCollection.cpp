@@ -9,27 +9,29 @@ void createTile(bool isSvs, cv::Rect_<int64_t> roi, openslide_t* osr,
     int i, int ti, int tj, int drId, std::string refDDRName, 
     std::vector<std::pair<std::string, RegionTemplate*> >& rts) {
 
-    cv::Mat tile;
-    if (isSvs) {
-        osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
-    } else {
-        tile = mat(roi);
-    }
-    std::string path = tilesPath + "/" + name + "/";
-    path += "/i" + to_string(i);
-    path += "ti" + to_string(ti);
-    path += "tj" + to_string(tj) + TILE_EXT;
-    cv::imwrite(path, tile);
+    // cv::Mat tile;
+    // if (isSvs) {
+    //     osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
+    // } else {
+    //     tile = mat(roi);
+    // }
+    // std::string path = tilesPath + "/" + name + "/";
+    // path += "/i" + to_string(i);
+    // path += "ti" + to_string(ti);
+    // path += "tj" + to_string(tj) + TILE_EXT;
+    // cv::imwrite(path, tile);
     
     // Create new RT tile from roi
     std::string drName = "t" + to_string(drId);
     DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+    ddr2d->setRoi(roi);
+    ddr2d->setSvs();
     ddr2d->setName(drName);
     ddr2d->setId(refDDRName);
     ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
     ddr2d->setIsAppInput(true);
     ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-    ddr2d->setInputFileName(path);
+    ddr2d->setInputFileName(tilesPath);
     RegionTemplate* newRT = new RegionTemplate();
     newRT->insertDataRegion(ddr2d);
     newRT->setName(name);
@@ -87,6 +89,15 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
 }
 
 void RegTiledRTCollection::customTiling() {
+    // Creates 
+    // std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
+    // const int dir_err = system(cmd.c_str());
+    // if (dir_err == -1) {
+    //     std::cout << "Error creating directory. " << __FILE__ << ":" 
+    //         << __LINE__ << std::endl;
+    //     exit(1);
+    // }
+
     std::string drName;
     // Go through all images
     for (int i=0; i<initialPaths.size(); i++) {

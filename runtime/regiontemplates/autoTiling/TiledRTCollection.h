@@ -53,7 +53,7 @@ public:
     void tileImages(std::vector<std::list<cv::Rect_<int64_t>>> tiles);
     std::vector<std::list<cv::Rect_<int64_t>>> getTiles();
 
-    void setLazyReading() {this->lazyTiling = true;}
+    // void setLazyReading() {this->lazyTiling = true;}
 
 };
 

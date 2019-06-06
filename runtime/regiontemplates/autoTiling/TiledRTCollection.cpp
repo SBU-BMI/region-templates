@@ -11,7 +11,6 @@ TiledRTCollection::TiledRTCollection(std::string name,
     this->name = name;
     this->refDDRName = refDDRName;
     this->tilesPath = tilesPath;
-    this->lazyTiling = false;
 }
 
 TiledRTCollection::~TiledRTCollection() {
@@ -35,22 +34,14 @@ void TiledRTCollection::customTiling() {
 
     // Go through all images
     for (int i=0; i<initialPaths.size(); i++) {
-        bool isSvs = isSVS(initialPaths[i]);
-
         // Open image for tiling
         int64_t w = -1;
         int64_t h = -1;
         openslide_t* osr;
         int32_t osrMaxLevel = 0; // svs standard: max level = 0
         cv::Mat mat;
-        if (isSvs) {
-            osr = openslide_open(initialPaths[i].c_str());
-            openslide_get_level0_dimensions(osr, &w, &h);
-        } else {
-            mat = cv::imread(initialPaths[i]);
-            h = mat.rows;
-            w = mat.cols;
-        }
+        osr = openslide_open(initialPaths[i].c_str());
+        openslide_get_level0_dimensions(osr, &w, &h);
 
         // Create the full roi and add it to the roi's vector
         cv::Rect_<int64_t> roi(0, 0, w, h);
@@ -60,11 +51,8 @@ void TiledRTCollection::customTiling() {
 
         // Create a tile file
         cv::Mat tile;
-        if (isSvs) {
-            osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
-        } else {
-            tile = mat(roi);
-        }
+        osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
+
         std::string path = this->tilesPath + "/" + name + "/";
         path += "/i" + to_string(i) + TILE_EXT;
         cv::imwrite(path, tile);
@@ -85,9 +73,7 @@ void TiledRTCollection::customTiling() {
             std::pair<std::string, RegionTemplate*>(drName, newRT));
 
         // Close .svs file
-        if (isSvs) {
-            openslide_close(osr);
-        }
+        openslide_close(osr);
     }
 }
 
@@ -103,16 +89,6 @@ void TiledRTCollection::tileImages() {
         // return;
     }
 
-    if (!this->lazyTiling) {
-        std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
-        const int dir_err = system(cmd.c_str());
-        if (dir_err == -1) {
-            std::cout << "Error creating directory. " << __FILE__ << ":" 
-                << __LINE__ << std::endl;
-            exit(1);
-        }
-    }
-
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
     //   tile containing the full image.
@@ -125,14 +101,12 @@ void TiledRTCollection::tileImages() {
 void TiledRTCollection::tileImages(
     std::vector<std::list<cv::Rect_<int64_t>>> tiles) {
 
-    if (!this->lazyTiling) {
-        std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
-        const int dir_err = system(cmd.c_str());
-        if (dir_err == -1) {
-            std::cout << "Error creating directory. " << __FILE__ << ":" 
-                << __LINE__ << std::endl;
-            exit(1);
-        }
+    std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
+    const int dir_err = system(cmd.c_str());
+    if (dir_err == -1) {
+        std::cout << "Error creating directory. " << __FILE__ << ":" 
+            << __LINE__ << std::endl;
+        exit(1);
     }
 
     // Only a single name is required since there is only one tile

@@ -233,7 +233,7 @@ int main (int argc, char **argv){
 
     if (tilerAlg == FIXED_GRID_TILING) {
         tCollImg = new RegTiledRTCollection(IN_RT_NAME, 
-            REF_DDR_NAME, tmpPath, nTiles, border);
+            REF_DDR_NAME, imgFilePath, nTiles, border);
         tCollMask = new RegTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, nTiles, border);
     } else {
@@ -245,7 +245,7 @@ int main (int argc, char **argv){
         tCollImg = new IrregTiledRTCollection(IN_RT_NAME, 
             REF_DDR_NAME, imgFilePath, border, bgm, 
             preTilerAlg, tilerAlg, nTiles);
-        ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
+        // ((IrregTiledRTCollection*)tCollImg)->setLazyReading();
         tCollMask = new IrregTiledRTCollection(MASK_RT_NAME, 
             REF_DDR_NAME, tmpPath, border, bgm);
     }
