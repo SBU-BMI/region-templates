@@ -4,22 +4,9 @@
 /***************************** Helper functions ******************************/
 /*****************************************************************************/
 
-void createTile(bool isSvs, cv::Rect_<int64_t> roi, openslide_t* osr,
-    int32_t osrMaxLevel, cv::Mat mat, std::string tilesPath, std::string name,
-    int i, int ti, int tj, int drId, std::string refDDRName, 
+void createTile(cv::Rect_<int64_t> roi, std::string tilesPath, 
+    std::string name, int drId, std::string refDDRName, 
     std::vector<std::pair<std::string, RegionTemplate*> >& rts) {
-
-    // cv::Mat tile;
-    // if (isSvs) {
-    //     osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
-    // } else {
-    //     tile = mat(roi);
-    // }
-    // std::string path = tilesPath + "/" + name + "/";
-    // path += "/i" + to_string(i);
-    // path += "ti" + to_string(ti);
-    // path += "tj" + to_string(tj) + TILE_EXT;
-    // cv::imwrite(path, tile);
     
     // Create new RT tile from roi
     std::string drName = "t" + to_string(drId);
@@ -70,7 +57,8 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
     int64_t border) : TiledRTCollection(name, refDDRName, tilesPath) {
 
     if (border > tw || border > th) {
-        std::cout << "Border cannot be greater than a tile width" << std::endl;
+        std::cout << "Border cannot be greater than a tile's width" 
+            << std::endl;
         exit(-2);
     }
 
@@ -89,36 +77,18 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
 }
 
 void RegTiledRTCollection::customTiling() {
-    // Creates 
-    // std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
-    // const int dir_err = system(cmd.c_str());
-    // if (dir_err == -1) {
-    //     std::cout << "Error creating directory. " << __FILE__ << ":" 
-    //         << __LINE__ << std::endl;
-    //     exit(1);
-    // }
-
-    std::string drName;
     // Go through all images
     for (int i=0; i<initialPaths.size(); i++) {
-        bool isSvs = isSVS(initialPaths[i]);
-
         // Open image for tiling
         int64_t w = -1;
         int64_t h = -1;
         openslide_t* osr;
         int32_t osrMaxLevel = 0; // svs standard: max level = 0
         cv::Mat mat;
-        if (isSvs) {
-            osr = openslide_open(initialPaths[i].c_str());
-            openslide_get_level0_dimensions(osr, &w, &h);
-            cv::Rect_<int64_t> roi(0, 0, w, h);
-            osrRegionToCVMat(osr, roi, 0, mat);
-        } else {
-            mat = cv::imread(initialPaths[i]);
-            h = mat.rows;
-            w = mat.cols;
-        }
+        osr = openslide_open(initialPaths[i].c_str());
+        openslide_get_level0_dimensions(osr, &w, &h);
+        cv::Rect_<int64_t> roi(0, 0, w, h);
+        osrRegionToCVMat(osr, roi, 0, mat);
 
         // Calculates the tiles sizes given the nTiles
         if (this->nTiles != 0) {
@@ -173,8 +143,7 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
                 // Create a tile file
-                createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                    this->tilesPath, this->name, i, ti, tj, drId++,
+                createTile(roi, this->tilesPath, this->name, drId++,
                     this->refDDRName, this->rts);
             }
         }
@@ -195,8 +164,7 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
             // Create the first tile file
-            createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                this->tilesPath, this->name, i, 0, xTiles, drId++,
+            createTile(roi, this->tilesPath, this->name, drId++,
                 this->refDDRName, this->rts);
 
             for (int ti=1; ti<yTiles; ti++) {
@@ -212,8 +180,7 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
                 // Create a tile file
-                createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                    this->tilesPath, this->name, i, ti, xTiles, drId++,
+                createTile(roi, this->tilesPath, this->name, drId++,
                     this->refDDRName, this->rts);
             }
         }
@@ -233,8 +200,7 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
             // Create the first tile file
-            createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                this->tilesPath, this->name, i, yTiles, 0, drId++,
+            createTile(roi, this->tilesPath, this->name, drId++,
                     this->refDDRName, this->rts);
 
             for (int tj=1; tj<xTiles; tj++) {
@@ -250,8 +216,7 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
                 // Create a tile file
-                createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                    this->tilesPath, this->name, i, yTiles, tj, drId++,
+                createTile(roi, this->tilesPath, this->name, drId++,
                     this->refDDRName, this->rts);
             }
         }
@@ -272,8 +237,7 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
             // Create a tile file
-            createTile(isSvs, roi, osr, osrMaxLevel, mat, 
-                this->tilesPath, this->name, i, yTiles, xTiles, drId++,
+            createTile(roi, this->tilesPath, this->name, drId++,
                 this->refDDRName, this->rts);
         }
 
@@ -281,9 +245,7 @@ void RegTiledRTCollection::customTiling() {
         this->tiles.push_back(rois);
 
         // Close .svs file
-        if (isSvs) {
-            openslide_close(osr);
-        }
+        openslide_close(osr);
 
         // Gets std-dev of dense tiles' sizes
         stddev(rois, mat, "ALLSTDDEV");
