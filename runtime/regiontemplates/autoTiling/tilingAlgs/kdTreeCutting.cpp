@@ -47,7 +47,7 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
                 else if (type == KD_TREE_ALG_COST)
                     splitTileCost(img, *r, newL, newR, orient);
                 else {
-                    std::cout << "[IrregTiledRTCollection] Bad kdTreeCutting"
+                    std::cout << "[kdTreeCutting] Bad kdTreeCutting"
                         << " alg type: " << type << std::endl;
                     exit(-1);
                 }

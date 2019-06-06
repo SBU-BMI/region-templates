@@ -22,8 +22,8 @@ enum TilerAlg_t {
     KD_TREE_ALG_AREA,
     KD_TREE_ALG_COST,
     FIXED_GRID_TILING, // Here only for testing: parameter on PipelineManager
-    QUAD_TREE_ALG_FIXED,
-    QUAD_TREE_ALG_FLEX,
+    TRIE_QUAD_TREE_ALG,
+    POINT_QUAD_TREE_ALG,
 };
 
 // This representation makes the algorithms easier to implement and understand

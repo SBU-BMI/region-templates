@@ -22,7 +22,7 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense,
         // one of them with close to avgCost cost.
         rect_t newt1, newt2;
         if ((dIt->xo-dIt->xi) == 1 || (dIt->yo-dIt->yi) == 1) {
-            std::cout << "[IrregTiledRTCollection] Tile too small to split."
+            std::cout << "[listCutting] Tile too small to split."
                 << std::endl;
             exit(-1);
         }
@@ -31,7 +31,7 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense,
         else if (type == LIST_ALG_EXPECT)
             splitTileLog(*dIt, img, avgCost, newt1, newt2);
         else {
-            std::cout << "[IrregTiledRTCollection] Bad listCutting alg type: "
+            std::cout << "[listCutting] Bad listCutting alg type: "
                 << type << std::endl;
             exit(-1);
         }

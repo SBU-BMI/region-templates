@@ -89,9 +89,12 @@ void IrregTiledRTCollection::customTiling() {
                         this->nTiles, this->tilingAlg);
                     break;
                 }
-                case QUAD_TREE_ALG_FIXED:
-                case QUAD_TREE_ALG_FLEX: {
-                    // quadTreeCutting(thMask, preTiledAreas,
+                case TRIE_QUAD_TREE_ALG: {
+                    trieQuadTreeCutting(thMask, preTiledAreas, this->nTiles);
+                    break;
+                }
+                case POINT_QUAD_TREE_ALG: {
+                    // trieQuadTreeCutting(thMask, preTiledAreas,
                     //     this->nTiles, this->tilingAlg);
                     break;
                 }

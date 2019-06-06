@@ -15,6 +15,7 @@
 #include "tilingAlgs/denseFromBG.h"
 #include "tilingAlgs/listCutting.h"
 #include "tilingAlgs/kdTreeCutting.h"
+#include "tilingAlgs/quadTreeCutting.h"
 
 class IrregTiledRTCollection : public TiledRTCollection {
 private:
