@@ -13,12 +13,15 @@ set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
 # Source files
 set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp 
     IrregTiledRTCollection.cpp costFuncs/ThresholdBGMasker.cpp 
-    svs/svsUtils.cpp)
+    svs/svsUtils.cpp tilingAlgs/tilingUtil.cpp tilingAlgs/denseFromBG.cpp 
+    tilingAlgs/listCutting.cpp tilingAlgs/kdTreeCutting.cpp)
 
 # Creates autotiling lib
 set(libname autotiling)
 add_library("${libname}" SHARED ${libautotilingsrc})
 include_directories("./svs")
+include_directories("./costFuncs")
+include_directories("./tilingAlgs")
 
 target_link_libraries("${libname}" ${OpenCV_LIBS})
 target_link_libraries("${libname}" openslide)

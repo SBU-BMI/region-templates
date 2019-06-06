@@ -11,20 +11,10 @@
 
 #include "TiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
-
-enum PreTilerAlg_t {
-    NO_PRE_TILER,
-    DENSE_BG_SEPARATOR,
-};
-
-enum TilerAlg_t {
-    NO_TILER,
-    LIST_ALG_HALF,
-    LIST_ALG_EXPECT,
-    KD_TREE_ALG_AREA,
-    KD_TREE_ALG_COST,
-    FIXED_GRID_TILING, // Here only for testing: parameter on PipelineManager
-};
+#include "tilingAlgs/tilingUtil.h"
+#include "tilingAlgs/denseFromBG.h"
+#include "tilingAlgs/listCutting.h"
+#include "tilingAlgs/kdTreeCutting.h"
 
 class IrregTiledRTCollection : public TiledRTCollection {
 private:
