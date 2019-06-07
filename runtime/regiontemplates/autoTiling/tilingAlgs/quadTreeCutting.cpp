@@ -9,6 +9,24 @@ void trieSplit4(const rect_t& r, std::list<rect_t>& newTs) {
     newTs.push_back({r.xi+w2+1, r.yi+h2+1, r.xo, r.yo});
 }
 
+void costBasedSplit4(const rect_t& r, const cv::Mat& img, 
+    std::list<rect_t>& newTs) {
+
+    int64_t tileCost = cost(img, r);
+
+    // Performs the log split for both vertical and horizontal orientations
+    rect_t newt1h, newt2h;
+    splitTileLog(r, img, tileCost/2, newt1h, newt2h, 0.2, -1);
+    rect_t newt1v, newt2v;
+    splitTileLog(r, img, tileCost/2, newt1v, newt2v, 0.2, 1);
+
+    // Creates the tiles by intersecting both splits
+    newTs.push_back({r.xi, r.yi, newt1h.xo, newt1v.yo});
+    newTs.push_back({newt2h.xi, r.yi, r.xo, newt1v.yo});
+    newTs.push_back({r.xi, newt2v.yi, newt1h.xo, r.yo});
+    newTs.push_back({newt2h.xi, newt2v.yi, r.xo, r.yo});
+}
+
 // A balanced quad-trie structure is generated on which the image is
 // split in a 4-ary tree fashion, having the restriction that the 
 // largest difference between the level of two leaf nodes is 1.
@@ -70,10 +88,12 @@ void heightBalancedTrieQuadTreeCutting(const cv::Mat& img,
 }
 
 // An unbalanced quad-trie structure is used to generate the tiles by splitting
-// the tile with the highest cost. The partition is regular (i.e., one tile is
-// split into 4 equal-sized sub-tiles) and generates at least nTiles.
-void costBalancedTrieQuadTreeCutting(const cv::Mat& img, 
-    std::list<rect_t>& dense, int nTiles) {
+// the tile with the highest cost. The partition can be regular (i.e., one tile
+// is split into 4 equal-sized sub-tiles) or cost sensitive (i.e., the tile is 
+// split in the attempt to balance the cost of the nwe sub-tiles).
+// At least nTiles are always generated.
+void costBalancedQuadTreeCutting(const cv::Mat& img, 
+    std::list<rect_t>& dense, int nTiles, TilerAlg_t type) {
 
     // Create a multiset of tiles ordered by the cost function. This is to 
     // avoid re-sorting of the dense list whilst enabling O(1) access
@@ -101,7 +121,16 @@ void costBalancedTrieQuadTreeCutting(const cv::Mat& img,
 
         // Splits tile with highest cost, generating a 4 new tiles
         std::list<rect_t> newTs;
-        trieSplit4(*dIt, newTs);
+        if (type == CBAL_TRIE_QUAD_TREE_ALG)
+            trieSplit4(*dIt, newTs);
+        else if (type == CBAL_POINT_QUAD_TREE_ALG)
+            costBasedSplit4(*dIt, img, newTs);
+        else {
+            std::cout << "[costBalancedQuadTreeCutting] Bad "
+                << "costBalancedQuadTreeCutting alg type: " 
+                << type << std::endl;
+            exit(-1);
+        }
 
         // Removes the first tile and insert the new sub-tiles created from it
         sDense.erase(dIt);

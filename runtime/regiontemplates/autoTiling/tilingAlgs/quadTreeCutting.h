@@ -12,7 +12,7 @@
 void heightBalancedTrieQuadTreeCutting(const cv::Mat& img, 
     std::list<rect_t>& dense, int nTiles);
 
-void costBalancedTrieQuadTreeCutting(const cv::Mat& img, 
-    std::list<rect_t>& dense, int nTiles);
+void costBalancedQuadTreeCutting(const cv::Mat& img, 
+    std::list<rect_t>& dense, int nTiles, TilerAlg_t type);
 
 #endif // QUAD_TREE_CUTTING_H_
