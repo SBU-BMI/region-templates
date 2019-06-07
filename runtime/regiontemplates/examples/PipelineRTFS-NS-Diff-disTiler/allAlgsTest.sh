@@ -6,7 +6,7 @@ rm dstddev.txt
 rm astddev.txt
 rm ntiles.txt
 
-for TILING_ALG in 0 1 2 3 4 5 ; do
+for TILING_ALG in 0 1 2 3 4 5 6 7 8 ; do
     for PRETILING_ALG in 0 1; do
         for TILES in 2 4 8 16 32 64 128 ; do
             echo "testing A${TILING_ALG} P${PRETILING_ALG} NT${TILES}"
@@ -57,4 +57,7 @@ done
 #     3 KD_TREE_ALG_AREA,
 #     4 KD_TREE_ALG_COST,
 #     5 FIXED_GRID_TILING,
+#     6 HBAL_TRIE_QUAD_TREE_ALG,
+#     7 CBAL_TRIE_QUAD_TREE_ALG,
+#     8 CBAL_POINT_QUAD_TREE_ALG,
 # }

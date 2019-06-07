@@ -24,7 +24,7 @@ enum TilerAlg_t {
     FIXED_GRID_TILING, // Here only for testing: parameter on PipelineManager
     HBAL_TRIE_QUAD_TREE_ALG,
     CBAL_TRIE_QUAD_TREE_ALG,
-    POINT_QUAD_TREE_ALG,
+    CBAL_POINT_QUAD_TREE_ALG,
 };
 
 /*****************************************************************************/
