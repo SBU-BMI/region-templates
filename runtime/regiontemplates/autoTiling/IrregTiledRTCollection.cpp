@@ -89,8 +89,14 @@ void IrregTiledRTCollection::customTiling() {
                         this->nTiles, this->tilingAlg);
                     break;
                 }
-                case TRIE_QUAD_TREE_ALG: {
-                    trieQuadTreeCutting(thMask, preTiledAreas, this->nTiles);
+                case HBAL_TRIE_QUAD_TREE_ALG: {
+                    heightBalancedTrieQuadTreeCutting(thMask, 
+                        preTiledAreas, this->nTiles);
+                    break;
+                }
+                case CBAL_TRIE_QUAD_TREE_ALG: {
+                    costBalancedTrieQuadTreeCutting(thMask, 
+                        preTiledAreas, this->nTiles);
                     break;
                 }
                 case POINT_QUAD_TREE_ALG: {

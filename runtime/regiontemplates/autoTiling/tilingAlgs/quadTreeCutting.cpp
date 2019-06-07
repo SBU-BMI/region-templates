@@ -9,7 +9,12 @@ void trieSplit4(const rect_t& r, std::list<rect_t>& newTs) {
     newTs.push_back({r.xi+w2+1, r.yi+h2+1, r.xo, r.yo});
 }
 
-void trieQuadTreeCutting(const cv::Mat& img, 
+// A balanced quad-trie structure is generated on which the image is
+// split in a 4-ary tree fashion, having the restriction that the 
+// largest difference between the level of two leaf nodes is 1.
+// If the number of tiles is reached before the trie is filled
+// to the last level, the first tiles of the trie are chosen.
+void heightBalancedTrieQuadTreeCutting(const cv::Mat& img, 
     std::list<rect_t>& dense, int nTiles) {
 
     // Calculates the number of cuts tree levels required
@@ -64,64 +69,47 @@ void trieQuadTreeCutting(const cv::Mat& img,
     }
 }
 
+// An unbalanced quad-trie structure is used to generate the tiles by splitting
+// the tile with the highest cost. The partition is regular (i.e., one tile is
+// split into 4 equal-sized sub-tiles) and generates at least nTiles.
+void costBalancedTrieQuadTreeCutting(const cv::Mat& img, 
+    std::list<rect_t>& dense, int nTiles) {
 
+    // Create a multiset of tiles ordered by the cost function. This is to 
+    // avoid re-sorting of the dense list whilst enabling O(1) access
+    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img)));
+    for (rect_t r : dense) {
+        sDense.insert(r);
+    }
 
+    // Keeps breaking tiles until nTiles goal is reached
+    while (sDense.size() < nTiles) {
+        // Gets the first region (highest cost) 
+        std::multiset<rect_t, rect_tCostFunct>::iterator dIt = sDense.begin();
 
+        // Checks whether the split of tile dIt could generate an empty tile
+        if ((dIt->xo-dIt->xi) <= 1 || (dIt->yo-dIt->yi) <= 1) {
+            // std::cout << "[quadTreeCutting] Tile too small to split."
+            //     << std::endl;
 
+            // Removes the tile from the search list and add it to the result 
+            // list, thus avoiding it being split
+            dense.push_back(*dIt);
+            sDense.erase(dIt);
+            continue;
+        }
 
+        // Splits tile with highest cost, generating a 4 new tiles
+        std::list<rect_t> newTs;
+        trieSplit4(*dIt, newTs);
 
+        // Removes the first tile and insert the new sub-tiles created from it
+        sDense.erase(dIt);
+        sDense.insert(newTs.begin(), newTs.end());
+    }
 
-
-// void quadTreeCutting(const cv::Mat& img, std::list<rect_t>& dense, 
-//     int nTiles, TilerAlg_t type) {
-
-//     // Calculates the target average cost of a dense tile
-//     int avgCost = cv::sum(img)[0]/nTiles;
-
-//     // Create a multiset of tiles ordered by the cost function. This is to 
-//     // avoid re-sorting of the dense list whilst enabling O(1) access
-//     std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img)));
-//     for (rect_t r : dense) {
-//         sDense.insert(r);
-//     }
-
-//     // Keeps breaking tiles until nTiles goal is reached
-//     while (sDense.size() < nTiles) {
-//         // Gets the first region (highest cost) 
-//         std::multiset<rect_t, rect_tCostFunct>::iterator dIt = sDense.begin();
-
-//         // Splits tile with highest cost, generating a 4 new tiles
-//         std::list<rect_t> newTs;
-//         if ((dIt->xo-dIt->xi) <= 1 || (dIt->yo-dIt->yi) <= 1) {
-//             // std::cout << "[quadTreeCutting] Tile too small to split."
-//             //     << std::endl;
-
-//             // Removes the tile from the search list and add it to the result 
-//             // list, thus avoiding it being split
-//             dense.push_back(*dIt);
-//             sDense.erase(dIt);
-//             continue;
-//         }
-
-//         // Perform the split of the tile according to the selected algorithm
-//         if (type == QUAD_TREE_ALG_FIXED)
-//             splitTileLog(*dIt, img, cost(img, *dIt)/2, newt1, newt2);
-//         // else if (type == QUAD_TREE_ALG_FLEX)
-//         //     splitTileLog(*dIt, img, avgCost, newt1, newt2);
-//         else {
-//             std::cout << "[quadTreeCutting] Bad listCutting alg type: "
-//                 << type << std::endl;
-//             exit(-1);
-//         }
-
-//         // Removes the first tile and insert the two sub-tiles created from it
-//         sDense.erase(dIt);
-//         sDense.insert(newt1);
-//         sDense.insert(newt2);
-//     }
-
-//     // Moves regions to the output list
-//     dense.clear();
-//     for (rect_t r : sDense)
-//         dense.push_back(r);
-// }
+    // Moves regions to the output list
+    dense.clear();
+    for (rect_t r : sDense)
+        dense.push_back(r);
+}

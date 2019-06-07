@@ -22,9 +22,14 @@ enum TilerAlg_t {
     KD_TREE_ALG_AREA,
     KD_TREE_ALG_COST,
     FIXED_GRID_TILING, // Here only for testing: parameter on PipelineManager
-    TRIE_QUAD_TREE_ALG,
+    HBAL_TRIE_QUAD_TREE_ALG,
+    CBAL_TRIE_QUAD_TREE_ALG,
     POINT_QUAD_TREE_ALG,
 };
+
+/*****************************************************************************/
+/**                            rect_t Structure                             **/
+/*****************************************************************************/
 
 // This representation makes the algorithms easier to implement and understand
 // Used for all tiling algorithms
@@ -52,49 +57,6 @@ typedef struct rect_t {
 } rect_t;
 
 /*****************************************************************************/
-/**                            I/O and Profiling                            **/
-/*****************************************************************************/
-
-// prints the std dev of a tile inside an image. Used for profiling
-void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name);
-
-// Prints a rect_t without the carriage return
-void printRect(rect_t r);
-
-// // Creates a png file of the tile
-// void printRegions(cv::Mat final, std::list<rect_t> output, int i) {    
-//     for (std::list<rect_t>::iterator r=output.begin(); r!=output.end(); r++) {
-//         // draw areas for verification
-//         if (r->isBg) {
-//             // cv::rectangle(final, cv::Point(r->xi,r->yi), 
-//             //     cv::Point(r->xo,r->yo),(0,0,0),3);
-//             cv::rectangle(final, cv::Point(r->xi,r->yi), 
-//                 cv::Point(r->xo,r->yo),(0,0,0),1);
-//             printRect(*r);
-//             std::cout << std::endl;
-//         }
-//     }
-
-//     cv::imwrite("./maskf" + std::to_string(i) + ".png", final);
-// }
-
-
-// inline bool isInsideNI(int64_t x, int64_t y, rect_t r2) {
-//     return r2.xi < x && r2.yi < y && r2.xo > x && r2.yo > y;
-// }
-
-// inline bool isInsideNI(rect_t r1, rect_t r2) {
-//     return isInsideNI(r1.xi, r1.yi, r2) && isInsideNI(r1.xo, r1.yo, r2);
-// }
-
-// inline bool overlaps(rect_t r1, rect_t r2) {
-//     return isInsideNI(r1.xi, r1.yi, r2) || isInsideNI(r1.xi, r1.yo, r2) ||
-//         isInsideNI(r1.xo, r1.yi, r2) || isInsideNI(r1.xo, r1.yo, r2) ||
-//         isInsideNI(r2.xi, r2.yi, r1) || isInsideNI(r2.xi, r2.yo, r1) ||
-//         isInsideNI(r2.xo, r2.yi, r1) || isInsideNI(r2.xo, r2.yo, r1);
-// }
-
-/*****************************************************************************/
 /**                            Cost Calculations                            **/
 /*****************************************************************************/
 
@@ -118,6 +80,30 @@ inline bool between(int64_t x, int64_t init, int64_t end) {
 inline int64_t area (rect_t r) {
     return (r.xo-r.xi) * (r.yo-r.yi);
 }
+
+// Functor for sorting a container of rect_t using the added cost of said
+// region on the img parameter.
+// NOTE: when instantiating container, use double parenthesis to avoid 
+// compiler confusion of the declared object with a function:
+// Cont<t1, rect_tCostFunct> obj((rect_tCostFunct(img)))
+
+struct rect_tCostFunct{
+    const cv::Mat& img;
+    rect_tCostFunct(const cv::Mat& img) : img(img) {}
+    bool operator()(const rect_t& a, const rect_t& b) {
+        return cost(img, a) > cost(img, b);
+    }
+};
+
+/*****************************************************************************/
+/**                            I/O and Profiling                            **/
+/*****************************************************************************/
+
+// prints the std dev of a tile inside an image. Used for profiling
+void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name);
+
+// Prints a rect_t without the carriage return
+void printRect(rect_t r);
 
 /*****************************************************************************/
 /**                           Log Split Algorithm                           **/
