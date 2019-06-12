@@ -272,7 +272,7 @@ int main (int argc, char **argv){
     //     << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
     //     << " seconds " << endTime << " -> " << endTime << std::endl;
 
-    std::cout << "[PROFILING][NTILES]" << tCollImg->getNumRTs() << std::endl;
+    // std::cout << "[PROFILING][NTILES]" << tCollImg->getNumRTs() << std::endl;
     // std::cout << "[PielineManager] Number of tiles created: " 
     //     << tCollImg->getNumRTs() << std::endl;
 
