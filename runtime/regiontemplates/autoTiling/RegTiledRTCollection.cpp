@@ -83,12 +83,30 @@ void RegTiledRTCollection::customTiling() {
         int64_t w = -1;
         int64_t h = -1;
         openslide_t* osr;
+        int32_t osrMinLevel = -1;
         int32_t osrMaxLevel = 0; // svs standard: max level = 0
+        float ratiow;
+        float ratioh; 
         cv::Mat mat;
+
+        // Opens svs input file
         osr = openslide_open(initialPaths[i].c_str());
+
+        // Gets info of largest image
         openslide_get_level0_dimensions(osr, &w, &h);
+        ratiow = w;
+        ratioh = h;
+
+        // Opens smallest image as a cv mat
+        osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+        openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
         cv::Rect_<int64_t> roi(0, 0, w, h);
-        osrRegionToCVMat(osr, roi, 0, mat);
+        osrRegionToCVMat(osr, roi, osrMinLevel, mat);
+
+        // Calculates the ratio between largest and smallest 
+        // images' dimensions for later conversion
+        ratiow /= w;
+        ratioh /= h;
 
         // Calculates the tiles sizes given the nTiles
         if (this->nTiles != 0) {
@@ -123,6 +141,8 @@ void RegTiledRTCollection::customTiling() {
 
 #ifdef DEBUG
         std::cout << "Full size:" << w << "x" << h << std::endl;
+        std::cout << "xTiles:" << xTiles << std::endl;
+        std::cout << "yTiles:" << yTiles << std::endl;
 #endif
 
         // Create regular tiles
@@ -241,13 +261,23 @@ void RegTiledRTCollection::customTiling() {
                 this->refDDRName, this->rts);
         }
 
-        // Add the current image tiles to the tiles vector
-        this->tiles.push_back(rois);
+        // Gets std-dev of dense tiles' sizes
+        stddev(rois, mat, "ALLSTDDEV");
+        for (cv::Rect_<int64_t> r : rois) {
+            cv::rectangle(mat, cv::Point(r.x,r.y),
+                cv::Point(r.x+r.width,r.y+r.height),
+                (0,0,0),3);
+            r.x *= ratiow;
+            r.width *= ratiow;
+            r.y *= ratioh;
+            r.height *= ratioh;
+        }
+        cv::imwrite("./maskf.png", mat);
 
         // Close .svs file
         openslide_close(osr);
 
-        // Gets std-dev of dense tiles' sizes
-        stddev(rois, mat, "ALLSTDDEV");
+        // Add the current image tiles to the tiles vector
+        this->tiles.push_back(rois);
     }
 }

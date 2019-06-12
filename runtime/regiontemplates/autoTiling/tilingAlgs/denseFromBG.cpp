@@ -349,12 +349,12 @@ void tileDenseFromBG(cv::Mat& mask, std::list<rect_t>& dense,
         }
     }
 
-// #ifdef DEBUG
+#ifdef DEBUG
     std::cout << "[tileDenseFromBG] Tiling image size: " 
         << mask.cols << "x" << mask.rows << std::endl;
     std::cout << "[tileDenseFromBG] Initial dense regions: " 
         << maxLabel << std::endl;
-// #endif
+#endif
     
     // keep trying to remove overlapping regions until there is none
     while (!ovlpCand.empty()) {
@@ -377,7 +377,7 @@ void tileDenseFromBG(cv::Mat& mask, std::list<rect_t>& dense,
     // Perform merging of background areas
     bgMerging(output);
 
-// #ifdef DEBUG
+#ifdef DEBUG
     std::cout << "[tileDenseFromBG] Total regions to process: " 
         << output.size() << std::endl;
     cv::Mat final;
@@ -396,5 +396,5 @@ void tileDenseFromBG(cv::Mat& mask, std::list<rect_t>& dense,
     if (input != NULL) {
         cv::imwrite("./maskNoBg.png", final);
     }
-// #endif
+#endif
 }

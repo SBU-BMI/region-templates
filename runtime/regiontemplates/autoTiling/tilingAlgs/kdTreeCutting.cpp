@@ -27,7 +27,7 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
     int nTiles, TilerAlg_t type) {
 
     // Calculates the number of cuts tree levels required
-    int levels = ceil(log(nTiles/dense.size())/log(2));
+    int levels = ceil(log((float)nTiles/dense.size())/log(2));
     std::list<rect_t> result;
 
     for (rect_t initial : dense) {

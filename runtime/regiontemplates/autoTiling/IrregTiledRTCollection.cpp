@@ -19,9 +19,6 @@ void IrregTiledRTCollection::customTiling() {
         // Create the list of tiles for the current image
         std::list<cv::Rect_<int64_t>> rois;
 
-        // Check whether the input file is a svs file
-        bool isSvs = isSVS(initialPaths[i]);
-
         // Open image for tiling
         int64_t w = -1;
         int64_t h = -1;
@@ -101,11 +98,11 @@ void IrregTiledRTCollection::customTiling() {
                     break;
                 }
             }
-
-            // Gets std-dev of dense tiles' sizes
-            stddev(preTiledAreas, thMask, "DENSESTDDEV");
-
         }
+
+        // Gets std-dev of dense tiles' sizes
+        stddev(preTiledAreas, thMask, "DENSESTDDEV");
+
         // Send resulting tiles to the final output
         finalTiles.insert(finalTiles.end(), 
             preTiledAreas.begin(), preTiledAreas.end());
@@ -174,9 +171,7 @@ void IrregTiledRTCollection::customTiling() {
         }
 
         // Close .svs file
-        if (isSvs) {
-            openslide_close(osr);
-        }
+        openslide_close(osr);
 
         // Add the current image tiles to the tiles vector
         this->tiles.push_back(rois);

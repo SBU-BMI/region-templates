@@ -90,7 +90,7 @@ void heightBalancedTrieQuadTreeCutting(const cv::Mat& img,
 // An unbalanced quad-trie structure is used to generate the tiles by splitting
 // the tile with the highest cost. The partition can be regular (i.e., one tile
 // is split into 4 equal-sized sub-tiles) or cost sensitive (i.e., the tile is 
-// split in the attempt to balance the cost of the nwe sub-tiles).
+// split in the attempt to balance the cost of the new sub-tiles).
 // At least nTiles are always generated.
 void costBalancedQuadTreeCutting(const cv::Mat& img, 
     std::list<rect_t>& dense, int nTiles, TilerAlg_t type) {
