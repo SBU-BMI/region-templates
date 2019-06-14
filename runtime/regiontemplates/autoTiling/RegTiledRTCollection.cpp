@@ -146,7 +146,6 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
         // Create regular tiles
-        int drId = 0;
         for (int ti=0; ti<yTiles; ti++) {
             for (int tj=0; tj<xTiles; tj++) {
                 // Create the roi for the current tile
@@ -162,9 +161,9 @@ void RegTiledRTCollection::customTiling() {
                     << "x" << roi.y << "+" << roi.height << std::endl;
 #endif
 
-                // Create a tile file
-                createTile(roi, this->tilesPath, this->name, drId++,
-                    this->refDDRName, this->rts);
+                // // Create a tile file
+                // createTile(roi, this->tilesPath, this->name, drId++,
+                //     this->refDDRName, this->rts);
             }
         }
 
@@ -184,8 +183,8 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
             // Create the first tile file
-            createTile(roi, this->tilesPath, this->name, drId++,
-                this->refDDRName, this->rts);
+            // createTile(roi, this->tilesPath, this->name, drId++,
+            //     this->refDDRName, this->rts);
 
             for (int ti=1; ti<yTiles; ti++) {
                 // Create the roi for the current tile
@@ -200,8 +199,8 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
                 // Create a tile file
-                createTile(roi, this->tilesPath, this->name, drId++,
-                    this->refDDRName, this->rts);
+                // createTile(roi, this->tilesPath, this->name, drId++,
+                //     this->refDDRName, this->rts);
             }
         }
         // Create irregular border tiles for the last horizontal line
@@ -220,8 +219,8 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
             // Create the first tile file
-            createTile(roi, this->tilesPath, this->name, drId++,
-                    this->refDDRName, this->rts);
+            // createTile(roi, this->tilesPath, this->name, drId++,
+            //         this->refDDRName, this->rts);
 
             for (int tj=1; tj<xTiles; tj++) {
                 // Create the roi for the current tile
@@ -236,8 +235,8 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
                 // Create a tile file
-                createTile(roi, this->tilesPath, this->name, drId++,
-                    this->refDDRName, this->rts);
+                // createTile(roi, this->tilesPath, this->name, drId++,
+                //     this->refDDRName, this->rts);
             }
         }
 
@@ -257,12 +256,16 @@ void RegTiledRTCollection::customTiling() {
 #endif
 
             // Create a tile file
-            createTile(roi, this->tilesPath, this->name, drId++,
-                this->refDDRName, this->rts);
+            // createTile(roi, this->tilesPath, this->name, drId++,
+            //     this->refDDRName, this->rts);
         }
 
         // Gets std-dev of dense tiles' sizes
         stddev(rois, mat, "ALLSTDDEV");
+
+        // Creates the actual tiles with the correct size
+        int drId = 0;
+        std::list<cv::Rect_<int64_t>> newRois;
         for (cv::Rect_<int64_t> r : rois) {
             cv::rectangle(mat, cv::Point(r.x,r.y),
                 cv::Point(r.x+r.width,r.y+r.height),
@@ -271,6 +274,10 @@ void RegTiledRTCollection::customTiling() {
             r.width *= ratiow;
             r.y *= ratioh;
             r.height *= ratioh;
+
+            newRois.push_back(r);
+            createTile(r, this->tilesPath, this->name, drId++,
+                this->refDDRName, this->rts);
         }
         cv::imwrite("./maskf.png", mat);
 
@@ -278,6 +285,6 @@ void RegTiledRTCollection::customTiling() {
         openslide_close(osr);
 
         // Add the current image tiles to the tiles vector
-        this->tiles.push_back(rois);
+        this->tiles.push_back(newRois);
     }
 }

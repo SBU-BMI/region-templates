@@ -266,15 +266,6 @@ int main (int argc, char **argv){
     uint64_t endTileTime = Util::ClockGetTime();
     std::cout << "[PROFILING][TTIME]" 
         << (endTileTime-initTileTime) << std::endl;
-    // std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
-    // std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
-    // std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
-    //     << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
-    //     << " seconds " << endTime << " -> " << endTime << std::endl;
-
-    // std::cout << "[PROFILING][NTILES]" << tCollImg->getNumRTs() << std::endl;
-    // std::cout << "[PielineManager] Number of tiles created: " 
-    //     << tCollImg->getNumRTs() << std::endl;
 
     // Generate the pipelines for each tile
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
@@ -326,20 +317,14 @@ int main (int argc, char **argv){
     std::cout << "Total diff: " << diff_f << " Secondary Metric: " 
         << secondaryMetric << std::endl;
 
-    // std::string tilingType = tSize < 0 ? "Irregular" : "Regular";
-    // std::string laziness = tSize < 0 && lazyTileRead ? " lazy" : "";
-    // std::string rtSize = 
-    //     tSize >= 0 ? " with tile size " + to_string(tSize) : "";
-    // std::cout << "[PielineManager] " << tilingType << laziness << " tiling" 
-    //     << rtSize <<  " in " << ((float)(endTime-initTime)/1000) 
-    //     << " seconds " << endTime << " -> " << endTime << std::endl;
-
     uint64_t endFullTime = Util::ClockGetTime();
     std::cout << "[PROFILING][FULLTIME]" 
         << (endFullTime-initFullTime) << std::endl;
 
     // Finalize all processes running and end execution
     sysEnv.finalizeSystem();
+
+    delete tCollMask; // Cleanup of tmp dirs
 
     return 0;
 }
