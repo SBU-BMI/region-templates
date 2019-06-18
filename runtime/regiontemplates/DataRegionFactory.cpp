@@ -165,6 +165,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 			dr2D->getVersion() << " outputExt: " << dr2D->getOutputExtension() << std::endl;
 #endif
 
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
 			if (inDr->isSvs()) {
 				if (c != NULL) {
 					// Gets the pointer 
@@ -184,6 +185,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 				(*dataRegion) = (DataRegion *) dr2D;
 				return true;
 			}
+#endif
 
 			if (dr2D->getOutputExtension() == DataRegion::XML) {
 				// if it is an Mat stored as a XML file

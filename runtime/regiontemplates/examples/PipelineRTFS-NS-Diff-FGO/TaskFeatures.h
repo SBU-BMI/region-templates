@@ -13,7 +13,9 @@
 #include "FileUtils.h"
 #include "opencv2/opencv.hpp"
 // #include "opencv2/gpu/gpu.hpp" // old opencv 2.4
+#ifdef WITH_CUDA
 #include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
+#endif
 #include "ObjFeatures.h"
 #include "ConnComponents.h"
 

@@ -12,7 +12,10 @@
 #include "DenseDataRegion2D.h"
 #include "DataRegion2DUnaligned.h"
 #include "Cache.h"
+
+#ifdef USE_DISTRIBUTED_TILLING_EXAMPLE
 #include "svs/svsUtils.h"
+#endif
 
 // OpenCV library includes: used as an auxiliar lib to read/write data(images) to fs
 //#include "cv.hpp"
