@@ -4,9 +4,12 @@ project(ExamplesRT)
 #add_subdirectory("PipelineRTFS-NSF")
 
 #Difference analysis basic pipelines
+option(WITH_DISTRIBUTED_TILLING_EXAMPLE "Enable compilation of the disTiler tool examples" OFF)
+if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
+    add_subdirectory("IWPP-Halide-disTiler")
+endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 option(RT_TUNING_NSCALE_EXAMPLE "Enable compilation of NScale example with tuning" OFF)
 if (RT_TUNING_NSCALE_EXAMPLE)
-    option(WITH_DISTRIBUTED_TILLING_EXAMPLE "Enable compilation of a disTiler tool example" OFF)
     add_subdirectory("PipelineRTFS-NS-Diff")
     if (USE_ACTIVE_HARMONY)
         add_subdirectory("PipelineRTFS-SF")
