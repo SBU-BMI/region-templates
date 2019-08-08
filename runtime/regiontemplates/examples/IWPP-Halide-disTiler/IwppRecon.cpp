@@ -46,5 +46,18 @@ void IwppParallelRecon::realize(cv::Mat* cvI, cv::Mat* cvJ) {
     Halide::Buffer<uint8_t> hOut(cvJ->data, cols, rows);
 
     // cout << "realizing" << endl;
-    iwppFunc.realize(hOut);
+    int oldSum = 0;
+    int newSum = 0;
+    int it = 0;
+
+    do {
+        it++;
+        oldSum = newSum;
+        iwppFunc.realize(hOut);
+        newSum = cv::sum(*cvJ)[0];
+        // cout << "new - old: " << newSum << " - " << oldSum << endl;
+        // cv::imwrite("out.png", *cvJ);
+    } while(newSum != oldSum);
+
+    // cout << "[IwppParallelRecon] Done in " << it << " iterations" << endl;
 }

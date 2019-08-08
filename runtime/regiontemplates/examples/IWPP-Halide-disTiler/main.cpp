@@ -32,20 +32,8 @@ int main(int argc, char const *argv[]) {
     // halCpu(x,y) = ...
     // halGpu(x,y) = ...
 
-    int oldSum = 0;
-    int newSum = 0;
-    int it = 0;
     IwppParallelRecon iwpp;
-    do {
-        it++;
-        oldSum = newSum;
-        iwpp.realize(cvI, cvJ);
-        newSum = cv::sum(*cvJ)[0];
-        // cout << "new - old: " << newSum << " - " << oldSum << endl;
-        // cv::imwrite("out.png", *cvJ);
-    } while(newSum != oldSum);
-
-    cout << "Done in " << it << " iterations" << endl;
+    iwpp.realize(cvI, cvJ);
 
     // Schedule funcs for both cpu and gpu
     // halCpu.parallel(x);
