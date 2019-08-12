@@ -11,6 +11,11 @@
 using std::cout;
 using std::endl;
 
+enum Target_t {
+    CPU,
+    GPU
+};
+
 extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     Halide::Buffer<uint8_t> I(*bI);
     Halide::Buffer<uint8_t> JJ(*bJJ);
@@ -38,13 +43,24 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
 
     // Schedule
+    int sched = GPU;
     rasterx.compute_root();
-    Halide::Var xi, xo;
-    rastery.reorder(y,x).serial(y);
-    rastery.split(x, xo, xi, 16);
-    rastery.vectorize(xi).parallel(xo);
+    Halide::Target target = Halide::get_host_target();
+    if (sched == CPU) {
+        Halide::Var xi, xo;
+        rastery.reorder(y,x).serial(y);
+        rastery.split(x, xo, xi, 16);
+        rastery.vectorize(xi).parallel(xo);
+        rastery.compile_jit();
+    } else if (sched == GPU) {
+        Halide::Var block, thread;
+        rastery.gpu_tile(x, block, thread, 16);
+        target.set_feature(Halide::Target::CUDA);
+        I.set_host_dirty();
+        JJ.set_host_dirty();
+    }
+    rastery.compile_jit(target);
 
-    rastery.compile_jit();
 
     int oldSum = 0;
     int newSum = 0;
@@ -56,8 +72,14 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
         it++;
         oldSum = newSum;
         rastery.realize(JJ);
-        newSum = cv::sum(cvJ)[0];
-        // cout << "new - old: " << newSum << " - " << oldSum << endl;
+        // Copy from GPU to host is done every realization which is inefficient.
+        // However this is just done as a proof of concept for having a CPU 
+        // and a GPU sched (more work necessary for running the sum on GPU). 
+        if (sched == GPU) {
+            JJ.copy_to_host();
+        }
+        newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
+        cout << "new - old: " << newSum << " - " << oldSum << endl;
         // cv::imwrite("out.png", cvJ);
     } while(newSum != oldSum);
 
@@ -74,6 +96,10 @@ int main(int argc, char const *argv[]) {
     cv::Mat* cvI = new cv::Mat(cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE));
     cv::Mat* cvJ = new cv::Mat(cv::imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE));
     
+    // Create the buffers for execution
+    Halide::Buffer<uint8_t> I(cvI->data, cvI->cols, cvI->rows);
+    Halide::Buffer<uint8_t> J(cvJ->data, cvJ->cols, cvJ->rows);
+    
     // RTF::AutoRegionTemplate* rt;
 
     // rt = new AutoRegionTemplate(inputImgPath);
@@ -88,8 +114,6 @@ int main(int argc, char const *argv[]) {
 
     // IwppParallelRecon iwpp;
     // iwpp.realize(cvI, cvJ);
-    Halide::Buffer<uint8_t> I(cvI->data, cvI->cols, cvI->rows);
-    Halide::Buffer<uint8_t> J(cvJ->data, cvJ->cols, cvJ->rows);
     halCpu.define_extern("loopedIwppRecon", {I, J}, Halide::UInt(8), 2);
     cv::Mat cvOut(cvJ->cols, cvJ->rows, CV_8U);
     Halide::Buffer<uint8_t> out(cvOut.data, cvOut.cols, cvOut.rows);
