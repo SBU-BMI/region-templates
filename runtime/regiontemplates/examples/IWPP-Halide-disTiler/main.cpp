@@ -16,6 +16,8 @@ enum Target_t {
     GPU
 };
 
+// CPU sched still marginally better since data is copied to and from device
+// on every propagation loop instance
 extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     Halide::Buffer<uint8_t> I(*bI);
     Halide::Buffer<uint8_t> JJ(*bJJ);
@@ -53,13 +55,16 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
         rastery.vectorize(xi).parallel(xo);
         rastery.compile_jit();
     } else if (sched == GPU) {
-        Halide::Var block, thread;
-        rastery.gpu_tile(x, block, thread, 16);
+        Halide::Var bx, by, tx, ty;
+        rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
+        rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
         target.set_feature(Halide::Target::CUDA);
         I.set_host_dirty();
         JJ.set_host_dirty();
     }
+    // target.set_feature(Halide::Target::Debug);
     rastery.compile_jit(target);
+    // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
 
 
     int oldSum = 0;
@@ -86,6 +91,21 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     return 0;
 }
 
+void extern_exec(cv::Mat* cvI, cv::Mat* cvJ) {
+    // Create the buffers for execution
+    Halide::Buffer<uint8_t> I(cvI->data, cvI->cols, cvI->rows);
+    Halide::Buffer<uint8_t> J(cvJ->data, cvJ->cols, cvJ->rows);
+
+    // Create extern halide func
+    Halide::Func halCpu;
+    halCpu.define_extern("loopedIwppRecon", {I, J}, Halide::UInt(8), 2);
+    cv::Mat cvOut(cvJ->cols, cvJ->rows, CV_8U);
+    
+    // Realizes the pipeline to the output
+    Halide::Buffer<uint8_t> out(cvOut.data, cvOut.cols, cvOut.rows);
+    halCpu.realize(out);
+}
+
 int main(int argc, char const *argv[]) {
 
     // Manages inputs
@@ -96,15 +116,12 @@ int main(int argc, char const *argv[]) {
     cv::Mat* cvI = new cv::Mat(cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE));
     cv::Mat* cvJ = new cv::Mat(cv::imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE));
     
-    // Create the buffers for execution
-    Halide::Buffer<uint8_t> I(cvI->data, cvI->cols, cvI->rows);
-    Halide::Buffer<uint8_t> J(cvJ->data, cvJ->cols, cvJ->rows);
-    
+    extern_exec(cvI, cvJ);
+
     // RTF::AutoRegionTemplate* rt;
 
     // rt = new AutoRegionTemplate(inputImgPath);
 
-    Halide::Func halCpu;
     // Halide::Func halGpu;
     // Halide::Var x, y;
     
@@ -114,11 +131,6 @@ int main(int argc, char const *argv[]) {
 
     // IwppParallelRecon iwpp;
     // iwpp.realize(cvI, cvJ);
-    halCpu.define_extern("loopedIwppRecon", {I, J}, Halide::UInt(8), 2);
-    cv::Mat cvOut(cvJ->cols, cvJ->rows, CV_8U);
-    Halide::Buffer<uint8_t> out(cvOut.data, cvOut.cols, cvOut.rows);
-    halCpu.realize(out);
-
 
     // Schedule funcs for both cpu and gpu
     // halCpu.parallel(x);
