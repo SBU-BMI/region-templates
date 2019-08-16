@@ -13,7 +13,7 @@ find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIR})
 
 # Create executable to be built from the files listed
-add_executable(iwpp main.cpp IwppRecon.cpp)
+add_executable(iwpp main.cpp IwppRecon.cpp AutoStage.cpp)
 target_link_libraries(iwpp Halide)
 target_link_libraries(iwpp ${OpenCV_LIBS})
 target_link_libraries(iwpp -ljpeg)

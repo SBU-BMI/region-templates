@@ -5,16 +5,12 @@
 #include "Halide.h"
 
 // #include "AutoRegionTemplate.h"
-// #include "AutoStage.h"
+#include "AutoStage.h"
 #include "IwppRecon.h"
+#include "RegionTemplate.h"
 
 using std::cout;
 using std::endl;
-
-enum Target_t {
-    CPU,
-    GPU
-};
 
 // CPU sched still marginally better since data is copied to and from device
 // on every propagation loop instance
@@ -45,16 +41,16 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
 
     // Schedule
-    int sched = GPU;
+    int sched = RTF::CPU;
     rasterx.compute_root();
     Halide::Target target = Halide::get_host_target();
-    if (sched == CPU) {
+    if (sched == RTF::CPU) {
         Halide::Var xi, xo;
         rastery.reorder(y,x).serial(y);
         rastery.split(x, xo, xi, 16);
         rastery.vectorize(xi).parallel(xo);
         rastery.compile_jit();
-    } else if (sched == GPU) {
+    } else if (sched == RTF::GPU) {
         Halide::Var bx, by, tx, ty;
         rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
         rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
@@ -80,7 +76,7 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
         // Copy from GPU to host is done every realization which is inefficient.
         // However this is just done as a proof of concept for having a CPU 
         // and a GPU sched (more work necessary for running the sum on GPU). 
-        if (sched == GPU) {
+        if (sched == RTF::GPU) {
             JJ.copy_to_host();
         }
         newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
@@ -89,6 +85,16 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     } while(newSum != oldSum);
 
     return 0;
+}
+
+// A wrapper of loopedIwppRecon with an explicit output buffer
+extern "C" int loopedIwppRecon2(halide_buffer_t* bI, 
+    halide_buffer_t* bJJ, halide_buffer_t* bOut) {
+
+    loopedIwppRecon(bI, bJJ);
+    Halide::Buffer<uint8_t> JJ(*bJJ);
+    Halide::Buffer<uint8_t> Out(*bOut);
+    Out.copy_from(JJ);
 }
 
 void extern_exec(cv::Mat* cvI, cv::Mat* cvJ) {
@@ -106,6 +112,16 @@ void extern_exec(cv::Mat* cvI, cv::Mat* cvJ) {
     halCpu.realize(out);
 }
 
+RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
+    RegionTemplate* rt = new RegionTemplate();
+    rt->setName(name);
+    DataRegion *dr = new DenseDataRegion2D();
+    dr->setName(name);
+    if (data != NULL) ((DenseDataRegion2D*)dr)->setData(*data);
+    rt->insertDataRegion(dr);
+    return rt;
+}
+
 int main(int argc, char const *argv[]) {
 
     // Manages inputs
@@ -115,8 +131,44 @@ int main(int argc, char const *argv[]) {
     }
     cv::Mat* cvI = new cv::Mat(cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE));
     cv::Mat* cvJ = new cv::Mat(cv::imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE));
-    
-    extern_exec(cvI, cvJ);
+
+    // =========== trying v0.3 === Using RTF for execution of halide pipeline
+    // Creates the inputs
+    RegionTemplate* rtI = newRT("I", cvI);
+    RegionTemplate* rtJ = newRT("J", cvJ);
+    RegionTemplate* rtOut = newRT("Out");
+
+    // Create the halide stage
+    static struct : RTF::HalGen {
+        void generate(std::map<RTF::Target_t, Halide::Func>& schedules,
+                std::vector<RTF::HalImgParamOrParam<>>& params) {
+            Halide::ImageParam hI, hJ, hOut;
+            Halide::Func halCpu;
+            halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, Halide::UInt(8), 2);
+            schedules[RTF::CPU] = halCpu;
+            params.emplace_back(hI);
+            params.emplace_back(hJ);
+            params.emplace_back(hOut);
+        }
+    } stage1_hal;
+
+    RTF::AutoStage stage1({cvI->rows, cvI->cols}, {RTF::ASInputs<>(rtI->getName()), 
+        RTF::ASInputs<>(rtJ->getName()), RTF::ASInputs<>(rtOut->getName())}, 
+        RTF::CPU, &stage1_hal);
+    stage1.addRegionTemplateInstance(rtI, rtI->getName());
+    stage1.addRegionTemplateInstance(rtJ, rtJ->getName());
+    stage1.addRegionTemplateInstance(rtOut, rtOut->getName());
+
+    // =========== Working v0.2 === Halide external func complete with iteration
+    // extern_exec(cvI, cvJ);
+
+    // =========== Working v0.1 === Class with halide parameters
+    // ============================ Iteration of propagation inside class
+    // IwppParallelRecon iwpp;
+    // iwpp.realize(cvI, cvJ);
+
+    // =========== expected / goal
+    // norm->addRegionTemplateInstance(rt, rt->getName());
 
     // RTF::AutoRegionTemplate* rt;
 
@@ -128,9 +180,6 @@ int main(int argc, char const *argv[]) {
     // Same def for both cpu and gpu
     // halCpu(x,y) = ...
     // halGpu(x,y) = ...
-
-    // IwppParallelRecon iwpp;
-    // iwpp.realize(cvI, cvJ);
 
     // Schedule funcs for both cpu and gpu
     // halCpu.parallel(x);
