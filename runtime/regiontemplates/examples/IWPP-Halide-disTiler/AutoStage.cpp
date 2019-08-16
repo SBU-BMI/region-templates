@@ -6,7 +6,7 @@ RTF::AutoStage::AutoStage(const std::vector<int>& out_shape,
                       HalGen* halGenFun) : out_shape(out_shape), ios(ios), 
                       this_target(this_target),
                       halGenFun(halGenFun) {
-    this->setComponentName("???");
+    this->setComponentName("AutoStage");
 }
 
 RTF::AutoStage::~AutoStage() {
@@ -15,7 +15,8 @@ RTF::AutoStage::~AutoStage() {
 
     // First implementation only has one stage
 void RTF::AutoStage::execute(int argc, char** argv) {
-    sysEnv.startupSystem(argc, argv, "???.so");
+    cout << "[AutoStage::Execute] starting sys" << endl;
+    sysEnv.startupSystem(argc, argv, "libcomponentsas.so");
 
     // for each dep of this {
     //     // This is done instead of executeComponent() for enforcing
@@ -25,9 +26,11 @@ void RTF::AutoStage::execute(int argc, char** argv) {
     // }
 
     // Executes the current stage after dependencies
+    cout << "[AutoStage::Execute] sending stage" << endl;
     sysEnv.executeComponent(this);
 
     // Startup execution is this is the final stage of the pipeline
+    cout << "[AutoStage::Execute] executing pipeline" << endl;
     // if (last_stage) {
         sysEnv.startupExecution();
     // }

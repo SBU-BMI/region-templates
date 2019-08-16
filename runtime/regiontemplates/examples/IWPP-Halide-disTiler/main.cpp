@@ -122,7 +122,7 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     return rt;
 }
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char *argv[]) {
 
     // Manages inputs
     if (argc != 3) {
@@ -152,12 +152,16 @@ int main(int argc, char const *argv[]) {
         }
     } stage1_hal;
 
+    cout << "[main] creating stage" << endl;
+
     RTF::AutoStage stage1({cvI->rows, cvI->cols}, {RTF::ASInputs<>(rtI->getName()), 
         RTF::ASInputs<>(rtJ->getName()), RTF::ASInputs<>(rtOut->getName())}, 
         RTF::CPU, &stage1_hal);
+    cout << "[main] adding rts to stage" << endl;
     stage1.addRegionTemplateInstance(rtI, rtI->getName());
     stage1.addRegionTemplateInstance(rtJ, rtJ->getName());
     stage1.addRegionTemplateInstance(rtOut, rtOut->getName());
+    stage1.execute(argc, argv);
 
     // =========== Working v0.2 === Halide external func complete with iteration
     // extern_exec(cvI, cvJ);
