@@ -18,6 +18,8 @@ target_link_libraries(iwpp Halide)
 target_link_libraries(iwpp ${OpenCV_LIBS})
 target_link_libraries(iwpp -ljpeg)
 target_link_libraries(iwpp ${PNG_LIBRARY})
+target_link_libraries(iwpp regiontemplates)
+target_link_libraries(iwpp runtimesystem)
 # target_link_libraries(iwpp `libpng-config --cflags --ldflags`)
 # add_dependencies(PipelineRTFS-NS-Diff-disTiler copyCacheConfdt)
 

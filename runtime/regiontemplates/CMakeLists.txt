@@ -79,7 +79,7 @@ endif (USE_ACTIVE_HARMONY)
 # add TiledRTCollection and required libs if compiled
 if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 	add_subdirectory("autoTiling")
-	target_link_libraries("${libname}" ${autotiling})
+	target_link_libraries("${libname}" autotiling)
 	include_directories(${AutoTiling_SOURCE_DIR})
 endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
