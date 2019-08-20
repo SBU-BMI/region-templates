@@ -74,6 +74,7 @@ class AutoStage : public RTPipelineComponentBase {
     HalGen* halGenFun;
 
 public:
+    AutoStage();
     AutoStage(const std::vector<int>& out_shape,
               const std::vector<ASInputs<>>& ios,
               Target_t this_target,

@@ -1,5 +1,9 @@
 #include "AutoStage.h"
 
+RTF::AutoStage::AutoStage() {
+    this->setComponentName("AutoStage");
+}
+
 RTF::AutoStage::AutoStage(const std::vector<int>& out_shape,
                       const std::vector<ASInputs<>>& ios,
                       Target_t this_target,
@@ -106,3 +110,13 @@ int RTF::AutoStage::run() {
 
     this->executeTask(currentTask);
 }
+
+// Create the component factory
+PipelineComponentBase* componentFactoryAutoStage() {
+    return new RTF::AutoStage();
+}
+
+// register factory with the runtime system
+bool registered = PipelineComponentBase::ComponentFactory::componentRegister(
+    "AutoStage", &componentFactoryAutoStage);
+
