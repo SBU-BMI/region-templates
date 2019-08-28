@@ -13,11 +13,11 @@ find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIR})
 
 # Creates lib of AutoStage
-# set(libname componentsas)
-# add_library("${libname}" SHARED AutoStage.cpp)
-# target_link_libraries("${libname}" runtimesystem)
-# target_link_libraries("${libname}" regiontemplates)
-# target_link_libraries("${libname}" Halide)
+set(libname autostage)
+add_library("${libname}" SHARED AutoStage.cpp)
+target_link_libraries("${libname}" runtimesystem)
+target_link_libraries("${libname}" regiontemplates)
+target_link_libraries("${libname}" Halide)
 
 # Creates executable to be built from the files listed
 add_executable(iwpp main.cpp IwppRecon.cpp AutoStage.cpp)
@@ -25,9 +25,10 @@ target_link_libraries(iwpp Halide)
 target_link_libraries(iwpp ${OpenCV_LIBS})
 target_link_libraries(iwpp -ljpeg)
 target_link_libraries(iwpp ${PNG_LIBRARY})
-# target_link_libraries(iwpp "${libname}")
-target_link_libraries(iwpp regiontemplates)
-target_link_libraries(iwpp runtimesystem)
+target_link_libraries(iwpp "${libname}")
+# target_link_libraries(iwpp regiontemplates)
+# target_link_libraries(iwpp runtimesystem)
+
 # target_link_libraries(iwpp `libpng-config --cflags --ldflags`)
 # add_dependencies(PipelineRTFS-NS-Diff-disTiler copyCacheConfdt)
 

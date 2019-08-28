@@ -104,7 +104,7 @@ RTF::AutoStage::~AutoStage() {
 
     // First implementation only has one stage
 void RTF::AutoStage::execute(int argc, char** argv) {
-    std::string shd_lib_name = "autostagelib.so";
+    std::string shd_lib_name = "libautostage.so";
     // cout << "[AutoStage::Execute] creating shared lib if not found" << endl;
     // struct stat buffer;
     // if (stat (shd_lib_name.c_str(), &buffer) != 0) {
@@ -133,7 +133,7 @@ void RTF::AutoStage::execute(int argc, char** argv) {
 }
 
 int RTF::AutoStage::serialize(char* buff) {
-//  std::cout << "\t THIS IS RT_PIPELINE_COMPONENT:serialize" << std::endl;
+    std::cout << "\t THIS IS AutoStage::serialize" << std::endl;
     int serialized_bytes = RTPipelineComponentBase::serialize(buff);
 
     // packs the ios vector size
@@ -164,7 +164,7 @@ int RTF::AutoStage::serialize(char* buff) {
 }
 
 int RTF::AutoStage::deserialize(char* buff) {
-//  std::cout << "\t THIS IS RT_PIPELINE_COMPONENT:deserialize" << std::endl;
+    std::cout << "\t THIS IS AutoStage::deserialize" << std::endl;
     int deserialized_bytes = RTPipelineComponentBase::deserialize(buff);
 
     // unpacks the ios vector size
@@ -176,7 +176,7 @@ int RTF::AutoStage::deserialize(char* buff) {
     for(int i=0; i<num_ios; i++){
         ASInputs<> asi;
         deserialized_bytes += asi.deserialize(buff+deserialized_bytes);
-        this->ios[i] = asi;
+        this->ios.emplace_back(asi);
     }
 
     // unpacks the out_shape vector size
@@ -188,7 +188,7 @@ int RTF::AutoStage::deserialize(char* buff) {
         int val;
         memcpy(buff+deserialized_bytes, &val, sizeof(int));
         deserialized_bytes += sizeof(int);
-        this->out_shape[i] = val;
+        this->out_shape.emplace_back(val);
     }
 
     return deserialized_bytes;
@@ -207,7 +207,6 @@ int RTF::AutoStage::size() {
     return RTPipelineComponentBase::size() + ios_size + out_shape_size;
 }
 
-
 RTF::AutoStage* RTF::AutoStage::clone() {
     AutoStage* retValue = new AutoStage();
     int size = this->size();
@@ -218,90 +217,93 @@ RTF::AutoStage* RTF::AutoStage::clone() {
     return retValue;
 }
 
-
 int RTF::AutoStage::run() {
     // Anonymous class for implementing the current stage's task
     class _Task : public Task {
         std::vector<int> out_shape; // Rows at 0, cols at 1
         int out_cols, out_rows;
         std::vector<ASInputs<>> ios;
-        Target_t this_target;
         RTPipelineComponentBase* pcb;
         HalGen* halGenFun;
     public:
         _Task(std::vector<int> out_shape, std::vector<ASInputs<>> ios,
-            Target_t this_target, RTPipelineComponentBase* pcb,
-            HalGen* halGenFun) : out_shape(out_shape), ios(ios),
-              this_target(this_target), pcb(pcb), halGenFun(halGenFun) {
+            RTPipelineComponentBase* pcb, HalGen* halGenFun) 
+            : out_shape(out_shape), ios(ios), pcb(pcb), halGenFun(halGenFun) {
                 this->out_rows = out_shape[0];
                 this->out_cols = out_shape[1];
         }
 
         bool run(int procType=ExecEngineConstants::CPU, int tid=0) {
+            std::cout << "[AutoStage] run" << std::endl;
+            std::cout << "[AutoStage] here" << std::endl;
+            // Halide::Buffer<DATA_T> hOut(
+            //     cvOut.data, this->out_cols, this->out_rows);
+            // std::cout << "[AutoStage] here2" << std::endl;
+
+            // Get the image data from RT and assemble them for pipeline gen
+            // TODO: Parameter support for ASInputs
+            std::vector<cv::Mat*> im_ios;
+            for (int i=0; i<this->ios.size()-1; i++) {
+                RegionTemplate* rt = this->ios[i].getRT(pcb);
+                DenseDataRegion2D* dr = dynamic_cast<DenseDataRegion2D*>(
+                    rt->getDataRegion(rt->getName()));
+                std::cout << "[AutoStage] here3 " << dr << std::endl;
+                // create the output mat if dr is not input
+                cv::Mat* cvIn = new cv::Mat(dr->getData());
+                im_ios.emplace_back(cvIn);
+            }
+
             // Output buffer must be pre-allocated for the halide pipeline
-            cv::Mat cvOut(this->out_rows, this->out_cols, CV_8U);
-            Halide::Buffer<DATA_T> hOut(
-                cvOut.data, this->out_cols, this->out_rows);
+            cv::Mat* cvOut = new cv::Mat(this->out_rows, this->out_cols, CV_8U);
+            im_ios.emplace_back(cvOut);
 
-            std::map<Target_t, Halide::Func> schedules;
-            std::vector<HalImgParamOrParam<>> params;
-            halGenFun->generate(schedules, params);
+            std::cout << "[AutoStage] run" << std::endl;
 
-            // Connect inputs from the halide pipeline
-            // Obs: params.size() + 1 = ios.size()
-            // since the last param is the output
-            for (int i=0; i<ios.size(); i++) {
-                switch (this->ios[i].getType()) {
-                    case ASInputs<>::RT: {
-                        RegionTemplate* rt = this->ios[i].getRT(pcb);
-                        DenseDataRegion2D* dr = dynamic_cast<DenseDataRegion2D*>(
-                            rt->getDataRegion(rt->getName()));
-                        cv::Mat cvIn = dr->getData();
-                        Halide::Buffer<DATA_T> hIn(cvIn.data, 
-                            cvIn.cols, cvIn.rows);
-                        if (this->this_target == GPU)
-                            hIn.set_host_dirty();
-                        params[i].getImParam().set(hIn);
-                        break;
-                    }
-                    case ASInputs<>::Param:
-                        params[i].getParam().set(this->ios[i].getParam());
-                        break;
-                }
-            }
+            // TODO: Add support for more than a single target implementation
+            halGenFun->realize(im_ios);
             
-            // Realizes the halide pipeline
-            schedules[this->this_target].realize(hOut);
-
-            // Write the output on the RTF data hierarchy
-            if (this->this_target == GPU) {
-                hOut.copy_to_host();
-            }
+            // // Write the output on the RTF data hierarchy
+            // if (halGenFun->getTarget() == GPU) {
+            //     hOut.copy_to_host();
+            // }
             RegionTemplate* rtOut = this->ios[this->ios.size()-1].getRT(pcb);
             DenseDataRegion2D* drOut = dynamic_cast<DenseDataRegion2D*>(
                 rtOut->getDataRegion(rtOut->getName()));
             drOut->setName(rtOut->getName());
-            drOut->setData(cvOut);
+            drOut->setData(*cvOut);
             rtOut->insertDataRegion(drOut);
         }
-    }* currentTask = new _Task(this->out_shape, this->ios, 
-        this->this_target, this, this->halGenFun);
+    }* currentTask = new _Task(this->out_shape, 
+        this->ios, this, this->halGenFun);
 
     this->executeTask(currentTask);
+}
+
+template <typename T>
+Halide::Buffer<T> mat2buf(const cv::Mat* mat) {
+    return Halide::Buffer<T>(mat->data, mat->cols, mat->rows);
 }
 
 // Create the halide stage
 static struct : RTF::HalGen {
     RTF::Target_t getTarget() {return RTF::CPU;}
-    void generate(std::map<RTF::Target_t, Halide::Func>& schedules,
-            std::vector<RTF::HalImgParamOrParam<>>& params) {
-        Halide::ImageParam hI, hJ, hOut;
+    void realize(const std::vector<cv::Mat*>& im_ios, 
+                 const std::vector<int>& param_ios) {
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(im_ios[0]);
+        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(im_ios[1]);
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(im_ios[2]);
+        
+        // Define halide stage
         Halide::Func halCpu;
-        halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, Halide::UInt(8), 2);
-        schedules[RTF::CPU] = halCpu;
-        params.emplace_back(hI);
-        params.emplace_back(hJ);
-        params.emplace_back(hOut);
+        halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, 
+            Halide::UInt(8), 2);
+
+        std::cout << "[HalGen] realizing" << std::endl;
+
+        // Adds the cpu implementation to the schedules output
+        halCpu.realize(hOut);
     }
 } stage1_hal;
 
@@ -313,4 +315,3 @@ PipelineComponentBase* componentFactoryAutoStage() {
 // register factory with the runtime system
 bool registered = PipelineComponentBase::ComponentFactory::componentRegister(
     "AutoStage", &componentFactoryAutoStage);
-

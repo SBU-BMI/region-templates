@@ -90,7 +90,7 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
 // A wrapper of loopedIwppRecon with an explicit output buffer
 extern "C" int loopedIwppRecon2(halide_buffer_t* bI, 
     halide_buffer_t* bJJ, halide_buffer_t* bOut) {
-
+    cout << "hereeeeeeeeeeeeeeeeeeeeeee" << endl;
     loopedIwppRecon(bI, bJJ);
     Halide::Buffer<uint8_t> JJ(*bJJ);
     Halide::Buffer<uint8_t> Out(*bOut);
@@ -117,7 +117,11 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     rt->setName(name);
     DataRegion *dr = new DenseDataRegion2D();
     dr->setName(name);
-    if (data != NULL) ((DenseDataRegion2D*)dr)->setData(*data);
+    if (data != NULL) {
+        ((DenseDataRegion2D*)dr)->setIsAppInput(true);
+        ((DenseDataRegion2D*)dr)->setInputFileName(name);
+        ((DenseDataRegion2D*)dr)->setData(*data);  
+    }
     rt->insertDataRegion(dr);
     return rt;
 }
@@ -134,22 +138,28 @@ int main(int argc, char *argv[]) {
 
     // =========== trying v0.3 === Using RTF for execution of halide pipeline
     // Creates the inputs
-    RegionTemplate* rtI = newRT("I", cvI);
-    RegionTemplate* rtJ = newRT("J", cvJ);
+    RegionTemplate* rtI = newRT(argv[1], cvI);
+    RegionTemplate* rtJ = newRT(argv[2], cvJ);
     RegionTemplate* rtOut = newRT("Out");
 
     // Create the halide stage
     struct : RTF::HalGen {
         RTF::Target_t getTarget() {return RTF::CPU;}
-        void generate(std::map<RTF::Target_t, Halide::Func>& schedules,
-                std::vector<RTF::HalImgParamOrParam<>>& params) {
-            Halide::ImageParam hI, hJ, hOut;
+        void realize(const std::vector<cv::Mat*>& im_ios, 
+                     const std::vector<int>& param_ios) {
+
+            // Wraps the input and output cv::mat's with halide buffers
+            Halide::Buffer<uint8_t> hI;// = mat2buf(im_ios[0]);
+            Halide::Buffer<uint8_t> hJ;// = mat2buf(im_ios[1]);
+            Halide::Buffer<uint8_t> hOut;// = mat2buf(im_ios[2]);
+            
+            // Define halide stage
             Halide::Func halCpu;
-            halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, Halide::UInt(8), 2);
-            schedules[RTF::CPU] = halCpu;
-            params.emplace_back(hI);
-            params.emplace_back(hJ);
-            params.emplace_back(hOut);
+            halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, 
+                Halide::UInt(8), 2);
+
+            // Adds the cpu implementation to the schedules output
+            halCpu.realize(hOut);
         }
     } stage1_hal;
 

@@ -69,8 +69,8 @@ public:
 
 struct HalGen {
     virtual Target_t getTarget() = 0;
-    virtual void generate(std::map<Target_t, Halide::Func>& schedules,
-        std::vector<HalImgParamOrParam<>>& params) = 0;
+    virtual void realize(const std::vector<cv::Mat*>& im_ios, 
+        const std::vector<int>& param_ios = vector<int>()) = 0;
 };
 
 class AutoStage : public RTPipelineComponentBase {
