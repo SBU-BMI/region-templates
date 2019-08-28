@@ -139,7 +139,8 @@ int main(int argc, char *argv[]) {
     RegionTemplate* rtOut = newRT("Out");
 
     // Create the halide stage
-    static struct : RTF::HalGen {
+    struct : RTF::HalGen {
+        RTF::Target_t getTarget() {return RTF::CPU;}
         void generate(std::map<RTF::Target_t, Halide::Func>& schedules,
                 std::vector<RTF::HalImgParamOrParam<>>& params) {
             Halide::ImageParam hI, hJ, hOut;
@@ -156,7 +157,7 @@ int main(int argc, char *argv[]) {
 
     RTF::AutoStage stage1({cvI->rows, cvI->cols}, {RTF::ASInputs<>(rtI->getName()), 
         RTF::ASInputs<>(rtJ->getName()), RTF::ASInputs<>(rtOut->getName())}, 
-        RTF::CPU, &stage1_hal);
+        &stage1_hal);
     cout << "[main] adding rts to stage" << endl;
     stage1.addRegionTemplateInstance(rtI, rtI->getName());
     stage1.addRegionTemplateInstance(rtJ, rtJ->getName());

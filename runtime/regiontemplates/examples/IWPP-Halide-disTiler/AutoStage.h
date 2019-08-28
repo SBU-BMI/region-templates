@@ -28,7 +28,8 @@ public:
         Param // const parameter value (e.g., int, float, ...)
     };
 
-    ASInputs(std::string rt_name) : rt_name(rt_name) {}
+    ASInputs() {} // empty constructor only usable for serialization and copy
+    ASInputs(std::string rt_name) : rt_name(rt_name), type(RT) {}
     ASInputs(T_PARAM param) : param(param), type(Param) {}
 
     RegionTemplate* getRT(RTPipelineComponentBase* pcb) {
@@ -37,6 +38,11 @@ public:
     T_PARAM getParam() {return param;}
 
     Types getType() {return type;}
+
+    int serialize(char* buff);
+    int deserialize(char* buff);
+    int size();
+    
 private:
     Types type;
     T_PARAM param;
@@ -62,6 +68,7 @@ public:
 };
 
 struct HalGen {
+    virtual Target_t getTarget() = 0;
     virtual void generate(std::map<Target_t, Halide::Func>& schedules,
         std::vector<HalImgParamOrParam<>>& params) = 0;
 };
@@ -77,9 +84,15 @@ public:
     AutoStage();
     AutoStage(const std::vector<int>& out_shape,
               const std::vector<ASInputs<>>& ios,
-              Target_t this_target,
               HalGen* halGenFun);
+    AutoStage(HalGen* halGenFun);
     ~AutoStage();
+
+    // Serialization methods
+    int serialize(char *buff);
+    int deserialize(char *buff);
+    int size();
+    AutoStage* clone();
 
     // First implementation only has one stage
     void execute(int argc, char** argv);
