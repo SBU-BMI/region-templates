@@ -115,14 +115,14 @@ void extern_exec(cv::Mat* cvI, cv::Mat* cvJ) {
 RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     RegionTemplate* rt = new RegionTemplate();
     rt->setName(name);
-    DataRegion *dr = new DenseDataRegion2D();
-    dr->setName(name);
     if (data != NULL) {
+        DataRegion *dr = new DenseDataRegion2D();
+        dr->setName(name);
         ((DenseDataRegion2D*)dr)->setIsAppInput(true);
         ((DenseDataRegion2D*)dr)->setInputFileName(name);
         ((DenseDataRegion2D*)dr)->setData(*data);  
+        rt->insertDataRegion(dr);
     }
-    rt->insertDataRegion(dr);
     return rt;
 }
 
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
     RegionTemplate* rtOut = newRT("Out");
 
     // Create the halide stage
-    struct : RTF::HalGen {
+    static struct : RTF::HalGen {
         RTF::Target_t getTarget() {return RTF::CPU;}
         void realize(const std::vector<cv::Mat*>& im_ios, 
                      const std::vector<int>& param_ios) {

@@ -99,10 +99,10 @@ RTF::AutoStage::AutoStage(HalGen* halGenFun) : halGenFun(halGenFun) {
 }
 
 RTF::AutoStage::~AutoStage() {
-    sysEnv.finalizeSystem();
+
 }
 
-    // First implementation only has one stage
+// First implementation only has one stage
 void RTF::AutoStage::execute(int argc, char** argv) {
     std::string shd_lib_name = "libautostage.so";
     // cout << "[AutoStage::Execute] creating shared lib if not found" << endl;
@@ -130,6 +130,7 @@ void RTF::AutoStage::execute(int argc, char** argv) {
     // if (last_stage) {
         sysEnv.startupExecution();
     // }
+    sysEnv.finalizeSystem();
 }
 
 int RTF::AutoStage::serialize(char* buff) {
@@ -234,8 +235,6 @@ int RTF::AutoStage::run() {
         }
 
         bool run(int procType=ExecEngineConstants::CPU, int tid=0) {
-            std::cout << "[AutoStage] run" << std::endl;
-            std::cout << "[AutoStage] here" << std::endl;
             // Halide::Buffer<DATA_T> hOut(
             //     cvOut.data, this->out_cols, this->out_rows);
             // std::cout << "[AutoStage] here2" << std::endl;
@@ -247,7 +246,6 @@ int RTF::AutoStage::run() {
                 RegionTemplate* rt = this->ios[i].getRT(pcb);
                 DenseDataRegion2D* dr = dynamic_cast<DenseDataRegion2D*>(
                     rt->getDataRegion(rt->getName()));
-                std::cout << "[AutoStage] here3 " << dr << std::endl;
                 // create the output mat if dr is not input
                 cv::Mat* cvIn = new cv::Mat(dr->getData());
                 im_ios.emplace_back(cvIn);
@@ -257,7 +255,6 @@ int RTF::AutoStage::run() {
             cv::Mat* cvOut = new cv::Mat(this->out_rows, this->out_cols, CV_8U);
             im_ios.emplace_back(cvOut);
 
-            std::cout << "[AutoStage] run" << std::endl;
 
             // TODO: Add support for more than a single target implementation
             halGenFun->realize(im_ios);
@@ -267,9 +264,10 @@ int RTF::AutoStage::run() {
             //     hOut.copy_to_host();
             // }
             RegionTemplate* rtOut = this->ios[this->ios.size()-1].getRT(pcb);
-            DenseDataRegion2D* drOut = dynamic_cast<DenseDataRegion2D*>(
-                rtOut->getDataRegion(rtOut->getName()));
+            DenseDataRegion2D *drOut = new DenseDataRegion2D();
             drOut->setName(rtOut->getName());
+            std::cout << "[AutoStage] run " << rtOut->getName() << std::endl;
+            std::cout << "[AutoStage] run" << std::endl;
             drOut->setData(*cvOut);
             rtOut->insertDataRegion(drOut);
         }
