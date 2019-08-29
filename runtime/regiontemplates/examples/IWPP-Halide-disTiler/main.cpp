@@ -41,16 +41,16 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
 
     // Schedule
-    int sched = RTF::CPU;
+    int sched = ExecEngineConstants::CPU;
     rasterx.compute_root();
     Halide::Target target = Halide::get_host_target();
-    if (sched == RTF::CPU) {
+    if (sched == ExecEngineConstants::CPU) {
         Halide::Var xi, xo;
         rastery.reorder(y,x).serial(y);
         rastery.split(x, xo, xi, 16);
         rastery.vectorize(xi).parallel(xo);
         rastery.compile_jit();
-    } else if (sched == RTF::GPU) {
+    } else if (sched == ExecEngineConstants::GPU) {
         Halide::Var bx, by, tx, ty;
         rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
         rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
@@ -76,7 +76,7 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
         // Copy from GPU to host is done every realization which is inefficient.
         // However this is just done as a proof of concept for having a CPU 
         // and a GPU sched (more work necessary for running the sum on GPU). 
-        if (sched == RTF::GPU) {
+        if (sched == ExecEngineConstants::GPU) {
             JJ.copy_to_host();
         }
         newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
@@ -126,6 +126,28 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     return rt;
 }
 
+// Needs to be static for referencing across mpi processes/nodes
+static struct : RTF::HalGen {
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hI;// = mat2buf(im_ios[0]);
+        Halide::Buffer<uint8_t> hJ;// = mat2buf(im_ios[1]);
+        Halide::Buffer<uint8_t> hOut;// = mat2buf(im_ios[2]);
+        
+        // Define halide stage
+        Halide::Func halCpu;
+        halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, 
+            Halide::UInt(8), 2);
+
+        // Adds the cpu implementation to the schedules output
+        halCpu.realize(hOut);
+        cout << "realized" << endl;
+    }
+} stage1_hal;
+
 int main(int argc, char *argv[]) {
 
     // Manages inputs
@@ -142,37 +164,16 @@ int main(int argc, char *argv[]) {
     RegionTemplate* rtJ = newRT(argv[2], cvJ);
     RegionTemplate* rtOut = newRT("Out");
 
-    // Create the halide stage
-    static struct : RTF::HalGen {
-        RTF::Target_t getTarget() {return RTF::CPU;}
-        void realize(const std::vector<cv::Mat*>& im_ios, 
-                     const std::vector<int>& param_ios) {
-
-            // Wraps the input and output cv::mat's with halide buffers
-            Halide::Buffer<uint8_t> hI;// = mat2buf(im_ios[0]);
-            Halide::Buffer<uint8_t> hJ;// = mat2buf(im_ios[1]);
-            Halide::Buffer<uint8_t> hOut;// = mat2buf(im_ios[2]);
-            
-            // Define halide stage
-            Halide::Func halCpu;
-            halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, 
-                Halide::UInt(8), 2);
-
-            // Adds the cpu implementation to the schedules output
-            halCpu.realize(hOut);
-        }
-    } stage1_hal;
+    // Halide stage was created externally as stage1_hal
 
     cout << "[main] creating stage" << endl;
-
-    RTF::AutoStage stage1({cvI->rows, cvI->cols}, {RTF::ASInputs<>(rtI->getName()), 
-        RTF::ASInputs<>(rtJ->getName()), RTF::ASInputs<>(rtOut->getName())}, 
-        &stage1_hal);
+    RTF::AutoStage stage1({rtI, rtJ, rtOut}, {}, {cvI->rows, cvI->cols}, 
+        {&stage1_hal});
     cout << "[main] adding rts to stage" << endl;
-    stage1.addRegionTemplateInstance(rtI, rtI->getName());
-    stage1.addRegionTemplateInstance(rtJ, rtJ->getName());
-    stage1.addRegionTemplateInstance(rtOut, rtOut->getName());
     stage1.execute(argc, argv);
+    // stage1.after(stage2);
+
+    // stage2.execute(argc, argv);
 
     // =========== Working v0.2 === Halide external func complete with iteration
     // extern_exec(cvI, cvJ);

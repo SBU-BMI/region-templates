@@ -245,7 +245,7 @@ int RTPipelineComponentBase::addRegionTemplateInstance(RegionTemplate* rt, std::
 	return 1;
 }
 
-
+// NOT USED/USABLE
 int RTPipelineComponentBase::instantiateRegionTemplates() {
 #ifdef DEBUG
 	std::cout << "instantiateRegionTemplates..Number of input data regions" << this->input_data_regions.size() << std::endl;

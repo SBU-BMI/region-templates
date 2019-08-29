@@ -1,183 +1,78 @@
 #include "AutoStage.h"
 
-#include <sys/stat.h>
-
-template <typename T_PARAM>
-int RTF::ASInputs<T_PARAM>::serialize(char* buff) {
-    int serialized_bytes = 0;
-
-    // packs the type of input
-    memcpy(buff+serialized_bytes, &this->type, sizeof(Types));
-    serialized_bytes += sizeof(Types);
-
-    // packs the actual data
-    switch (this->type) {
-        case RT: {
-            // packs the size of the string
-            int rt_name_size = this->rt_name.size();
-            memcpy(buff+serialized_bytes, &rt_name_size, sizeof(int));
-            serialized_bytes += sizeof(int);
-
-            // packs the string itself
-            memcpy(buff+serialized_bytes, this->rt_name.c_str(), 
-                sizeof(char)*rt_name_size);
-            serialized_bytes += rt_name_size * sizeof(char);
-            break;
-        }
-        case Param:
-            // packs the parameter
-            memcpy(buff+serialized_bytes, &this->param, sizeof(T_PARAM));
-            serialized_bytes += sizeof(T_PARAM);
-            break;
-    }
-
-    return serialized_bytes;
-}
-
-template <typename T_PARAM>
-int RTF::ASInputs<T_PARAM>::deserialize(char* buff) {
-    int deserialized_bytes = 0;
-
-    // unpacks the type of input
-    memcpy(&this->type, buff+deserialized_bytes, sizeof(Types));
-    deserialized_bytes += sizeof(Types);
-
-    switch (this->type) {
-        case RT: {
-            // unpacks the size of the string
-            int rt_name_size;
-            memcpy(&rt_name_size, buff+deserialized_bytes, sizeof(int));
-            deserialized_bytes += sizeof(int);
-
-            // unpacks the string itself
-            char rt_name[rt_name_size+1];
-            rt_name[rt_name_size] = '\0';
-            memcpy(rt_name, buff+deserialized_bytes, sizeof(char)*rt_name_size);
-            deserialized_bytes += rt_name_size * sizeof(char);
-            this->rt_name = rt_name;
-            break;
-        }
-        case Param:
-            // unpacks the parameter
-            memcpy(&this->param, buff+deserialized_bytes, sizeof(T_PARAM));
-            deserialized_bytes += sizeof(T_PARAM);
-            break;
-    }
-
-    return deserialized_bytes;
-}
-
-template <typename T_PARAM>
-int RTF::ASInputs<T_PARAM>::size() {
-    int in_size;
-    switch (this->type) {
-        case RT: {
-            in_size = sizeof(int) + this->rt_name.size();
-            break;
-        }
-        case Param:
-            in_size = sizeof(T_PARAM);
-            break;
-    }
-
-    return sizeof(Types) + in_size;
-}
-
-RTF::AutoStage::AutoStage() {
-    this->setComponentName("AutoStage");
-}
-
-RTF::AutoStage::AutoStage(const std::vector<int>& out_shape,
-                      const std::vector<ASInputs<>>& ios,
-                      HalGen* halGenFun) : out_shape(out_shape), ios(ios), 
-                      halGenFun(halGenFun) {
-    this->setComponentName("AutoStage");
-}
-
-RTF::AutoStage::AutoStage(HalGen* halGenFun) : halGenFun(halGenFun) {
-    this->setComponentName("AutoStage");
-}
-
-RTF::AutoStage::~AutoStage() {
-
-}
-
-// First implementation only has one stage
-void RTF::AutoStage::execute(int argc, char** argv) {
-    std::string shd_lib_name = "libautostage.so";
-    // cout << "[AutoStage::Execute] creating shared lib if not found" << endl;
-    // struct stat buffer;
-    // if (stat (shd_lib_name.c_str(), &buffer) != 0) {
-    //     system("");
-    // }
-
-    cout << "[AutoStage::Execute] starting sys" << endl;
-    sysEnv.startupSystem(argc, argv, shd_lib_name);
-
-    // for each dep of this {
-    //     // This is done instead of executeComponent() for enforcing
-    //     // that the dependencies are created before the actual dependent
-    //     // stage (i.e., this)
-    //     dep.execute(); 
-    // }
-
-    // Executes the current stage after dependencies
-    cout << "[AutoStage::Execute] sending stage" << endl;
-    sysEnv.executeComponent(this);
-
-    // Startup execution is this is the final stage of the pipeline
-    cout << "[AutoStage::Execute] executing pipeline" << endl;
-    // if (last_stage) {
-        sysEnv.startupExecution();
-    // }
-    sysEnv.finalizeSystem();
-}
-
-int RTF::AutoStage::serialize(char* buff) {
-    std::cout << "\t THIS IS AutoStage::serialize" << std::endl;
+int RTF::Internal::AutoStage::serialize(char *buff) {
     int serialized_bytes = RTPipelineComponentBase::serialize(buff);
 
-    // packs the ios vector size
-    int num_ios = this->ios.size();
-    memcpy(buff+serialized_bytes, &num_ios, sizeof(int));
+    // packs the rts_names vector size
+    int num_rts_names = this->rts_names.size();
+    memcpy(buff+serialized_bytes, &num_rts_names, sizeof(int));
     serialized_bytes += sizeof(int);
 
-    // packs the ios vector
-    for (int i=0; i<this->ios.size(); i++) {
-        serialized_bytes += this->ios[i].serialize(buff+serialized_bytes);
+    // packs the rts_names vector
+    for (int i=0; i<num_rts_names; i++) {
+        // packs the string size
+        int rts_name_size = this->rts_names[i].size();
+        memcpy(buff+serialized_bytes, &rts_name_size, sizeof(int));
+        serialized_bytes += sizeof(int);
+        
+        // packs the string itself
+        memcpy(buff+serialized_bytes, this->rts_names[i].c_str(), 
+            sizeof(char)*rts_name_size);
+        serialized_bytes += sizeof(char)*rts_name_size;
     }
 
-     // packs the out_shape vector size
+    // packs the out_shape vector size
     int num_out_shape = this->out_shape.size();
     memcpy(buff+serialized_bytes, &num_out_shape, sizeof(int));
     serialized_bytes += sizeof(int);
 
     // packs the out_shape vector
-    for (int i=0; i<this->out_shape.size(); i++) {
+    for (int i=0; i<num_out_shape; i++) {
         memcpy(buff+serialized_bytes, &out_shape[i], sizeof(int));
         serialized_bytes += sizeof(int);
     }
 
-    // memcpy(buff+serialized_bytes, &this_target, sizeof(RTF::Target_t));
-    // serialized_bytes += sizeof(RTF::Target_t);
+    // packs the schedules map size
+    int num_schedules = this->schedules.size();
+    memcpy(buff+serialized_bytes, &num_schedules, sizeof(int));
+    serialized_bytes += sizeof(int);
+
+    // packs the schedules map
+    for (std::pair<Target_t, HalGen*> s : schedules) {
+        // packs the HalGen target
+        memcpy(buff+serialized_bytes, &s.first, sizeof(int));
+        serialized_bytes += sizeof(int);
+
+        // packs the halide function reference
+        // Obs: this is a reference to a static class instantiation
+        memcpy(buff+serialized_bytes, &s.second, sizeof(HalGen*));
+        serialized_bytes += sizeof(HalGen*);
+    }
 
     return serialized_bytes;
 }
 
-int RTF::AutoStage::deserialize(char* buff) {
-    std::cout << "\t THIS IS AutoStage::deserialize" << std::endl;
+int RTF::Internal::AutoStage::deserialize(char *buff) {
     int deserialized_bytes = RTPipelineComponentBase::deserialize(buff);
 
-    // unpacks the ios vector size
-    int num_ios;
-    memcpy(&num_ios, buff+deserialized_bytes, sizeof(int));
+    // unpacks the rts_names vector size
+    int num_rts_names;
+    memcpy(&num_rts_names, buff+deserialized_bytes, sizeof(int));
     deserialized_bytes += sizeof(int);
 
-    // unpacks the ios vector
-    for(int i=0; i<num_ios; i++){
-        ASInputs<> asi;
-        deserialized_bytes += asi.deserialize(buff+deserialized_bytes);
-        this->ios.emplace_back(asi);
+    // unpacks the rts_names vector
+    for (int i=0; i<num_rts_names; i++) {
+        // unpacks the string size
+        int rts_name_size;
+        memcpy(&rts_name_size, buff+deserialized_bytes, sizeof(int));
+        deserialized_bytes += sizeof(int);
+        
+        // unpacks the string itself
+        char rt_name[rts_name_size+1];
+        rt_name[rts_name_size] = '\0';
+        memcpy(rt_name, buff+deserialized_bytes, sizeof(char)*rts_name_size);
+        this->rts_names.emplace_back(std::string(rt_name));
+        deserialized_bytes += sizeof(char)*rts_name_size;
     }
 
     // unpacks the out_shape vector size
@@ -185,30 +80,77 @@ int RTF::AutoStage::deserialize(char* buff) {
     memcpy(&num_out_shape, buff+deserialized_bytes, sizeof(int));
     deserialized_bytes += sizeof(int);
 
+    // unpacks the out_shape vector
     for (int i=0; i<num_out_shape; i++) {
-        int val;
-        memcpy(buff+deserialized_bytes, &val, sizeof(int));
+        int out_shape_val;
+        memcpy(buff+deserialized_bytes, &out_shape_val, sizeof(int));
         deserialized_bytes += sizeof(int);
-        this->out_shape.emplace_back(val);
+        this->out_shape.emplace_back(out_shape_val);
+    }
+
+    // unpacks the schedules map size
+    int num_schedules;
+    memcpy(&num_schedules, buff+deserialized_bytes, sizeof(int));
+    deserialized_bytes += sizeof(int);
+
+    // unpacks the schedules map
+    for (int i=0; i<num_schedules; i++) {
+        // unpacks the HalGen target
+        Target_t target;
+        memcpy(&target, buff+deserialized_bytes, sizeof(int));
+        deserialized_bytes += sizeof(int);
+
+        // unpacks the halide function reference
+        // Obs: this is a reference to a static class instantiation
+        HalGen* halRef;
+        memcpy(&halRef, buff+deserialized_bytes, sizeof(HalGen*));
+        deserialized_bytes += sizeof(HalGen*);
+
+        this->schedules[target] = halRef;
     }
 
     return deserialized_bytes;
 }
 
-int RTF::AutoStage::size() {
-    // calculates the size of ios
-    int ios_size = sizeof(int);
-    for (int i=0; i<this->ios.size(); i++) {
-        ios_size += ios[i].size();
+int RTF::Internal::AutoStage::size() {
+    int size = RTPipelineComponentBase::size();
+
+    // packs the rts_names vector size
+    size += sizeof(int);
+
+    // packs the rts_names vector
+    for (int i=0; i<this->rts_names.size(); i++) {
+        // packs the string size
+        size += sizeof(int);
+        
+        // packs the string itself
+        size += sizeof(char)*this->rts_names[i].size();
     }
 
-    // calculates the size of out_shape
-    int out_shape_size = sizeof(int) * (this->out_shape.size() + 1);
+    // packs the out_shape vector size
+    size += sizeof(int);
 
-    return RTPipelineComponentBase::size() + ios_size + out_shape_size;
+    // packs the out_shape vector
+    for (int i=0; i<this->out_shape.size(); i++) {
+        size += sizeof(int);
+    }
+
+    // packs the schedules map size
+    size += sizeof(int);
+
+    // packs the schedules map
+    for (std::pair<Target_t, HalGen*> s : schedules) {
+        // packs the HalGen target
+        size += sizeof(int);
+
+        // packs the halide function reference size
+        size += sizeof(HalGen*);
+    }
+
+    return size;
 }
 
-RTF::AutoStage* RTF::AutoStage::clone() {
+RTF::Internal::AutoStage* RTF::Internal::AutoStage::clone() {
     AutoStage* retValue = new AutoStage();
     int size = this->size();
     char *buff = new char[size];
@@ -218,96 +160,102 @@ RTF::AutoStage* RTF::AutoStage::clone() {
     return retValue;
 }
 
-int RTF::AutoStage::run() {
+int RTF::Internal::AutoStage::run() {
+    // Assemble input/output cv::Mat list for execution
+    // Starts with the inputs
+    std::vector<DenseDataRegion2D*> dr_ios;
+    for (int i=0; i<this->rts_names.size()-1; i++) {
+        RegionTemplate* rt = this->getRegionTemplateInstance(
+            this->rts_names[i]);
+        DenseDataRegion2D* dr = dynamic_cast<DenseDataRegion2D*>(
+            rt->getDataRegion(rt->getName()));
+        dr_ios.emplace_back(dr);
+    }
+
+    // Output buffer must be pre-allocated for the halide pipeline
+    cv::Mat* cvOut = new cv::Mat(this->out_shape[0], 
+        this->out_shape[1], CV_8U);
+
+    // Assign output mat to the correct output RT
+    RegionTemplate* rtOut = this->getRegionTemplateInstance(
+        this->rts_names[this->rts_names.size()-1]);
+    DenseDataRegion2D *drOut = new DenseDataRegion2D();
+    drOut->setName(rtOut->getName());
+    drOut->setData(*cvOut);
+    rtOut->insertDataRegion(drOut);
+
+    dr_ios.emplace_back(drOut);
+
     // Anonymous class for implementing the current stage's task
-    class _Task : public Task {
-        std::vector<int> out_shape; // Rows at 0, cols at 1
-        int out_cols, out_rows;
-        std::vector<ASInputs<>> ios;
-        RTPipelineComponentBase* pcb;
-        HalGen* halGenFun;
-    public:
-        _Task(std::vector<int> out_shape, std::vector<ASInputs<>> ios,
-            RTPipelineComponentBase* pcb, HalGen* halGenFun) 
-            : out_shape(out_shape), ios(ios), pcb(pcb), halGenFun(halGenFun) {
-                this->out_rows = out_shape[0];
-                this->out_cols = out_shape[1];
-        }
+    struct _Task : public Task {
+        std::map<Target_t, HalGen*> schedules;
+        std::vector<DenseDataRegion2D*> dr_ios;
+        std::vector<ArgumentBase*> params;
+        
+        _Task(std::map<Target_t, HalGen*> schedules, 
+            std::vector<DenseDataRegion2D*> dr_ios, 
+            std::vector<ArgumentBase*> params):
+        schedules(schedules), dr_ios(dr_ios), params(params) {};
 
-        bool run(int procType=ExecEngineConstants::CPU, int tid=0) {
-            // Halide::Buffer<DATA_T> hOut(
-            //     cvOut.data, this->out_cols, this->out_rows);
-            // std::cout << "[AutoStage] here2" << std::endl;
-
-            // Get the image data from RT and assemble them for pipeline gen
-            // TODO: Parameter support for ASInputs
-            std::vector<cv::Mat*> im_ios;
-            for (int i=0; i<this->ios.size()-1; i++) {
-                RegionTemplate* rt = this->ios[i].getRT(pcb);
-                DenseDataRegion2D* dr = dynamic_cast<DenseDataRegion2D*>(
-                    rt->getDataRegion(rt->getName()));
-                // create the output mat if dr is not input
-                cv::Mat* cvIn = new cv::Mat(dr->getData());
-                im_ios.emplace_back(cvIn);
+        bool run(int procType, int tid=0) {
+            // Generates the input/output list of cv::mat
+            std::vector<cv::Mat> im_ios;
+            for (DenseDataRegion2D* ddr2d : dr_ios) {
+                im_ios.emplace_back(cv::Mat(ddr2d->getData()));
             }
 
-            // Output buffer must be pre-allocated for the halide pipeline
-            cv::Mat* cvOut = new cv::Mat(this->out_rows, this->out_cols, CV_8U);
-            im_ios.emplace_back(cvOut);
+            // Executes the halide stage
+            schedules[procType]->realize(im_ios, params);
 
+            // Assigns the output mat to its DataRegion
+            dr_ios[dr_ios.size()-1]->setData(im_ios[im_ios.size()-1]);
 
-            // TODO: Add support for more than a single target implementation
-            halGenFun->realize(im_ios);
-            
-            // // Write the output on the RTF data hierarchy
-            // if (halGenFun->getTarget() == GPU) {
-            //     hOut.copy_to_host();
-            // }
-            RegionTemplate* rtOut = this->ios[this->ios.size()-1].getRT(pcb);
-            DenseDataRegion2D *drOut = new DenseDataRegion2D();
-            drOut->setName(rtOut->getName());
-            std::cout << "[AutoStage] run " << rtOut->getName() << std::endl;
-            std::cout << "[AutoStage] run" << std::endl;
-            drOut->setData(*cvOut);
-            rtOut->insertDataRegion(drOut);
         }
-    }* currentTask = new _Task(this->out_shape, 
-        this->ios, this, this->halGenFun);
+    }* currentTask = new _Task(this->schedules, dr_ios, this->params);
 
     this->executeTask(currentTask);
 }
 
-template <typename T>
-Halide::Buffer<T> mat2buf(const cv::Mat* mat) {
-    return Halide::Buffer<T>(mat->data, mat->cols, mat->rows);
+RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
+    // Generate current stage if it was not already generated
+    if (generatedStage == NULL) {
+        generatedStage = new Internal::AutoStage(rts, 
+            out_shape, schedules, params);
+    } else {
+        return generatedStage;
+    }
+
+    // Generate dependent stages
+    for (AutoStage* dep : deps) {
+        // Generate the dependent stage while also adding it as a
+        // dependency for the current stage
+        generatedStage->addDependency(dep->genStage(sysEnv)->getId());
+    }
+    sysEnv.executeComponent(generatedStage);
 }
 
-// Create the halide stage
-static struct : RTF::HalGen {
-    RTF::Target_t getTarget() {return RTF::CPU;}
-    void realize(const std::vector<cv::Mat*>& im_ios, 
-                 const std::vector<int>& param_ios) {
+// First implementation only has one stage
+void RTF::AutoStage::execute(int argc, char** argv) {
+    std::string shd_lib_name = "libautostage.so";
 
-        // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(im_ios[0]);
-        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(im_ios[1]);
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(im_ios[2]);
-        
-        // Define halide stage
-        Halide::Func halCpu;
-        halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, 
-            Halide::UInt(8), 2);
+    cout << "[AutoStage::Execute] starting sys" << endl;
+    SysEnv sysEnv;
+    sysEnv.startupSystem(argc, argv, shd_lib_name);
 
-        std::cout << "[HalGen] realizing" << std::endl;
+    // Generate all stages and send them for execution
+    this->genStage(sysEnv);
 
-        // Adds the cpu implementation to the schedules output
-        halCpu.realize(hOut);
-    }
-} stage1_hal;
+    // Startup execution is this is the final stage of the pipeline
+    cout << "[AutoStage::Execute] executing pipeline" << endl;
+    // if (last_stage) {
+        sysEnv.startupExecution();
+    // }
+    sysEnv.finalizeSystem();
+}
 
 // Create the component factory
 PipelineComponentBase* componentFactoryAutoStage() {
-    return new RTF::AutoStage(&stage1_hal);
+    return new RTF::Internal::AutoStage();
 }
 
 // register factory with the runtime system

@@ -11,82 +11,52 @@
 #include "RegionTemplate.h"
 #include "DenseDataRegion2D.h"
 #include "RTPipelineComponentBase.h"
+#include "Argument.h"
 
 #define DATA_T uint8_t
 
 namespace RTF {
 
-class AutoStage; // Forward def for ASInputs types
+// Should use ExecEngineConstants::GPU ... 
+typedef int Target_t;
 
-template <typename T_PARAM = uint8_t> // Only for Param's
-class ASInputs {
-public:
-    enum Types {
-        // Halide::Expr, // cannot be pure halide
-        // AutoStage, // Not yet implemented
-        RT,
-        Param // const parameter value (e.g., int, float, ...)
-    };
-
-    ASInputs() {} // empty constructor only usable for serialization and copy
-    ASInputs(std::string rt_name) : rt_name(rt_name), type(RT) {}
-    ASInputs(T_PARAM param) : param(param), type(Param) {}
-
-    RegionTemplate* getRT(RTPipelineComponentBase* pcb) {
-        return pcb->getRegionTemplateInstance(this->rt_name);
-    }
-    T_PARAM getParam() {return param;}
-
-    Types getType() {return type;}
-
-    int serialize(char* buff);
-    int deserialize(char* buff);
-    int size();
-    
-private:
-    Types type;
-    T_PARAM param;
-    std::string rt_name;
-};
-
-enum Target_t {
-    CPU,
-    GPU
-};
-
-template <typename T = uint8_t>
-class HalImgParamOrParam {
-    Halide::Param<T> param;
-    Halide::ImageParam imgParam;
-
-public:
-    HalImgParamOrParam(Halide::Param<T> p) : param(p) {}
-    HalImgParamOrParam(Halide::ImageParam ip) : imgParam(ip) {}
-
-    Halide::ImageParam getImParam() {return imgParam;}
-    Halide::Param<T> getParam() {return param;}
-};
-
+// Interface for realizing halide pipelines inside RTF
 struct HalGen {
     virtual Target_t getTarget() = 0;
-    virtual void realize(const std::vector<cv::Mat*>& im_ios, 
-        const std::vector<int>& param_ios = vector<int>()) = 0;
+    static std::vector<ArgumentBase*> _dft;
+    virtual void realize(std::vector<cv::Mat>& im_ios, 
+        std::vector<ArgumentBase*>& params = _dft) = 0;
 };
 
+namespace Internal {
+
 class AutoStage : public RTPipelineComponentBase {
-    SysEnv sysEnv;
-    std::vector<ASInputs<>> ios;
+    std::vector<std::string> rts_names;
     std::vector<int> out_shape; // Rows at 0, cols at 1
-    Target_t this_target;
-    HalGen* halGenFun;
+    std::map<Target_t, HalGen*> schedules;
+    std::vector<ArgumentBase*> params;
+
 
 public:
-    AutoStage();
-    AutoStage(const std::vector<int>& out_shape,
-              const std::vector<ASInputs<>>& ios,
-              HalGen* halGenFun);
-    AutoStage(HalGen* halGenFun);
-    ~AutoStage();
+    // Empty constructor for cloning and for the ComponentFactory 
+    AutoStage() {
+        this->setComponentName("AutoStage");
+    };
+    // Regular user constructor
+    AutoStage(std::vector<RegionTemplate*> rts, 
+        std::vector<int> out_shape, std::map<Target_t, HalGen*> schedules, 
+        std::vector<ArgumentBase*> params) : schedules(schedules), 
+        params(params) {
+
+        this->setComponentName("AutoStage");
+
+        // Populates the list of RTs names while also adding them to the RTPCB
+        for (RegionTemplate* rt : rts) {
+            rts_names.emplace_back(rt->getName());
+            this->addRegionTemplateInstance(rt, rt->getName());
+        }
+    };
+    virtual ~AutoStage() {};
 
     // Serialization methods
     int serialize(char *buff);
@@ -94,12 +64,55 @@ public:
     int size();
     AutoStage* clone();
 
-    // First implementation only has one stage
-    void execute(int argc, char** argv);
-
+    // Overwritten Task::run method
     int run();
 };
+    
+}; // namespace Internal
 
-} // namespace RTF
+// Class used by the end user as a pipeline stage. It can initialize
+// the sys env by itself and resides only on the manager/staging part
+// of the user code. It is not executed on the RTF (see Internal::AutoStage).
+class AutoStage {
+    std::vector<RegionTemplate*> rts;
+    std::vector<ArgumentBase*> params;
+    std::vector<int> out_shape; // Rows at 0, cols at 1
+    std::map<Target_t, HalGen*> schedules;
+    std::list<AutoStage*> deps;
+    Internal::AutoStage* generatedStage; // RTF stage can only be generated once
+
+public:
+    AutoStage(std::vector<RegionTemplate*> rts, 
+        std::vector<ArgumentBase*> params, std::vector<int> out_shape, 
+        std::list<HalGen*> schedules) : rts(rts), params(params), 
+        out_shape(out_shape) {
+        
+        this->generatedStage = NULL;
+
+        // Converts the schedules list to a map 
+        // id'ed by the target of the schedule
+        for (HalGen* hg : schedules) {
+            this->schedules[hg->getTarget()] = hg;
+        }
+    }
+    virtual ~AutoStage() {};
+
+    // Creates a dependency bond
+    void after(AutoStage* dep) {
+        deps.emplace_back(dep);
+    }
+
+    // Generates the current stage as a PCB object, sends it to be
+    // executed on the sysEnv while also generating recursively the
+    // dependent stages. If called multiple times, only a single
+    // PCB instance will be generated. This is the returned PCB pointer.
+    Internal::AutoStage* genStage(SysEnv& sysEnv);
+
+    // First implementation only has one stage
+    void execute(int argc, char** argv);
+};
+
+}; // namespace RTF
+
 
 #endif // AUTO_STAGE_H
