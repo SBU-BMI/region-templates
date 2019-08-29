@@ -81,7 +81,7 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
         }
         newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
         cout << "new - old: " << newSum << " - " << oldSum << endl;
-        // cv::imwrite("out.png", cvJ);
+        cv::imwrite("out.png", cvJ);
     } while(newSum != oldSum);
 
     return 0;
@@ -118,8 +118,6 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     if (data != NULL) {
         DataRegion *dr = new DenseDataRegion2D();
         dr->setName(name);
-        // ((DenseDataRegion2D*)dr)->setIsAppInput(true);
-        // ((DenseDataRegion2D*)dr)->setInputFileName(name);
         ((DenseDataRegion2D*)dr)->setData(*data);  
         rt->insertDataRegion(dr);
     }
@@ -127,8 +125,8 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
 }
 
 template <typename T>
-Halide::Buffer<T> mat2buf(cv::Mat& m) {
-    return Halide::Buffer<uint8_t>(m.data, m.rows, m.cols);
+Halide::Buffer<T> mat2buf(cv::Mat* m) {
+    return Halide::Buffer<uint8_t>(m->data, m->cols, m->rows);
 }
 
 // Needs to be static for referencing across mpi processes/nodes
@@ -139,9 +137,9 @@ static struct : RTF::HalGen {
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(im_ios[0]);
-        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(im_ios[1]);
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(im_ios[2]);
+        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(&im_ios[0]);
+        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(&im_ios[1]);
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2]);
         
         // Define halide stage
         Halide::Func halCpu;
@@ -178,6 +176,8 @@ int main(int argc, char *argv[]) {
     // stage1.after(stage2);
 
     // stage2.execute(argc, argv);
+    cv::imwrite("Out.png", ((DenseDataRegion2D*)rtOut->
+        getDataRegion("Out"))->getData());
 
     // =========== Working v0.2 === Halide external func complete with iteration
     // extern_exec(cvI, cvJ);
