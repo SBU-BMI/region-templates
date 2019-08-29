@@ -167,32 +167,38 @@ void Manager::sendComponentInfoToWorker(int worker_id, PipelineComponentBase *pc
 	int used_serialization_size = pc->serialize(buff);
 	assert(comp_serialization_size == used_serialization_size);
 
-	comm_world.Send(buff, comp_serialization_size, MPI::CHAR, worker_id, MessageTag::TAG_METADATA);
-
 	if(pc->getType() == PipelineComponentBase::RT_COMPONENT_BASE){
 		//std::cout << "This is a PipelineComponentBase::RT_COMPONENT_BASE" << std::endl;
 		RTPipelineComponentBase *rtCurr = dynamic_cast<RTPipelineComponentBase*>(pc);
 		// check whether there is any data region that is local but should be sent to a global storage
 		// for each region template within this component
+		Cache* cache = new Cache("rtconf.xml");
+		cache->setWorkerId(this->manager_rank);
+		rtCurr->setCache(cache);
+		rtCurr->instantiateRegionTemplates();
 		for(int j = 0; j < rtCurr->getNumRegionTemplates(); j++){
 			RegionTemplate *rt = rtCurr->getRegionTemplateInstance(j);
 			for(int i = 0; i < rt->getNumDataRegions(); i++){
 				DataRegion *dr = rt->getDataRegion(i);
 				// if data region is not an application input, is not on global storage,
 				// or local with the work to which this component was assigned
-				/*if(!dr->getIsAppInput() && dr->getCacheType() != Cache::GLOBAL && dr->getWorkerId() != worker_id){
-					if(dr->getWorkerId() != -1){
-						this->sendDRInfoToWorkerForGlobalStorage(dr->getWorkerId(), rt->getName(), rt->getId(), dr);
-						std::cout << "Sending RT INFO: "<< dr->getName() << " " <<dr->getId()<< std::endl;
-					}else{
-						std::cout << "DrWorker is -1" << std::endl;
-					}
+				if(!dr->getIsAppInput() && dr->getCacheType() != Cache::GLOBAL && dr->getWorkerId() != worker_id){
+					// if(dr->getWorkerId() != -1){
+					// 	this->sendDRInfoToWorkerForGlobalStorage(dr->getWorkerId(), rt->getName(), rt->getId(), dr);
+					// 	std::cout << "Sending RT INFO: "<< dr->getName() << " " <<dr->getId()<< std::endl;
+					// }else{
+					// 	std::cout << "DrWorker is -1" << std::endl;
+					// }
 				}else{
 					std::cout << "Not sending RT INFO: "<< dr->getName() << std::endl;
-				}*/
+				}
 			}
 		}
 	}
+
+	// Send component for execution after sending data regions for global storage, if necessary
+	comm_world.Send(buff, comp_serialization_size, MPI::CHAR, worker_id, MessageTag::TAG_METADATA);
+
 #ifdef DEBUG
 	std::cout << "Done send comp" << std::endl;
 #endif

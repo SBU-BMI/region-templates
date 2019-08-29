@@ -118,8 +118,8 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     if (data != NULL) {
         DataRegion *dr = new DenseDataRegion2D();
         dr->setName(name);
-        ((DenseDataRegion2D*)dr)->setIsAppInput(true);
-        ((DenseDataRegion2D*)dr)->setInputFileName(name);
+        // ((DenseDataRegion2D*)dr)->setIsAppInput(true);
+        // ((DenseDataRegion2D*)dr)->setInputFileName(name);
         ((DenseDataRegion2D*)dr)->setData(*data);  
         rt->insertDataRegion(dr);
     }

@@ -45,16 +45,28 @@ public:
     // Regular user constructor
     AutoStage(std::vector<RegionTemplate*> rts, 
         std::vector<int> out_shape, std::map<Target_t, HalGen*> schedules, 
-        std::vector<ArgumentBase*> params) : schedules(schedules), 
-        params(params) {
+        std::vector<ArgumentBase*> params) : out_shape(out_shape),
+        schedules(schedules), params(params) {
 
         this->setComponentName("AutoStage");
 
+        std::cout << "===================internal AS constr out_shape " << out_shape.size() << std::endl;
+
         // Populates the list of RTs names while also adding them to the RTPCB
-        for (RegionTemplate* rt : rts) {
-            rts_names.emplace_back(rt->getName());
-            this->addRegionTemplateInstance(rt, rt->getName());
+        // Just the inputs here
+        for (int i=0; i<rts.size()-1; i++) {
+            rts_names.emplace_back(rts[i]->getName());
+            this->addRegionTemplateInstance(rts[i], rts[i]->getName());
+            this->addInputOutputDataRegion(rts[i]->getName(), rts[i]->getName(), 
+                RTPipelineComponentBase::INPUT);
         }
+        
+        // Add the output RT
+        RegionTemplate* last_rt = rts[rts.size()-1];
+        rts_names.emplace_back(last_rt->getName());
+        this->addRegionTemplateInstance(last_rt, last_rt->getName());
+        this->addInputOutputDataRegion(last_rt->getName(), last_rt->getName(), 
+            RTPipelineComponentBase::OUTPUT);
     };
     virtual ~AutoStage() {};
 

@@ -34,7 +34,8 @@ class RTPipelineComponentBase : public PipelineComponentBase {
 		DataRegionFactory drf;
 	//	Cache *cachePtr;
 
-	//protected:
+	friend class Manager;
+	protected:
 		void setCache(Cache *cache);
 		void setLocation(int location);
 

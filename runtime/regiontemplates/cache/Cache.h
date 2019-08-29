@@ -52,6 +52,7 @@ private:
 #endif
 
 	friend class Worker;
+	friend class Manager;
 	friend class RegionTemplate;
 protected:
 	// Id of the which this cache is associated

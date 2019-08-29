@@ -278,10 +278,15 @@ int RTPipelineComponentBase::instantiateRegionTemplates() {
 #ifdef DEBUG
 					std::cout << "Instantiate data region: "<< rtName << ":" << drName << " timestamp: " << dr->getTimestamp() <<std::endl;
 #endif
-////					drf.instantiateDataRegion(dr);
-//					// if data region is not local, load it to local cache.
-//					if(dr->getWorkerId() != this->cache->getWorkerId()){
-//						this->cache->get
+					Cache *auxCache = rt->getCache();
+
+                    //pthread_mutex_lock(&auxCache->globalLock);
+                    if(auxCache != NULL){
+                        rt->getCache()->insertDR(rt->getName(), rt->getId(), dr, true);
+#ifdef DEBUG
+                        std::cout << "Stage data region into cache: "<< rtName << ":" << drName << " timestamp: "<< dr->getTimestamp() << " version:"<< dr->getVersion()<<" id: "<< dr->getId() <<std::endl;
+#endif
+                    }
 //					}
 				}
 

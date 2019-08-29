@@ -221,6 +221,7 @@ RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
     if (generatedStage == NULL) {
         generatedStage = new Internal::AutoStage(rts, 
             out_shape, schedules, params);
+        // generatedStage->instantiateRegionTemplates();
     } else {
         return generatedStage;
     }
