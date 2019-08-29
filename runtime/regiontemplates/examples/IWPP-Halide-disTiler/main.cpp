@@ -138,7 +138,6 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, 
                  std::vector<ArgumentBase*>& params) {
 
-        cout << "realizing" << endl;
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(im_ios[0]);
         Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(im_ios[1]);
@@ -173,10 +172,8 @@ int main(int argc, char *argv[]) {
 
     // Halide stage was created externally as stage1_hal
 
-    cout << "[main] creating stage " << &stage1_hal << endl;
     RTF::AutoStage stage1({rtI, rtJ, rtOut}, {}, {cvI->rows, cvI->cols}, 
         {&stage1_hal});
-    cout << "[main] adding rts to stage" << endl;
     stage1.execute(argc, argv);
     // stage1.after(stage2);
 

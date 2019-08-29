@@ -44,34 +44,9 @@ public:
         this->setComponentName("AutoStage");
     };
     // Regular user constructor
-    AutoStage(std::vector<RegionTemplate*> rts, 
-        std::vector<int> out_shape, std::map<Target_t, HalGen*> schedules, 
-        std::vector<ArgumentBase*> params) : out_shape(out_shape),
-        params(params) {
-
-        this->setComponentName("AutoStage");
-
-        // Gets the names of the registered stages
-        for (std::pair<Target_t, HalGen*> s : schedules) {
-            this->schedules[s.first] = s.second->getName();
-        }
-
-        // Populates the list of RTs names while also adding them to the RTPCB
-        // Just the inputs here
-        for (int i=0; i<rts.size()-1; i++) {
-            rts_names.emplace_back(rts[i]->getName());
-            this->addRegionTemplateInstance(rts[i], rts[i]->getName());
-            this->addInputOutputDataRegion(rts[i]->getName(), rts[i]->getName(), 
-                RTPipelineComponentBase::INPUT);
-        }
-        
-        // Add the output RT
-        RegionTemplate* last_rt = rts[rts.size()-1];
-        rts_names.emplace_back(last_rt->getName());
-        this->addRegionTemplateInstance(last_rt, last_rt->getName());
-        this->addInputOutputDataRegion(last_rt->getName(), last_rt->getName(), 
-            RTPipelineComponentBase::OUTPUT);
-    };
+    AutoStage(std::vector<RegionTemplate*> rts, std::vector<int> out_shape, 
+        std::map<Target_t, HalGen*> schedules, 
+        std::vector<ArgumentBase*> params);
     virtual ~AutoStage() {};
 
     // Serialization methods
@@ -100,7 +75,6 @@ class AutoStage {
     Internal::AutoStage* generatedStage; // RTF stage can only be generated once
 
     // Local register of halide functions
-    friend class Internal::AutoStage;
     static std::map<std::string, HalGen*> stagesReg;
 
 public:

@@ -1,9 +1,36 @@
 #include "AutoStage.h"
 
+RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts, 
+    std::vector<int> out_shape, std::map<Target_t, HalGen*> schedules, 
+    std::vector<ArgumentBase*> params) : out_shape(out_shape),
+    params(params) {
+
+    this->setComponentName("AutoStage");
+
+    // Gets the names of the registered stages
+    for (std::pair<Target_t, HalGen*> s : schedules) {
+        this->schedules[s.first] = s.second->getName();
+    }
+
+    // Populates the list of RTs names while also adding them to the RTPCB
+    // Just the inputs here
+    for (int i=0; i<rts.size()-1; i++) {
+        rts_names.emplace_back(rts[i]->getName());
+        this->addRegionTemplateInstance(rts[i], rts[i]->getName());
+        this->addInputOutputDataRegion(rts[i]->getName(), rts[i]->getName(), 
+            RTPipelineComponentBase::INPUT);
+    }
+    
+    // Add the output RT
+    RegionTemplate* last_rt = rts[rts.size()-1];
+    rts_names.emplace_back(last_rt->getName());
+    this->addRegionTemplateInstance(last_rt, last_rt->getName());
+    this->addInputOutputDataRegion(last_rt->getName(), last_rt->getName(), 
+        RTPipelineComponentBase::OUTPUT);
+};
+
 int RTF::Internal::AutoStage::serialize(char *buff) {
     int serialized_bytes = RTPipelineComponentBase::serialize(buff);
-
-    std::cout << "===== serialize size: " << RTF::AutoStage::stagesReg.size() << std::endl;
 
     // packs the rts_names vector size
     int num_rts_names = this->rts_names.size();
@@ -61,8 +88,6 @@ int RTF::Internal::AutoStage::serialize(char *buff) {
 
 int RTF::Internal::AutoStage::deserialize(char *buff) {
     int deserialized_bytes = RTPipelineComponentBase::deserialize(buff);
-
-    std::cout << "===== deserialize size: " << RTF::AutoStage::stagesReg.size() << std::endl;
 
     // unpacks the rts_names vector size
     int num_rts_names;
@@ -181,7 +206,9 @@ RTF::Internal::AutoStage* RTF::Internal::AutoStage::clone() {
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
+#ifdef DEBUG
     std::cout << "[Internal::AutoStage] running" << std::endl;
+#endif
     std::vector<DenseDataRegion2D*> dr_ios;
     for (int i=0; i<this->rts_names.size()-1; i++) {
         RegionTemplate* rt = this->getRegionTemplateInstance(
@@ -204,8 +231,9 @@ int RTF::Internal::AutoStage::run() {
     rtOut->insertDataRegion(drOut);
 
     dr_ios.emplace_back(drOut);
-
+#ifdef DEBUG
     std::cout << "[Internal::AutoStage] creating task" << std::endl;
+#endif
 
     // Assemble a schedule map with the local pointers for the halide functions
     std::map<Target_t, HalGen*> local_schedules;
@@ -226,26 +254,29 @@ int RTF::Internal::AutoStage::run() {
 
         bool run(int procType, int tid=0) {
             // Generates the input/output list of cv::mat
-            std::cout << "[Internal::AutoStage::_Task] running" << std::endl;
+#ifdef DEBUG
+            std::cout << "[Internal::AutoStage::_Task] realizing" << std::endl;
+#endif
             std::vector<cv::Mat> im_ios;
             for (DenseDataRegion2D* ddr2d : dr_ios) {
                 im_ios.emplace_back(cv::Mat(ddr2d->getData()));
             }
 
             // Executes the halide stage
-            std::cout << "[Internal::AutoStage::_Task] realizing " 
-                << schedules[procType] << std::endl;
             schedules[procType]->realize(im_ios, params);
 
             // Assigns the output mat to its DataRegion
-            std::cout << "[Internal::AutoStage::_Task] assigning output" 
+#ifdef DEBUG
+            std::cout << "[Internal::AutoStage::_Task] realized " 
                 << std::endl;
+#endif
             dr_ios[dr_ios.size()-1]->setData(im_ios[im_ios.size()-1]);
 
         }
     }* currentTask = new _Task(local_schedules, dr_ios, this->params);
-
+#ifdef DEBUG
     std::cout << "[Internal::AutoStage] sending task for execution" << std::endl;
+#endif
     this->executeTask(currentTask);
 }
 
@@ -272,7 +303,9 @@ RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
 void RTF::AutoStage::execute(int argc, char** argv) {
     std::string shd_lib_name = "libautostage.so";
 
+#ifdef DEBUG
     cout << "[AutoStage::Execute] starting sys" << endl;
+#endif
     SysEnv sysEnv;
     sysEnv.startupSystem(argc, argv, shd_lib_name);
 
@@ -280,7 +313,9 @@ void RTF::AutoStage::execute(int argc, char** argv) {
     this->genStage(sysEnv);
 
     // Startup execution is this is the final stage of the pipeline
+#ifdef DEBUG
     cout << "[AutoStage::Execute] executing pipeline" << endl;
+#endif
     // if (last_stage) {
         sysEnv.startupExecution();
     // }
@@ -301,18 +336,12 @@ std::map<std::string, RTF::HalGen*> RTF::AutoStage::stagesReg;
 
 void RTF::AutoStage::registerStage(HalGen* stage) {
     // If the parameter stage is already registered, it will be ignored
-    std::cout << "=============== registering " << stage->getName() 
-        << " - " << stage << std::endl;
     if (RTF::AutoStage::stagesReg.find(stage->getName()) 
             == RTF::AutoStage::stagesReg.end()) {
-        std::cout << "=============== registered " << std::endl; 
         stagesReg[stage->getName()] = stage;
     }
 }
 
 RTF::HalGen* RTF::AutoStage::retrieveStage(std::string name) {
-    std::cout << "=============== retrieving " << name << " - " 
-        << RTF::AutoStage::stagesReg.find(name)->second << std::endl;
-    std::cout << "size: " << RTF::AutoStage::stagesReg.size() << std::endl;
     return RTF::AutoStage::stagesReg.find(name)->second;
 }

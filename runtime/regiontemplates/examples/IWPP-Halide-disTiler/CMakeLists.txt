@@ -20,7 +20,7 @@ target_link_libraries("${libname}" regiontemplates)
 target_link_libraries("${libname}" Halide)
 
 # Creates executable to be built from the files listed
-add_executable(iwpp main.cpp IwppRecon.cpp AutoStage.cpp)
+add_executable(iwpp main.cpp IwppRecon.cpp)
 target_link_libraries(iwpp Halide)
 target_link_libraries(iwpp ${OpenCV_LIBS})
 target_link_libraries(iwpp -ljpeg)
