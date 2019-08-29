@@ -3,6 +3,8 @@
 int RTF::Internal::AutoStage::serialize(char *buff) {
     int serialized_bytes = RTPipelineComponentBase::serialize(buff);
 
+    std::cout << "===== serialize size: " << RTF::AutoStage::stagesReg.size() << std::endl;
+
     // packs the rts_names vector size
     int num_rts_names = this->rts_names.size();
     memcpy(buff+serialized_bytes, &num_rts_names, sizeof(int));
@@ -38,15 +40,20 @@ int RTF::Internal::AutoStage::serialize(char *buff) {
     serialized_bytes += sizeof(int);
 
     // packs the schedules map
-    for (std::pair<Target_t, HalGen*> s : schedules) {
+    for (std::pair<Target_t, std::string> s : schedules) {
         // packs the HalGen target
         memcpy(buff+serialized_bytes, &s.first, sizeof(int));
         serialized_bytes += sizeof(int);
 
-        // packs the halide function reference
-        // Obs: this is a reference to a static class instantiation
-        memcpy(buff+serialized_bytes, &s.second, sizeof(HalGen*));
-        serialized_bytes += sizeof(HalGen*);
+        // packs the halide function name size
+        int stage_name_size = s.second.size();
+        memcpy(buff+serialized_bytes, &stage_name_size, sizeof(int));
+        serialized_bytes += sizeof(int);
+        
+        // packs the halide function name itself
+        memcpy(buff+serialized_bytes, s.second.c_str(), 
+            sizeof(char)*stage_name_size);
+        serialized_bytes += sizeof(char)*stage_name_size;
     }
 
     return serialized_bytes;
@@ -54,6 +61,8 @@ int RTF::Internal::AutoStage::serialize(char *buff) {
 
 int RTF::Internal::AutoStage::deserialize(char *buff) {
     int deserialized_bytes = RTPipelineComponentBase::deserialize(buff);
+
+    std::cout << "===== deserialize size: " << RTF::AutoStage::stagesReg.size() << std::endl;
 
     // unpacks the rts_names vector size
     int num_rts_names;
@@ -100,13 +109,19 @@ int RTF::Internal::AutoStage::deserialize(char *buff) {
         memcpy(&target, buff+deserialized_bytes, sizeof(int));
         deserialized_bytes += sizeof(int);
 
-        // unpacks the halide function reference
-        // Obs: this is a reference to a static class instantiation
-        HalGen* halRef;
-        memcpy(&halRef, buff+deserialized_bytes, sizeof(HalGen*));
-        deserialized_bytes += sizeof(HalGen*);
+        // unpacks the halide function name size
+        int stage_name_size;
+        memcpy(&stage_name_size, buff+deserialized_bytes, sizeof(int));
+        deserialized_bytes += sizeof(int);
+        
+        // unpacks the halide function name itself
+        char stage_name[stage_name_size+1];
+        stage_name[stage_name_size] = '\0';
+        memcpy(stage_name, buff+deserialized_bytes, 
+            sizeof(char)*stage_name_size);
+        deserialized_bytes += sizeof(char)*stage_name_size;
 
-        this->schedules[target] = halRef;
+        this->schedules[target] = std::string(stage_name);
     }
 
     return deserialized_bytes;
@@ -139,12 +154,15 @@ int RTF::Internal::AutoStage::size() {
     size += sizeof(int);
 
     // packs the schedules map
-    for (std::pair<Target_t, HalGen*> s : schedules) {
+    for (std::pair<Target_t, std::string> s : schedules) {
         // packs the HalGen target
         size += sizeof(int);
 
-        // packs the halide function reference size
-        size += sizeof(HalGen*);
+        // packs the halide function name size
+        size += sizeof(int);
+        
+        // packs the halide function name itself size
+        size += sizeof(char)*s.second.size();
     }
 
     return size;
@@ -163,6 +181,7 @@ RTF::Internal::AutoStage* RTF::Internal::AutoStage::clone() {
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
+    std::cout << "[Internal::AutoStage] running" << std::endl;
     std::vector<DenseDataRegion2D*> dr_ios;
     for (int i=0; i<this->rts_names.size()-1; i++) {
         RegionTemplate* rt = this->getRegionTemplateInstance(
@@ -186,6 +205,14 @@ int RTF::Internal::AutoStage::run() {
 
     dr_ios.emplace_back(drOut);
 
+    std::cout << "[Internal::AutoStage] creating task" << std::endl;
+
+    // Assemble a schedule map with the local pointers for the halide functions
+    std::map<Target_t, HalGen*> local_schedules;
+    for (std::pair<Target_t, std::string> s : this->schedules) {
+        local_schedules[s.first] = RTF::AutoStage::retrieveStage(s.second);
+    }
+
     // Anonymous class for implementing the current stage's task
     struct _Task : public Task {
         std::map<Target_t, HalGen*> schedules;
@@ -199,20 +226,26 @@ int RTF::Internal::AutoStage::run() {
 
         bool run(int procType, int tid=0) {
             // Generates the input/output list of cv::mat
+            std::cout << "[Internal::AutoStage::_Task] running" << std::endl;
             std::vector<cv::Mat> im_ios;
             for (DenseDataRegion2D* ddr2d : dr_ios) {
                 im_ios.emplace_back(cv::Mat(ddr2d->getData()));
             }
 
             // Executes the halide stage
+            std::cout << "[Internal::AutoStage::_Task] realizing " 
+                << schedules[procType] << std::endl;
             schedules[procType]->realize(im_ios, params);
 
             // Assigns the output mat to its DataRegion
+            std::cout << "[Internal::AutoStage::_Task] assigning output" 
+                << std::endl;
             dr_ios[dr_ios.size()-1]->setData(im_ios[im_ios.size()-1]);
 
         }
-    }* currentTask = new _Task(this->schedules, dr_ios, this->params);
+    }* currentTask = new _Task(local_schedules, dr_ios, this->params);
 
+    std::cout << "[Internal::AutoStage] sending task for execution" << std::endl;
     this->executeTask(currentTask);
 }
 
@@ -262,3 +295,24 @@ PipelineComponentBase* componentFactoryAutoStage() {
 // register factory with the runtime system
 bool registered = PipelineComponentBase::ComponentFactory::componentRegister(
     "AutoStage", &componentFactoryAutoStage);
+
+// Local register of halide stages (static into AutoStage)
+std::map<std::string, RTF::HalGen*> RTF::AutoStage::stagesReg;
+
+void RTF::AutoStage::registerStage(HalGen* stage) {
+    // If the parameter stage is already registered, it will be ignored
+    std::cout << "=============== registering " << stage->getName() 
+        << " - " << stage << std::endl;
+    if (RTF::AutoStage::stagesReg.find(stage->getName()) 
+            == RTF::AutoStage::stagesReg.end()) {
+        std::cout << "=============== registered " << std::endl; 
+        stagesReg[stage->getName()] = stage;
+    }
+}
+
+RTF::HalGen* RTF::AutoStage::retrieveStage(std::string name) {
+    std::cout << "=============== retrieving " << name << " - " 
+        << RTF::AutoStage::stagesReg.find(name)->second << std::endl;
+    std::cout << "size: " << RTF::AutoStage::stagesReg.size() << std::endl;
+    return RTF::AutoStage::stagesReg.find(name)->second;
+}

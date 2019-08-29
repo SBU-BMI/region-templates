@@ -126,16 +126,23 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     return rt;
 }
 
+template <typename T>
+Halide::Buffer<T> mat2buf(cv::Mat& m) {
+    return Halide::Buffer<uint8_t>(m.data, m.rows, m.cols);
+}
+
 // Needs to be static for referencing across mpi processes/nodes
 static struct : RTF::HalGen {
+    std::string getName() {return "stage1_hal";}
     int getTarget() {return ExecEngineConstants::CPU;}
     void realize(std::vector<cv::Mat>& im_ios, 
                  std::vector<ArgumentBase*>& params) {
 
+        cout << "realizing" << endl;
         // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hI;// = mat2buf(im_ios[0]);
-        Halide::Buffer<uint8_t> hJ;// = mat2buf(im_ios[1]);
-        Halide::Buffer<uint8_t> hOut;// = mat2buf(im_ios[2]);
+        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(im_ios[0]);
+        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(im_ios[1]);
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(im_ios[2]);
         
         // Define halide stage
         Halide::Func halCpu;
@@ -166,7 +173,7 @@ int main(int argc, char *argv[]) {
 
     // Halide stage was created externally as stage1_hal
 
-    cout << "[main] creating stage" << endl;
+    cout << "[main] creating stage " << &stage1_hal << endl;
     RTF::AutoStage stage1({rtI, rtJ, rtOut}, {}, {cvI->rows, cvI->cols}, 
         {&stage1_hal});
     cout << "[main] adding rts to stage" << endl;

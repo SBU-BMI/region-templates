@@ -22,6 +22,7 @@ typedef int Target_t;
 
 // Interface for realizing halide pipelines inside RTF
 struct HalGen {
+    virtual std::string getName() = 0;
     virtual Target_t getTarget() = 0;
     static std::vector<ArgumentBase*> _dft;
     virtual void realize(std::vector<cv::Mat>& im_ios, 
@@ -33,7 +34,7 @@ namespace Internal {
 class AutoStage : public RTPipelineComponentBase {
     std::vector<std::string> rts_names;
     std::vector<int> out_shape; // Rows at 0, cols at 1
-    std::map<Target_t, HalGen*> schedules;
+    std::map<Target_t, std::string> schedules;
     std::vector<ArgumentBase*> params;
 
 
@@ -46,11 +47,14 @@ public:
     AutoStage(std::vector<RegionTemplate*> rts, 
         std::vector<int> out_shape, std::map<Target_t, HalGen*> schedules, 
         std::vector<ArgumentBase*> params) : out_shape(out_shape),
-        schedules(schedules), params(params) {
+        params(params) {
 
         this->setComponentName("AutoStage");
 
-        std::cout << "===================internal AS constr out_shape " << out_shape.size() << std::endl;
+        // Gets the names of the registered stages
+        for (std::pair<Target_t, HalGen*> s : schedules) {
+            this->schedules[s.first] = s.second->getName();
+        }
 
         // Populates the list of RTs names while also adding them to the RTPCB
         // Just the inputs here
@@ -91,7 +95,13 @@ class AutoStage {
     std::vector<int> out_shape; // Rows at 0, cols at 1
     std::map<Target_t, HalGen*> schedules;
     std::list<AutoStage*> deps;
+    
+    // Internal RTF executable representation of this stage
     Internal::AutoStage* generatedStage; // RTF stage can only be generated once
+
+    // Local register of halide functions
+    friend class Internal::AutoStage;
+    static std::map<std::string, HalGen*> stagesReg;
 
 public:
     AutoStage(std::vector<RegionTemplate*> rts, 
@@ -105,6 +115,10 @@ public:
         // id'ed by the target of the schedule
         for (HalGen* hg : schedules) {
             this->schedules[hg->getTarget()] = hg;
+
+            // Registers the stage locally (node wise) for later
+            // retrieval for execution
+            this->registerStage(hg);
         }
     }
     virtual ~AutoStage() {};
@@ -122,6 +136,10 @@ public:
 
     // First implementation only has one stage
     void execute(int argc, char** argv);
+
+    // Local stages register methods
+    static void registerStage(HalGen* stage);
+    static HalGen* retrieveStage(std::string name);
 };
 
 }; // namespace RTF
