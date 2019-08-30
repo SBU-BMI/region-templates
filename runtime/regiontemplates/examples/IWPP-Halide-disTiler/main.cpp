@@ -80,8 +80,8 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
             JJ.copy_to_host();
         }
         newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
-        cout << "new - old: " << newSum << " - " << oldSum << endl;
-        cv::imwrite("out.png", cvJ);
+        // cout << "new - old: " << newSum << " - " << oldSum << endl;
+        // cv::imwrite("out.png", cvJ);
     } while(newSum != oldSum);
 
     return 0;
@@ -148,7 +148,6 @@ static struct : RTF::HalGen {
 
         // Adds the cpu implementation to the schedules output
         halCpu.realize(hOut);
-        cout << "realized" << endl;
     }
 } stage1_hal;
 
@@ -176,8 +175,6 @@ int main(int argc, char *argv[]) {
     // stage1.after(stage2);
 
     // stage2.execute(argc, argv);
-    cv::imwrite("Out.png", ((DenseDataRegion2D*)rtOut->
-        getDataRegion("Out"))->getData());
 
     // =========== Working v0.2 === Halide external func complete with iteration
     // extern_exec(cvI, cvJ);

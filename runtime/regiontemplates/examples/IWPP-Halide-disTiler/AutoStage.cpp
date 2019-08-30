@@ -248,7 +248,7 @@ int RTF::Internal::AutoStage::run() {
         std::vector<ArgumentBase*> params;
         
         _Task(std::map<Target_t, HalGen*> schedules, 
-            std::vector<DenseDataRegion2D*> dr_ios, 
+            std::vector<DenseDataRegion2D*>& dr_ios, 
             std::vector<ArgumentBase*> params):
         schedules(schedules), dr_ios(dr_ios), params(params) {};
 
@@ -258,9 +258,14 @@ int RTF::Internal::AutoStage::run() {
             std::cout << "[Internal::AutoStage::_Task] realizing" << std::endl;
 #endif
             std::vector<cv::Mat> im_ios;
-            for (DenseDataRegion2D* ddr2d : dr_ios) {
-                im_ios.emplace_back(cv::Mat(ddr2d->getData()));
+            for (int i=0; i<dr_ios.size(); i++) {
+                im_ios.emplace_back(cv::Mat(dr_ios[i]->getData()));
             }
+
+            // // Output buffer must be pre-allocated for the halide pipeline
+            // cv::Mat* cvOut = new cv::Mat(600, 
+            //     800, CV_8U);
+            // im_ios.emplace_back(*cvOut);
 
             // Executes the halide stage
             schedules[procType]->realize(im_ios, params);
@@ -270,7 +275,11 @@ int RTF::Internal::AutoStage::run() {
             std::cout << "[Internal::AutoStage::_Task] realized " 
                 << std::endl;
 #endif
-            dr_ios[dr_ios.size()-1]->setData(im_ios[im_ios.size()-1]);
+            // dr_ios[dr_ios.size()-1]->setData(im_ios[im_ios.size()-1]);
+
+            std::cout << "task drOut pointer " 
+                << dr_ios[dr_ios.size()-1] << std::endl;
+            cv::imwrite("taskOut.png", im_ios[im_ios.size()-1]);
 
         }
     }* currentTask = new _Task(local_schedules, dr_ios, this->params);
