@@ -57,7 +57,7 @@ int RTF::Internal::AutoStage::serialize(char *buff) {
 
     // packs the out_shape vector
     for (int i=0; i<num_out_shape; i++) {
-        memcpy(buff+serialized_bytes, &out_shape[i], sizeof(int));
+        memcpy(buff+serialized_bytes, &this->out_shape[i], sizeof(int));
         serialized_bytes += sizeof(int);
     }
 
@@ -67,7 +67,7 @@ int RTF::Internal::AutoStage::serialize(char *buff) {
     serialized_bytes += sizeof(int);
 
     // packs the schedules map
-    for (std::pair<Target_t, std::string> s : schedules) {
+    for (std::pair<Target_t, std::string> s : this->schedules) {
         // packs the HalGen target
         memcpy(buff+serialized_bytes, &s.first, sizeof(int));
         serialized_bytes += sizeof(int);
@@ -117,7 +117,7 @@ int RTF::Internal::AutoStage::deserialize(char *buff) {
     // unpacks the out_shape vector
     for (int i=0; i<num_out_shape; i++) {
         int out_shape_val;
-        memcpy(buff+deserialized_bytes, &out_shape_val, sizeof(int));
+        memcpy(&out_shape_val, buff+deserialized_bytes, sizeof(int));
         deserialized_bytes += sizeof(int);
         this->out_shape.emplace_back(out_shape_val);
     }
