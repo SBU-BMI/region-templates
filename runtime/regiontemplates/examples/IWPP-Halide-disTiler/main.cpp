@@ -14,7 +14,9 @@ using std::endl;
 
 // CPU sched still marginally better since data is copied to and from device
 // on every propagation loop instance
-extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
+extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ,
+    int sched) {
+
     Halide::Buffer<uint8_t> I(*bI);
     Halide::Buffer<uint8_t> JJ(*bJJ);
 
@@ -41,7 +43,6 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
     // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
 
     // Schedule
-    int sched = ExecEngineConstants::CPU;
     rasterx.compute_root();
     Halide::Target target = Halide::get_host_target();
     if (sched == ExecEngineConstants::CPU) {
@@ -89,9 +90,9 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ) {
 
 // A wrapper of loopedIwppRecon with an explicit output buffer
 extern "C" int loopedIwppRecon2(halide_buffer_t* bI, 
-    halide_buffer_t* bJJ, halide_buffer_t* bOut) {
+    halide_buffer_t* bJJ, halide_buffer_t* bOut, int sched) {
     cout << "hereeeeeeeeeeeeeeeeeeeeeee" << endl;
-    loopedIwppRecon(bI, bJJ);
+    loopedIwppRecon(bI, bJJ, sched);
     Halide::Buffer<uint8_t> JJ(*bJJ);
     Halide::Buffer<uint8_t> Out(*bOut);
     Out.copy_from(JJ);
@@ -131,7 +132,7 @@ Halide::Buffer<T> mat2buf(cv::Mat* m) {
 
 // Needs to be static for referencing across mpi processes/nodes
 static struct : RTF::HalGen {
-    std::string getName() {return "stage1_hal";}
+    std::string getName() {return "stage1_cpu";}
     int getTarget() {return ExecEngineConstants::CPU;}
     void realize(std::vector<cv::Mat>& im_ios, 
                  std::vector<ArgumentBase*>& params) {
@@ -143,36 +144,98 @@ static struct : RTF::HalGen {
         
         // Define halide stage
         Halide::Func halCpu;
-        halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut}, 
-            Halide::UInt(8), 2);
+        halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut, 
+            ExecEngineConstants::CPU}, Halide::UInt(8), 2);
 
         // Adds the cpu implementation to the schedules output
         halCpu.realize(hOut);
     }
-} stage1_hal;
+} stage1_cpu;
+
+// Needs to be static for referencing across mpi processes/nodes
+static struct : RTF::HalGen {
+    std::string getName() {return "stage1_gpu";}
+    int getTarget() {return ExecEngineConstants::GPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(&im_ios[0]);
+        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(&im_ios[1]);
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2]);
+        
+        // Define halide stage
+        Halide::Func halGpu;
+        halGpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut, 
+            ExecEngineConstants::GPU}, Halide::UInt(8), 2);
+
+        // Adds the cpu implementation to the schedules output
+        halGpu.realize(hOut);
+    }
+} stage1_gpu;
+
+// Needs to be static for referencing across mpi processes/nodes
+static struct : RTF::HalGen {
+    std::string getName() {return "stage2_cpu";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0]);
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1]);
+        
+        // Define halide stage
+        Halide::Func blurx, blury;
+        Halide::Var x, y;
+        Halide::RDom se(-1,3,-1,3);
+
+        // Generate a bounded hIn for accessing out of border values
+        Halide::Func hbIn = Halide::BoundaryConditions::repeat_edge(hIn);
+
+        // Implement blur
+        blurx(x,y) = sum(hbIn(x+se.x,y))/3;
+        blury(x,y) = sum(blurx(x,y+se.y))/3;
+
+        // Perform scheduling
+        blurx.compute_root().parallel(y);
+        blury.compute_root().parallel(x);
+
+        // Adds the cpu implementation to the schedules output
+        std::cout << "============ realizing stage2" << std::endl;
+        blury.realize(hOut);
+    }
+} stage2_cpu;
 
 int main(int argc, char *argv[]) {
 
     // Manages inputs
-    if (argc != 3) {
-        cout << "usage: ./iwpp <I image> <J image>" << endl;
+    if (argc < 3) {
+        cout << "usage: ./iwpp <I image> <J image> " 
+            << "-c <number of cpu threads per node> " 
+            << "-g <number of gpu threads per node> " << endl;
         return 0;
     }
     cv::Mat* cvI = new cv::Mat(cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE));
     cv::Mat* cvJ = new cv::Mat(cv::imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE));
 
-    // =========== trying v0.3 === Using RTF for execution of halide pipeline
+    // =========== trying v0.3 === Using RTF for execution pipelined stages
     // Creates the inputs
     RegionTemplate* rtI = newRT(argv[1], cvI);
     RegionTemplate* rtJ = newRT(argv[2], cvJ);
-    RegionTemplate* rtOut = newRT("Out");
+    RegionTemplate* rtPropg = newRT("rtPropg");
+    RegionTemplate* rtBlured = newRT("rtBlured");
 
     // Halide stage was created externally as stage1_hal
 
-    RTF::AutoStage stage1({rtI, rtJ, rtOut}, {}, {cvI->rows, cvI->cols}, 
-        {&stage1_hal});
-    stage1.execute(argc, argv);
-    // stage1.after(stage2);
+    RTF::AutoStage stage1({rtI, rtJ, rtPropg}, {}, {cvI->rows, cvI->cols}, 
+        {&stage1_cpu, &stage1_gpu});
+    // stage1.execute(argc, argv);
+
+    RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {cvI->rows, cvI->cols}, 
+        {&stage2_cpu});
+    stage2.after(&stage1);
+    stage2.execute(argc, argv);
 
     // stage2.execute(argc, argv);
 

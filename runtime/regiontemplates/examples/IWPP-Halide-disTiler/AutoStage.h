@@ -70,6 +70,7 @@ class AutoStage {
     std::vector<int> out_shape; // Rows at 0, cols at 1
     std::map<Target_t, HalGen*> schedules;
     std::list<AutoStage*> deps;
+    bool last_stage;
     
     // Internal RTF executable representation of this stage
     Internal::AutoStage* generatedStage; // RTF stage can only be generated once
@@ -81,7 +82,7 @@ public:
     AutoStage(std::vector<RegionTemplate*> rts, 
         std::vector<ArgumentBase*> params, std::vector<int> out_shape, 
         std::list<HalGen*> schedules) : rts(rts), params(params), 
-        out_shape(out_shape) {
+        out_shape(out_shape), last_stage(true) {
         
         this->generatedStage = NULL;
 
@@ -100,6 +101,7 @@ public:
     // Creates a dependency bond
     void after(AutoStage* dep) {
         deps.emplace_back(dep);
+        dep->last_stage = false;
     }
 
     // Generates the current stage as a PCB object, sends it to be

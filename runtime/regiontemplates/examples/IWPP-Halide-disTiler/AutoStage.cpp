@@ -255,19 +255,18 @@ int RTF::Internal::AutoStage::run() {
         bool run(int procType, int tid=0) {
             // Generates the input/output list of cv::mat
 #ifdef DEBUG
-            std::cout << "[Internal::AutoStage::_Task] realizing" << std::endl;
+            std::cout << "[Internal::AutoStage::_Task] realizing " 
+                << schedules.begin()->second->getName() << std::endl;
 #endif
             std::vector<cv::Mat> im_ios;
             for (int i=0; i<dr_ios.size(); i++) {
                 im_ios.emplace_back(cv::Mat(dr_ios[i]->getData()));
             }
 
-            // // Output buffer must be pre-allocated for the halide pipeline
-            // cv::Mat* cvOut = new cv::Mat(600, 
-            //     800, CV_8U);
-            // im_ios.emplace_back(*cvOut);
-
             // Executes the halide stage
+            // std::cout << "sched " 
+            //     << (procType==ExecEngineConstants::CPU?"CPU ":"GPU ")
+            //     << schedules[procType] << std::endl;
             schedules[procType]->realize(im_ios, params);
 
             // Assigns the output mat to its DataRegion
@@ -275,12 +274,7 @@ int RTF::Internal::AutoStage::run() {
             std::cout << "[Internal::AutoStage::_Task] realized " 
                 << std::endl;
 #endif
-            // dr_ios[dr_ios.size()-1]->setData(im_ios[im_ios.size()-1]);
-
-            std::cout << "task drOut pointer " 
-                << dr_ios[dr_ios.size()-1] << std::endl;
             cv::imwrite("taskOut.png", im_ios[im_ios.size()-1]);
-
         }
     }* currentTask = new _Task(local_schedules, dr_ios, this->params);
 #ifdef DEBUG
@@ -294,7 +288,6 @@ RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
     if (generatedStage == NULL) {
         generatedStage = new Internal::AutoStage(rts, 
             out_shape, schedules, params);
-        // generatedStage->instantiateRegionTemplates();
     } else {
         return generatedStage;
     }
@@ -303,17 +296,25 @@ RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
     for (AutoStage* dep : deps) {
         // Generate the dependent stage while also adding it as a
         // dependency for the current stage
-        generatedStage->addDependency(dep->genStage(sysEnv)->getId());
+        RTF::Internal::AutoStage* internalDep = dep->genStage(sysEnv);
+        generatedStage->addDependency(internalDep->getId());
     }
     sysEnv.executeComponent(generatedStage);
+    return generatedStage;
 }
 
-// First implementation only has one stage
 void RTF::AutoStage::execute(int argc, char** argv) {
+    // Verifies if this stage was the last stage of a pipeline
+    if (!this->last_stage) {
+        std::cout << "[RTF::AutoStage::execute] this is not the last stage." 
+            << std::endl;
+        exit(-1);
+    }
+
     std::string shd_lib_name = "libautostage.so";
 
 #ifdef DEBUG
-    cout << "[AutoStage::Execute] starting sys" << endl;
+    cout << "[AutoStage::execute] starting sys" << endl;
 #endif
     SysEnv sysEnv;
     sysEnv.startupSystem(argc, argv, shd_lib_name);
@@ -323,11 +324,9 @@ void RTF::AutoStage::execute(int argc, char** argv) {
 
     // Startup execution is this is the final stage of the pipeline
 #ifdef DEBUG
-    cout << "[AutoStage::Execute] executing pipeline" << endl;
+    cout << "[AutoStage::execute] executing pipeline" << endl;
 #endif
-    // if (last_stage) {
-        sysEnv.startupExecution();
-    // }
+    sysEnv.startupExecution();
     sysEnv.finalizeSystem();
 }
 
