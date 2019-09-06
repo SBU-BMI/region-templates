@@ -12,6 +12,8 @@ IrregTiledRTCollection::IrregTiledRTCollection(std::string name,
     this->tilingAlg = tilingAlg;
 }
 
+// May break when using more than one input image since DR id is unique
+// only between input images.
 void IrregTiledRTCollection::customTiling() {
     std::string drName;
     // Go through all images

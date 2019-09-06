@@ -109,9 +109,6 @@ void TiledRTCollection::tileImages(
         exit(1);
     }
 
-    // Only a single name is required since there is only one tile
-    std::string drName = to_string(0);
-
     // A tiling process can only occur once
     if (this->tiled) {
         std::cout << "RT collection already tiled. Cannot re-tile it. " 
@@ -156,11 +153,12 @@ void TiledRTCollection::tileImages(
                 tile = mat(r);
             }
             std::string path = this->tilesPath + name;
-            path += "/i" + to_string(i) + "t" + to_string(j++) + TILE_EXT;
+            path += "/i" + to_string(i) + "t" + to_string(j) + TILE_EXT;
             cv::imwrite(path, tile);
 
             // Create new RT tile from ROI r
             DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
+            std::string drName = "t" + to_string(j);
             ddr2d->setName(drName);
             ddr2d->setId(refDDRName);
             ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
@@ -173,6 +171,8 @@ void TiledRTCollection::tileImages(
 
             this->rts.push_back(
                 std::pair<std::string, RegionTemplate*>(drName, newRT));
+
+            j++;
         }
 
         // Close .svs file

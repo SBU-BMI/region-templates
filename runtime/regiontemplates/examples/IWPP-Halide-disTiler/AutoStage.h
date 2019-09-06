@@ -33,10 +33,10 @@ namespace Internal {
 
 class AutoStage : public RTPipelineComponentBase {
     std::vector<std::string> rts_names;
-    std::vector<int> out_shape; // Rows at 0, cols at 1
+    std::vector<int64_t> out_shape; // Rows at 0, cols at 1
     std::map<Target_t, std::string> schedules;
     std::vector<ArgumentBase*> params;
-
+    int tileId; // ID of which tile was sent for this stage from autoTiler
 
 public:
     // Empty constructor for cloning and for the ComponentFactory 
@@ -44,9 +44,9 @@ public:
         this->setComponentName("AutoStage");
     };
     // Regular user constructor
-    AutoStage(std::vector<RegionTemplate*> rts, std::vector<int> out_shape, 
+    AutoStage(std::vector<RegionTemplate*> rts, std::vector<int64_t> out_shape, 
         std::map<Target_t, HalGen*> schedules, 
-        std::vector<ArgumentBase*> params);
+        std::vector<ArgumentBase*> params, int tileId);
     virtual ~AutoStage() {};
 
     // Serialization methods
@@ -67,9 +67,10 @@ public:
 class AutoStage {
     std::vector<RegionTemplate*> rts;
     std::vector<ArgumentBase*> params;
-    std::vector<int> out_shape; // Rows at 0, cols at 1
+    std::vector<int64_t> out_shape; // Rows at 0, cols at 1
     std::map<Target_t, HalGen*> schedules;
     std::list<AutoStage*> deps;
+    int tileId; // ID of which tile was sent for this stage from autoTiler
     bool last_stage;
     
     // Internal RTF executable representation of this stage
@@ -80,9 +81,9 @@ class AutoStage {
 
 public:
     AutoStage(std::vector<RegionTemplate*> rts, 
-        std::vector<ArgumentBase*> params, std::vector<int> out_shape, 
-        std::list<HalGen*> schedules) : rts(rts), params(params), 
-        out_shape(out_shape), last_stage(true) {
+        std::vector<ArgumentBase*> params, std::vector<int64_t> out_shape, 
+        std::list<HalGen*> schedules, int tileId=-1) : rts(rts), params(params), 
+        out_shape(out_shape), last_stage(true), tileId(tileId) {
         
         this->generatedStage = NULL;
 
@@ -114,7 +115,7 @@ public:
     void execute(int argc, char** argv);
 
     // Local stages register methods
-    static void registerStage(HalGen* stage);
+    static bool registerStage(HalGen* stage);
     static HalGen* retrieveStage(std::string name);
 };
 

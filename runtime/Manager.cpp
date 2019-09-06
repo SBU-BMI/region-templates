@@ -190,7 +190,9 @@ void Manager::sendComponentInfoToWorker(int worker_id, PipelineComponentBase *pc
 					// 	std::cout << "DrWorker is -1" << std::endl;
 					// }
 				}else{
+#ifdef DEBUG
 					std::cout << "Not sending RT INFO: "<< dr->getName() << std::endl;
+#endif
 				}
 			}
 		}
