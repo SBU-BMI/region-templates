@@ -2,10 +2,13 @@
 
 RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts, 
     std::vector<int64_t> out_shape, std::map<Target_t, HalGen*> schedules, 
-    std::vector<ArgumentBase*> params, int tileId) : out_shape(out_shape),
-    params(params), tileId(tileId) {
+    std::vector<ArgumentBase*> params, int tileId) {
 
     this->setComponentName("AutoStage");
+
+    this->out_shape = out_shape;
+    this->params = params;
+    this->tileId = tileId;
 
     // Gets the names of the registered stages
     for (std::pair<Target_t, HalGen*> s : schedules) {
@@ -32,191 +35,6 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
     this->addInputOutputDataRegion(last_rt->getName(), dr_name, 
         RTPipelineComponentBase::OUTPUT);
 };
-
-int RTF::Internal::AutoStage::serialize(char *buff) {
-    int serialized_bytes = RTPipelineComponentBase::serialize(buff);
-
-    // packs the rts_names vector size
-    int num_rts_names = this->rts_names.size();
-    memcpy(buff+serialized_bytes, &num_rts_names, sizeof(int));
-    serialized_bytes += sizeof(int);
-
-    // packs the rts_names vector
-    for (int i=0; i<num_rts_names; i++) {
-        // packs the string size
-        int rts_name_size = this->rts_names[i].size();
-        memcpy(buff+serialized_bytes, &rts_name_size, sizeof(int));
-        serialized_bytes += sizeof(int);
-        
-        // packs the string itself
-        memcpy(buff+serialized_bytes, this->rts_names[i].c_str(), 
-            sizeof(char)*rts_name_size);
-        serialized_bytes += sizeof(char)*rts_name_size;
-    }
-
-    // packs the out_shape vector size
-    int num_out_shape = this->out_shape.size();
-    memcpy(buff+serialized_bytes, &num_out_shape, sizeof(int));
-    serialized_bytes += sizeof(int);
-
-    // packs the out_shape vector
-    for (int i=0; i<num_out_shape; i++) {
-        memcpy(buff+serialized_bytes, &this->out_shape[i], sizeof(int64_t));
-        serialized_bytes += sizeof(int64_t);
-    }
-
-    // packs the schedules map size
-    int num_schedules = this->schedules.size();
-    memcpy(buff+serialized_bytes, &num_schedules, sizeof(int));
-    serialized_bytes += sizeof(int);
-
-    // packs the schedules map
-    for (std::pair<Target_t, std::string> s : this->schedules) {
-        // packs the HalGen target
-        memcpy(buff+serialized_bytes, &s.first, sizeof(int));
-        serialized_bytes += sizeof(int);
-
-        // packs the halide function name size
-        int stage_name_size = s.second.size();
-        memcpy(buff+serialized_bytes, &stage_name_size, sizeof(int));
-        serialized_bytes += sizeof(int);
-        
-        // packs the halide function name itself
-        memcpy(buff+serialized_bytes, s.second.c_str(), 
-            sizeof(char)*stage_name_size);
-        serialized_bytes += sizeof(char)*stage_name_size;
-    }
-
-    // packs the tile id
-    memcpy(buff+serialized_bytes, &this->tileId, sizeof(int));
-    serialized_bytes += sizeof(int);
-
-    return serialized_bytes;
-}
-
-int RTF::Internal::AutoStage::deserialize(char *buff) {
-    int deserialized_bytes = RTPipelineComponentBase::deserialize(buff);
-
-    // unpacks the rts_names vector size
-    int num_rts_names;
-    memcpy(&num_rts_names, buff+deserialized_bytes, sizeof(int));
-    deserialized_bytes += sizeof(int);
-
-    // unpacks the rts_names vector
-    for (int i=0; i<num_rts_names; i++) {
-        // unpacks the string size
-        int rts_name_size;
-        memcpy(&rts_name_size, buff+deserialized_bytes, sizeof(int));
-        deserialized_bytes += sizeof(int);
-        
-        // unpacks the string itself
-        char rt_name[rts_name_size+1];
-        rt_name[rts_name_size] = '\0';
-        memcpy(rt_name, buff+deserialized_bytes, sizeof(char)*rts_name_size);
-        this->rts_names.emplace_back(std::string(rt_name));
-        deserialized_bytes += sizeof(char)*rts_name_size;
-    }
-
-    // unpacks the out_shape vector size
-    int num_out_shape;
-    memcpy(&num_out_shape, buff+deserialized_bytes, sizeof(int));
-    deserialized_bytes += sizeof(int);
-
-    // unpacks the out_shape vector
-    for (int i=0; i<num_out_shape; i++) {
-        int64_t out_shape_val;
-        memcpy(&out_shape_val, buff+deserialized_bytes, sizeof(int64_t));
-        deserialized_bytes += sizeof(int64_t);
-        this->out_shape.emplace_back(out_shape_val);
-    }
-
-    // unpacks the schedules map size
-    int num_schedules;
-    memcpy(&num_schedules, buff+deserialized_bytes, sizeof(int));
-    deserialized_bytes += sizeof(int);
-
-    // unpacks the schedules map
-    for (int i=0; i<num_schedules; i++) {
-        // unpacks the HalGen target
-        Target_t target;
-        memcpy(&target, buff+deserialized_bytes, sizeof(int));
-        deserialized_bytes += sizeof(int);
-
-        // unpacks the halide function name size
-        int stage_name_size;
-        memcpy(&stage_name_size, buff+deserialized_bytes, sizeof(int));
-        deserialized_bytes += sizeof(int);
-        
-        // unpacks the halide function name itself
-        char stage_name[stage_name_size+1];
-        stage_name[stage_name_size] = '\0';
-        memcpy(stage_name, buff+deserialized_bytes, 
-            sizeof(char)*stage_name_size);
-        deserialized_bytes += sizeof(char)*stage_name_size;
-
-        this->schedules[target] = std::string(stage_name);
-    }
-
-    // packs the tile id
-    memcpy(&this->tileId, buff+deserialized_bytes, sizeof(int));
-    deserialized_bytes += sizeof(int);
-
-    return deserialized_bytes;
-}
-
-int RTF::Internal::AutoStage::size() {
-    int size = RTPipelineComponentBase::size();
-
-    // packs the rts_names vector size
-    size += sizeof(int);
-
-    // packs the rts_names vector
-    for (int i=0; i<this->rts_names.size(); i++) {
-        // packs the string size
-        size += sizeof(int);
-        
-        // packs the string itself
-        size += sizeof(char)*this->rts_names[i].size();
-    }
-
-    // packs the out_shape vector size
-    size += sizeof(int);
-
-    // packs the out_shape vector
-    for (int i=0; i<this->out_shape.size(); i++) {
-        size += sizeof(int64_t);
-    }
-
-    // packs the schedules map size
-    size += sizeof(int);
-
-    // packs the schedules map
-    for (std::pair<Target_t, std::string> s : schedules) {
-        // packs the HalGen target
-        size += sizeof(int);
-
-        // packs the halide function name size
-        size += sizeof(int);
-        
-        // packs the halide function name itself size
-        size += sizeof(char)*s.second.size();
-    }
-
-    // packs the size of tileId
-    size += sizeof(int);
-
-    return size;
-}
-
-RTF::Internal::AutoStage* RTF::Internal::AutoStage::clone() {
-    AutoStage* retValue = new AutoStage();
-    int size = this->size();
-    char *buff = new char[size];
-    this->serialize(buff);
-    retValue->deserialize(buff);
-    delete buff;
-    return retValue;
-}
 
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution

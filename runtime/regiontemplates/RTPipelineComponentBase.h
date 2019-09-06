@@ -16,6 +16,9 @@
 #include "TaskIO.h"
 #include <set>
 
+// Should use ExecEngineConstants::GPU ... 
+typedef int Target_t;
+
 class PipelineComponentBase;
 
 
@@ -38,6 +41,14 @@ class RTPipelineComponentBase : public PipelineComponentBase {
 	protected:
 		void setCache(Cache *cache);
 		void setLocation(int location);
+
+		// AutoStage attributes, here for easing the serialization of 
+		// PCB stages that are not RTPCB (AutoStage)
+		std::vector<std::string> rts_names;
+	    std::vector<int64_t> out_shape; // Rows at 0, cols at 1
+	    std::map<Target_t, std::string> schedules;
+	    std::vector<ArgumentBase*> params;
+	    int tileId; // ID of which tile was sent for this stage from autoTiler
 
 	public:
 		RTPipelineComponentBase();

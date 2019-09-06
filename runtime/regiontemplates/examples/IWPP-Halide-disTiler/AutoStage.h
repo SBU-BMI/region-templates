@@ -32,12 +32,6 @@ struct HalGen {
 namespace Internal {
 
 class AutoStage : public RTPipelineComponentBase {
-    std::vector<std::string> rts_names;
-    std::vector<int64_t> out_shape; // Rows at 0, cols at 1
-    std::map<Target_t, std::string> schedules;
-    std::vector<ArgumentBase*> params;
-    int tileId; // ID of which tile was sent for this stage from autoTiler
-
 public:
     // Empty constructor for cloning and for the ComponentFactory 
     AutoStage() {
@@ -48,12 +42,6 @@ public:
         std::map<Target_t, HalGen*> schedules, 
         std::vector<ArgumentBase*> params, int tileId);
     virtual ~AutoStage() {};
-
-    // Serialization methods
-    int serialize(char *buff);
-    int deserialize(char *buff);
-    int size();
-    AutoStage* clone();
 
     // Overwritten Task::run method
     int run();
