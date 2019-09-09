@@ -53,6 +53,7 @@ bool CallBackComponentExecution::run(int procType, int tid)
 	memcpy(compDataToManager+2*sizeof(int), this->getCompInst()->getResultData(), sizeof(char)* this->getCompInst()->getResultDataSize());
 
 	this->getWorker()->deleteActiveComponentRef(this->getCompInst());
+	this->getWorker()->deallocateThreadType(procType);
 
 
 	// if this is a RT component it means that may be a set of region templates instances

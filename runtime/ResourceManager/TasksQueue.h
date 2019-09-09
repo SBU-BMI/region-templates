@@ -31,6 +31,7 @@ public:
 	virtual bool insertTask(Task* task);
 	// Remove task if available and returns a pointer
 	virtual Task* getTask(int procType=ExecEngineConstants::CPU);
+	virtual Task* getTask(int availableCpus, int availableGpus){}; // only for halide queues
 	// Remove task if found and returns a pointer
 	virtual Task* getByTaskId(int id);
 
@@ -77,5 +78,31 @@ public:
 	void getFrontBackSpeedup(float &front, float &back);
 };
 
+class TasksQueueHalide: public TasksQueue {
+private:
+	// Tasks queue associated with the task's internal ID
+	std::map<int, Task*> allTasksQueue;
+
+	// Maps of tasks' IDs per target processor
+	std::map<int, std::list<int>> tasksPerTarget;
+
+	// Counter of tasks per target resource
+	std::map<int, int> threadsPerTarget;
+
+public:
+	TasksQueueHalide(int cpuThreads, int gpuThreads){
+		this->cpuThreads = cpuThreads;
+		this->gpuThreads = gpuThreads;
+		
+		this->threadsPerTarget[ExecEngineConstants::CPU] = cpuThreads;
+		this->threadsPerTarget[ExecEngineConstants::GPU] = gpuThreads;
+	}
+	bool insertTask(Task* task);
+	Task* getTask(int procType=ExecEngineConstants::CPU);
+	Task* getTask(int availableCpus, int availableGpus);
+	int getSize();
+	Task* getByTaskId(int id);
+
+};
 
 #endif /* TASKSQUEUE_H_ */

@@ -59,6 +59,7 @@ void SysEnv::parseInputArguments(int argc, char**argv){
 	// Init parameters to create Worker to default values
 	cpus = 1;
 	gpus = 0;
+	managerQueueType = ExecEngineConstants::FCFS_QUEUE;
 	windowSize=-1;
 	// FCFS
 	policy = ExecEngineConstants::FCFS_QUEUE;
@@ -116,6 +117,8 @@ void SysEnv::parseInputArguments(int argc, char**argv){
 			case 'x':
 				componentDataAwareSchedule = true;
 				break;
+			case 'h':
+				managerQueueType = ExecEngineConstants::HALIDE_TARGET_QUEUE;
 			default:
 				break;
 
@@ -169,7 +172,7 @@ int SysEnv::startupSystem(int argc, char **argv, std::string componentsLibName){
 	// decide based on rank of worker which way to process
 	if (rank == manager_rank) {
 		// Create the manager process information
-		this->setManager(new Manager(comm_world, manager_rank, worker_size, componentDataAwareSchedule));
+		this->setManager(new Manager(comm_world, manager_rank, worker_size, componentDataAwareSchedule, managerQueueType, cpus, gpus));
 
 		// Check whether all Worker have successfully initialized their execution
 		this->getManager()->checkConfiguration();

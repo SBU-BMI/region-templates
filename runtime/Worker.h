@@ -62,6 +62,14 @@ private:
 	// Used to serialize access to list of components already computed
 	pthread_mutex_t activeComponentsRefLoc;
 
+    // Counter of currently active cpu/gpu thread instances 
+    int availableCpuThreads;
+    int availableGpuThreads;
+
+    // Allocate a thread given a task's target list, prioritizing gpu allocation
+    void allocateThreadType(std::list<int> targets);
+    void deallocateThreadType(int target);
+
 	void storeActiveComponentRef(PipelineComponentBase* pc);
 	void deleteActiveComponentRef(PipelineComponentBase* pc);
 

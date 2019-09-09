@@ -10,11 +10,12 @@
 
 ExecutionEngine::ExecutionEngine(int cpuThreads, int gpuThreads, int queueType, bool dataLocalityAware, bool prefetching) {
 	schedType = queueType;
-	if(queueType ==ExecEngineConstants::FCFS_QUEUE){
-		tasksQueue = new TasksQueueFCFS(cpuThreads, gpuThreads);
-	}else{
-		tasksQueue = new TasksQueuePriority(cpuThreads, gpuThreads);
-	}
+	// if(queueType ==ExecEngineConstants::FCFS_QUEUE){
+	// 	tasksQueue = new TasksQueueFCFS(cpuThreads, gpuThreads);
+	// }else{
+	// 	tasksQueue = new TasksQueuePriority(cpuThreads, gpuThreads);
+	// }
+	tasksQueue = new TasksQueueHalide(cpuThreads, gpuThreads);
 	threadPool = new ThreadPool(tasksQueue, this);
 	threadPool->createThreadPool(cpuThreads, NULL, gpuThreads, NULL, dataLocalityAware, prefetching);
 

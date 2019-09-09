@@ -12,6 +12,7 @@
 #include "DenseDataRegion2D.h"
 #include "RTPipelineComponentBase.h"
 #include "Argument.h"
+#include "ExecEngineConstants.h"
 
 #define DATA_T uint8_t
 

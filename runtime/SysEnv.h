@@ -26,6 +26,7 @@ private:
 
     // System parameters
     int cpus, gpus, policy, windowSize;
+    int managerQueueType;
     bool dataLocalityAware;
     bool prefetching;
     bool cacheOnRead;

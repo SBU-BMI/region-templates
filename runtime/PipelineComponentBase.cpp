@@ -132,6 +132,11 @@ int PipelineComponentBase::size()
 	for(int i = 0; i < this->getArgumentsSize(); i++){
 		size_bytes+=this->getArgument(i)->size();
 	}
+
+	// size for Task::taskTargets
+	size_bytes += sizeof(int);
+	size_bytes += taskTargets.size() * sizeof(int);
+
 	return size_bytes;
 }
 
@@ -170,6 +175,16 @@ int PipelineComponentBase::serialize(char *buff)
 	// serialize each of the arguments
 	for(int i = 0; i < number_args; i++){
 		serialized_bytes += this->getArgument(i)->serialize(buff+serialized_bytes);
+	}
+
+	int taskTargetsSize = this->taskTargets.size();
+	memcpy(buff+serialized_bytes, &taskTargetsSize, sizeof(int));
+	serialized_bytes+=sizeof(int);
+
+	// Serialize Task::taskTargets
+	for (int target : this->taskTargets) {
+		memcpy(buff+serialized_bytes, &target, sizeof(int));
+		serialized_bytes+=sizeof(int);
 	}
 
 //	std::cout << "PipelineComponentBase::serialize" << std::endl;
@@ -263,6 +278,19 @@ int PipelineComponentBase::deserialize(char *buff)
 		this->addArgument(arg);
 
 	}
+
+	int taskTargetsSize;
+	memcpy(&taskTargetsSize, buff+deserialized_bytes, sizeof(int));
+	deserialized_bytes+=sizeof(int);
+
+	// Serialize Task::taskTargets
+	int target;
+	for (int i=0; i<taskTargetsSize; i++) {
+		memcpy(&target, buff+deserialized_bytes, sizeof(int));
+		deserialized_bytes+=sizeof(int);
+		this->taskTargets.emplace_back(target);
+	}
+
 //	std::cout << "PipelineComponentBase::deserialize" << std::endl;
 	return deserialized_bytes;
 

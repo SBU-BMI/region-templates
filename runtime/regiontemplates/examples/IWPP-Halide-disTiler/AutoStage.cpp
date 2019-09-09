@@ -13,6 +13,7 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
     // Gets the names of the registered stages
     for (std::pair<Target_t, HalGen*> s : schedules) {
         this->schedules[s.first] = s.second->getName();
+        this->addTaskTarget(s.first);
     }
 
     std::string dr_name;
@@ -114,6 +115,12 @@ int RTF::Internal::AutoStage::run() {
             cv::imwrite("taskOut.png", im_ios[im_ios.size()-1]);
         }
     }* currentTask = new _Task(local_schedules, dr_ios, this->params);
+
+    // Set targets for this task
+    for (std::pair<Target_t, std::string> s : this->schedules) {
+        currentTask->addTaskTarget(s.first);
+    }
+
 #ifdef DEBUG
     std::cout << "[Internal::AutoStage] sending task for execution" << std::endl;
 #endif
