@@ -7,10 +7,14 @@
 
 #include "Manager.h"
 
-Manager::Manager(const MPI::Intracomm& comm_world, const int manager_rank, const int worker_size, const bool componentDataAwareSchedule, const int queueType) {
+Manager::Manager(const MPI::Intracomm& comm_world, const int manager_rank, 
+	const int worker_size, const bool componentDataAwareSchedule, 
+	const int queueType, const int cpuThreads, const int gpuThreads) {
+
 	this->comm_world =comm_world;
 	this->manager_rank = manager_rank;
 	this->worker_size = worker_size;
+	this->halideQueue = false;
 	setFirstExecutionRound(true);
 	this->componentDataAwareSchedule = componentDataAwareSchedule;
 	for(int i = 0; i < worker_size; i++){
@@ -19,13 +23,20 @@ Manager::Manager(const MPI::Intracomm& comm_world, const int manager_rank, const
 	}
 	std::cout << "compToSchedSize: " << this->compToSchedDataAwareSchedule.size() << std::endl;
 
-	if(queueType ==ExecEngineConstants::FCFS_QUEUE){
-		componentsToExecute = new TasksQueueFCFS(1, 0);
-	}else{
-		componentsToExecute = new TasksQueuePriority(1, 0);
+	switch (queueType) {
+		case ExecEngineConstants::FCFS_QUEUE:
+			componentsToExecute = new TasksQueueFCFS(1, 0);
+			break;
+		case ExecEngineConstants::HALIDE_TARGET_QUEUE:
+			componentsToExecute = new TasksQueueHalide(cpuThreads, gpuThreads);
+			this->halideQueue = true;
+			break;
+		case ExecEngineConstants::PRIORITY_QUEUE:
+		default:
+			componentsToExecute = new TasksQueuePriority(1, 0);
 	}
-	this->componentDependencies = new TrackDependencies();
 
+	this->componentDependencies = new TrackDependencies();
 }
 
 Manager::~Manager() {
@@ -54,7 +65,7 @@ int Manager::finalizeExecution()
 {
 	MPI::Status status;
 	int worker_id;
-	char ready;
+	char ready[3];
 
 
 	/* tell everyone to quit */
@@ -71,11 +82,11 @@ int Manager::finalizeExecution()
 
 			// where is it coming from
 			worker_id=status.Get_source();
-			comm_world.Recv(&ready, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
+			comm_world.Recv(ready, 3, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
 
 			if (worker_id == manager_rank) continue;
 
-			if(ready == MessageTag::WORKER_READY) {
+			if(ready[0] == MessageTag::WORKER_READY) {
 				if(finished[worker_id] == false){
 					comm_world.Send(&MessageTag::MANAGER_FINISHED, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
 					printf("manager signal finished worker: %d manager_rank: %d\n", worker_id, manager_rank);
@@ -229,6 +240,8 @@ void Manager::manager_process()
 	MPI::Status status;
 	int worker_id;
 	char msg_type;
+	int available_cpus;
+	int available_gpus;
 	int inputlen = 15;
 
 	//TODO: testing only
@@ -254,6 +267,8 @@ void Manager::manager_process()
 			comm_world.Recv(msg, input_message_size, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
 			//			printf("manager received request from worker %d\n",worker_id);
 			msg_type = msg[0];
+			available_cpus = msg[1];
+			available_gpus = msg[2];
 
 			switch(msg_type){
 				case MessageTag::WORKER_READY:
@@ -277,7 +292,18 @@ void Manager::manager_process()
 						// if data reuse is not enabled or did not find a component to reuse data, try to get any.
 						if(compToExecute == NULL){
 							// select next component instantiation should be dispatched for execution
-							compToExecute = (PipelineComponentBase*)componentsToExecute->getTask();
+							if (this->halideQueue)
+								compToExecute = (PipelineComponentBase*)componentsToExecute->getTask(available_cpus, available_gpus);
+							else
+								compToExecute = (PipelineComponentBase*)componentsToExecute->getTask();
+							if (compToExecute == NULL) {
+								// Tell worker that manager don't have a task for it. 
+								// Nothing else to do at this moment. Should ask again.
+								comm_world.Send(&MessageTag::MANAGER_WORK_QUEUE_EMPTY, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
+								break;
+							}
+
+							// compToExecute = (PipelineComponentBase*)componentsToExecute->getTask();
 						}
 						// tell worker that manager is ready
 						comm_world.Send(&MessageTag::MANAGER_READY, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);

@@ -7,6 +7,7 @@
 #include "AutoStage.h"
 #include "IwppRecon.h"
 #include "RegionTemplate.h"
+#include "ExecEngineConstants.h"
 
 #include "TiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
@@ -317,10 +318,11 @@ int main(int argc, char *argv[]) {
 
         RTF::AutoStage stage1({tCollImgI->getRT(i).second, 
             tCollImgJ->getRT(i).second, rtPropg}, {}, 
-            {tiles[i].height, tiles[i].width}, {&stage1_cpu, &stage1_gpu}, i);
+            // {tiles[i].height, tiles[i].width}, {&stage1_cpu, &stage1_gpu}, i);
+            {tiles[i].height, tiles[i].width}, {&stage1_cpu}, i);
 
         RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {tiles[i].height, 
-            tiles[i].width}, {&stage2_cpu, &stage2_gpu}, i);
+            tiles[i].width}, {&stage2_gpu}, i);
         stage2.after(&stage1);
 
         stage2.genStage(sysEnv);

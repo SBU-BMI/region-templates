@@ -43,6 +43,9 @@ private:
 	// Components with dependencies solved, meaning ready to execute
 	TasksQueue* componentsToExecute;
 
+	// Whether this manager uses the halide task queue
+	bool halideQueue;
+
 	// Mechanism that tracks dependencies among component instances
 	TrackDependencies* componentDependencies;
 
@@ -81,7 +84,7 @@ private:
 	friend class PipelineComponentBase;
 
 public:
-	Manager(const MPI::Intracomm& comm_world, const int manager_rank, const int worker_size, const bool componentDataAwareSchedule=false, const int queueType=ExecEngineConstants::FCFS_QUEUE);
+	Manager(const MPI::Intracomm& comm_world, const int manager_rank, const int worker_size, const bool componentDataAwareSchedule=false, const int queueType=ExecEngineConstants::FCFS_QUEUE, const int cpuThreads=1, const int gpuThreads=0);
 	virtual ~Manager();
 
 	void manager_process();

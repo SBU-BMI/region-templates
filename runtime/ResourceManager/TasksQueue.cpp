@@ -223,3 +223,130 @@ void TasksQueue::releaseThreads(int numThreads)
 	}
 }
 
+/*****************************************************************************/
+/******************************* Halide Queue ********************************/
+/*****************************************************************************/
+
+bool TasksQueueHalide::insertTask(Task *task) {
+	pthread_mutex_lock(&queueLock);
+
+	// Add the task reference to the queue
+	this->allTasksQueue[task->getId()] = task;
+
+	// Add add the task id to each targets' list while checking if this task is
+	// executable, i.e., there is at least a single thread for any of the task's
+	// targets.
+	bool executable = false;
+	std::cout << "[TasksQueueHalide] Inserting task " << task->getId() << " into queue with targets ";
+	for (int target : task->getTaskTargets()) {
+		this->tasksPerTarget[target].push_back(task->getId());
+		std::cout << target << ", ";
+		if (this->threadsPerTarget[target] > 0)
+			executable = true;
+	}
+	std::cout << std::endl;
+
+	// Exits the execution if task is not executable
+	if (!executable) {
+		std::cout << "[TasksQueueHalide::insertTask] " 
+			<< "Task " << task->getId() << " is not executable "
+			<< "since there are no threads for any of its targets."
+			<< std::endl;
+		exit(-1);
+	}
+
+	pthread_mutex_unlock(&queueLock);
+	sem_post(&tasksToBeProcessed);
+	return true;
+}
+
+Task *TasksQueueHalide::getTask(int target) {
+	Task *retTask = NULL;
+	sem_wait(&tasksToBeProcessed);
+	pthread_mutex_lock(&queueLock);
+
+#ifdef DEBUG
+	std::cout << "[TasksQueueHalide] Getting task of target " << target << std::endl;
+#endif
+
+	// Only returns a task if there is one
+	if(this->allTasksQueue.size() > 0){
+		// Gets the iterator for the id of the first task for the input target
+		std::list<int>::iterator taskI 
+			= this->tasksPerTarget[target].begin();
+
+		// Only returns a task if there is one implementation for the input target
+		if (taskI != this->tasksPerTarget[target].end()) {
+			retTask = this->allTasksQueue[*taskI];
+			this->allTasksQueue.erase(*taskI);
+			this->tasksPerTarget[target].erase(taskI);
+		}
+	}
+
+	pthread_mutex_unlock(&queueLock);
+
+#ifdef DEBUG
+	std::cout << "[TasksQueueHalide] Returning tasks " << retTask << std::endl;
+#endif
+	
+	return retTask;
+}
+
+// Returns an executable task given the available resources
+// Returns NULL if there are no executable tasks
+Task* TasksQueueHalide::getTask(int availableCpus, int availableGpus) {
+	Task *retTask = NULL;
+	sem_wait(&tasksToBeProcessed);
+	pthread_mutex_lock(&queueLock);
+
+	std::list<int>::iterator taskI;
+
+	// Gives priority for gpu tasks
+	if (availableGpus>0) {
+		taskI = this->tasksPerTarget[ExecEngineConstants::GPU].begin();
+		if (taskI != this->tasksPerTarget[ExecEngineConstants::GPU].end()) {
+			retTask = this->allTasksQueue[*taskI];
+			this->allTasksQueue.erase(*taskI);
+			this->tasksPerTarget[ExecEngineConstants::GPU].erase(taskI);
+		}
+	}
+
+	// Attempt to get a cpu task if (i) there were no available gpu threads
+	// or (ii) there were no gpu tasks on the queue
+	if (availableGpus>0 && retTask==NULL) {
+		taskI = this->tasksPerTarget[ExecEngineConstants::CPU].begin();
+		if (taskI != this->tasksPerTarget[ExecEngineConstants::CPU].end()) {
+			retTask = this->allTasksQueue[*taskI];
+			this->allTasksQueue.erase(*taskI);
+			this->tasksPerTarget[ExecEngineConstants::CPU].erase(taskI);
+		}
+	}
+
+	pthread_mutex_unlock(&queueLock);
+	return retTask;
+}
+
+int TasksQueueHalide::getSize() {
+	int number_tasks = 0;
+	pthread_mutex_lock(&queueLock);
+
+	number_tasks = allTasksQueue.size();
+
+	pthread_mutex_unlock(&queueLock);
+
+	return number_tasks;
+}
+
+
+Task* TasksQueueHalide::getByTaskId(int id) {
+	list<Task*>::iterator it;
+	Task* retValue = NULL;
+	pthread_mutex_lock(&queueLock);
+
+	std::map<int, Task*>::iterator taskI = this->allTasksQueue.find(id);
+	retValue = taskI->second;
+	this->allTasksQueue.erase(taskI);
+	
+	pthread_mutex_unlock(&queueLock);
+	return retValue;
+}

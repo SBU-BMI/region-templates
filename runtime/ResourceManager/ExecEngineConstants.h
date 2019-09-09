@@ -3,18 +3,19 @@
 
 using namespace std;
 
-class ExecEngineConstants {
-public:
+namespace ExecEngineConstants {
 	//! Defining what processor should be used when invoking the functions
 	static const int NUM_PROC_TYPES=3;
 	static const int CPU=1;
 	static const int GPU=2;
 	static const int MIC=3;
+	// static const int PROC_TYPES[NUM_PROC_TYPES] = {CPU, GPU, MIC};
 
 	//! Scheduling policies
 	static const int FCFS_QUEUE=1;
 	static const int PRIORITY_QUEUE=2;
 	static const int DATA_LOCALITY_AWARE=3;
+	static const int HALIDE_TARGET_QUEUE=4;
 
 	//! Type of task assigned to execution. Most of tasks are computing tasks,
 	// while there is a special type of tasks called transaction tasks that is used

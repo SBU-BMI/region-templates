@@ -72,6 +72,10 @@ class Task {
 		// Pointer to the Execution Engine that is responsible for this task.
 		ExecutionEngine *curExecEngine;
 
+		// This represents on which target this task can be executed. Currently
+		// used only for Halide pipelines. Uses ExecEngineConstants (CPU, GPU, ...).
+		list<int> taskTargets;
+		
 	public:
 
 		Task();
@@ -127,6 +131,9 @@ class Task {
 		int getId() const;
 		int getTaskType() const;
 		void setTaskType(int taskType);
+		list<int> getTaskTargets() const;
+		void addTaskTarget(int taskTarget);
+		void anyTarget();
 		bool isCallBackDepsReady() const;
 		void setCallBackDepsReady(bool callBackDepsReady);
 

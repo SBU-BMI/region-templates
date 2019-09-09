@@ -37,6 +37,9 @@ Worker::Worker(const int manager_rank, const int rank, const int max_active_comp
 	// Computing threads startup consuming tasks
 	this->getResourceManager()->startupExecution();
 
+	this->availableCpuThreads = CPUCores;
+	this->availableGpuThreads = GPUs;
+
 #ifdef WITH_RT
 	this->cache = new Cache("rtconf.xml");
 	this->cache->setWorkerId(this->rank);
@@ -239,6 +242,32 @@ int Worker::getRank() const
     return rank;
 }
 
+// Allocate a thread given a task's target list
+void Worker::allocateThreadType(std::list<int> targets) {
+	std::cout << "allocating on worker with " << targets.size() << std::endl;
+	
+	for (int target : targets) {
+		if (target == ExecEngineConstants::CPU && this->availableCpuThreads > 0) {
+			this->availableCpuThreads--;
+			std::cout << "allocating cpu on worker" << std::endl;
+			return;
+		}
+		if (target == ExecEngineConstants::GPU && this->availableGpuThreads > 0) {
+			this->availableGpuThreads--;
+			std::cout << "allocating gpu on worker" << std::endl;
+			return;
+		}
+	}
+	std::cout << "worker didn't allocate anything" << std::endl;
+
+}
+
+void Worker::deallocateThreadType(int target) {
+	if (target == ExecEngineConstants::CPU)
+		this->availableCpuThreads++;
+	else if (target == ExecEngineConstants::GPU)
+		this->availableGpuThreads++;
+}
 
 void Worker::workerProcess()
 {
@@ -270,7 +299,12 @@ void Worker::workerProcess()
 	while (flag != MessageTag::MANAGER_FINISHED && flag != MessageTag::MANAGER_ERROR) {
 
 		// tell the manager - ready
-		this->comm_world.Send(&MessageTag::WORKER_READY, 1, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
+		// Also states the type of thread (CPU or GPU or ...) this is
+		char ready[2];
+		ready[0] = MessageTag::WORKER_READY;
+		ready[1] = this->availableCpuThreads;
+		ready[2] = this->availableGpuThreads;
+		this->comm_world.Send(ready, 3, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
 
 		// get the manager status
 		this->comm_world.Recv(&flag, 1, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
@@ -290,6 +324,7 @@ void Worker::workerProcess()
 					// One more component instance was received and is being dispatched for execution
 					this->incrementActiveComponentInstances();
 
+
 					this->storeActiveComponentRef(pc);
 
 					// Associated local resource manager to the received component
@@ -297,6 +332,9 @@ void Worker::workerProcess()
 
 #ifdef WITH_RT
 					pc->setCache(this->getCache());
+					
+					// Decrements the counter of free threads for the current target ready[1]
+					this->allocateThreadType(pc->getTaskTargets());
 #endif
 
 					// Create a Transaction tasks that relates subtasks created by this component to itself. When all
@@ -305,6 +343,7 @@ void Worker::workerProcess()
 
 
 					CallBackComponentExecution *callBackTask = new CallBackComponentExecution(pc, this);
+					callBackTask->anyTarget();
 					if(ioTaskId != -1){
 						callBackTask->addDependency(ioTaskId);
 					}

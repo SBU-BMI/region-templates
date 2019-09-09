@@ -122,6 +122,10 @@ int Task::getTaskType() const
     return taskType;
 }
 
+list<int> Task::getTaskTargets() const {
+    return taskTargets;
+}
+
 bool Task::isCallBackDepsReady() const
 {
     return callBackDepsReady;
@@ -185,6 +189,15 @@ void Task::setCallBackDepsReady(bool callBackDepsReady)
 void Task::setTaskType(int taskType)
 {
     this->taskType = taskType;
+}
+
+void Task::addTaskTarget(int taskTarget) {
+    this->taskTargets.emplace_back(taskTarget);
+}
+
+void Task::anyTarget() {
+	this->taskTargets.emplace_back(ExecEngineConstants::CPU);
+	this->taskTargets.emplace_back(ExecEngineConstants::GPU);
 }
 
 int Task::getId() const
