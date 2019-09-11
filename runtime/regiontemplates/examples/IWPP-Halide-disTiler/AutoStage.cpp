@@ -7,8 +7,11 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
     this->setComponentName("AutoStage");
 
     this->out_shape = out_shape;
-    this->params = params;
     this->tileId = tileId;
+
+    // Add parameters
+    for (ArgumentBase* arg : params)
+        this->addArgument(arg);
 
     // Gets the names of the registered stages
     for (std::pair<Target_t, HalGen*> s : schedules) {
@@ -114,7 +117,7 @@ int RTF::Internal::AutoStage::run() {
 #endif
             cv::imwrite("taskOut.png", im_ios[im_ios.size()-1]);
         }
-    }* currentTask = new _Task(local_schedules, dr_ios, this->params);
+    }* currentTask = new _Task(local_schedules, dr_ios, this->getArguments());
 
     // Set targets for this task
     for (std::pair<Target_t, std::string> s : this->schedules) {
@@ -129,11 +132,11 @@ int RTF::Internal::AutoStage::run() {
 
 RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
     // Generate current stage if it was not already generated
-    if (generatedStage == NULL) {
-        generatedStage = new Internal::AutoStage(rts, 
+    if (this->generatedStage == NULL) {
+        this->generatedStage = new Internal::AutoStage(rts, 
             out_shape, schedules, params, this->tileId);
     } else {
-        return generatedStage;
+        return this->generatedStage;
     }
 
     // Generate dependent stages
@@ -141,10 +144,10 @@ RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
         // Generate the dependent stage while also adding it as a
         // dependency for the current stage
         RTF::Internal::AutoStage* internalDep = dep->genStage(sysEnv);
-        generatedStage->addDependency(internalDep->getId());
+        this->generatedStage->addDependency(internalDep->getId());
     }
-    sysEnv.executeComponent(generatedStage);
-    return generatedStage;
+    sysEnv.executeComponent(this->generatedStage);
+    return this->generatedStage;
 }
 
 void RTF::AutoStage::execute(int argc, char** argv) {

@@ -25,7 +25,7 @@ typedef int Target_t;
 struct HalGen {
     virtual std::string getName() = 0;
     virtual Target_t getTarget() = 0;
-    static std::vector<ArgumentBase*> _dft;
+    static std::vector<ArgumentBase*> _dft; // default empty constructor variable
     virtual void realize(std::vector<cv::Mat>& im_ios, 
         std::vector<ArgumentBase*>& params = _dft) = 0;
 };

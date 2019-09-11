@@ -106,6 +106,7 @@ public:
 
 	// Retrieve "index"th argument, if it exists, otherwise NULL is returned
 	ArgumentBase *getArgument(int index);
+    vector<ArgumentBase*> getArguments() {return this->arguments;};
 
 	// Get current number of arguments associated to this component.
 	int getArgumentsSize();

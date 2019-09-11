@@ -282,13 +282,12 @@ Task *TasksQueueHalide::getTask(int target) {
 			this->tasksPerTarget[target].erase(taskI);
 		}
 	}
-
 	pthread_mutex_unlock(&queueLock);
 
 #ifdef DEBUG
 	std::cout << "[TasksQueueHalide] Returning tasks " << retTask << std::endl;
 #endif
-	
+
 	return retTask;
 }
 
