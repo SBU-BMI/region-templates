@@ -30,7 +30,7 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
 }
 
 template <typename T>
-Halide::Buffer<T> mat2buf(cv::Mat* m) {
+Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
     if (m->channels() > 1) {
         // Halide works with planar memory layout by default thus we need 
         // to ensure that it wraps the interleaved representation of opencv
@@ -39,98 +39,98 @@ Halide::Buffer<T> mat2buf(cv::Mat* m) {
         // 3 channels:
         // func.output_buffer().dim(0).set_stride(3);
         return Halide::Buffer<uint8_t>::make_interleaved(
-            m->data, m->cols, m->rows, m->channels());
+            m->data, m->cols, m->rows, m->channels(), name);
     } else
-        return Halide::Buffer<uint8_t>(m->data, m->cols, m->rows);
+        return Halide::Buffer<uint8_t>(m->data, m->cols, m->rows, name);
 }
 
-// // CPU sched still marginally better since data is copied to and from device
-// // on every propagation loop instance
-// extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ,
-//     int sched) {
+// CPU sched still marginally better since data is copied to and from device
+// on every propagation loop instance
+extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ,
+    int sched) {
 
-//     Halide::Buffer<uint8_t> I(*bI);
-//     Halide::Buffer<uint8_t> JJ(*bJJ);
+    Halide::Buffer<uint8_t> I(*bI, "I");
+    Halide::Buffer<uint8_t> JJ(*bJJ, "JJ");
 
-//     Halide::Func rasterx, rastery, arasterx, arastery;
-//     Halide::RDom se(-1,3,-1,3);
-//     Halide::Var x, y;
+    Halide::Func rasterx, rastery, arasterx, arastery;
+    Halide::RDom se(-1,3,-1,3);
+    Halide::Var x, y;
 
-//     // Clamping input
-//     Halide::Func J = Halide::BoundaryConditions::repeat_edge(JJ);
+    // Clamping input
+    Halide::Func J = Halide::BoundaryConditions::repeat_edge(JJ);
 
-//     int32_t w = bI->dim[0].extent;
-//     int32_t h = bI->dim[1].extent;
+    int32_t w = bI->dim[0].extent;
+    int32_t h = bI->dim[1].extent;
 
-//     // Clamping rasterx for rastery input
-//     Halide::Expr xc = clamp(x, 0, w-1);
-//     Halide::Expr yc = clamp(y, 0, h-1);
-//     Halide::Func rasterxc;
+    // Clamping rasterx for rastery input
+    Halide::Expr xc = clamp(x, 0, w-1);
+    Halide::Expr yc = clamp(y, 0, h-1);
+    Halide::Func rasterxc;
 
-//     // Functions for vertical and horizontal propagation
-//     rasterx(x,y) = min(I(x,y), maximum(J(x+se.x, y)));
-//     // arasterx(w-x,y) = min(I(w-x,y), maximum(rasterx(w-x+se.x, y)));
-//     rasterxc(x,y) = rasterx(xc, yc);
-//     rastery(x,y) = min(I(x,y), maximum(rasterxc(x, y+se.y)));
-//     // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
+    // Functions for vertical and horizontal propagation
+    rasterx(x,y) = min(I(x,y), maximum(J(x+se.x, y)));
+    // arasterx(w-x,y) = min(I(w-x,y), maximum(rasterx(w-x+se.x, y)));
+    rasterxc(x,y) = rasterx(xc, yc);
+    rastery(x,y) = min(I(x,y), maximum(rasterxc(x, y+se.y)));
+    // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
 
-//     // Schedule
-//     rasterx.compute_root();
-//     Halide::Target target = Halide::get_host_target();
-//     if (sched == ExecEngineConstants::CPU) {
-//         Halide::Var xi, xo;
-//         rastery.reorder(y,x).serial(y);
-//         rastery.split(x, xo, xi, 16);
-//         rastery.vectorize(xi).parallel(xo);
-//         rastery.compile_jit();
-//     } else if (sched == ExecEngineConstants::GPU) {
-//         Halide::Var bx, by, tx, ty;
-//         rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-//         rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-//         target.set_feature(Halide::Target::CUDA);
-//         I.set_host_dirty();
-//         JJ.set_host_dirty();
-//     }
-//     // target.set_feature(Halide::Target::Debug);
-//     rastery.compile_jit(target);
-//     // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
+    // Schedule
+    rasterx.compute_root();
+    Halide::Target target = Halide::get_host_target();
+    if (sched == ExecEngineConstants::CPU) {
+        Halide::Var xi, xo;
+        rastery.reorder(y,x).serial(y);
+        rastery.split(x, xo, xi, 16);
+        rastery.vectorize(xi).parallel(xo);
+        rastery.compile_jit();
+    } else if (sched == ExecEngineConstants::GPU) {
+        Halide::Var bx, by, tx, ty;
+        rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
+        rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
+        target.set_feature(Halide::Target::CUDA);
+        I.set_host_dirty();
+        JJ.set_host_dirty();
+    }
+    // target.set_feature(Halide::Target::Debug);
+    rastery.compile_jit(target);
+    // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
 
 
-//     int oldSum = 0;
-//     int newSum = 0;
-//     int it = 0;
+    int oldSum = 0;
+    int newSum = 0;
+    int it = 0;
 
-//     // Create a cv::Mat wrapper for the halide pipeline output buffer
-//     cv::Mat cvJ(h, w, CV_8U, JJ.get()->raw_buffer()->host);
-//     do {
-//         it++;
-//         oldSum = newSum;
-//         rastery.realize(JJ);
-//         // Copy from GPU to host is done every realization which is
-//         // inefficient. However this is just done as a proof of concept for
-//         // having a CPU and a GPU sched (more work necessary for running the 
-//         // sum on GPU). 
-//         if (sched == ExecEngineConstants::GPU) {
-//             JJ.copy_to_host();
-//         }
-//         newSum = cv::sum(cv::Mat(h, w, CV_8U, 
-//            JJ.get()->raw_buffer()->host))[0];
-//         // cout << "new - old: " << newSum << " - " << oldSum << endl;
-//         // cv::imwrite("out.png", cvJ);
-//     } while(newSum != oldSum);
+    // Create a cv::Mat wrapper for the halide pipeline output buffer
+    cv::Mat cvJ(h, w, CV_8U, JJ.get()->raw_buffer()->host);
+    do {
+        it++;
+        oldSum = newSum;
+        rastery.realize(JJ);
+        // Copy from GPU to host is done every realization which is
+        // inefficient. However this is just done as a proof of concept for
+        // having a CPU and a GPU sched (more work necessary for running the 
+        // sum on GPU). 
+        if (sched == ExecEngineConstants::GPU) {
+            JJ.copy_to_host();
+        }
+        newSum = cv::sum(cv::Mat(h, w, CV_8U, 
+           JJ.get()->raw_buffer()->host))[0];
+        // cout << "new - old: " << newSum << " - " << oldSum << endl;
+        // cv::imwrite("out.png", cvJ);
+    } while(newSum != oldSum);
 
-//     return 0;
-// }
+    return 0;
+}
 
-// // A wrapper of loopedIwppRecon with an explicit output buffer
-// extern "C" int loopedIwppRecon2(halide_buffer_t* bI, 
-//     halide_buffer_t* bJJ, halide_buffer_t* bOut, int sched) {
-//     // cout << "hereeeeeeeeeeeeeeeeeeeeeee" << endl;
-//     loopedIwppRecon(bI, bJJ, sched);
-//     Halide::Buffer<uint8_t> JJ(*bJJ);
-//     Halide::Buffer<uint8_t> Out(*bOut);
-//     Out.copy_from(JJ);
-// }
+// A wrapper of loopedIwppRecon with an explicit output buffer
+extern "C" int loopedIwppRecon2(halide_buffer_t* bI, 
+    halide_buffer_t* bJJ, halide_buffer_t* bOut, int sched) {
+    // cout << "hereeeeeeeeeeeeeeeeeeeeeee" << endl;
+    loopedIwppRecon(bI, bJJ, sched);
+    Halide::Buffer<uint8_t> JJ(*bJJ, "JJ2");
+    Halide::Buffer<uint8_t> Out(*bOut, "Out2");
+    Out.copy_from(JJ);
+}
 
 // void extern_exec(cv::Mat* cvI, cv::Mat* cvJ) {
 //     // Create the buffers for execution
@@ -284,8 +284,8 @@ static struct : RTF::HalGen {
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0]);
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1]);
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
         uint8_t blue = ((ArgumentInt*)params[0])->getArgValue();
         uint8_t green = ((ArgumentInt*)params[1])->getArgValue();
@@ -305,33 +305,86 @@ static struct : RTF::HalGen {
 } get_background;
 bool r1 = RTF::AutoStage::registerStage(&get_background);
 
-// // Needs to be static for referencing across mpi processes/nodes
-// static struct : RTF::HalGen {
-//     std::string getName() {return "get_background";}
-//     int getTarget() {return ExecEngineConstants::CPU;}
-//     void realize(std::vector<cv::Mat>& im_ios, 
-//                  std::vector<ArgumentBase*>& params) {
+static struct : RTF::HalGen {
+    std::string getName() {return "get_rbc";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
 
-//         // Wraps the input and output cv::mat's with halide buffers
-//         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0]);
-//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1]);
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
-//         std::vector<Mat> bgr;
-//         split(img, bgr);
-//         cv::Mat cvOut = (bgr[0] > blue) & (bgr[1] > green) & (bgr[2] > red);
+        float T1 = ((ArgumentFloat*)params[0])->getArgValue();
+        float T2 = ((ArgumentFloat*)params[1])->getArgValue();
 
-//         // // Define halide stage
-//         // Halide::Func halCpu;
-//         // halCpu.define_extern("loopedIwppRecon2", {hIn, hOut, 
-//         //     ExecEngineConstants::CPU}, Halide::UInt(8), 2);
+        // Analog to cv::Mat::convertTo
+        Halide::Var pix, eps;
+        Halide::Func convertTo("convertTo");
+        // Minor workaround with select since eps must be an int
+        float alpha = 1.0f;
+        float beta = FLT_EPSILON;
+        convertTo(pix,eps) = alpha*Halide::cast<float>(pix)
+                           + select(eps==1, beta, 0.0f);
 
-//         // // Adds the cpu implementation to the schedules output
-//         // cout << "[stage1][cpu] Realizing..." << endl;
-//         // halCpu.realize(hOut);
-//         // cout << "[stage1][cpu] Done..." << endl;
-//     }
-// } get_background;
-// bool r1 = RTF::AutoStage::registerStage(&stage1_cpu);
+        // Define halide stage
+        Halide::Var x, y, c;
+        Halide::Func bd("bd"), gd("gd"), rd("rd");
+        Halide::Func imR2G("imR2G"), imR2B("imR2B");
+        Halide::Func bw1("bw1"), bw2("bw2");
+        Halide::Func marker("marker");
+        Halide::Func rbc("rbc");
+
+        cv::Mat cvbw1(hIn.height(), hIn.width(), CV_8U);
+        cv::Mat cvbw2(hIn.height(), hIn.width(), CV_8U);
+        cv::Mat cvmarker(hIn.height(), hIn.width(), CV_8U);
+        Halide::Buffer<uint8_t> hbw1 = mat2buf<uint8_t>(&cvbw1, "hbw1");
+        Halide::Buffer<uint8_t> hbw2 = mat2buf<uint8_t>(&cvbw2, "hbw1");
+        Halide::Buffer<uint8_t> hmarker = mat2buf<uint8_t>(&cvmarker, "hmarker");
+
+        bd(x,y) = convertTo(hIn(x,y,0), 1);
+        gd(x,y) = convertTo(hIn(x,y,1), 1);
+        rd(x,y) = convertTo(hIn(x,y,2), 0);
+
+        imR2G(x,y) = rd(x,y)/gd(x,y);
+        imR2B(x,y) = (rd(x,y)/bd(x,y)) > 1.0f;
+
+        bw1(x,y) = Halide::cast<uint8_t>(imR2G(x,y) > T1);
+        bw2(x,y) = imR2G(x,y) > T2;
+
+        // Realizes bw1 to identify if any pixels were found
+        cout << "[get_rbc][cpu] Realizing pre-rbc..." << endl;
+        bw1.realize(hbw1);
+        int nonz = cv::countNonZero(cvbw1);
+        cout << "[get_rbc][cpu] Done pre-rbc..." << endl;
+
+        // Only goes further for the propagation if there is any non-zero pixel
+        if (nonz > 0) {
+            cout << "[get_rbc][cpu] non-zero: " << nonz << endl;
+            // Mat marker = Mat::zeros(bw1.size(), bw1.type());
+            // bw2.copyTo(marker, bw1);
+            marker(x,y) = Halide::select(bw1(x,y)>0, bw2(x,y), 0);
+
+            // These two must be scheduled this way since they are inputs
+            // for an extern halide function
+            marker.compute_root();
+            bw2.compute_root();
+
+            // marker = imreconstructBinary<T>(marker, bw2, connectivity);
+            rbc.define_extern("loopedIwppRecon2", {hmarker, hbw2, hOut, 
+                ExecEngineConstants::CPU}, Halide::UInt(8), 2);
+
+        } else {
+            cout << "[get_rbc][cpu] No propagation" << endl;
+            rbc(x,y) = 0;
+        }
+        
+        cout << "[get_rbc][cpu] Realizing..." << endl;
+        rbc.realize(hOut);
+        cout << "[get_rbc][cpu] Done" << endl;
+    }
+} get_rbc;
+bool r2 = RTF::AutoStage::registerStage(&get_rbc);
 
 int main(int argc, char *argv[]) {
 
@@ -394,9 +447,9 @@ int main(int argc, char *argv[]) {
 
         // get background with blue, green and red input parameters
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
-            {new ArgumentInt(blue), new ArgumentInt(green), 
-            new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
-            {&get_background}, i);
+            {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
+            {tiles[i].height, tiles[i].width}, 
+            {&get_rbc}, i);
         stage1.genStage(sysEnv);
 
         // RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {tiles[i].height, 
