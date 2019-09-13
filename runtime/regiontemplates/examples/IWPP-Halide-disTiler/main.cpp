@@ -115,7 +115,7 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ,
         }
         newSum = cv::sum(cv::Mat(h, w, CV_8U, 
            JJ.get()->raw_buffer()->host))[0];
-        // cout << "new - old: " << newSum << " - " << oldSum << endl;
+        cout << "new - old: " << newSum << " - " << oldSum << endl;
         // cv::imwrite("out.png", cvJ);
     } while(newSum != oldSum);
 
@@ -328,12 +328,13 @@ static struct : RTF::HalGen {
                            + select(eps==1, beta, 0.0f);
 
         // Define halide stage
-        Halide::Var x, y, c;
+        Halide::Var x, y;
         Halide::Func bd("bd"), gd("gd"), rd("rd");
         Halide::Func imR2G("imR2G"), imR2B("imR2B");
         Halide::Func bw1("bw1"), bw2("bw2");
         Halide::Func marker("marker");
         Halide::Func rbc("rbc");
+        Halide::Func rbc2("rbc2");
 
         cv::Mat cvbw1(hIn.height(), hIn.width(), CV_8U);
         cv::Mat cvbw2(hIn.height(), hIn.width(), CV_8U);
@@ -350,7 +351,7 @@ static struct : RTF::HalGen {
         imR2B(x,y) = (rd(x,y)/bd(x,y)) > 1.0f;
 
         bw1(x,y) = Halide::cast<uint8_t>(imR2G(x,y) > T1);
-        bw2(x,y) = imR2G(x,y) > T2;
+        bw2(x,y) = Halide::cast<uint8_t>(imR2G(x,y) > T2)*255;
 
         // Realizes bw1 to identify if any pixels were found
         cout << "[get_rbc][cpu] Realizing pre-rbc..." << endl;
@@ -364,6 +365,10 @@ static struct : RTF::HalGen {
             // Mat marker = Mat::zeros(bw1.size(), bw1.type());
             // bw2.copyTo(marker, bw1);
             marker(x,y) = Halide::select(bw1(x,y)>0, bw2(x,y), 0);
+            // marker(x,y) = Halide::cast<uint8_t>(marker(x,y))*255;
+
+            // bw2.realize(hOut);
+            // cv::imwrite("marker.png", im_ios[1]);
 
             // These two must be scheduled this way since they are inputs
             // for an extern halide function
@@ -379,8 +384,11 @@ static struct : RTF::HalGen {
             rbc(x,y) = 0;
         }
         
-        cout << "[get_rbc][cpu] Realizing..." << endl;
-        rbc.realize(hOut);
+        rbc2(x,y) = rbc(x,y) & marker(x,y) & imR2B(x,y);
+        rbc.compute_root();
+
+        cout << "[get_rbc][cpu] Realizing propagation..." << endl;
+        rbc2.realize(hOut);
         cout << "[get_rbc][cpu] Done" << endl;
     }
 } get_rbc;
@@ -423,7 +431,7 @@ int main(int argc, char *argv[]) {
     int bgThr = 100;
     int erode = 4;
     int dilate = 10;
-    int nTiles = 10;
+    int nTiles = 1;
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
     TiledRTCollection* tCollImg = new IrregTiledRTCollection("input", 
         "input", argv[1], border, bgm, 
