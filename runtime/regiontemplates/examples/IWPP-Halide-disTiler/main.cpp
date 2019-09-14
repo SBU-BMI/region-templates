@@ -417,6 +417,165 @@ static struct : RTF::HalGen {
 } invert;
 bool r3 = RTF::AutoStage::registerStage(&invert);
 
+// Only implemented for grayscale images
+// Only implemented for uint8_t images
+// Structuring element must have odd width and height
+static struct : RTF::HalGen {
+    std::string getName() {return "erode";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // 19x19
+        uint8_t disk19raw[361] = {
+            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
+
+        cv::Mat cvSE(19, 19, CV_8U, disk19raw);
+        cv::Mat cvIn;
+        cv::cvtColor(im_ios[0], cvIn, CV_BGR2GRAY);
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
+        Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+
+        // // Wraps the input and output cv::mat's with halide buffers
+        // Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        // Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&im_ios[1], "hSE");
+        // Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
+
+        assert(hSE.width()%2 != 0);
+        assert(hSE.height()%2 != 0);
+
+        int seWidth = (hSE.width()-1)/2;
+        int seHeight = (hSE.height()-1)/2;
+
+        // Define halide stage
+        Halide::Var x, y;
+        Halide::RDom se(-seWidth, hSE.width(), -seHeight, hSE.height());
+        Halide::Func chIn; // clamped
+        Halide::Func erode;
+
+        // Clamp input
+        Halide::Expr xc = clamp(x, 0, hIn.width()-1);
+        Halide::Expr yc = clamp(y, 0, hIn.height()-1);
+        chIn(x,y) = hIn(xc,yc);
+
+        // select only returns the input value if it was on the mask
+        // Since we are using minimum, if pixel is not on the map,
+        // performs it with the max value of 255.
+        // Also, thi is a slow implementation given the excessive use 
+        // of select operations.
+        erode(x,y) = minimum(select(hSE(se.x+9,se.y+9)>0,
+                                    chIn(x+se.x,y+se.y),
+                                    255));
+        
+        // Schedules
+        erode.parallel(x);
+
+        cout << "[erode][cpu] Realizing..." << endl;
+        erode.realize(hOut);
+        cout << "[erode][cpu] Done..." << endl;
+    }
+} erode;
+bool r4 = RTF::AutoStage::registerStage(&erode);
+
+static struct : RTF::HalGen {
+    std::string getName() {return "dilate";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // 19x19
+        uint8_t disk19raw[361] = {
+            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
+
+        cv::Mat cvSE(19, 19, CV_8U, disk19raw);
+        cv::Mat cvIn;
+        // cv::cvtColor(im_ios[0], cvIn, CV_BGR2GRAY);
+
+        // Wraps the input and output cv::mat's with halide buffers
+        // Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
+        Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+
+        // // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        // Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&im_ios[1], "hSE");
+        // Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
+
+        assert(hSE.width()%2 != 0);
+        assert(hSE.height()%2 != 0);
+
+        int seWidth = (hSE.width()-1)/2;
+        int seHeight = (hSE.height()-1)/2;
+
+        // Define halide stage
+        Halide::Var x, y;
+        Halide::RDom se(-seWidth, hSE.width(), -seHeight, hSE.height());
+        Halide::Func chIn; // clamped
+        Halide::Func dilate;
+
+        // Clamp input
+        Halide::Expr xc = clamp(x, 0, hIn.width()-1);
+        Halide::Expr yc = clamp(y, 0, hIn.height()-1);
+        chIn(x,y) = hIn(xc,yc);
+
+        // select only returns the input value if it was on the mask
+        // Since we are using maximum, if pixel is not on the map,
+        // performs it with the min value of 0.
+        // Also, thi is a slow implementation given the excessive use 
+        // of select operations.
+        dilate(x,y) = maximum(select(hSE(se.x+9,se.y+9)>0,
+                                    chIn(x+se.x,y+se.y),
+                                    0));
+        
+        // Schedules
+        dilate.parallel(x);
+
+        cout << "[dilate][cpu] Realizing..." << endl;
+        dilate.realize(hOut);
+        cout << "[dilate][cpu] Done..." << endl;
+    }
+} dilate;
+bool r5 = RTF::AutoStage::registerStage(&dilate);
+
 int main(int argc, char *argv[]) {
 
     // Manages inputs
@@ -452,10 +611,10 @@ int main(int argc, char *argv[]) {
     // Creates the inputs using RT's autoTiler
     int border = 0;
     int bgThr = 100;
-    int erode = 4;
-    int dilate = 10;
+    int erode_param = 4;
+    int dilate_param = 10;
     int nTiles = 1;
-    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
+    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     TiledRTCollection* tCollImg = new IrregTiledRTCollection("input", 
         "input", argv[1], border, bgm, 
         NO_PRE_TILER, HBAL_TRIE_QUAD_TREE_ALG, nTiles);
@@ -473,6 +632,7 @@ int main(int argc, char *argv[]) {
         tiles.emplace_back(tile);
     }
 
+    RegionTemplate* rtEroded = newRT("rtEroded");
     RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
@@ -484,9 +644,13 @@ int main(int argc, char *argv[]) {
         //     {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
         //     {tiles[i].height, tiles[i].width}, 
         //     {&get_rbc}, i);
-        RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
-            {}, {tiles[i].height, tiles[i].width}, {&invert}, i);
+        RTF::AutoStage stage1({tCollImg->getRT(i).second, rtEroded}, 
+            {}, {tiles[i].height, tiles[i].width}, {&erode}, i);
         stage1.genStage(sysEnv);
+        RTF::AutoStage stage2({rtEroded, rtFinal}, 
+            {}, {tiles[i].height, tiles[i].width}, {&dilate}, i);
+        stage2.after(&stage1);
+        stage2.genStage(sysEnv);
 
         // RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {tiles[i].height, 
         //     tiles[i].width}, {&stage2_gpu}, i);
