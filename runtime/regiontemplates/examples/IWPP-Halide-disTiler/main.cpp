@@ -394,6 +394,29 @@ static struct : RTF::HalGen {
 } get_rbc;
 bool r2 = RTF::AutoStage::registerStage(&get_rbc);
 
+static struct : RTF::HalGen {
+    std::string getName() {return "invert";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+
+        // Define halide stage
+        Halide::Var x, y;
+        Halide::Func invert;
+
+        invert(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y,0);
+
+        cout << "[invert][cpu] Realizing..." << endl;
+        invert.realize(hOut);
+        cout << "[invert][cpu] Done..." << endl;
+    }
+} invert;
+bool r3 = RTF::AutoStage::registerStage(&invert);
+
 int main(int argc, char *argv[]) {
 
     // Manages inputs
@@ -453,11 +476,16 @@ int main(int argc, char *argv[]) {
     RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
-        // get background with blue, green and red input parameters
+        // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
+        //     {new ArgumentInt(blue), new ArgumentInt(green), 
+        //      new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
+        //     {&get_background}, i);
+        // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
+        //     {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
+        //     {tiles[i].height, tiles[i].width}, 
+        //     {&get_rbc}, i);
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
-            {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
-            {tiles[i].height, tiles[i].width}, 
-            {&get_rbc}, i);
+            {}, {tiles[i].height, tiles[i].width}, {&invert}, i);
         stage1.genStage(sysEnv);
 
         // RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {tiles[i].height, 
