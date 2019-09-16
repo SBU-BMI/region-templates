@@ -666,7 +666,7 @@ int main(int argc, char *argv[]) {
     int bgThr = 100;
     int erode_param = 4;
     int dilate_param = 10;
-    int nTiles = 1;
+    int nTiles = 8;
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     TiledRTCollection* tCollImg = new IrregTiledRTCollection("input", 
         "input", argv[1], border, bgm, 
@@ -707,8 +707,8 @@ int main(int argc, char *argv[]) {
         // rc = invert(input[2])
         RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, {}, 
             {tiles[i].height, tiles[i].width}, {&invert}, i);
-        stage2.genStage(sysEnv);
         stage2.after(&stage1);
+        stage2.genStage(sysEnv);
         
         // rc_open = morph_open(rc, disk19raw):
         // rc_open = dilate(erode(rc, disk19raw), disk19raw)
@@ -716,8 +716,8 @@ int main(int argc, char *argv[]) {
             {new ArgumentInt(disk19raw_width), 
              new ArgumentIntArray(disk19raw, disk19raw_size)}, 
             {tiles[i].height, tiles[i].width}, {&dilate}, i);
+        stage3.after(&stage2);
         stage3.genStage(sysEnv);
-        stage3.after(&stage3);
         RTF::AutoStage stage4({rtDilated, rtRcOpen}, 
             {new ArgumentInt(disk19raw_width), 
              new ArgumentIntArray(disk19raw, disk19raw_size)}, 
