@@ -207,6 +207,99 @@ std::string ArgumentInt::toString() {
 	return convert.str();
 }
 
+ArgumentIntArray::ArgumentIntArray() : ArgumentBase(ArgumentBase::INT_ARRAY) {
+	this->array_size = 0;
+}
+
+// Makes a hard-copy opf array
+ArgumentIntArray::ArgumentIntArray(int* array, int size) : ArgumentBase(ArgumentBase::INT_ARRAY) {
+	this->arg_value = new int[size];
+	for (int i=0; i<size; i++)
+		this->arg_value[i] = array[i];
+	this->array_size = size;
+}
+
+ArgumentIntArray::~ArgumentIntArray() {
+	delete[] this->arg_value;
+}
+
+ArgumentBase* ArgumentIntArray::clone() {
+	ArgumentIntArray* retValue = new ArgumentIntArray(
+		this->arg_value, this->array_size);
+	int size = this->size();
+	char *buff = new char[size];
+	this->serialize(buff);
+	retValue->deserialize(buff);
+	delete buff;
+	return retValue;
+}
+
+std::string ArgumentIntArray::toString() {
+	std::string output;
+	output = "[" + std::to_string(this->arg_value[0]);
+	for (int i=1; i<this->array_size; i++)
+		output += ", " + std::to_string(this->arg_value[i]);
+	output += "]\n";
+	return output;
+}
+
+int ArgumentIntArray::size() {
+	int size = ArgumentBase::size();
+
+	// array size variable
+	size += sizeof(int);
+
+	// array variables itself
+	size += this->array_size * sizeof(int);
+
+	return size;
+}
+
+int ArgumentIntArray::serialize(char *buff) {
+	int serialized_bytes = ArgumentBase::serialize(buff);
+
+	// array size variable
+	memcpy(buff+serialized_bytes, &this->array_size, sizeof(int));
+	serialized_bytes += sizeof(int);
+
+	// array variables itself
+	for (int i=0; i<this->array_size; i++) {
+		memcpy(buff+serialized_bytes, this->arg_value+i, sizeof(int));
+		serialized_bytes += sizeof(int);
+	}
+
+	return serialized_bytes;
+}
+
+int ArgumentIntArray::deserialize(char *buff) {
+	int deserialized_bytes = ArgumentBase::deserialize(buff);
+
+	// array size variable
+	memcpy(&this->array_size, buff+deserialized_bytes, sizeof(int));
+	deserialized_bytes += sizeof(int);
+
+	// array variables itself
+	this->arg_value = new int[this->array_size];
+	for (int i=0; i<this->array_size; i++) {
+		memcpy(this->arg_value+i, buff+deserialized_bytes, sizeof(int));
+		deserialized_bytes += sizeof(int);
+	}
+
+	return deserialized_bytes;
+}
+
+int ArgumentIntArray::getArgValue(int index) {
+	return this->arg_value[index];
+}
+
+int* ArgumentIntArray::getArgValue() {
+	return this->arg_value;
+}
+
+int ArgumentIntArray::getNumArguments() {
+	return this->array_size;
+}
+
 ArgumentFloat::ArgumentFloat() : ArgumentBase(ArgumentBase::FLOAT){
 	this->arg_value = 0.0;
 }

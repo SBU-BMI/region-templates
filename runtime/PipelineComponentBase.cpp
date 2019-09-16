@@ -261,6 +261,9 @@ int PipelineComponentBase::deserialize(char *buff)
 			case ArgumentBase::INT:
 				arg = new ArgumentInt();
 				break;
+			case ArgumentBase::INT_ARRAY:
+				arg = new ArgumentIntArray();
+				break;
 			case ArgumentBase::FLOAT:
 				arg = new ArgumentFloat();
 				break;

@@ -54,6 +54,7 @@ public:
 	static const int FLOAT = 4;
 	static const int RT = 5;
 	static const int FLOAT_ARRAY = 8;
+	static const int INT_ARRAY = 9;
 
 };
 
@@ -94,6 +95,29 @@ public:
 	int getArgValue() const;
 	void setArgValue(int arg_value);
 };
+
+// Static array implementation
+// can only be initialized once
+class ArgumentIntArray: public ArgumentBase{
+private:
+	int* arg_value;
+	int array_size;
+public:
+	ArgumentIntArray();
+	ArgumentIntArray(int* array, int size); // Makes a hard-copy of array
+	virtual ~ArgumentIntArray();
+	virtual ArgumentBase* clone();
+
+	std::string toString();
+
+	int size();
+	int serialize(char *buff);
+	int deserialize(char *buff);
+	int getArgValue(int index);
+	int* getArgValue();
+	int getNumArguments();
+};
+
 
 class ArgumentFloat: public ArgumentBase{
 private:

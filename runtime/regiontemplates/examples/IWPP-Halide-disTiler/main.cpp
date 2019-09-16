@@ -315,8 +315,12 @@ static struct : RTF::HalGen {
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
+        // Get params
         float T1 = ((ArgumentFloat*)params[0])->getArgValue();
         float T2 = ((ArgumentFloat*)params[1])->getArgValue();
+
+        // Basic assertions
+        assert(im_ios[0].channels() == 3);
 
         // Analog to cv::Mat::convertTo
         Halide::Var pix, eps;
@@ -404,6 +408,8 @@ static struct : RTF::HalGen {
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
+        assert(im_ios[0].channels() == 3);
+
         // Define halide stage
         Halide::Var x, y;
         Halide::Func invert;
@@ -426,44 +432,20 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, 
                  std::vector<ArgumentBase*>& params) {
 
-        // 19x19
-        uint8_t disk19raw[361] = {
-            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
-
-        cv::Mat cvSE(19, 19, CV_8U, disk19raw);
-        cv::Mat cvIn;
-        cv::cvtColor(im_ios[0], cvIn, CV_BGR2GRAY);
-
         // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
-        Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
-        // // Wraps the input and output cv::mat's with halide buffers
-        // Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-        // Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&im_ios[1], "hSE");
-        // Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
+        // Get params
+        int disk19raw_width = ((ArgumentInt*)params[0])->getArgValue();
+        int* disk19raw = ((ArgumentIntArray*)params[1])->getArgValue();
+        cv::Mat cvSE(disk19raw_width, disk19raw_width, CV_8U, disk19raw);
+        Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
 
+        // basic assertions for that ensures that this will work
         assert(hSE.width()%2 != 0);
         assert(hSE.height()%2 != 0);
+        assert(im_ios[0].channels() == 1);
 
         int seWidth = (hSE.width()-1)/2;
         int seHeight = (hSE.height()-1)/2;
@@ -504,44 +486,18 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, 
                  std::vector<ArgumentBase*>& params) {
 
-        // 19x19
-        uint8_t disk19raw[361] = {
-            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-            0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-            0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
-
-        cv::Mat cvSE(19, 19, CV_8U, disk19raw);
-        cv::Mat cvIn;
-        // cv::cvtColor(im_ios[0], cvIn, CV_BGR2GRAY);
-
         // Wraps the input and output cv::mat's with halide buffers
-        // Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
-        Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
-        // // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-        // Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&im_ios[1], "hSE");
-        // Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
+        int disk19raw_width = ((ArgumentInt*)params[0])->getArgValue();
+        int* disk19raw = ((ArgumentIntArray*)params[1])->getArgValue();
+        cv::Mat cvSE(disk19raw_width, disk19raw_width, CV_8U, disk19raw);
+        Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
 
-        assert(hSE.width()%2 != 0);
-        assert(hSE.height()%2 != 0);
+        // sizes must be odd
+        assert(hSE.width()%2 == 1);
+        assert(hSE.height()%2 == 1);
 
         int seWidth = (hSE.width()-1)/2;
         int seHeight = (hSE.height()-1)/2;
@@ -681,6 +637,29 @@ int main(int argc, char *argv[]) {
     int maxSize = 100;
     int fillHolesConnectivity = 4;
     int reconConnectivity = 4;
+    // 19x19
+    int disk19raw_width = 19;
+    int disk19raw_size = disk19raw_width*disk19raw_width;
+    int disk19raw[disk19raw_size] = {
+        0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+        0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+        0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+        0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+        0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+        0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
     
     // Creates the inputs using RT's autoTiler
     int border = 0;
@@ -706,7 +685,10 @@ int main(int argc, char *argv[]) {
         tiles.emplace_back(tile);
     }
 
-    // RegionTemplate* rtEroded = newRT("rtEroded");
+    RegionTemplate* rtRBC = newRT("rtRBC");
+    RegionTemplate* rtRC = newRT("rtRC");
+    RegionTemplate* rtDilated = newRT("rtDilated");
+    RegionTemplate* rtRcOpen = newRT("rtRcOpen");
     RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
@@ -715,25 +697,46 @@ int main(int argc, char *argv[]) {
         //      new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
         //     {&get_background}, i);
         
-        // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
-        //     {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
-        //     {tiles[i].height, tiles[i].width}, 
-        //     {&get_rbc}, i);
         
-        RTF::AutoStage stage1({tCollImg->getRT(i).second, rtEroded}, 
-            {}, {tiles[i].height, tiles[i].width}, {&erode}, i);
+        // rbc = get_rbc(input)
+        RTF::AutoStage stage1({tCollImg->getRT(i).second, rtRBC}, 
+            {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
+            {tiles[i].height, tiles[i].width}, {&get_rbc}, i);
         stage1.genStage(sysEnv);
-        RTF::AutoStage stage2({rtEroded, rtFinal}, 
-            {}, {tiles[i].height, tiles[i].width}, {&dilate}, i);
-        stage2.after(&stage1);
+
+        // rc = invert(input[2])
+        RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, {}, 
+            {tiles[i].height, tiles[i].width}, {&invert}, i);
         stage2.genStage(sysEnv);
+        stage2.after(&stage1);
+        
+        // rc_open = morph_open(rc, disk19raw):
+        // rc_open = dilate(erode(rc, disk19raw), disk19raw)
+        RTF::AutoStage stage3({rtRC, rtDilated}, 
+            {new ArgumentInt(disk19raw_width), 
+             new ArgumentIntArray(disk19raw, disk19raw_size)}, 
+            {tiles[i].height, tiles[i].width}, {&dilate}, i);
+        stage3.genStage(sysEnv);
+        stage3.after(&stage3);
+        RTF::AutoStage stage4({rtDilated, rtRcOpen}, 
+            {new ArgumentInt(disk19raw_width), 
+             new ArgumentIntArray(disk19raw, disk19raw_size)}, 
+            {tiles[i].height, tiles[i].width}, {&erode}, i);
+        stage4.after(&stage3);
+        stage4.genStage(sysEnv);
 
         // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
         //     {}, {tiles[i].height, tiles[i].width}, {&bwareaopen2}, i);
         // stage1.genStage(sysEnv);
 
 
-        
+        // // background = get_background(input)
+        // // bgArea = countNonZero(background) -> exit if ratio > 0.9
+        // -=- rc_recon = imrec(rc_open, rc)
+        // -=- bw1 = imfillHoles((rc - rc_recon) > G1)
+        // // bw1_t,compcount2 = bwareaopen2(bw1) //-> exit if compcount2 == 0
+        // -=- seg_norbc = bwselect(diffIm > G2, bw1_t) & (rbc == 0)
+        // find_cand = seg_norbc
 
         // RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {tiles[i].height, 
         //     tiles[i].width}, {&stage2_gpu}, i);
