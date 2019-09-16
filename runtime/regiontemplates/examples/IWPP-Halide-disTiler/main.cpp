@@ -576,6 +576,80 @@ static struct : RTF::HalGen {
 } dilate;
 bool r5 = RTF::AutoStage::registerStage(&dilate);
 
+// // 4-conn implementation
+// // UNFINISHED!!!
+// static struct : RTF::HalGen {
+//     std::string getName() {return "bwareaopen2";}
+//     int getTarget() {return ExecEngineConstants::CPU;}
+//     void realize(std::vector<cv::Mat>& im_ios, 
+//                  std::vector<ArgumentBase*>& params) {
+
+//         cv::Mat cvIn;
+//         cv::cvtColor(im_ios[0], cvIn, CV_BGR2GRAY);
+//         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
+
+//         // Wraps the input and output cv::mat's with halide buffers
+//         // Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+
+//         // uint8_t minSize = ((ArgumentInt*)params[0])->getArgValue();
+//         // uint8_t maxSize = ((ArgumentInt*)params[1])->getArgValue();
+//         // uint8_t connectivity = ((ArgumentInt*)params[2])->getArgValue();
+
+//         // Define halide stage
+//         Halide::Var x, y;
+//         Halide::Buffer<int32_t> label(hIn.width(), hIn.height(), "label");
+//         Halide::Func labeli, labelx, labely;
+//         Halide::Func area_thr;
+//         Halide::Func output;
+
+//         // IWPP initialization
+//         labeli(x,y) = x + y * hIn.width();
+//         labeli.realize(label);
+
+//         // Clamping label
+//         Halide::Expr xc = clamp(x, 1, label.width()-2);
+//         Halide::Expr yc = clamp(y, 1, label.height()-2);
+//         // Halide::Func clabel;
+//         // clabel(x,y) = label(xc,yc);
+
+//         // IWPP propagation conditions with update statements
+//         labelx(x,y) = select(hIn(xc,yc) == hIn(xc+1,yc), 
+//                              min(label(xc,yc), label(xc+1,yc)),
+//                              label(xc,yc));
+//         labely(x,y) = select(hIn(xc,yc) == hIn(xc,yc+1), 
+//                              min(labelx(xc,yc), labelx(xc,yc+1)),
+//                              labelx(xc,yc));
+
+//         // Scheduling for passings
+//         labelx.parallel(y);
+//         labelx.compute_root();
+//         labely.parallel(x);
+
+//         cout << "[bwareaopen2][cpu] Compiling..." << endl;
+//         Halide::Target target = Halide::get_host_target();
+//         // target.set_feature(Halide::Target::Debug);
+//         labely.compile_jit(target);
+
+//         int newSum = 0;
+//         int prevSum = 0;
+//         do {
+//             labely.realize(label);
+//             prevSum = newSum;
+//             newSum = cv::sum(cv::Mat(label.height(), label.width(), 
+//                 CV_8U, label.get()->raw_buffer()->host))[0];
+//             cout << "new - prev: " << newSum << " - " << prevSum << endl;
+//         } while (prevSum != newSum);
+
+//         // output(x,y) = Halide::cast<uint8_t>(area_thr(x,y) > -1);
+
+//         cout << "[bwareaopen2][cpu] Realizing..." << endl;
+//         // output.realize(hOut);
+//         cout << "[bwareaopen2][cpu] Done..." << endl;
+//     }
+// } bwareaopen2;
+// bool r6 = RTF::AutoStage::registerStage(&bwareaopen2);
+
 int main(int argc, char *argv[]) {
 
     // Manages inputs
@@ -632,7 +706,7 @@ int main(int argc, char *argv[]) {
         tiles.emplace_back(tile);
     }
 
-    RegionTemplate* rtEroded = newRT("rtEroded");
+    // RegionTemplate* rtEroded = newRT("rtEroded");
     RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
@@ -640,10 +714,12 @@ int main(int argc, char *argv[]) {
         //     {new ArgumentInt(blue), new ArgumentInt(green), 
         //      new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
         //     {&get_background}, i);
+        
         // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
         //     {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
         //     {tiles[i].height, tiles[i].width}, 
         //     {&get_rbc}, i);
+        
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtEroded}, 
             {}, {tiles[i].height, tiles[i].width}, {&erode}, i);
         stage1.genStage(sysEnv);
@@ -651,6 +727,13 @@ int main(int argc, char *argv[]) {
             {}, {tiles[i].height, tiles[i].width}, {&dilate}, i);
         stage2.after(&stage1);
         stage2.genStage(sysEnv);
+
+        // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
+        //     {}, {tiles[i].height, tiles[i].width}, {&bwareaopen2}, i);
+        // stage1.genStage(sysEnv);
+
+
+        
 
         // RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {tiles[i].height, 
         //     tiles[i].width}, {&stage2_gpu}, i);
