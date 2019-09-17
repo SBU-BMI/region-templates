@@ -408,13 +408,23 @@ static struct : RTF::HalGen {
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
-        assert(im_ios[0].channels() == 3);
+        // Get params
+        // channel to be inverted (if -1, then input is grayscale)
+        int channel = ((ArgumentInt*)params[0])->getArgValue();
+
+        if (channel == -1)
+            assert(im_ios[0].channels() == 2);
+        else
+            assert(im_ios[0].channels() == 3);
 
         // Define halide stage
         Halide::Var x, y;
         Halide::Func invert;
 
-        invert(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y,0);
+        if (channel == -1)
+            invert(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y);
+        else
+            invert(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y,0);
 
         cout << "[invert][cpu] Realizing..." << endl;
         invert.realize(hOut);
@@ -531,6 +541,90 @@ static struct : RTF::HalGen {
     }
 } dilate;
 bool r5 = RTF::AutoStage::registerStage(&dilate);
+
+static struct : RTF::HalGen {
+    std::string getName() {return "pre_fill_holes";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hRCOp = mat2buf<uint8_t>(&im_ios[0], "hRCOp");
+        Halide::Buffer<uint8_t> hRC = mat2buf<uint8_t>(&im_ios[1], "hRC");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
+
+        // Get params
+        int G1 = ((ArgumentInt*)params[0])->getArgValue();
+
+        // sizes must be odd
+        assert(im_ios[0].channels() == 1);
+        assert(im_ios[1].channels() == 1);
+
+        // Define halide stage
+        Halide::Var x, y;
+        Halide::Func recon;
+        Halide::Func preFill;
+
+        recon.define_extern("loopedIwppRecon2", {hRCOp, hRC, hOut, 
+                this->getTarget()}, Halide::UInt(8), 2);
+        preFill(x,y) = Halide::cast<uint8_t>((hRC(x,y) - recon(x,y)) > G1);
+
+        // Schedules
+        recon.compute_root();
+        preFill.parallel(x);
+
+        cout << "[pre_fill_holes][cpu] Realizing..." << endl;
+        preFill.realize(hOut);
+        cout << "[pre_fill_holes][cpu] Done..." << endl;
+    }
+} pre_fill_holes;
+bool r6 = RTF::AutoStage::registerStage(&pre_fill_holes);
+
+static struct : RTF::HalGen {
+    std::string getName() {return "fill_holes";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
+
+        // Wraps the input and output cv::mat's with halide buffers
+        // hIn = pre_fill = image
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+
+        // input image must be grayscale
+        assert(im_ios[0].channels() == 1);
+
+        // Creates the marker mat
+        cv::Mat marker(im_ios[0].size(), im_ios[0].type(), 
+            cv::Scalar(0));
+        Halide::Buffer<uint8_t> hMarker = mat2buf<uint8_t>(&marker, "marker");
+
+        // Define halide stage
+        Halide::Var x, y;
+        Halide::Func invert1("invert1");
+        Halide::Func recon("recon");
+        Halide::Func invert2("invert2");
+
+        invert1(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y);
+        // recon.define_extern("loopedIwppRecon2", {hMarker, invert1, hOut, 
+        //         this->getTarget()}, Halide::UInt(8), 2);        
+        // invert2(x,y) = std::numeric_limits<uint8_t>::max() - recon(x,y);
+
+// bw1 = invert(imrec(invert(pre_fill)))
+
+        // Schedules
+        invert1.compute_root();
+        recon.compute_root();
+        invert2.compute_root();
+
+        cout << "[fill_holes][cpu] Realizing..." << endl;
+        // invert2.realize(hOut);
+        // recon.realize(hOut);
+        invert1.realize(hOut);
+        cout << "[fill_holes][cpu] Done..." << endl;
+    }
+} fill_holes;
+bool r7 = RTF::AutoStage::registerStage(&fill_holes);
 
 // // 4-conn implementation
 // // UNFINISHED!!!
@@ -666,7 +760,7 @@ int main(int argc, char *argv[]) {
     int bgThr = 100;
     int erode_param = 4;
     int dilate_param = 10;
-    int nTiles = 8;
+    int nTiles = 1;
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     TiledRTCollection* tCollImg = new IrregTiledRTCollection("input", 
         "input", argv[1], border, bgm, 
@@ -689,6 +783,8 @@ int main(int argc, char *argv[]) {
     RegionTemplate* rtRC = newRT("rtRC");
     RegionTemplate* rtDilated = newRT("rtDilated");
     RegionTemplate* rtRcOpen = newRT("rtRcOpen");
+    RegionTemplate* rtPreFill = newRT("rtPreFill");
+    RegionTemplate* rtBw1 = newRT("rtBw1");
     RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
@@ -697,6 +793,8 @@ int main(int argc, char *argv[]) {
         //      new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
         //     {&get_background}, i);
         
+        // // background = get_background(input)
+        // // bgArea = countNonZero(background) -> exit if ratio > 0.9
         
         // rbc = get_rbc(input)
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtRBC}, 
@@ -705,8 +803,9 @@ int main(int argc, char *argv[]) {
         stage1.genStage(sysEnv);
 
         // rc = invert(input[2])
-        RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, {}, 
-            {tiles[i].height, tiles[i].width}, {&invert}, i);
+        RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, 
+            {new ArgumentInt(2)}, {tiles[i].height, tiles[i].width}, 
+            {&invert}, i);
         stage2.after(&stage1);
         stage2.genStage(sysEnv);
         
@@ -725,15 +824,20 @@ int main(int argc, char *argv[]) {
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
-        // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
-        //     {}, {tiles[i].height, tiles[i].width}, {&bwareaopen2}, i);
-        // stage1.genStage(sysEnv);
+        // pre_fill = (rc - imrec(rc_open, rc)) > G1
+        RTF::AutoStage stage5({rtRcOpen, rtRC, rtPreFill}, 
+            {new ArgumentInt(G1)}, {tiles[i].height, tiles[i].width}, 
+            {&pre_fill_holes}, i);
+        stage5.after(&stage4);
+        stage5.genStage(sysEnv);
+
+        // bw1 = fill_holes(pre_fill)
+        RTF::AutoStage stage6({rtPreFill, rtBw1}, {}, 
+            {tiles[i].height, tiles[i].width}, {&fill_holes}, i);
+        stage6.after(&stage5);
+        stage6.genStage(sysEnv);
 
 
-        // // background = get_background(input)
-        // // bgArea = countNonZero(background) -> exit if ratio > 0.9
-        // -=- rc_recon = imrec(rc_open, rc)
-        // -=- bw1 = imfillHoles((rc - rc_recon) > G1)
         // // bw1_t,compcount2 = bwareaopen2(bw1) //-> exit if compcount2 == 0
         // -=- seg_norbc = bwselect(diffIm > G2, bw1_t) & (rbc == 0)
         // find_cand = seg_norbc
