@@ -46,39 +46,47 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
 
 // CPU sched still marginally better since data is copied to and from device
 // on every propagation loop instance
-extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ,
-    int sched) {
+extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
+    int sched, halide_buffer_t* bOut) {
 
-    Halide::Buffer<uint8_t> I(*bI, "I");
-    Halide::Buffer<uint8_t> JJ(*bJJ, "JJ");
+    cout << "[loopedIwppRecon] init" << endl;
 
-    Halide::Func rasterx, rastery, arasterx, arastery;
+    Halide::Buffer<uint8_t> II(*bII, "II");
+    Halide::Buffer<uint8_t> inJJ(*bJJ, "inJJ");
+    Halide::Buffer<uint8_t> JJ(*bOut, "JJ");
+
+    JJ = inJJ.copy();
+
+    Halide::Func rasterx("rasterx"), rastery("rastery"), arasterx, arastery;
     Halide::RDom se(-1,3,-1,3);
-    Halide::Var x, y;
+    Halide::Var x("x"), y("y");
 
-    // Clamping input
+    // Clamping inputs
+    Halide::Func I = Halide::BoundaryConditions::repeat_edge(II);
     Halide::Func J = Halide::BoundaryConditions::repeat_edge(JJ);
 
-    int32_t w = bI->dim[0].extent;
-    int32_t h = bI->dim[1].extent;
+    int32_t w = bII->dim[0].extent;
+    int32_t h = bII->dim[1].extent;
 
     // Clamping rasterx for rastery input
     Halide::Expr xc = clamp(x, 0, w-1);
     Halide::Expr yc = clamp(y, 0, h-1);
-    Halide::Func rasterxc;
+    Halide::Func rasterxc("rasterxc");
 
     // Functions for vertical and horizontal propagation
-    rasterx(x,y) = min(I(x,y), maximum(J(x+se.x, y)));
+    rasterx(x,y) = min(I(x,y), maximum(J(x+se.x,y)));
     // arasterx(w-x,y) = min(I(w-x,y), maximum(rasterx(w-x+se.x, y)));
-    rasterxc(x,y) = rasterx(xc, yc);
-    rastery(x,y) = min(I(x,y), maximum(rasterxc(x, y+se.y)));
+    rasterxc(x,y) = rasterx(xc,yc);
+    rastery(x,y) = min(I(x,y), maximum(rasterxc(x,y+se.y)));
     // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
 
     // Schedule
     rasterx.compute_root();
     Halide::Target target = Halide::get_host_target();
     if (sched == ExecEngineConstants::CPU) {
-        Halide::Var xi, xo;
+        Halide::Var xi, xo, yi, yo;
+        rasterx.split(y, yo, yi, 16);
+        rasterx.vectorize(yi).parallel(yo);
         rastery.reorder(y,x).serial(y);
         rastery.split(x, xo, xi, 16);
         rastery.vectorize(xi).parallel(xo);
@@ -88,13 +96,12 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ,
         rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
         rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
         target.set_feature(Halide::Target::CUDA);
-        I.set_host_dirty();
+        II.set_host_dirty();
         JJ.set_host_dirty();
     }
     // target.set_feature(Halide::Target::Debug);
     rastery.compile_jit(target);
     // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
-
 
     int oldSum = 0;
     int newSum = 0;
@@ -113,39 +120,13 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bI, halide_buffer_t* bJJ,
         if (sched == ExecEngineConstants::GPU) {
             JJ.copy_to_host();
         }
-        newSum = cv::sum(cv::Mat(h, w, CV_8U, 
-           JJ.get()->raw_buffer()->host))[0];
+        newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
         cout << "new - old: " << newSum << " - " << oldSum << endl;
         // cv::imwrite("out.png", cvJ);
     } while(newSum != oldSum);
 
     return 0;
 }
-
-// A wrapper of loopedIwppRecon with an explicit output buffer
-extern "C" int loopedIwppRecon2(halide_buffer_t* bI, 
-    halide_buffer_t* bJJ, halide_buffer_t* bOut, int sched) {
-    // cout << "hereeeeeeeeeeeeeeeeeeeeeee" << endl;
-    loopedIwppRecon(bI, bJJ, sched);
-    Halide::Buffer<uint8_t> JJ(*bJJ, "JJ2");
-    Halide::Buffer<uint8_t> Out(*bOut, "Out2");
-    Out.copy_from(JJ);
-}
-
-// void extern_exec(cv::Mat* cvI, cv::Mat* cvJ) {
-//     // Create the buffers for execution
-//     Halide::Buffer<uint8_t> I(cvI->data, cvI->cols, cvI->rows);
-//     Halide::Buffer<uint8_t> J(cvJ->data, cvJ->cols, cvJ->rows);
-
-//     // Create extern halide func
-//     Halide::Func halCpu;
-//     halCpu.define_extern("loopedIwppRecon", {I, J}, Halide::UInt(8), 2);
-//     cv::Mat cvOut(cvJ->cols, cvJ->rows, CV_8U);
-    
-//     // Realizes the pipeline to the output
-//     Halide::Buffer<uint8_t> out(cvOut.data, cvOut.cols, cvOut.rows);
-//     halCpu.realize(out);
-// }
 
 // // Needs to be static for referencing across mpi processes/nodes
 // static struct : RTF::HalGen {
@@ -269,7 +250,7 @@ extern "C" int loopedIwppRecon2(halide_buffer_t* bI,
 //     }
 // } stage2_gpu;
 
-// // Explicit registering required since startupSystem is called before genStage
+// // Explicit registering required since startupSystem called before genStage
 // // thus, only the manager node would have the stages registered
 // bool r1 = RTF::AutoStage::registerStage(&stage1_cpu);
 // bool r2 = RTF::AutoStage::registerStage(&stage1_gpu);
@@ -380,7 +361,7 @@ static struct : RTF::HalGen {
             bw2.compute_root();
 
             // marker = imreconstructBinary<T>(marker, bw2, connectivity);
-            rbc.define_extern("loopedIwppRecon2", {hmarker, hbw2, hOut, 
+            rbc.define_extern("loopedIwppRecon", {hmarker, hbw2, 
                 ExecEngineConstants::CPU}, Halide::UInt(8), 2);
 
         } else {
@@ -422,9 +403,9 @@ static struct : RTF::HalGen {
         Halide::Func invert;
 
         if (channel == -1)
-            invert(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y);
+            invert(x,y) = std::numeric_limits<uint8_t>::max()-hIn(x,y);
         else
-            invert(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y,0);
+            invert(x,y) = std::numeric_limits<uint8_t>::max()-hIn(x,y,channel);
 
         cout << "[invert][cpu] Realizing..." << endl;
         invert.realize(hOut);
@@ -449,9 +430,14 @@ static struct : RTF::HalGen {
         // Get params
         int disk19raw_width = ((ArgumentInt*)params[0])->getArgValue();
         int* disk19raw = ((ArgumentIntArray*)params[1])->getArgValue();
-        cv::Mat cvSE(disk19raw_width, disk19raw_width, CV_8U, disk19raw);
+        cv::Mat cvSE(disk19raw_width, disk19raw_width, CV_8U);
+        for (int i=0; i<cvSE.cols; i++) {
+            for (int j=0; j<cvSE.rows; j++) {
+                cvSE.at<uint8_t>(i,j) = disk19raw[i+j*disk19raw_width];
+            }
+        }
         Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
-
+        
         // basic assertions for that ensures that this will work
         assert(hSE.width()%2 != 0);
         assert(hSE.height()%2 != 0);
@@ -461,27 +447,23 @@ static struct : RTF::HalGen {
         int seHeight = (hSE.height()-1)/2;
 
         // Define halide stage
-        Halide::Var x, y;
-        Halide::RDom se(-seWidth, hSE.width(), -seHeight, hSE.height());
-        Halide::Func chIn; // clamped
+        Halide::Var x, y, xi, yi;
+        Halide::Func mask;
         Halide::Func erode;
 
-        // Clamp input
-        Halide::Expr xc = clamp(x, 0, hIn.width()-1);
-        Halide::Expr yc = clamp(y, 0, hIn.height()-1);
-        chIn(x,y) = hIn(xc,yc);
+        // Definition of a sub-area on which 
+        // mask(x,y) = hSE(x,y)==1 ? hIn(x,y) : 255
+        mask(x,y,xi,yi) = hSE(xi,yi)*hIn(x+xi-seWidth,y+yi-seHeight) 
+            + (1-hSE(xi,yi))*255;
 
-        // select only returns the input value if it was on the mask
-        // Since we are using minimum, if pixel is not on the map,
-        // performs it with the max value of 255.
-        // Also, thi is a slow implementation given the excessive use 
-        // of select operations.
-        erode(x,y) = minimum(select(hSE(se.x+9,se.y+9)>0,
-                                    chIn(x+se.x,y+se.y),
-                                    255));
-        
+        Halide::Expr xc = clamp(x, seWidth, hIn.width()-seWidth);
+        Halide::Expr yc = clamp(y, seHeight, hIn.height()-seHeight);
+        Halide::RDom se(0, hSE.width()-1, 0, hSE.height()-1);
+        erode(x,y) = minimum(mask(xc,yc,se.x,se.y));
+
         // Schedules
-        erode.parallel(x);
+        Halide::Var pix;
+        erode.fuse(x,y,pix).parallel(pix);
 
         cout << "[erode][cpu] Realizing..." << endl;
         erode.realize(hOut);
@@ -500,9 +482,15 @@ static struct : RTF::HalGen {
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
+        // Get params
         int disk19raw_width = ((ArgumentInt*)params[0])->getArgValue();
         int* disk19raw = ((ArgumentIntArray*)params[1])->getArgValue();
-        cv::Mat cvSE(disk19raw_width, disk19raw_width, CV_8U, disk19raw);
+        cv::Mat cvSE(disk19raw_width, disk19raw_width, CV_8U);
+        for (int i=0; i<cvSE.cols; i++) {
+            for (int j=0; j<cvSE.rows; j++) {
+                cvSE.at<uint8_t>(i,j) = disk19raw[i+j*disk19raw_width];
+            }
+        }
         Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
 
         // sizes must be odd
@@ -513,27 +501,22 @@ static struct : RTF::HalGen {
         int seHeight = (hSE.height()-1)/2;
 
         // Define halide stage
-        Halide::Var x, y;
-        Halide::RDom se(-seWidth, hSE.width(), -seHeight, hSE.height());
-        Halide::Func chIn; // clamped
+        Halide::Var x, y, xi, yi;
+        Halide::Func mask;
         Halide::Func dilate;
 
-        // Clamp input
-        Halide::Expr xc = clamp(x, 0, hIn.width()-1);
-        Halide::Expr yc = clamp(y, 0, hIn.height()-1);
-        chIn(x,y) = hIn(xc,yc);
+        // Definition of a sub-area on which 
+        // mask(x,y) = hSE(x,y)==1 ? hIn(x,y) : 255
+        mask(x,y,xi,yi) = hSE(xi,yi)*hIn(x+xi-seWidth,y+yi-seHeight);
 
-        // select only returns the input value if it was on the mask
-        // Since we are using maximum, if pixel is not on the map,
-        // performs it with the min value of 0.
-        // Also, thi is a slow implementation given the excessive use 
-        // of select operations.
-        dilate(x,y) = maximum(select(hSE(se.x+9,se.y+9)>0,
-                                    chIn(x+se.x,y+se.y),
-                                    0));
-        
+        Halide::Expr xc = clamp(x, seWidth, hIn.width()-seWidth);
+        Halide::Expr yc = clamp(y, seHeight, hIn.height()-seHeight);
+        Halide::RDom se(0, hSE.width()-1, 0, hSE.height()-1);
+        dilate(x,y) = maximum(mask(xc,yc,se.x,se.y));
+
         // Schedules
-        dilate.parallel(x);
+        Halide::Var pix;
+        dilate.fuse(x,y,pix).parallel(pix);
 
         cout << "[dilate][cpu] Realizing..." << endl;
         dilate.realize(hOut);
@@ -565,12 +548,14 @@ static struct : RTF::HalGen {
         Halide::Func recon;
         Halide::Func preFill;
 
-        recon.define_extern("loopedIwppRecon2", {hRCOp, hRC, hOut, 
+        recon.define_extern("loopedIwppRecon", {hRCOp, hRC, 
                 this->getTarget()}, Halide::UInt(8), 2);
+
         preFill(x,y) = Halide::cast<uint8_t>((hRC(x,y) - recon(x,y)) > G1);
 
         // Schedules
         recon.compute_root();
+        preFill.compute_root();
         preFill.parallel(x);
 
         cout << "[pre_fill_holes][cpu] Realizing..." << endl;
@@ -580,51 +565,104 @@ static struct : RTF::HalGen {
 } pre_fill_holes;
 bool r6 = RTF::AutoStage::registerStage(&pre_fill_holes);
 
+// Needs to be static for referencing across mpi processes/nodes
 static struct : RTF::HalGen {
-    std::string getName() {return "fill_holes";}
+    std::string getName() {return "imreconstruct";}
     int getTarget() {return ExecEngineConstants::CPU;}
     void realize(std::vector<cv::Mat>& im_ios, 
                  std::vector<ArgumentBase*>& params) {
 
+        // Get params
+        // channel to be inverted (if -1, then input is grayscale)
+        int emptyAny = ((ArgumentInt*)params[0])->getArgValue();
+        cv::Mat *cvI, *cvJ, *cvOut;
+        if (emptyAny < 0) {
+            // I is empty
+            cout << "[imreconstruct] empty I" << endl;
+            int fillVal = ((ArgumentInt*)params[1])->getArgValue();
+            cvI = new cv::Mat(im_ios[0].size(), im_ios[0].type(), 
+                cv::Scalar(fillVal));
+            cvJ = &im_ios[0];
+            cvOut = &im_ios[1];
+        } else if (emptyAny > 0) {
+            // J is empty
+            cout << "[imreconstruct] empty J" << endl;
+            int fillVal = ((ArgumentInt*)params[1])->getArgValue();
+            cvJ = new cv::Mat(im_ios[0].size(), im_ios[0].type(), 
+                cv::Scalar(fillVal));
+            cvI = &im_ios[0];
+            cvOut = &im_ios[1];
+        } else {
+            // none is empty
+            cvI = &im_ios[0];
+            cvJ = &im_ios[1];
+            cvOut = &im_ios[2];
+        }
+
         // Wraps the input and output cv::mat's with halide buffers
-        // hIn = pre_fill = image
-        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
-
-        // input image must be grayscale
-        assert(im_ios[0].channels() == 1);
-
-        // Creates the marker mat
-        cv::Mat marker(im_ios[0].size(), im_ios[0].type(), 
-            cv::Scalar(0));
-        Halide::Buffer<uint8_t> hMarker = mat2buf<uint8_t>(&marker, "marker");
+        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI);
+        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ);
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut);
 
         // Define halide stage
-        Halide::Var x, y;
-        Halide::Func invert1("invert1");
-        Halide::Func recon("recon");
-        Halide::Func invert2("invert2");
+        Halide::Func halCpu;
+        halCpu.define_extern("loopedIwppRecon", {hI, hJ, 
+            this->getTarget()}, Halide::UInt(8), 2);
 
-        invert1(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y);
-        // recon.define_extern("loopedIwppRecon2", {hMarker, invert1, hOut, 
-        //         this->getTarget()}, Halide::UInt(8), 2);        
-        // invert2(x,y) = std::numeric_limits<uint8_t>::max() - recon(x,y);
-
-// bw1 = invert(imrec(invert(pre_fill)))
-
-        // Schedules
-        invert1.compute_root();
-        recon.compute_root();
-        invert2.compute_root();
-
-        cout << "[fill_holes][cpu] Realizing..." << endl;
-        // invert2.realize(hOut);
-        // recon.realize(hOut);
-        invert1.realize(hOut);
-        cout << "[fill_holes][cpu] Done..." << endl;
+        // Adds the cpu implementation to the schedules output
+        cout << "[imreconstruct][cpu] Realizing..." << endl;
+        halCpu.realize(hOut);
+        cout << "[imreconstruct][cpu] Done..." << endl;
     }
-} fill_holes;
-bool r7 = RTF::AutoStage::registerStage(&fill_holes);
+} imreconstruct;
+bool r7 = RTF::AutoStage::registerStage(&imreconstruct);
+
+// static struct : RTF::HalGen {
+//     std::string getName() {return "fill_holes";}
+//     int getTarget() {return ExecEngineConstants::CPU;}
+//     void realize(std::vector<cv::Mat>& im_ios, 
+//                  std::vector<ArgumentBase*>& params) {
+
+//         // Wraps the input and output cv::mat's with halide buffers
+//         // hIn = pre_fill = image
+//         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+
+//         // input image must be grayscale
+//         assert(im_ios[0].channels() == 1);
+
+//         // Creates the marker mat
+//         cv::Mat marker(im_ios[0].size(), im_ios[0].type(), 
+//             cv::Scalar(std::numeric_limits<uint8_t>::max()));
+//     Halide::Buffer<uint8_t> hMarker = mat2buf<uint8_t>(&im_ios[1], "marker");
+
+//         // Define halide stage
+//         Halide::Var x, y;
+//         Halide::Func invert1("invert1");
+//         Halide::Func recon("recon");
+//         Halide::Func invert2("invert2");
+
+//         invert1(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y);
+//         // recon.define_extern("loopedIwppRecon", {hMarker, invert1, 
+//         recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
+//                 this->getTarget()}, Halide::UInt(8), 2);        
+//         invert2(x,y) = std::numeric_limits<uint8_t>::max() - recon(x,y);
+
+// // bw1 = invert(imrec(invert(pre_fill)))
+
+//         // Schedules
+//         invert1.compute_root();
+//         recon.compute_root();
+//         invert2.compute_root();
+
+//         cout << "[fill_holes][cpu] Realizing..." << endl;
+//         // invert2.realize(hOut);
+//         recon.realize(hOut);
+//         // invert1.realize(hOut);
+//         cout << "[fill_holes][cpu] Done..." << endl;
+//     }
+// } fill_holes;
+// bool r7 = RTF::AutoStage::registerStage(&fill_holes);
 
 // // 4-conn implementation
 // // UNFINISHED!!!
@@ -720,9 +758,9 @@ int main(int argc, char *argv[]) {
     sysEnv.startupSystem(argc, argv, "libautostage.so");
 
     // Input parameters
-    unsigned char blue = 50;
-    unsigned char green = 50;
-    unsigned char red = 50;
+    unsigned char blue = 200;
+    unsigned char green = 200;
+    unsigned char red = 200;
     double T1 = 1.0;
     double T2 = 2.0;
     unsigned char G1 = 50;
@@ -779,63 +817,88 @@ int main(int argc, char *argv[]) {
         tiles.emplace_back(tile);
     }
 
-    RegionTemplate* rtRBC = newRT("rtRBC");
-    RegionTemplate* rtRC = newRT("rtRC");
-    RegionTemplate* rtDilated = newRT("rtDilated");
-    RegionTemplate* rtRcOpen = newRT("rtRcOpen");
-    RegionTemplate* rtPreFill = newRT("rtPreFill");
-    RegionTemplate* rtBw1 = newRT("rtBw1");
-    RegionTemplate* rtFinal = newRT("rtFinal");
+    RegionTemplate* rtBackground = newRT("0rtBackground");
+    RegionTemplate* rtRBC = newRT("1rtRBC");
+    RegionTemplate* rtRC = newRT("2rtRC");
+    RegionTemplate* rtEroded = newRT("3rtEroded");
+    RegionTemplate* rtRcOpen = newRT("3rtRcOpen");
+    RegionTemplate* rtRecon = newRT("4rtRecon");
+    RegionTemplate* rtPreFill = newRT("5rtPreFill");
+    // RegionTemplate* rtPreRecon = newRT("rtPreRecon");
+    // RegionTemplate* rtRecon = newRT("rtRecon");
+    // RegionTemplate* rtBw1 = newRT("rtBw1");
+    // RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
-        // RTF::AutoStage stage1({tCollImg->getRT(i).second, rtFinal}, 
-        //     {new ArgumentInt(blue), new ArgumentInt(green), 
-        //      new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
-        //     {&get_background}, i);
-        
-        // // background = get_background(input)
-        // // bgArea = countNonZero(background) -> exit if ratio > 0.9
+        // background = get_background(input)
+        // bgArea = countNonZero(background) -> exit if ratio > 0.9
+        RTF::AutoStage stage0({tCollImg->getRT(i).second, rtBackground}, 
+            {new ArgumentInt(blue), new ArgumentInt(green), 
+             new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
+            {&get_background}, i);
+        stage0.genStage(sysEnv);
         
         // rbc = get_rbc(input)
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtRBC}, 
             {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
             {tiles[i].height, tiles[i].width}, {&get_rbc}, i);
+        stage1.after(&stage0);
         stage1.genStage(sysEnv);
 
         // rc = invert(input[2])
         RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, 
-            {new ArgumentInt(2)}, {tiles[i].height, tiles[i].width}, 
+            {new ArgumentInt(0)}, {tiles[i].height, tiles[i].width}, 
             {&invert}, i);
         stage2.after(&stage1);
         stage2.genStage(sysEnv);
         
         // rc_open = morph_open(rc, disk19raw):
         // rc_open = dilate(erode(rc, disk19raw), disk19raw)
-        RTF::AutoStage stage3({rtRC, rtDilated}, 
-            {new ArgumentInt(disk19raw_width), 
-             new ArgumentIntArray(disk19raw, disk19raw_size)}, 
-            {tiles[i].height, tiles[i].width}, {&dilate}, i);
-        stage3.after(&stage2);
-        stage3.genStage(sysEnv);
-        RTF::AutoStage stage4({rtDilated, rtRcOpen}, 
+        RTF::AutoStage stage3({rtRC, rtEroded}, 
             {new ArgumentInt(disk19raw_width), 
              new ArgumentIntArray(disk19raw, disk19raw_size)}, 
             {tiles[i].height, tiles[i].width}, {&erode}, i);
+        stage3.after(&stage2);
+        stage3.genStage(sysEnv);
+        RTF::AutoStage stage4({rtEroded, rtRcOpen}, 
+            {new ArgumentInt(disk19raw_width), 
+             new ArgumentIntArray(disk19raw, disk19raw_size)}, 
+            {tiles[i].height, tiles[i].width}, {&dilate}, i);
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
-        // pre_fill = (rc - imrec(rc_open, rc)) > G1
-        RTF::AutoStage stage5({rtRcOpen, rtRC, rtPreFill}, 
-            {new ArgumentInt(G1)}, {tiles[i].height, tiles[i].width}, 
-            {&pre_fill_holes}, i);
-        stage5.after(&stage4);
-        stage5.genStage(sysEnv);
+        // RTF::AutoStage stage5({rtRcOpen, rtRC, rtRecon}, 
+        //     {new ArgumentInt(-1), new ArgumentInt(1)}, 
+        //     {tiles[i].height, tiles[i].width}, {&imreconstruct}, i);
+        // stage5.after(&stage4);
+        // stage5.genStage(sysEnv);
 
-        // bw1 = fill_holes(pre_fill)
-        RTF::AutoStage stage6({rtPreFill, rtBw1}, {}, 
-            {tiles[i].height, tiles[i].width}, {&fill_holes}, i);
-        stage6.after(&stage5);
-        stage6.genStage(sysEnv);
+        // // pre_fill = (rc - imrec(rc_open, rc)) > G1
+        // RTF::AutoStage stage6({rtRcOpen, rtRC, rtPreFill}, 
+        //     {new ArgumentInt(G1)}, {tiles[i].height, tiles[i].width}, 
+        //     {&pre_fill_holes}, i);
+        // stage6.after(&stage5);
+        // stage6.genStage(sysEnv);
+
+
+
+
+
+
+        // // bw1 = fill_holes(pre_fill) = inv(imrec(invert(preFill)))
+        // RTF::AutoStage stage6({rtPreFill, rtPreRecon}, {new ArgumentInt(-1)}, 
+        //     {tiles[i].height, tiles[i].width}, {&invert}, i);
+        // stage6.after(&stage5);
+        // stage6.genStage(sysEnv);
+        // RTF::AutoStage stage7({rtPreRecon, rtRecon}, 
+        //     {new ArgumentInt(-1), new ArgumentInt(1)}, 
+        //     {tiles[i].height, tiles[i].width}, {&imreconstruct}, i);
+        // stage7.after(&stage6);
+        // stage7.genStage(sysEnv);
+        // RTF::AutoStage stage8({rtRecon, rtBw1}, {new ArgumentInt(-1)}, 
+        //     {tiles[i].height, tiles[i].width}, {&invert}, i);
+        // stage8.after(&stage7);
+        // stage8.genStage(sysEnv);
 
 
         // // bw1_t,compcount2 = bwareaopen2(bw1) //-> exit if compcount2 == 0
@@ -851,118 +914,6 @@ int main(int argc, char *argv[]) {
     cout << "started" << endl;
     sysEnv.startupExecution();
     sysEnv.finalizeSystem();
-
-
-
-    // // =========== trying v0.4 === Using autoTiling for breaking the image 
-    // // =========================== into RT tiles before sending for execution.
-    // SysEnv sysEnv;
-    // sysEnv.startupSystem(argc, argv, "libautostage.so");
-    
-    // // Creates the inputs using RT's autoTiler
-    // int border = 0;
-    // int bgThr = 100;
-    // int erode = 4;
-    // int dilate = 10;
-    // int nTiles = 10;
-    // BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate, erode);
-    // TiledRTCollection* tCollImgI = new IrregTiledRTCollection("inI", 
-    //     "inI", argv[1], border, bgm, 
-    //     NO_PRE_TILER, HBAL_TRIE_QUAD_TREE_ALG, nTiles);
-    // TiledRTCollection* tCollImgJ = new IrregTiledRTCollection("inJ", 
-    //     "inJ", "./", border, bgm);
-
-    // tCollImgI->addImage(argv[1]);
-    // tCollImgJ->addImage(argv[2]);
-
-    // tCollImgI->tileImages();
-    // tCollImgJ->tileImages(tCollImgI->getTiles());
-
-    // // Create an instance of the two stages for each image tile pair
-    // // and also send them for execution
-    // std::vector<cv::Rect_<int>> tiles;
-    // std::list<cv::Rect_<int64_t>> l = tCollImgI->getTiles()[0];
-    // for (cv::Rect_<int64_t> tile : l) {
-    //     // std::cout << tile.x << ":" << tile.width << "," 
-    //     //     << tile.y << ":" << tile.height << std::endl;
-    //     tiles.emplace_back(tile);
-    // }
-
-    // RegionTemplate* rtPropg = newRT("rtPropg");
-    // RegionTemplate* rtBlured = newRT("rtBlured");
-    // for (int i=0; i<tCollImgI->getNumRTs(); i++) {
-
-    //     // Halide stage was created externally as stage1_hal
-
-    //     RTF::AutoStage stage1({tCollImgI->getRT(i).second, 
-    //         tCollImgJ->getRT(i).second, rtPropg}, {}, 
-    //         {tiles[i].height, tiles[i].width}, {&stage1_cpu}, i);
-
-    //     RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {tiles[i].height, 
-    //         tiles[i].width}, {&stage2_gpu}, i);
-    //     stage2.after(&stage1);
-
-    //     stage2.genStage(sysEnv);
-    // }
-
-    // cout << "started" << endl;
-    // sysEnv.startupExecution();
-    // sysEnv.finalizeSystem();
-
-    // // =========== Working v0.3 === Using RTF for execution pipelined stages
-    // // Don't work with GPU threads, unless all tasks have gpu implementations.
-    // // Creates the inputs
-    // RegionTemplate* rtI = newRT(argv[1], cvI);
-    // RegionTemplate* rtJ = newRT(argv[2], cvJ);
-    // RegionTemplate* rtPropg = newRT("rtPropg");
-    // RegionTemplate* rtBlured = newRT("rtBlured");
-
-    // // Halide stage was created externally as stage1_cpu and others
-
-    // RTF::AutoStage stage1({rtI, rtJ, rtPropg}, {}, {cvI->rows, cvI->cols}, 
-    //     {&stage1_cpu, &stage1_gpu});
-
-    // RTF::AutoStage stage2({rtPropg, rtBlured}, {}, {cvI->rows, cvI->cols}, 
-    //     {&stage2_cpu});
-    // stage2.after(&stage1);
-    // stage2.execute(argc, argv);
-
-    // =========== Working v0.2 === Halide external func complete with iteration
-    // extern_exec(cvI, cvJ);
-
-    // =========== Working v0.1 === Class with halide parameters
-    // ============================ Iteration of propagation inside class
-    // IwppParallelRecon iwpp;
-    // iwpp.realize(cvI, cvJ);
-
-    // =========== expected / goal
-    // norm->addRegionTemplateInstance(rt, rt->getName());
-
-    // RTF::AutoRegionTemplate* rt;
-
-    // rt = new AutoRegionTemplate(inputImgPath);
-
-    // Halide::Func halGpu;
-    // Halide::Var x, y;
-    
-    // Same def for both cpu and gpu
-    // halCpu(x,y) = ...
-    // halGpu(x,y) = ...
-
-    // Schedule funcs for both cpu and gpu
-    // halCpu.parallel(x);
-    // halGpu.gpu_tile(...);
-
-    // Generate the RTF stage
-    // RTF::AutoStage stage({RTF_DEV::CPU, halCpu}, {RTF_DEV::GPU, halGpu});
-    // stage.setRT(rt);
-    // stage.distribute(RTF_TILING_ALG::REGULAR);
-
-    // Executes the task
-    // stage.execute();
-
-    // Gets the final output
-    // cv::Mat output = rt.getResult();
 
     return 0;
 }

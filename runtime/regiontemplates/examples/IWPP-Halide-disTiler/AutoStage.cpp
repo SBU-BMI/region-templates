@@ -43,9 +43,9 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
-#ifdef DEBUG
+// #ifdef DEBUG
     std::cout << "[Internal::AutoStage] running" << std::endl;
-#endif
+// #endif
     std::vector<DenseDataRegion2D*> dr_ios;
     std::string drName;
     for (int i=0; i<this->rts_names.size()-1; i++) {
@@ -72,9 +72,9 @@ int RTF::Internal::AutoStage::run() {
     rtOut->insertDataRegion(drOut);
 
     dr_ios.emplace_back(drOut);
-#ifdef DEBUG
+// #ifdef DEBUG
     std::cout << "[Internal::AutoStage] creating task" << std::endl;
-#endif
+// #endif
 
     // Assemble a schedule map with the local pointers for the halide functions
     std::map<Target_t, HalGen*> local_schedules;
@@ -95,26 +95,26 @@ int RTF::Internal::AutoStage::run() {
 
         bool run(int procType, int tid=0) {
             // Generates the input/output list of cv::mat
-#ifdef DEBUG
+// #ifdef DEBUG
             std::cout << "[Internal::AutoStage::_Task] realizing " 
                 << schedules.begin()->second->getName() << std::endl;
-#endif
+// #endif
             std::vector<cv::Mat> im_ios;
             for (int i=0; i<this->dr_ios.size(); i++) {
                 im_ios.emplace_back(cv::Mat(this->dr_ios[i]->getData()));
             }
 
             // Executes the halide stage
-            // std::cout << "sched " 
-            //     << (procType==ExecEngineConstants::CPU?"CPU ":"GPU ")
-            //     << schedules[procType] << std::endl;
+            std::cout << "sched " 
+                << (procType==ExecEngineConstants::CPU?"CPU ":"GPU ")
+                << schedules[procType] << std::endl;
             schedules[procType]->realize(im_ios, params);
 
             // Assigns the output mat to its DataRegion
-#ifdef DEBUG
+// #ifdef DEBUG
             std::cout << "[Internal::AutoStage::_Task] realized " 
                 << std::endl;
-#endif
+// #endif
             cv::imwrite("taskOut.png", im_ios[im_ios.size()-1]);
         }
     }* currentTask = new _Task(local_schedules, dr_ios, this->getArguments());
@@ -124,9 +124,9 @@ int RTF::Internal::AutoStage::run() {
         currentTask->addTaskTarget(s.first);
     }
 
-#ifdef DEBUG
+// #ifdef DEBUG
     std::cout << "[Internal::AutoStage] sending task for execution" << std::endl;
-#endif
+// #endif
     this->executeTask(currentTask);
 }
 
