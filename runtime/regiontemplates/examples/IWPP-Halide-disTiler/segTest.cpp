@@ -327,6 +327,7 @@ inline void propagate(const cv::Mat& image, cv::Mat& output, std::queue<int>& xQ
 }
 
 template <typename T>
+// seeds=rcopen=J, image=rc=I
 cv::Mat imreconstruct(const cv::Mat& seeds, const cv::Mat& image, int connectivity) {
     CV_Assert(image.channels() == 1);
     CV_Assert(seeds.channels() == 1);

@@ -51,11 +51,27 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 
     cout << "[loopedIwppRecon] init" << endl;
 
+    int minx = bOut->dim[0].min;
+    int maxx = bOut->dim[0].min + bOut->dim[0].extent - 1;
+    int miny = bOut->dim[1].min;
+    int maxy = bOut->dim[1].min + bOut->dim[1].extent - 1;
+    cout << "out size: " << minx << ":" << maxx << ", " 
+        << miny << ":" << maxy << endl;
+
     Halide::Buffer<uint8_t> II(*bII, "II");
     Halide::Buffer<uint8_t> inJJ(*bJJ, "inJJ");
-    Halide::Buffer<uint8_t> JJ(*bOut, "JJ");
+    int32_t w = bII->dim[0].extent;
+    int32_t h = bII->dim[1].extent;
+    cout << "========= bOut " << bOut << endl;
+    cout << "host " << bOut->host << endl;
+    cv::Mat cvOut(maxy, maxx, CV_8U, bOut->host);
+    Halide::Buffer<uint8_t> JJ = mat2buf<uint8_t>(&cvOut, "JJ");
+
+    cout << "========= bOut " << bOut << endl;
+    cout << "========= JJ   " << JJ.raw_buffer() << endl;
 
     JJ = inJJ.copy();
+    // JJ.copy_from(inJJ); // bad
 
     Halide::Func rasterx("rasterx"), rastery("rastery"), arasterx, arastery;
     Halide::RDom se(-1,3,-1,3);
@@ -65,8 +81,6 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     Halide::Func I = Halide::BoundaryConditions::repeat_edge(II);
     Halide::Func J = Halide::BoundaryConditions::repeat_edge(JJ);
 
-    int32_t w = bII->dim[0].extent;
-    int32_t h = bII->dim[1].extent;
 
     // Clamping rasterx for rastery input
     Halide::Expr xc = clamp(x, 0, w-1);
@@ -124,6 +138,15 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         cout << "new - old: " << newSum << " - " << oldSum << endl;
         // cv::imwrite("out.png", cvJ);
     } while(newSum != oldSum);
+
+    cout << "========= bOut " << bOut << endl;
+    cout << "========= JJ   " << JJ.raw_buffer() << endl;
+
+    Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
+    hOut.copy_from(JJ); // bad
+    cv::imwrite("loopedIwppRecon.png", cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
+
+    // hOut = JJ.copy();
 
     return 0;
 }
@@ -347,13 +370,7 @@ static struct : RTF::HalGen {
         // Only goes further for the propagation if there is any non-zero pixel
         if (nonz > 0) {
             cout << "[get_rbc][cpu] non-zero: " << nonz << endl;
-            // Mat marker = Mat::zeros(bw1.size(), bw1.type());
-            // bw2.copyTo(marker, bw1);
             marker(x,y) = Halide::select(bw1(x,y)>0, bw2(x,y), 0);
-            // marker(x,y) = Halide::cast<uint8_t>(marker(x,y))*255;
-
-            // bw2.realize(hOut);
-            // cv::imwrite("marker.png", im_ios[1]);
 
             // These two must be scheduled this way since they are inputs
             // for an extern halide function
@@ -600,9 +617,9 @@ static struct : RTF::HalGen {
         }
 
         // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI);
-        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ);
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut);
+        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI, "hI");
+        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
 
         // Define halide stage
         Halide::Func halCpu;
@@ -612,6 +629,9 @@ static struct : RTF::HalGen {
         // Adds the cpu implementation to the schedules output
         cout << "[imreconstruct][cpu] Realizing..." << endl;
         halCpu.realize(hOut);
+        int w = im_ios[0].cols;
+        int h = im_ios[0].rows;
+        cv::imwrite("imrecout.png", cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
         cout << "[imreconstruct][cpu] Done..." << endl;
     }
 } imreconstruct;
@@ -867,11 +887,11 @@ int main(int argc, char *argv[]) {
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
-        // RTF::AutoStage stage5({rtRcOpen, rtRC, rtRecon}, 
-        //     {new ArgumentInt(-1), new ArgumentInt(1)}, 
-        //     {tiles[i].height, tiles[i].width}, {&imreconstruct}, i);
-        // stage5.after(&stage4);
-        // stage5.genStage(sysEnv);
+        RTF::AutoStage stage5({rtRcOpen, rtRC, rtRecon}, 
+            {new ArgumentInt(0)}, {tiles[i].height, tiles[i].width}, 
+            {&imreconstruct}, i);
+        stage5.after(&stage4);
+        stage5.genStage(sysEnv);
 
         // // pre_fill = (rc - imrec(rc_open, rc)) > G1
         // RTF::AutoStage stage6({rtRcOpen, rtRC, rtPreFill}, 
