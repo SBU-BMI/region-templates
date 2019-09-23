@@ -46,32 +46,19 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
 
 // CPU sched still marginally better since data is copied to and from device
 // on every propagation loop instance
+// usage: Halide::Func f; 
+//        f.define_extern*({all inputs and outputs}); 
+//        f.realize(); // without output buffer
 extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     int sched, halide_buffer_t* bOut) {
 
     cout << "[loopedIwppRecon] init" << endl;
 
-    int minx = bOut->dim[0].min;
-    int maxx = bOut->dim[0].min + bOut->dim[0].extent - 1;
-    int miny = bOut->dim[1].min;
-    int maxy = bOut->dim[1].min + bOut->dim[1].extent - 1;
-    cout << "out size: " << minx << ":" << maxx << ", " 
-        << miny << ":" << maxy << endl;
-
     Halide::Buffer<uint8_t> II(*bII, "II");
-    Halide::Buffer<uint8_t> inJJ(*bJJ, "inJJ");
+    Halide::Buffer<uint8_t> JJ(*bJJ, "JJ");
+    Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
     int32_t w = bII->dim[0].extent;
     int32_t h = bII->dim[1].extent;
-    cout << "========= bOut " << bOut << endl;
-    cout << "host " << bOut->host << endl;
-    cv::Mat cvOut(maxy, maxx, CV_8U, bOut->host);
-    Halide::Buffer<uint8_t> JJ = mat2buf<uint8_t>(&cvOut, "JJ");
-
-    cout << "========= bOut " << bOut << endl;
-    cout << "========= JJ   " << JJ.raw_buffer() << endl;
-
-    JJ = inJJ.copy();
-    // JJ.copy_from(inJJ); // bad
 
     Halide::Func rasterx("rasterx"), rastery("rastery"), arasterx, arastery;
     Halide::RDom se(-1,3,-1,3);
@@ -139,12 +126,9 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         // cv::imwrite("out.png", cvJ);
     } while(newSum != oldSum);
 
-    cout << "========= bOut " << bOut << endl;
-    cout << "========= JJ   " << JJ.raw_buffer() << endl;
-
-    Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
+    // Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
     hOut.copy_from(JJ); // bad
-    cv::imwrite("loopedIwppRecon.png", cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
+    // cv::imwrite("loopedIwppRecon.png", cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
 
     // hOut = JJ.copy();
 
@@ -367,27 +351,32 @@ static struct : RTF::HalGen {
         int nonz = cv::countNonZero(cvbw1);
         cout << "[get_rbc][cpu] Done pre-rbc..." << endl;
 
-        // Only goes further for the propagation if there is any non-zero pixel
-        if (nonz > 0) {
-            cout << "[get_rbc][cpu] non-zero: " << nonz << endl;
-            marker(x,y) = Halide::select(bw1(x,y)>0, bw2(x,y), 0);
+        // Mat marker = Mat::zeros(bw1.size(), bw1.type());
+        // bw2.copyTo(marker, bw1);
+        marker(x,y) = Halide::select(hbw1(x,y)>0, bw2(x,y), 0);
 
-            // These two must be scheduled this way since they are inputs
-            // for an extern halide function
-            marker.compute_root();
-            bw2.compute_root();
+        // Propagation part removed since it don't currently affect the output
+        // // Only goes further for the propagation if there is any non-zero pixel
+        // if (nonz > 0) {
+        //     cout << "[get_rbc][cpu] non-zero: " << nonz << endl;
 
-            // marker = imreconstructBinary<T>(marker, bw2, connectivity);
-            rbc.define_extern("loopedIwppRecon", {hmarker, hbw2, 
-                ExecEngineConstants::CPU}, Halide::UInt(8), 2);
+        //     // These two must be scheduled this way since they are inputs
+        //     // for an extern halide function
+        //     marker.compute_root();
+        //     bw2.compute_root();
 
-        } else {
-            cout << "[get_rbc][cpu] No propagation" << endl;
-            rbc(x,y) = 0;
-        }
+        //     // marker = imreconstructBinary<T>(marker, bw2, connectivity);
+        //     rbc.define_extern("loopedIwppRecon", {hmarker, hbw2, 
+        //         ExecEngineConstants::CPU}, Halide::UInt(8), 2);
+
+        // } else {
+        //     cout << "[get_rbc][cpu] No propagation" << endl;
+        //     rbc(x,y) = 0;
+        // }
+        // rbc2(x,y) = rbc(x,y) & marker(x,y) & imR2B(x,y);
         
-        rbc2(x,y) = rbc(x,y) & marker(x,y) & imR2B(x,y);
-        rbc.compute_root();
+        rbc2(x,y) = marker(x,y) & imR2B(x,y);
+        // rbc.compute_root();
 
         cout << "[get_rbc][cpu] Realizing propagation..." << endl;
         rbc2.realize(hOut);
@@ -523,7 +512,7 @@ static struct : RTF::HalGen {
         Halide::Func dilate;
 
         // Definition of a sub-area on which 
-        // mask(x,y) = hSE(x,y)==1 ? hIn(x,y) : 255
+        // mask(x,y) = hSE(x,y)==1 ? hIn(x,y) : 0
         mask(x,y,xi,yi) = hSE(xi,yi)*hIn(x+xi-seWidth,y+yi-seHeight);
 
         Halide::Expr xc = clamp(x, seWidth, hIn.width()-seWidth);
@@ -624,14 +613,11 @@ static struct : RTF::HalGen {
         // Define halide stage
         Halide::Func halCpu;
         halCpu.define_extern("loopedIwppRecon", {hI, hJ, 
-            this->getTarget()}, Halide::UInt(8), 2);
+            this->getTarget(), hOut}, Halide::UInt(8), 2);
 
         // Adds the cpu implementation to the schedules output
         cout << "[imreconstruct][cpu] Realizing..." << endl;
-        halCpu.realize(hOut);
-        int w = im_ios[0].cols;
-        int h = im_ios[0].rows;
-        cv::imwrite("imrecout.png", cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
+        halCpu.realize();
         cout << "[imreconstruct][cpu] Done..." << endl;
     }
 } imreconstruct;
@@ -887,7 +873,7 @@ int main(int argc, char *argv[]) {
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
-        RTF::AutoStage stage5({rtRcOpen, rtRC, rtRecon}, 
+        RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
             {new ArgumentInt(0)}, {tiles[i].height, tiles[i].width}, 
             {&imreconstruct}, i);
         stage5.after(&stage4);
