@@ -560,6 +560,7 @@ cv::Mat imfillHoles(const cv::Mat& image, bool binary, int connectivity) {
 
     // now do the work...
     mask = invert<T>(mask);
+    // imwrite("ref/5invRecon.png", mask);
 
     cv::Mat output;
     if (binary == true) {
@@ -575,6 +576,7 @@ cv::Mat imfillHoles(const cv::Mat& image, bool binary, int connectivity) {
     //      imwrite("test/in-fillholes-gray-mask.pgm", mask);
         output = imreconstruct<T>(marker, mask, connectivity);
     }
+    imwrite("ref/5pre_fill2.png", output);
     //  uint64_t t2 = cci::common::event::timestampInUS();
     //TODO: TEMP std::cout << "    imfill hole imrecon took " << t2-t1 << "ms" << std::endl;
 

@@ -109,7 +109,7 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     int it = 0;
 
     // Create a cv::Mat wrapper for the halide pipeline output buffer
-    cv::Mat cvJ(h, w, CV_8U, JJ.get()->raw_buffer()->host);
+    int iin = 1;
     do {
         it++;
         oldSum = newSum;
@@ -123,7 +123,12 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         }
         newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
         cout << "new - old: " << newSum << " - " << oldSum << endl;
-        // cv::imwrite("out.png", cvJ);
+        // if (it%10 == 0 && iin > 0) {
+        //     cv::Mat cvJ(h, w, CV_8U, JJ.get()->raw_buffer()->host);
+        //     cv::imwrite("out.png", cvJ);
+        //     cout << "out" << endl;
+        //     std::cin >> iin;
+        // }
     } while(newSum != oldSum);
 
     // Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
@@ -134,135 +139,6 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 
     return 0;
 }
-
-// // Needs to be static for referencing across mpi processes/nodes
-// static struct : RTF::HalGen {
-//     std::string getName() {return "stage1_cpu";}
-//     int getTarget() {return ExecEngineConstants::CPU;}
-//     void realize(std::vector<cv::Mat>& im_ios, 
-//                  std::vector<ArgumentBase*>& params) {
-
-//         // Wraps the input and output cv::mat's with halide buffers
-//         cv::Mat grayI;
-//         cv::cvtColor(im_ios[0], grayI, CV_BGR2GRAY);
-//         Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(&grayI);
-//         Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(&im_ios[1]);
-//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2]);
-
-//         // Define halide stage
-//         Halide::Func halCpu;
-//         halCpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut, 
-//             ExecEngineConstants::CPU}, Halide::UInt(8), 2);
-
-//         // Adds the cpu implementation to the schedules output
-//         cout << "[stage1][cpu] Realizing..." << endl;
-//         halCpu.realize(hOut);
-//         cout << "[stage1][cpu] Done..." << endl;
-//     }
-// } stage1_cpu;
-
-// // Needs to be static for referencing across mph processes/nodes
-// static struct : RTF::HalGen {
-//     std::string getName() {return "stage1_gpu";}
-//     int getTarget() {return ExecEngineConstants::GPU;}
-//     void realize(std::vector<cv::Mat>& im_ios, 
-//                  std::vector<ArgumentBase*>& params) {
-
-//         // Wraps the input and output cv::mat's with halide buffers
-//         cv::Mat grayI;
-//         cv::cvtColor(im_ios[0], grayI, CV_BGR2GRAY);
-//         Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(&grayI);
-//         Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(&im_ios[1]);
-//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2]);
-        
-//         // Define halide stage
-//         Halide::Func halGpu;
-//         halGpu.define_extern("loopedIwppRecon2", {hI, hJ, hOut, 
-//             ExecEngineConstants::GPU}, Halide::UInt(8), 2);
-
-//         // Adds the cpu implementation to the schedules output
-//         cout << "[stage1][gpu] Realizing..." << endl;
-//         halGpu.realize(hOut);
-//         cout << "[stage1][gpu] Done..." << endl;
-//     }
-// } stage1_gpu;
-
-// // Needs to be static for referencing across mpi processes/nodes
-// static struct : RTF::HalGen {
-//     std::string getName() {return "stage2_cpu";}
-//     int getTarget() {return ExecEngineConstants::CPU;}
-//     void realize(std::vector<cv::Mat>& im_ios, 
-//                  std::vector<ArgumentBase*>& params) {
-
-//         // Wraps the input and output cv::mat's with halide buffers
-//         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0]);
-//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1]);
-        
-//         // Define halide stage
-//         Halide::Func blurx, blury;
-//         Halide::Var x, y;
-//         Halide::RDom se(-1,3,-1,3);
-
-//         // Generate a bounded hIn for accessing out of border values
-//         Halide::Func hbIn = Halide::BoundaryConditions::repeat_edge(hIn);
-
-//         // Implement blur
-//         blurx(x,y) = sum(hbIn(x+se.x,y))/3;
-//         blury(x,y) = sum(blurx(x,y+se.y))/3;
-
-//         // Perform scheduling
-//         blurx.compute_root().parallel(y);
-//         blury.compute_root().parallel(x);
-
-//         // Adds the cpu implementation to the schedules output
-//         cout << "[stage2][cpu] Realizing..." << endl;
-//         blury.realize(hOut);
-//         cout << "[stage2][cpu] Done..." << endl;
-//     }
-// } stage2_cpu;
-
-// // Needs to be static for referencing across mpi processes/nodes
-// static struct : RTF::HalGen {
-//     std::string getName() {return "stage2_gpu";}
-//     int getTarget() {return ExecEngineConstants::GPU;}
-//     void realize(std::vector<cv::Mat>& im_ios, 
-//                  std::vector<ArgumentBase*>& params) {
-
-//         // Wraps the input and output cv::mat's with halide buffers
-//         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0]);
-//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1]);
-        
-//         // Define halide stage
-//         Halide::Func blurx, blury;
-//         Halide::Var x, y;
-//         Halide::RDom se(-1,3,-1,3);
-
-//         // Generate a bounded hIn for accessing out of border values
-//         Halide::Func hbIn = Halide::BoundaryConditions::repeat_edge(hIn);
-
-//         // Implement blur
-//         blurx(x,y) = sum(hbIn(x+se.x,y))/3;
-//         blury(x,y) = sum(blurx(x,y+se.y))/3;
-
-//         // Perform scheduling
-//         blurx.compute_root().parallel(y);
-//         blury.compute_root().parallel(x);
-
-//         // Adds the cpu implementation to the schedules output
-//         cout << "[stage2][gpu] Realizing..." << endl;
-//         hIn.set_host_dirty();
-//         blury.realize(hOut);
-//         hOut.copy_to_host();
-//         cout << "[stage2][gpu] Done..." << endl;
-//     }
-// } stage2_gpu;
-
-// // Explicit registering required since startupSystem called before genStage
-// // thus, only the manager node would have the stages registered
-// bool r1 = RTF::AutoStage::registerStage(&stage1_cpu);
-// bool r2 = RTF::AutoStage::registerStage(&stage1_gpu);
-// bool r3 = RTF::AutoStage::registerStage(&stage2_cpu);
-// bool r4 = RTF::AutoStage::registerStage(&stage2_gpu);
 
 // Needs to be static for referencing across mpi processes/nodes
 static struct : RTF::HalGen {
@@ -400,7 +276,7 @@ static struct : RTF::HalGen {
         int channel = ((ArgumentInt*)params[0])->getArgValue();
 
         if (channel == -1)
-            assert(im_ios[0].channels() == 2);
+            assert(im_ios[0].channels() == 1);
         else
             assert(im_ios[0].channels() == 3);
 
@@ -553,7 +429,13 @@ static struct : RTF::HalGen {
         Halide::Var x, y;
         Halide::Func preFill;
 
-        preFill(x,y) = Halide::cast<uint8_t>((hRC(x,y) - hRecon(x,y)) > G1);
+        preFill(x,y) = 255*Halide::cast<uint8_t>((hRC(x,y) - hRecon(x,y)) > G1);
+
+        // Set the borders as -inf (i.e., 0);
+        preFill(x,0) = Halide::cast<uint8_t>(0);
+        preFill(x,hRecon.height()-1) = Halide::cast<uint8_t>(0);
+        preFill(0,y) = Halide::cast<uint8_t>(0);
+        preFill(hRecon.width()-1,y) = Halide::cast<uint8_t>(0);
 
         // Schedules
         preFill.compute_root();
@@ -618,52 +500,47 @@ static struct : RTF::HalGen {
 } imreconstruct;
 bool r7 = RTF::AutoStage::registerStage(&imreconstruct);
 
-// static struct : RTF::HalGen {
-//     std::string getName() {return "fill_holes";}
-//     int getTarget() {return ExecEngineConstants::CPU;}
-//     void realize(std::vector<cv::Mat>& im_ios, 
-//                  std::vector<ArgumentBase*>& params) {
+static struct : RTF::HalGen {
+    std::string getName() {return "pre_fill_holes2";}
+    int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, 
+                 std::vector<ArgumentBase*>& params) {
 
-//         // Wraps the input and output cv::mat's with halide buffers
-//         // hIn = pre_fill = image
-//         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+        // Wraps the input and output cv::mat's with halide buffers
+        // hIn = pre_fill = image
+        Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
-//         // input image must be grayscale
-//         assert(im_ios[0].channels() == 1);
+        // input image must be grayscale
+        assert(im_ios[0].channels() == 1);
 
-//         // Creates the marker mat
-//         cv::Mat marker(im_ios[0].size(), im_ios[0].type(), 
-//             cv::Scalar(std::numeric_limits<uint8_t>::max()));
-//     Halide::Buffer<uint8_t> hMarker = mat2buf<uint8_t>(&im_ios[1], "marker");
+        // Creates the marker image
+        uint8_t mn = std::numeric_limits<uint8_t>::min();
+        uint8_t mx = std::numeric_limits<uint8_t>::max();
+        cv::Mat cvMk;
+        // cv::Mat mk2(im_ios[0].size(), im_ios[0].type(), cv::Scalar(mn));
+        cv::Mat mk2(im_ios[0].rows-2, im_ios[0].cols-2, CV_8U, cv::Scalar(mn));
+        // Them make the border - OpenCV does not replicate the values 
+        // when one cv::Mat is a region of another.
+        cv::copyMakeBorder(mk2, cvMk, 1, 1, 1, 1, cv::BORDER_CONSTANT, mx);
+        Halide::Buffer<uint8_t> hMarker = mat2buf<uint8_t>(&cvMk, "marker");
 
-//         // Define halide stage
-//         Halide::Var x, y;
-//         Halide::Func invert1("invert1");
-//         Halide::Func recon("recon");
-//         Halide::Func invert2("invert2");
+        // Define halide stage
+        Halide::Var x, y;
+        Halide::Func recon("recon");
 
-//         invert1(x,y) = std::numeric_limits<uint8_t>::max() - hIn(x,y);
-//         // recon.define_extern("loopedIwppRecon", {hMarker, invert1, 
-//         recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
-//                 this->getTarget()}, Halide::UInt(8), 2);        
-//         invert2(x,y) = std::numeric_limits<uint8_t>::max() - recon(x,y);
+        recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
+                this->getTarget(), hOut}, Halide::UInt(8), 2);
 
-// // bw1 = invert(imrec(invert(pre_fill)))
+        // Schedules
+        recon.compute_root();
 
-//         // Schedules
-//         invert1.compute_root();
-//         recon.compute_root();
-//         invert2.compute_root();
-
-//         cout << "[fill_holes][cpu] Realizing..." << endl;
-//         // invert2.realize(hOut);
-//         recon.realize(hOut);
-//         // invert1.realize(hOut);
-//         cout << "[fill_holes][cpu] Done..." << endl;
-//     }
-// } fill_holes;
-// bool r7 = RTF::AutoStage::registerStage(&fill_holes);
+        cout << "[pre_fill_holes2][cpu] Realizing..." << endl;
+        recon.realize();
+        cout << "[pre_fill_holes2][cpu] Done..." << endl;
+    }
+} pre_fill_holes2;
+bool r8 = RTF::AutoStage::registerStage(&pre_fill_holes2);
 
 // // 4-conn implementation
 // // UNFINISHED!!!
@@ -825,9 +702,11 @@ int main(int argc, char *argv[]) {
     RegionTemplate* rtRcOpen = newRT("3rtRcOpen");
     RegionTemplate* rtRecon = newRT("4rtRecon");
     RegionTemplate* rtPreFill = newRT("5rtPreFill");
+    RegionTemplate* rtInvRecon = newRT("5rtInvRecon");
+    RegionTemplate* rtPreFill2 = newRT("5rtPreFill2");
+    RegionTemplate* rtBw1 = newRT("6rtBw1");
     // RegionTemplate* rtPreRecon = newRT("rtPreRecon");
     // RegionTemplate* rtRecon = newRT("rtRecon");
-    // RegionTemplate* rtBw1 = newRT("rtBw1");
     // RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
@@ -881,7 +760,21 @@ int main(int argc, char *argv[]) {
         stage6.after(&stage5);
         stage6.genStage(sysEnv);
 
-
+        // bw1 = fill_holes(pre_fill) = invert(imrec(invert(preFill)))
+        RTF::AutoStage stage7({rtPreFill, rtInvRecon}, 
+            {new ArgumentInt(-1)}, {tiles[i].height, tiles[i].width}, 
+            {&invert}, i);
+        stage7.after(&stage6);
+        stage7.genStage(sysEnv);
+        RTF::AutoStage stage8({rtInvRecon, rtPreFill2}, {}, 
+            {tiles[i].height, tiles[i].width}, {&pre_fill_holes2}, i);
+        stage8.after(&stage7);
+        stage8.genStage(sysEnv);
+        RTF::AutoStage stage9({rtPreFill2, rtBw1},
+            {new ArgumentInt(-1)}, {tiles[i].height, tiles[i].width}, 
+            {&invert}, i);
+        stage9.after(&stage8);
+        stage9.genStage(sysEnv);
 
 
 
