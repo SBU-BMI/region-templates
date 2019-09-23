@@ -538,7 +538,7 @@ static struct : RTF::HalGen {
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hRCOp = mat2buf<uint8_t>(&im_ios[0], "hRCOp");
+        Halide::Buffer<uint8_t> hRecon = mat2buf<uint8_t>(&im_ios[0], "cvRecon");
         Halide::Buffer<uint8_t> hRC = mat2buf<uint8_t>(&im_ios[1], "hRC");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
 
@@ -551,16 +551,11 @@ static struct : RTF::HalGen {
 
         // Define halide stage
         Halide::Var x, y;
-        Halide::Func recon;
         Halide::Func preFill;
 
-        recon.define_extern("loopedIwppRecon", {hRCOp, hRC, 
-                this->getTarget()}, Halide::UInt(8), 2);
-
-        preFill(x,y) = Halide::cast<uint8_t>((hRC(x,y) - recon(x,y)) > G1);
+        preFill(x,y) = Halide::cast<uint8_t>((hRC(x,y) - hRecon(x,y)) > G1);
 
         // Schedules
-        recon.compute_root();
         preFill.compute_root();
         preFill.parallel(x);
 
@@ -879,12 +874,12 @@ int main(int argc, char *argv[]) {
         stage5.after(&stage4);
         stage5.genStage(sysEnv);
 
-        // // pre_fill = (rc - imrec(rc_open, rc)) > G1
-        // RTF::AutoStage stage6({rtRcOpen, rtRC, rtPreFill}, 
-        //     {new ArgumentInt(G1)}, {tiles[i].height, tiles[i].width}, 
-        //     {&pre_fill_holes}, i);
-        // stage6.after(&stage5);
-        // stage6.genStage(sysEnv);
+        // pre_fill = (rc - imrec(rc_open, rc)) > G1
+        RTF::AutoStage stage6({rtRecon, rtRC, rtPreFill}, 
+            {new ArgumentInt(G1)}, {tiles[i].height, tiles[i].width}, 
+            {&pre_fill_holes}, i);
+        stage6.after(&stage5);
+        stage6.genStage(sysEnv);
 
 
 
