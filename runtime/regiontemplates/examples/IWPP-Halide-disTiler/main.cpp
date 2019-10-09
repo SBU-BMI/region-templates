@@ -31,6 +31,7 @@ RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
 
 template <typename T>
 Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
+    T* data = (T*)m->data;
     if (m->channels() > 1) {
         // Halide works with planar memory layout by default thus we need 
         // to ensure that it wraps the interleaved representation of opencv
@@ -38,10 +39,12 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
         // Still needs to set the Func's stride if the output Buffer also has
         // 3 channels:
         // func.output_buffer().dim(0).set_stride(3);
-        return Halide::Buffer<uint8_t>::make_interleaved(
-            m->data, m->cols, m->rows, m->channels(), name);
-    } else
-        return Halide::Buffer<uint8_t>(m->data, m->cols, m->rows, name);
+        return Halide::Buffer<T>::make_interleaved(data, 
+            m->cols, m->rows, m->channels(), name);
+    } else {
+        return Halide::Buffer<T>(data, m->cols, m->rows, name);
+    }
+
 }
 
 // CPU sched still marginally better since data is copied to and from device
@@ -49,16 +52,32 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
 // usage: Halide::Func f; 
 //        f.define_extern*({all inputs and outputs}); 
 //        f.realize(); // without output buffer
+template <typename T>
+int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
+    int sched, halide_buffer_t* bOut);
 extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
+    int sched, int T, halide_buffer_t* bOut) {
+    switch (T) {
+        case halide_type_uint:
+            return loopedIwppRecon<uint8_t>(bII, bJJ, sched, bOut);
+        case halide_type_int:
+            return loopedIwppRecon<int32_t>(bII, bJJ, sched, bOut);
+    }
+}
+
+template <typename T>
+int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     int sched, halide_buffer_t* bOut) {
 
     cout << "[loopedIwppRecon] init" << endl;
 
-    Halide::Buffer<uint8_t> II(*bII, "II");
-    Halide::Buffer<uint8_t> JJ(*bJJ, "JJ");
-    Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
+    Halide::Buffer<T> II(*bII, "II");
+    Halide::Buffer<T> JJ(*bJJ, "JJ");
+    Halide::Buffer<T> hOut(*bOut, "hOut");
     int32_t w = bII->dim[0].extent;
     int32_t h = bII->dim[1].extent;
+    cv::imwrite("hOut.png", cv::Mat(h, w, 
+        cv::DataType<T>::type, hOut.get()->raw_buffer()->host));
 
     Halide::Func rasterx("rasterx"), rastery("rastery"), arasterx, arastery;
     Halide::RDom se(-1,3,-1,3);
@@ -104,12 +123,12 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     rastery.compile_jit(target);
     // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
 
-    int oldSum = 0;
-    int newSum = 0;
+    long oldSum = 0;
+    long newSum = 0;
     int it = 0;
 
     // Create a cv::Mat wrapper for the halide pipeline output buffer
-    int iin = 1;
+    int iin = -1;
     do {
         it++;
         oldSum = newSum;
@@ -121,21 +140,22 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         if (sched == ExecEngineConstants::GPU) {
             JJ.copy_to_host();
         }
-        newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
+        newSum = cv::sum(cv::Mat(h, w, cv::DataType<T>::type, 
+            JJ.get()->raw_buffer()->host))[0];
         cout << "new - old: " << newSum << " - " << oldSum << endl;
-        // if (it%10 == 0 && iin > 0) {
-        //     cv::Mat cvJ(h, w, CV_8U, JJ.get()->raw_buffer()->host);
-        //     cv::imwrite("out.png", cvJ);
-        //     cout << "out" << endl;
-        //     std::cin >> iin;
-        // }
+        if (it%1000 == 0 && iin > 0) {
+            cv::Mat cvJ(h, w, cv::DataType<T>::type, 
+                JJ.get()->raw_buffer()->host);
+            cv::imwrite("out.png", cvJ);
+            cout << "out" << endl;
+            std::cin >> iin;
+        }
     } while(newSum != oldSum);
 
-    // Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
-    hOut.copy_from(JJ); // bad
-    // cv::imwrite("loopedIwppRecon.png", cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
-
-    // hOut = JJ.copy();
+    cv::imwrite("loopedIwppRecon.png", cv::Mat(h, w, 
+        cv::DataType<T>::type, JJ.get()->raw_buffer()->host));
+    cout << "[loopedIwppRecon] done" << endl;
+    hOut.copy_from(JJ);
 
     return 0;
 }
@@ -243,7 +263,8 @@ static struct : RTF::HalGen {
 
         //     // marker = imreconstructBinary<T>(marker, bw2, connectivity);
         //     rbc.define_extern("loopedIwppRecon", {hmarker, hbw2, 
-        //         ExecEngineConstants::CPU}, Halide::UInt(8), 2);
+        //         Halide::UInt(8), ExecEngineConstants::CPU}, 
+        //         Halide::UInt(8), 2);
 
         // } else {
         //     cout << "[get_rbc][cpu] No propagation" << endl;
@@ -489,8 +510,10 @@ static struct : RTF::HalGen {
 
         // Define halide stage
         Halide::Func halCpu;
-        halCpu.define_extern("loopedIwppRecon", {hI, hJ, 
-            this->getTarget(), hOut}, Halide::UInt(8), 2);
+        halCpu.define_extern("loopedIwppRecon", {hI, hJ, this->getTarget(), 
+            Halide::UInt(8).code(), hOut}, Halide::UInt(8), 2);
+        // halCpu.define_extern("loopedIwppRecon", {hI, hJ, this->getTarget(), 
+        //     hOut}, Halide::UInt(8), 2);
 
         // Adds the cpu implementation to the schedules output
         cout << "[imreconstruct][cpu] Realizing..." << endl;
@@ -515,29 +538,44 @@ static struct : RTF::HalGen {
         assert(im_ios[0].channels() == 1);
 
         // Creates the marker image
-        uint8_t mn = std::numeric_limits<uint8_t>::min();
-        uint8_t mx = std::numeric_limits<uint8_t>::max();
-        cv::Mat cvMk;
-        // cv::Mat mk2(im_ios[0].size(), im_ios[0].type(), cv::Scalar(mn));
-        cv::Mat mk2(im_ios[0].rows-2, im_ios[0].cols-2, CV_8U, cv::Scalar(mn));
+        int32_t mn = std::numeric_limits<int32_t>::min();
+        int32_t mx = std::numeric_limits<int32_t>::max();
+        cv::Mat cvMk(im_ios[0].size(), CV_32S);
+        cv::Mat mk2(im_ios[0].rows-2, im_ios[0].cols-2, CV_32S, cv::Scalar(mn));
         // Them make the border - OpenCV does not replicate the values 
         // when one cv::Mat is a region of another.
         cv::copyMakeBorder(mk2, cvMk, 1, 1, 1, 1, cv::BORDER_CONSTANT, mx);
-        Halide::Buffer<uint8_t> hMarker = mat2buf<uint8_t>(&cvMk, "marker");
+        Halide::Buffer<int32_t> hMarker = mat2buf<int32_t>(&cvMk, "marker");
+
+        // Creates the propagation output int32 image
+        cv::Mat cvRecon(im_ios[0].size(), CV_32S, cv::Scalar(0));
+        Halide::Buffer<int32_t> hRecon = mat2buf<int32_t>(&cvRecon, "recon");
 
         // Define halide stage
         Halide::Var x, y;
+        Halide::Func hIn32("hIn32");
         Halide::Func recon("recon");
+        Halide::Func output("output");
 
+        cout << "hRecon: " << hRecon.width() << "x" << hRecon.height() << endl;
+        cout << "hMarker: " << hMarker.width() << "x" << hMarker.height() << endl;
+
+        // hIn32(x,y) = Halide::cast<int32_t>(hIn(x,y));
+        // recon.define_extern("loopedIwppRecon", {hIn32, hMarker, 
         recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
-                this->getTarget(), hOut}, Halide::UInt(8), 2);
+            this->getTarget(), Halide::Int(32).code(), hRecon}, 
+            Halide::Int(32), 2);
+        // output(x,y) = Halide::cast<uint8_t>(hOut(x,y));
 
         // Schedules
+        hIn32.compute_root();
         recon.compute_root();
 
         cout << "[pre_fill_holes2][cpu] Realizing..." << endl;
         recon.realize();
+        // output.realize(hOut);
         cout << "[pre_fill_holes2][cpu] Done..." << endl;
+        cv::imwrite("pre_fill2.png", cvRecon);
     }
 } pre_fill_holes2;
 bool r8 = RTF::AutoStage::registerStage(&pre_fill_holes2);
