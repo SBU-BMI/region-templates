@@ -104,12 +104,12 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     rastery.compile_jit(target);
     // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
 
-    int oldSum = 0;
-    int newSum = 0;
-    int it = 0;
+    unsigned long oldSum = 0;
+    unsigned long newSum = 0;
+    unsigned long it = 0;
 
     // Create a cv::Mat wrapper for the halide pipeline output buffer
-    int iin = 1;
+    unsigned long iin = 1;
     do {
         it++;
         oldSum = newSum;
