@@ -17,6 +17,13 @@
 using std::cout;
 using std::endl;
 
+int findArgPos(std::string s, int argc, char** argv) {
+    for (int i=1; i<argc; i++)
+        if (std::string(argv[i]).compare(s)==0)
+            return i;
+    return -1;
+}
+
 RegionTemplate* newRT(std::string name, cv::Mat* data = NULL) {
     RegionTemplate* rt = new RegionTemplate();
     rt->setName(name);
@@ -52,7 +59,7 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
 extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     int sched, halide_buffer_t* bOut) {
 
-    cout << "[loopedIwppRecon] init" << endl;
+    // cout << "[loopedIwppRecon] init" << endl;
 
     Halide::Buffer<uint8_t> II(*bII, "II");
     Halide::Buffer<uint8_t> JJ(*bJJ, "JJ");
@@ -122,7 +129,7 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
             JJ.copy_to_host();
         }
         newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
-        cout << "new - old: " << newSum << " - " << oldSum << endl;
+        // cout << "new - old: " << newSum << " - " << oldSum << endl;
         // if (it%10 == 0 && iin > 0) {
         //     cv::Mat cvJ(h, w, CV_8U, JJ.get()->raw_buffer()->host);
         //     cv::imwrite("out.png", cvJ);
@@ -133,7 +140,8 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 
     // Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
     hOut.copy_from(JJ); // bad
-    // cv::imwrite("loopedIwppRecon.png", cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
+    // cv::imwrite("loopedIwppRecon.png", 
+    //    cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
 
     // hOut = JJ.copy();
 
@@ -542,85 +550,11 @@ static struct : RTF::HalGen {
 } pre_fill_holes2;
 bool r8 = RTF::AutoStage::registerStage(&pre_fill_holes2);
 
-// // 4-conn implementation
-// // UNFINISHED!!!
-// static struct : RTF::HalGen {
-//     std::string getName() {return "bwareaopen2";}
-//     int getTarget() {return ExecEngineConstants::CPU;}
-//     void realize(std::vector<cv::Mat>& im_ios, 
-//                  std::vector<ArgumentBase*>& params) {
-
-//         cv::Mat cvIn;
-//         cv::cvtColor(im_ios[0], cvIn, CV_BGR2GRAY);
-//         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
-
-//         // Wraps the input and output cv::mat's with halide buffers
-//         // Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-//         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
-
-//         // uint8_t minSize = ((ArgumentInt*)params[0])->getArgValue();
-//         // uint8_t maxSize = ((ArgumentInt*)params[1])->getArgValue();
-//         // uint8_t connectivity = ((ArgumentInt*)params[2])->getArgValue();
-
-//         // Define halide stage
-//         Halide::Var x, y;
-//         Halide::Buffer<int32_t> label(hIn.width(), hIn.height(), "label");
-//         Halide::Func labeli, labelx, labely;
-//         Halide::Func area_thr;
-//         Halide::Func output;
-
-//         // IWPP initialization
-//         labeli(x,y) = x + y * hIn.width();
-//         labeli.realize(label);
-
-//         // Clamping label
-//         Halide::Expr xc = clamp(x, 1, label.width()-2);
-//         Halide::Expr yc = clamp(y, 1, label.height()-2);
-//         // Halide::Func clabel;
-//         // clabel(x,y) = label(xc,yc);
-
-//         // IWPP propagation conditions with update statements
-//         labelx(x,y) = select(hIn(xc,yc) == hIn(xc+1,yc), 
-//                              min(label(xc,yc), label(xc+1,yc)),
-//                              label(xc,yc));
-//         labely(x,y) = select(hIn(xc,yc) == hIn(xc,yc+1), 
-//                              min(labelx(xc,yc), labelx(xc,yc+1)),
-//                              labelx(xc,yc));
-
-//         // Scheduling for passings
-//         labelx.parallel(y);
-//         labelx.compute_root();
-//         labely.parallel(x);
-
-//         cout << "[bwareaopen2][cpu] Compiling..." << endl;
-//         Halide::Target target = Halide::get_host_target();
-//         // target.set_feature(Halide::Target::Debug);
-//         labely.compile_jit(target);
-
-//         int newSum = 0;
-//         int prevSum = 0;
-//         do {
-//             labely.realize(label);
-//             prevSum = newSum;
-//             newSum = cv::sum(cv::Mat(label.height(), label.width(), 
-//                 CV_8U, label.get()->raw_buffer()->host))[0];
-//             cout << "new - prev: " << newSum << " - " << prevSum << endl;
-//         } while (prevSum != newSum);
-
-//         // output(x,y) = Halide::cast<uint8_t>(area_thr(x,y) > -1);
-
-//         cout << "[bwareaopen2][cpu] Realizing..." << endl;
-//         // output.realize(hOut);
-//         cout << "[bwareaopen2][cpu] Done..." << endl;
-//     }
-// } bwareaopen2;
-// bool r6 = RTF::AutoStage::registerStage(&bwareaopen2);
-
 int main(int argc, char *argv[]) {
 
     // Manages inputs
     if (argc < 3) {
-        cout << "usage: ./iwpp <I image> <J image> -h " 
+        cout << "usage: ./iwpp <I image>" 
             << "-c <number of cpu threads per node> " 
             << "-g <number of gpu threads per node> " << endl;
         cout << "\t-h is required for pipelines without implementations "
@@ -634,6 +568,82 @@ int main(int argc, char *argv[]) {
     // =========================== as halide stages (nscale::segmentNuclei:620).
     SysEnv sysEnv;
     sysEnv.startupSystem(argc, argv, "libautostage.so");
+
+    // get args
+    if (argc < 2) {
+        cout << "Usage: ./iwpp <I image> [ARGS]" << endl;
+        cout << "\t-c <number of cpu threads per node>" << endl;
+        cout << "\t-g <number of gpu threads per node>" << endl;
+        cout << "\t-t <Number of tiles to be generated by the"
+             << " dense tiler>" << endl;
+        cout << "\t-r <pre-tiling algorithm>" << endl;
+        cout << "\t\tValues (default=0):" << endl;
+        cout << "\t\t0: NO_PRE_TILER" << endl;
+        cout << "\t\t1: DENSE_BG_SEPARATOR" << endl;
+        cout << "\t-p <bgThr>/<erode>/<dilate>" << endl;
+        cout << "\t-l <dense tiling algorithm>" << endl;
+        cout << "\t\tValues (default=0):" << endl;
+        cout << "\t\t0: NO_TILER" << endl;
+        cout << "\t\t1: LIST_ALG_HALF" << endl;
+        cout << "\t\t2: LIST_ALG_EXPECT" << endl;
+        cout << "\t\t3: KD_TREE_ALG_AREA" << endl;
+        cout << "\t\t4: KD_TREE_ALG_COST" << endl;
+        cout << "\t\t5: FIXED_GRID_TILING" << endl;
+        cout << "\t-b <tiling border>" << endl;
+        
+        exit(0);
+    }
+
+    // Input images
+    std::string Ipath = std::string(argv[1]);
+
+    // Number of expected dense tiles for irregular tiling
+    int nTiles = 1;
+    if (findArgPos("-t", argc, argv) != -1) {
+        nTiles = atoi(argv[findArgPos("-t", argc, argv)+1]);
+    }
+
+    // Number of expected dense tiles for irregular tiling
+    PreTilerAlg_t preTilerAlg = NO_PRE_TILER;
+    if (findArgPos("-r", argc, argv) != -1) {
+        preTilerAlg = static_cast<PreTilerAlg_t>(
+            atoi(argv[findArgPos("-r", argc, argv)+1]));
+    }
+
+    // Pre-tiler parameters
+    int bgThr = 100;
+    int erode_param = 4;
+    int dilate_param = 10;
+    if (findArgPos("-p", argc, argv) != -1) {
+        std::string params = argv[findArgPos("-p", argc, argv)+1];
+        std::size_t l = params.find_last_of("/");
+        dilate_param = atoi(params.substr(l+1).c_str());
+        params = params.substr(0, l-1);
+        l = params.find_last_of("/");
+        erode_param = atoi(params.substr(l+1).c_str());
+        bgThr = atoi(params.substr(0, l-1).c_str());
+    }
+
+    // Number of expected dense tiles for irregular tiling
+    TilerAlg_t tilerAlg = NO_TILER;
+    if (findArgPos("-l", argc, argv) != -1) {
+        tilerAlg = static_cast<TilerAlg_t>(
+            atoi(argv[findArgPos("-l", argc, argv)+1]));
+    }
+
+    int border = 0;
+    if (findArgPos("-b", argc, argv) != -1) {
+        border = atoi(argv[findArgPos("-b", argc, argv)+1]);
+    }
+
+    cout << "Params: " << endl;
+    cout << "\ttiles: " << nTiles << endl;
+    cout << "\tpreTilerAlg: " << preTilerAlg << endl;
+    cout << "\tbgThr: " << bgThr << endl;
+    cout << "\terode_param: " << erode_param << endl;
+    cout << "\tdilate_param: " << dilate_param << endl;
+    cout << "\ttilerAlg: " << tilerAlg << endl;
+    cout << "\tborder: " << border << endl;
 
     // Input parameters
     unsigned char blue = 200;
@@ -672,18 +682,14 @@ int main(int argc, char *argv[]) {
         0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
     
     // Creates the inputs using RT's autoTiler
-    int border = 0;
-    int bgThr = 100;
-    int erode_param = 4;
-    int dilate_param = 10;
-    int nTiles = 1;
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     TiledRTCollection* tCollImg = new IrregTiledRTCollection("input", 
-        "input", argv[1], border, bgm, 
-        NO_PRE_TILER, HBAL_TRIE_QUAD_TREE_ALG, nTiles);
+        "input", Ipath, border, bgm, 
+        preTilerAlg, tilerAlg, nTiles);
 
-    tCollImg->addImage(argv[1]);
+    tCollImg->addImage(Ipath);
     tCollImg->tileImages();
+    cout << "Total tiles: " << tCollImg->getNumRTs() << endl;
 
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
@@ -705,9 +711,6 @@ int main(int argc, char *argv[]) {
     RegionTemplate* rtInvRecon = newRT("5rtInvRecon");
     RegionTemplate* rtPreFill2 = newRT("5rtPreFill2");
     RegionTemplate* rtBw1 = newRT("6rtBw1");
-    // RegionTemplate* rtPreRecon = newRT("rtPreRecon");
-    // RegionTemplate* rtRecon = newRT("rtRecon");
-    // RegionTemplate* rtFinal = newRT("rtFinal");
     for (int i=0; i<tCollImg->getNumRTs(); i++) {
 
         // background = get_background(input)
@@ -776,25 +779,6 @@ int main(int argc, char *argv[]) {
         stage9.after(&stage8);
         stage9.genStage(sysEnv);
 
-
-
-
-        // // bw1 = fill_holes(pre_fill) = inv(imrec(invert(preFill)))
-        // RTF::AutoStage stage6({rtPreFill, rtPreRecon}, {new ArgumentInt(-1)}, 
-        //     {tiles[i].height, tiles[i].width}, {&invert}, i);
-        // stage6.after(&stage5);
-        // stage6.genStage(sysEnv);
-        // RTF::AutoStage stage7({rtPreRecon, rtRecon}, 
-        //     {new ArgumentInt(-1), new ArgumentInt(1)}, 
-        //     {tiles[i].height, tiles[i].width}, {&imreconstruct}, i);
-        // stage7.after(&stage6);
-        // stage7.genStage(sysEnv);
-        // RTF::AutoStage stage8({rtRecon, rtBw1}, {new ArgumentInt(-1)}, 
-        //     {tiles[i].height, tiles[i].width}, {&invert}, i);
-        // stage8.after(&stage7);
-        // stage8.genStage(sysEnv);
-
-
         // // bw1_t,compcount2 = bwareaopen2(bw1) //-> exit if compcount2 == 0
         // -=- seg_norbc = bwselect(diffIm > G2, bw1_t) & (rbc == 0)
         // find_cand = seg_norbc
@@ -805,7 +789,7 @@ int main(int argc, char *argv[]) {
         // stage2.genStage(sysEnv);
     }
 
-    cout << "started" << endl;
+    // cout << "started" << endl;
     sysEnv.startupExecution();
     sysEnv.finalizeSystem();
 

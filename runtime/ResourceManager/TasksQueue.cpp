@@ -237,14 +237,20 @@ bool TasksQueueHalide::insertTask(Task *task) {
 	// executable, i.e., there is at least a single thread for any of the task's
 	// targets.
 	bool executable = false;
+#ifdef DEBUG
 	std::cout << "[TasksQueueHalide] Inserting task " << task->getId() << " into queue with targets ";
+#endif
 	for (int target : task->getTaskTargets()) {
 		this->tasksPerTarget[target].push_back(task->getId());
+#ifdef DEBUG
 		std::cout << target << ", ";
+#endif
 		if (this->threadsPerTarget[target] > 0)
 			executable = true;
 	}
+#ifdef DEBUG
 	std::cout << std::endl;
+#endif
 
 	// Exits the execution if task is not executable
 	if (!executable) {

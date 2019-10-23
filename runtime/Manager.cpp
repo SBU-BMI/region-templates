@@ -172,7 +172,9 @@ void Manager::sendDRInfoToWorkerForGlobalStorage(int worker_id, std::string rtNa
 
 void Manager::sendComponentInfoToWorker(int worker_id, PipelineComponentBase *pc)
 {
+#ifdef DEBUG
 	std::cout << "Manager: Sending component id="<< pc->getId() <<std::endl;
+#endif
 	int comp_serialization_size = pc->size();
 	char *buff = new char[comp_serialization_size];
 	int used_serialization_size = pc->serialize(buff);
@@ -227,8 +229,9 @@ void Manager::manager_process()
 {
 
 	uint64_t t1, t0;
-
+#ifdef DEBUG
 	std::cout<< "Manager ready. Rank = %d"<<std::endl;
+#endif
 	if(isFirstExecutionRound()){
 		comm_world.Barrier();
 		setFirstExecutionRound(false);
@@ -246,7 +249,9 @@ void Manager::manager_process()
 
 	//TODO: testing only
 	int tasksToFinishTasks = componentsToExecute->getSize();
+#ifdef DEBUG
 	std::cout << __FILE__ << ":" << __LINE__ << ". TasksToExecute="<<tasksToFinishTasks<<std::endl;
+#endif
 
 	// Process all components instantiated for execution
 	while (componentsToExecute->getSize() != 0 || this->componentDependencies->getCountTasksPending() != 0 || this->getActiveComponentsSize()) {
@@ -307,8 +312,9 @@ void Manager::manager_process()
 						}
 						// tell worker that manager is ready
 						comm_world.Send(&MessageTag::MANAGER_READY, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
-
+#ifdef DEBUG
 						std::cout << "Manager: before sending, size: "<< this->componentsToExecute->getSize() << std::endl;
+#endif
 						this->sendComponentInfoToWorker(worker_id, compToExecute);
 
 						this->insertActiveComponent(compToExecute);
@@ -328,8 +334,9 @@ void Manager::manager_process()
 					int number_components_completed = tasks_data[0];
 
 					uint64_t t1 = Util::ClockGetTime();
-
+#ifdef DEBUG
 					std::cout << "Manager: #CompCompleted = "<< number_components_completed << " time: "<< t1<< " input_msg_size: "<< input_message_size<< " compId: "<< tasks_data[1] << std::endl;
+#endif
 
 					int extracted_size_bytes = sizeof(char) + sizeof(int);
 
@@ -529,8 +536,9 @@ PipelineComponentBase* Manager::retrieveActiveComponent(int id) {
 
 		// Remove component instance from the map
 		this->activeComponents.erase(activeCompIt);
-
+#ifdef DEBUG
 		std::cout << "Manager: components out processing = "<< this->activeComponents.size() << std::endl;
+#endif
 	}
 	return compRet;
 }
@@ -556,8 +564,9 @@ PipelineComponentBase* Manager::getActiveComponent(int id) {
 
 		// Just assign to the return point the value of the component found
 		compRet = activeCompIt->second;
-
+#ifdef DEBUG
 		std::cout << "Manager: components out processing = "<< this->activeComponents.size() << std::endl;
+#endif
 	}
 	return compRet;
 }

@@ -266,7 +266,7 @@ int RegionTemplate::deserialize(char* buff) {
 	// Extract number of data regions
 	int regionSize = ((int*)(buff+deserialized_bytes))[0];
 	deserialized_bytes += sizeof(int);
-	std::cout << "\tnDataRegions deserialize:"<< regionSize << std::endl;
+	// std::cout << "\tnDataRegions deserialize:"<< regionSize << std::endl;
 	// extract each of the data regions
 	for(int i = 0; i < regionSize; i++){
 		// create data region: assuming that it is a 2D. Might not be the case.
