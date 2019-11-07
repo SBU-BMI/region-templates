@@ -10,6 +10,7 @@
 #include "ExecEngineConstants.h"
 
 #include "TiledRTCollection.h"
+#include "RegTiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
 #include "costFuncs/ThresholdBGMasker.h"
@@ -553,23 +554,6 @@ bool r8 = RTF::AutoStage::registerStage(&pre_fill_holes2);
 int main(int argc, char *argv[]) {
 
     // Manages inputs
-    if (argc < 3) {
-        cout << "usage: ./iwpp <I image>" 
-            << "-c <number of cpu threads per node> " 
-            << "-g <number of gpu threads per node> " << endl;
-        cout << "\t-h is required for pipelines without implementations "
-            << "of stages for every target." << endl;
-        return 0;
-    }
-    // cv::Mat* cvI = new cv::Mat(cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE));
-    // cv::Mat* cvJ = new cv::Mat(cv::imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE));
-
-    // =========== trying v0.5 === Implementation of the segmentation pipeline
-    // =========================== as halide stages (nscale::segmentNuclei:620).
-    SysEnv sysEnv;
-    sysEnv.startupSystem(argc, argv, "libautostage.so");
-
-    // get args
     if (argc < 2) {
         cout << "Usage: ./iwpp <I image> [ARGS]" << endl;
         cout << "\t-c <number of cpu threads per node>" << endl;
@@ -593,6 +577,14 @@ int main(int argc, char *argv[]) {
         
         exit(0);
     }
+
+    // cv::Mat* cvI = new cv::Mat(cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE));
+    // cv::Mat* cvJ = new cv::Mat(cv::imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE));
+
+    // =========== trying v0.5 === Implementation of the segmentation pipeline
+    // =========================== as halide stages (nscale::segmentNuclei:620).
+    SysEnv sysEnv;
+    sysEnv.startupSystem(argc, argv, "libautostage.so");
 
     // Input images
     std::string Ipath = std::string(argv[1]);
@@ -683,9 +675,15 @@ int main(int argc, char *argv[]) {
     
     // Creates the inputs using RT's autoTiler
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    TiledRTCollection* tCollImg = new IrregTiledRTCollection("input", 
-        "input", Ipath, border, bgm, 
-        preTilerAlg, tilerAlg, nTiles);
+    TiledRTCollection* tCollImg;
+    if (tilerAlg == FIXED_GRID_TILING) {
+        tCollImg = new RegTiledRTCollection("input", 
+                "input", Ipath, nTiles, border);
+    } else {
+        tCollImg = new IrregTiledRTCollection("input", 
+            "input", Ipath, border, bgm, 
+            preTilerAlg, tilerAlg, nTiles);
+    }
 
     tCollImg->addImage(Ipath);
     tCollImg->tileImages();

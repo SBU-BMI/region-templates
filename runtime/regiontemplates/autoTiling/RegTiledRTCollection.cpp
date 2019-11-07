@@ -116,8 +116,8 @@ void RegTiledRTCollection::customTiling() {
             //    e.g., 6 tiles organized as a 2x3 grid has nx=2 and ny=3
             // Assuming that nx = k and ny = nTiles/k (arbitrary k with 
             // 1<=k<=nTiles) we must find k that minimizes the sum of all 
-            // circumferences of the generated tiles, thus making them square.
-            // Being Sc(sum of circumferences) = 2(tw+th)*(nx*ny), and taking 
+            // perimeters of the generated tiles, thus making them square.
+            // Being Sc(sum of perimeters) = 2(tw+th)*(nx*ny), and taking 
             // the first derivative Sc'=0 we have that the value of k for 
             // Sc minimal is:
             float k = sqrt((float)this->nTiles*(float)h/(float)w);
