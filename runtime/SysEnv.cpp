@@ -32,18 +32,21 @@ SysEnv::~SysEnv() {
 }
 
 // initialize MPI
-MPI::Intracomm init_mpi(int argc, char **argv, int &size, int &rank, std::string &hostname) {
-    MPI::Init(argc, argv);
+MPI_Comm init_mpi(int argc, char **argv, int &size, int &rank, std::string &hostname) {
+    int initialized;
+    MPI_Initialized(&initialized);
+    if (!initialized)
+    	MPI_Init(&argc, &argv);
 
     char *temp = new char[256];
     gethostname(temp, 255);
     hostname.assign(temp);
     delete [] temp;
 
-    size = MPI::COMM_WORLD.Get_size();
-    rank = MPI::COMM_WORLD.Get_rank();
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    return MPI::COMM_WORLD;
+    return MPI_COMM_WORLD;
 }
 
 Manager *SysEnv::getManager() const
@@ -140,12 +143,12 @@ int SysEnv::startupSystem(int argc, char **argv, std::string componentsLibName){
 	parseInputArguments(argc, argv);
 //	std::cout << "after input args parse" << std::endl;
 
-	MPI::Intracomm comm_world = init_mpi(argc, argv, size, rank, hostname);
+	MPI_Comm comm_world = init_mpi(argc, argv, size, rank, hostname);
 
 //	if(rank == 0){
 //
 ////		        int npapp = this->comm_world.Get_size() -1;
-//	int npapp = 1;  
+//	int npapp = 1;
 // //     std::cout << " DataSpaces clients: "<< npapp << std::endl;
 //        dspaces_init(npapp, 1);
 ////        std::cout <<  " after DataSpaces init" << std::endl;
@@ -156,7 +159,7 @@ int SysEnv::startupSystem(int argc, char **argv, std::string componentsLibName){
 	std::cout << "Using: cpus="<<this->cpus<< " gpus="<< this->gpus << " policy="<< this->policy<< " dataLocalityAware?="<< dataLocalityAware<<std::endl;
 	if (size == 1) {
 		printf("ERROR: this must run with 2 or more MPI processes. 1 for the Manager and 1(+) for Worker(s)\n");
-		MPI::Finalize();
+		MPI_Finalize();
 		exit(1);
 		return -4;
 	}
@@ -200,8 +203,8 @@ int SysEnv::startupSystem(int argc, char **argv, std::string componentsLibName){
 	}
 
 	// Shake hands and finalize MPI
-	comm_world.Barrier();
-	MPI::Finalize();
+	MPI_Barrier(comm_world);
+	MPI_Finalize();
 	exit(0);
 
 }

@@ -7,21 +7,6 @@
 
 #include "Worker.h"
 
-/*Worker::Worker(const MPI::Intracomm& comm_world, const int manager_rank, const int rank, const int max_active_components, const int CPUCores, const int GPUs, const int schedType, const bool dataLocalityAware, const bool prefetching) {
-	this->manager_rank = manager_rank;
-	this->rank = rank;
-	this->comm_world = comm_world;
-	this->setMaxActiveComponentInstances(max_active_components);
-	this->setActiveComponentInstances(0);
-
-	// Create a local Resource Manager
-	this->setResourceManager(new ExecutionEngine(CPUCores, GPUs, schedType, dataLocalityAware, prefetching));
-
-	// Computing threads startup consuming tasks
-	this->getResourceManager()->startupExecution();
-
-	pthread_mutex_init(&this->computedComponentsLock, NULL);
-}*/
 // initialize singleton related control variables
 bool Worker::instanceFlag = false;
 Worker* Worker::singleWorker = NULL;
@@ -49,6 +34,8 @@ Worker::Worker(const int manager_rank, const int rank, const int max_active_comp
 
 	pthread_mutex_init(&this->computedComponentsLock, NULL);
 	pthread_mutex_init(&this->activeComponentsRefLoc, NULL);
+
+	this->comm_world = MPI_COMM_WORLD;
 }
 
 
@@ -77,7 +64,7 @@ Worker::~Worker() {
 	pthread_mutex_destroy(&this->activeComponentsRefLoc);
 }
 
-const MPI::Intracomm Worker::getCommWorld() const
+const MPI_Comm Worker::getCommWorld() const
 {
     return comm_world;
 }
@@ -132,15 +119,15 @@ void Worker::configureExecutionEnvironment(){
 
 	// Sent configuration status to the Manager: so far, it only means
 	// that the components library was correctly initialized
-	comm_world.Send(&successConf, 1, MPI::BOOL, this->getManagerRank(), MessageTag::TAG_CONTROL);
+	MPI_Send(&successConf, 1, MPI_C_BOOL, this->getManagerRank(), MessageTag::TAG_CONTROL, this->comm_world);
 
 	// Receive global initialization result from the Manager
-	comm_world.Bcast(&successConf, 1 , MPI::BOOL, this->getManagerRank());
+    MPI_Bcast(&successConf, 1 , MPI_C_BOOL, this->getManagerRank(), this->comm_world);
 
 	// Finalize the execution if the initialization failed.
 	if(successConf==false){
 		std::cout << "Quitting. Initialization failed, Worker rank:"<< this->getRank() <<std::endl;
-		MPI::Finalize();
+		MPI_Finalize();
 		exit(1);
 	}
 }
@@ -148,21 +135,21 @@ void Worker::configureExecutionEnvironment(){
 PipelineComponentBase *Worker::receiveComponentInfoFromManager()
 {
 	PipelineComponentBase *pc = NULL;
-	MPI::Status status;
-	int message_size;
+    MPI_Status status;
+    int message_size;
 
-	// Probe for incoming message from Manager
-	this->comm_world.Probe(this->getManagerRank(), (int)MessageTag::TAG_METADATA, status);
+    // Probe for incoming message from Manager
+    MPI_Probe(this->getManagerRank(), (int)MessageTag::TAG_METADATA, this->comm_world, &status);
 
-	// Check the size of the input message
-	message_size = status.Get_count(MPI::CHAR);
+    // Check the size of the input message
+    MPI_Get_count(&status, MPI_CHAR, &message_size);
 
-	char *msg = new char[message_size];
+    char *msg = new char[message_size];
 
-//	std::cout << "Msg size="<<message_size<<std::endl;
+//  std::cout << "Msg size="<<message_size<<std::endl;
 
-	// get data from manager
-	this->comm_world.Recv(msg, message_size, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_METADATA);
+    // get data from manager
+    MPI_Recv(msg, message_size, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_METADATA, this->comm_world, MPI_STATUS_IGNORE);
 
 	// Unpack the name of the component to instantiate it and deserialize message
 	int comp_name_size = ((int*)msg)[1];
@@ -186,19 +173,19 @@ PipelineComponentBase *Worker::receiveComponentInfoFromManager()
 
 
 void Worker::receiveCacheInfoFromManager() {
-	MPI::Status status;
-	int message_size;
+	MPI_Status status;
+    int message_size;
 
-	// Probe for incoming message from Manager
-	this->comm_world.Probe(this->getManagerRank(), (int)MessageTag::TAG_CACHE_INFO, status);
+    // Probe for incoming message from Manager
+    MPI_Probe(this->getManagerRank(), (int)MessageTag::TAG_CACHE_INFO, this->comm_world, &status);
 
-	// Check the size of the input message
-	message_size = status.Get_count(MPI::CHAR);
+    // Check the size of the input message
+    MPI_Get_count(&status, MPI_CHAR, &message_size);
 
-	char *msg = new char[message_size];
+    char *msg = new char[message_size];
 
-	// get data from manager
-	this->comm_world.Recv(msg, message_size, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CACHE_INFO);
+    // get data from manager
+    MPI_Recv(msg, message_size, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_CACHE_INFO, this->comm_world, MPI_STATUS_IGNORE);
 
 	int deserialized_bytes = 0;
 	std::string rtName, rtId, drName, drId, inputFileName;
@@ -279,20 +266,22 @@ void Worker::workerProcess()
 
 //	std::cout << "Worker: " << this->getRank() << ", before ready Barrier" << std::endl;
 
-#ifdef	WITH_DATA_SPACES
-	int npapp = this->comm_world.Get_size() -1;
-	std::cout << " DataSpaces clients: "<< npapp << std::endl;
-	//	dspaces_init(npapp, 1);
-	std::cout <<  " after DataSpaces init" << std::endl;
+    int comm_size;
+    MPI_Comm_size(this->comm_world, &comm_size);
+#ifdef  WITH_DATA_SPACES
+    int npapp = comm_size -1;
+    std::cout << " DataSpaces clients: "<< npapp << std::endl;
+    //  dspaces_init(npapp, 1);
+    std::cout <<  " after DataSpaces init" << std::endl;
 #endif
 
 	// Wait until the Manager startups the execution
-	this->comm_world.Barrier();
+    MPI_Barrier(this->comm_world);
 	char hostname[1024];
 	hostname[1023] = '\0';
 	gethostname(hostname, 1023);
 
-	std::cout << "Worker: " << this->getRank() << " ready. Hostname: "<<hostname << " num_procs: "<< this->comm_world.Get_size()<<std::endl;
+    std::cout << "Worker: " << this->getRank() << " ready. Hostname: "<<hostname << " num_procs: "<< comm_size << std::endl;
 
 	// Flag that control the execution loop, and is updated from messages sent by the Manager
 	char flag = MessageTag::MANAGER_READY;
@@ -304,10 +293,11 @@ void Worker::workerProcess()
 		ready[0] = MessageTag::WORKER_READY;
 		ready[1] = this->availableCpuThreads;
 		ready[2] = this->availableGpuThreads;
-		this->comm_world.Send(ready, 3, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
+		// tell the manager - ready
+        MPI_Send(&MessageTag::WORKER_READY, 1, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL, this->comm_world);
 
-		// get the manager status
-		this->comm_world.Recv(&flag, 1, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
+        // get the manager status
+        MPI_Recv(&flag, 1, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL, this->comm_world, MPI_STATUS_IGNORE);
 
 	//	std::cout << "Worker: "<< this->getRank()<<" flag: " <<(int)flag<<std::endl;
 	
@@ -569,7 +559,7 @@ void Worker::notifyComponentsCompleted()
 		pthread_mutex_unlock(&this->computedComponentsLock);
 
 		// Now we have a message (msg) that is ready to sent to the Master
-		this->comm_world.Send(msg, message_size, MPI::CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL);
+        MPI_Send(msg, message_size, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL, this->comm_world);
 
 		// Remove message
 		delete[] msg;

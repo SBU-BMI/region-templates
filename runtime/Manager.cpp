@@ -7,7 +7,7 @@
 
 #include "Manager.h"
 
-Manager::Manager(const MPI::Intracomm& comm_world, const int manager_rank, 
+Manager::Manager(const MPI_Comm comm_world, const int manager_rank, 
 	const int worker_size, const bool componentDataAwareSchedule, 
 	const int queueType, const int cpuThreads, const int gpuThreads) {
 
@@ -46,7 +46,7 @@ Manager::~Manager() {
 	delete this->componentDependencies;
 }
 
-MPI::Intracomm Manager::getCommWorld() const
+MPI_Comm Manager::getCommWorld() const
 {
     return comm_world;
 }
@@ -63,9 +63,9 @@ int Manager::getWorkerSize() const
 
 int Manager::finalizeExecution()
 {
-	MPI::Status status;
+	MPI_Status status;
 	int worker_id;
-	char ready[3];
+	char ready;
 
 
 	/* tell everyone to quit */
@@ -74,21 +74,22 @@ int Manager::finalizeExecution()
 	std::vector<bool> finished;
 	for(int i = 0; i < worker_size; i++)
 		finished.push_back(false);
-	
+
 	while (active_workers > 0) {
 		usleep(1000);
-
-		if (comm_world.Iprobe(MPI_ANY_SOURCE, MessageTag::TAG_CONTROL, status)) {
-
+		
+		int flag;
+		MPI_Iprobe(MPI_ANY_SOURCE, MessageTag::TAG_CONTROL, this->comm_world, &flag, &status);
+		if (flag) {
 			// where is it coming from
-			worker_id=status.Get_source();
-			comm_world.Recv(ready, 3, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
+			worker_id=status.MPI_SOURCE;
+			MPI_Recv(&ready, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world, MPI_STATUS_IGNORE);
 
 			if (worker_id == manager_rank) continue;
 
-			if(ready[0] == MessageTag::WORKER_READY) {
+			if(ready == MessageTag::WORKER_READY) {
 				if(finished[worker_id] == false){
-					comm_world.Send(&MessageTag::MANAGER_FINISHED, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
+					MPI_Send(&MessageTag::MANAGER_FINISHED, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
 					printf("manager signal finished worker: %d manager_rank: %d\n", worker_id, manager_rank);
 					--active_workers;
 					finished[worker_id] = true;
@@ -96,15 +97,15 @@ int Manager::finalizeExecution()
 			}
 		}
 	}
-	this->getCommWorld().Barrier();
-	MPI::Finalize();
+	MPI_Barrier(this->comm_world);
+	MPI_Finalize();
 	return 0;
 }
 
 void Manager::checkConfiguration()
 {
 
-	MPI::Status status;
+	MPI_Status status;
 	int worker_id;
 	char ready;
 	bool correctInitialization = true;
@@ -115,12 +116,13 @@ void Manager::checkConfiguration()
 	while (active_workers > 0) {
 		usleep(1000);
 
-		if (comm_world.Iprobe(MPI_ANY_SOURCE, MessageTag::TAG_CONTROL, status)) {
-
+		int flag;
+		MPI_Iprobe(MPI_ANY_SOURCE, MessageTag::TAG_CONTROL, this->comm_world, &flag, &status);
+		if (flag) {
 			// where is it coming from
-			worker_id=status.Get_source();
+			worker_id=status.MPI_SOURCE;
 			bool curWorkerStatus;
-			comm_world.Recv(&curWorkerStatus, 1, MPI::BOOL, worker_id, MessageTag::TAG_CONTROL);
+			MPI_Recv(&curWorkerStatus, 1, MPI_C_BOOL, worker_id, MessageTag::TAG_CONTROL, this->comm_world, MPI_STATUS_IGNORE);
 			if(curWorkerStatus == false){
 				correctInitialization = false;
 			}
@@ -129,11 +131,11 @@ void Manager::checkConfiguration()
 	}
 
 	// Tell each worker whether to continue or quit the execution
-	comm_world.Bcast(&correctInitialization, 1 , MPI::BOOL, this->getManagerRank());
+	MPI_Bcast(&correctInitialization, 1 , MPI_C_BOOL, this->getManagerRank(), this->comm_world);
 
 	if(correctInitialization==false){
 		std::cout << "Quitting. Workers initialization failed. Possible due to errors loading the components library."<<std::endl;
-		MPI::Finalize();
+		MPI_Finalize();
 		exit(1);
 	}
 }
@@ -143,8 +145,7 @@ void Manager::checkConfiguration()
 void Manager::sendDRInfoToWorkerForGlobalStorage(int worker_id, std::string rtName, std::string rtId,
 		DataRegion* dr) {
 	// tell worker that a DR should be moved to global storage
-	comm_world.Send(&MessageTag::CACHE_MOVE_DR_TO_GLOBAL_STORAGE, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
-
+	MPI_Send(&MessageTag::CACHE_MOVE_DR_TO_GLOBAL_STORAGE, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
 
 	int msgSize = DataPack::packSize(rtName);
 	msgSize += DataPack::packSize(rtId);
@@ -164,8 +165,7 @@ void Manager::sendDRInfoToWorkerForGlobalStorage(int worker_id, std::string rtNa
 	DataPack::pack(msg, serialized_bytes, dr->getTimestamp());
 	DataPack::pack(msg, serialized_bytes, dr->getVersion());
 
-
-	comm_world.Send(msg, msgSize, MPI::CHAR, worker_id, MessageTag::TAG_CACHE_INFO);
+	MPI_Send(msg, msgSize, MPI_CHAR, worker_id, MessageTag::TAG_CACHE_INFO, this->comm_world);
 
 	delete msg;
 }
@@ -212,7 +212,7 @@ void Manager::sendComponentInfoToWorker(int worker_id, PipelineComponentBase *pc
 	}
 
 	// Send component for execution after sending data regions for global storage, if necessary
-	comm_world.Send(buff, comp_serialization_size, MPI::CHAR, worker_id, MessageTag::TAG_METADATA);
+	MPI_Send(buff, comp_serialization_size, MPI_CHAR, worker_id, MessageTag::TAG_METADATA, this->comm_world);
 
 #ifdef DEBUG
 	std::cout << "Done send comp" << std::endl;
@@ -233,14 +233,14 @@ void Manager::manager_process()
 	std::cout<< "Manager ready. Rank = %d"<<std::endl;
 #endif
 	if(isFirstExecutionRound()){
-		comm_world.Barrier();
+		MPI_Barrier(this->comm_world);
 		setFirstExecutionRound(false);
 	}
 
 	// now start the loop to listen for messages
 	int curr = 0;
 	int total = 10;
-	MPI::Status status;
+	MPI_Status status;
 	int worker_id;
 	char msg_type;
 	int available_cpus;
@@ -256,21 +256,23 @@ void Manager::manager_process()
 	// Process all components instantiated for execution
 	while (componentsToExecute->getSize() != 0 || this->componentDependencies->getCountTasksPending() != 0 || this->getActiveComponentsSize()) {
 
-		if (comm_world.Iprobe(MPI_ANY_SOURCE, MessageTag::TAG_CONTROL, status)) {
+		int flag;
+		MPI_Iprobe(MPI_ANY_SOURCE, MessageTag::TAG_CONTROL, this->comm_world, &flag, &status);
+		if (flag) {
 
 			// Where is the message coming from
-			worker_id=status.Get_source();
+			worker_id=status.MPI_SOURCE;
 
 			// Check the size of the input message
-			int input_message_size = status.Get_count(MPI::CHAR);
+			int input_message_size;
+			MPI_Get_count(&status, MPI_CHAR, &input_message_size);
 
 			assert(input_message_size > 0);
 
 			char *msg = new char[input_message_size];
 
-			// Read the
-			comm_world.Recv(msg, input_message_size, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
-			//			printf("manager received request from worker %d\n",worker_id);
+			// Read the msg
+			MPI_Recv(msg, input_message_size, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world, MPI_STATUS_IGNORE);
 			msg_type = msg[0];
 			available_cpus = msg[1];
 			available_gpus = msg[2];
@@ -304,14 +306,14 @@ void Manager::manager_process()
 							if (compToExecute == NULL) {
 								// Tell worker that manager don't have a task for it. 
 								// Nothing else to do at this moment. Should ask again.
-								comm_world.Send(&MessageTag::MANAGER_WORK_QUEUE_EMPTY, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
+								MPI_Send(&MessageTag::MANAGER_READY, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
 								break;
 							}
 
 							// compToExecute = (PipelineComponentBase*)componentsToExecute->getTask();
 						}
 						// tell worker that manager is ready
-						comm_world.Send(&MessageTag::MANAGER_READY, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
+						MPI_Send(&MessageTag::MANAGER_READY, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
 #ifdef DEBUG
 						std::cout << "Manager: before sending, size: "<< this->componentsToExecute->getSize() << std::endl;
 #endif
@@ -321,7 +323,7 @@ void Manager::manager_process()
 
 					}else{
 						// tell worker that manager queue is empty. Nothing else to do at this moment. Should ask again.
-						comm_world.Send(&MessageTag::MANAGER_WORK_QUEUE_EMPTY, 1, MPI::CHAR, worker_id, MessageTag::TAG_CONTROL);
+						MPI_Send(&MessageTag::MANAGER_WORK_QUEUE_EMPTY, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
 					}
 					break;
 				}

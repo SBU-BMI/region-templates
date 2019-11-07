@@ -39,8 +39,8 @@ private:
 	// Rank assigned to the Manager process
 	int manager_rank;
 
-	// Communication group of this execution
-	MPI::Intracomm comm_world;
+    // Communication group of this execution
+    MPI_Comm comm_world;
 
 	// Name of the library that implements the components executed by this worker
 	std::string componentLibName;
@@ -125,14 +125,13 @@ private:
 
 public:
 
-//    Worker(const MPI::Intracomm & comm_world, const int manager_rank, const int rank, const int max_active_components=1, const int CPUCores = 1, const int GPUs = 0, const int schedType = ExecEngineConstants::FCFS_QUEUE, const bool dataLocalityAware=false, const bool prefetching=false);
     static Worker* getInstance(const int manager_rank=0, const int rank=0, const int max_active_components=1, const int CPUCores=1, const int GPUs=0, const int schedType=ExecEngineConstants::FCFS_QUEUE, const bool dataLocalityAware=false, const bool prefetching=false, bool cacheOnRead = false);
     virtual ~Worker();
 
     // Main loop that keeps receiving component instances and executing them
     void workerProcess();
 
-    const MPI::Intracomm getCommWorld() const;
+    const MPI_Comm getCommWorld() const;
 
     // Simply return the values of the manager rank and this workers rank
     int getManagerRank() const;
@@ -171,9 +170,9 @@ public:
     void printHello(){
     	std::cout << "Hey! componentLibName: "<< this->getComponentLibName() << std::endl;
     };
-	void setCommWorld(MPI::Intracomm& commWorld) {
-		comm_world = commWorld;
-	}
+	void setCommWorld(MPI_Comm commWorld) {
+        this->comm_world = commWorld;
+    }
 };
 
 

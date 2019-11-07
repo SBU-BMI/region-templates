@@ -68,7 +68,7 @@ private:
 	int getActiveComponentsSize();
 
 	// MPI structure defining the communication group information
-	MPI::Intracomm comm_world;
+	MPI_Comm comm_world;
 
 	void sendComponentInfoToWorker(int worker_id, PipelineComponentBase *pc);
 
@@ -84,14 +84,14 @@ private:
 	friend class PipelineComponentBase;
 
 public:
-	Manager(const MPI::Intracomm& comm_world, const int manager_rank, const int worker_size, const bool componentDataAwareSchedule=false, const int queueType=ExecEngineConstants::FCFS_QUEUE, const int cpuThreads=1, const int gpuThreads=0);
+	Manager(const MPI_Comm comm_world, const int manager_rank, const int worker_size, const bool componentDataAwareSchedule=false, const int queueType=ExecEngineConstants::FCFS_QUEUE, const int cpuThreads=1, const int gpuThreads=0);
 	virtual ~Manager();
 
 	void manager_process();
 	int finalizeExecution();
 	void checkConfiguration();
 
-    MPI::Intracomm getCommWorld() const;
+    MPI_Comm getCommWorld() const;
     int getManagerRank() const;
     int getWorkerSize() const;
     void setWorkerSize(int worker_size);
