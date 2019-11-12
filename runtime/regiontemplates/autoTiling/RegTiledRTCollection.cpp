@@ -44,7 +44,7 @@ void stddev(std::list<cv::Rect_<int64_t>> rs,
     for (cv::Rect_<int64_t> r : rs)
         var += pow(cost(img, r)-mean, 2);
     
-    std::cout << "[PROFILING][" << name << "]" 
+    std::cout << "[PROFILING][STDDEV][" << name << "]" 
         << (sqrt(var/(rs.size()-1))) << std::endl;
 }
 
@@ -156,10 +156,10 @@ void RegTiledRTCollection::customTiling() {
                     this->tw+this->border, this->th+this->border);
                 rois.push_back(roi);
 
-#ifdef DEBUG
-                std::cout << "creating roi " << roi.x << "+" << roi.width 
-                    << "x" << roi.y << "+" << roi.height << std::endl;
-#endif
+// #ifdef DEBUG
+//                 std::cout << "creating roi " << roi.x << "+" << roi.width 
+//                     << "x" << roi.y << "+" << roi.height << std::endl;
+// #endif
 
                 // // Create a tile file
                 // createTile(roi, this->tilesPath, this->name, drId++,
@@ -177,10 +177,10 @@ void RegTiledRTCollection::customTiling() {
                 w-tj, this->th+this->border);
             rois.push_back(roi);
 
-#ifdef DEBUG
-            std::cout << "creating roi " << roi.x << "+" << roi.width 
-                    << "x" << roi.y << "+" << roi.height << std::endl;
-#endif
+// #ifdef DEBUG
+//             std::cout << "creating roi " << roi.x << "+" << roi.width 
+//                     << "x" << roi.y << "+" << roi.height << std::endl;
+// #endif
 
             // Create the first tile file
             // createTile(roi, this->tilesPath, this->name, drId++,
@@ -193,10 +193,10 @@ void RegTiledRTCollection::customTiling() {
                     w-tj, this->th+this->border);
                 rois.push_back(roi);
 
-#ifdef DEBUG
-                std::cout << "creating roi " << roi.x << "+" << roi.width 
-                    << "x" << roi.y << "+" << roi.height << std::endl;
-#endif
+// #ifdef DEBUG
+//                 std::cout << "creating roi " << roi.x << "+" << roi.width 
+//                     << "x" << roi.y << "+" << roi.height << std::endl;
+// #endif
 
                 // Create a tile file
                 // createTile(roi, this->tilesPath, this->name, drId++,
@@ -213,10 +213,10 @@ void RegTiledRTCollection::customTiling() {
                 this->tw+this->border, h-ti);
             rois.push_back(roi);
 
-#ifdef DEBUG
-            std::cout << "creating roi " << roi.x << "+" << roi.width 
-                << "x" << roi.y << "+" << roi.height << std::endl;
-#endif
+// #ifdef DEBUG
+//             std::cout << "creating roi " << roi.x << "+" << roi.width 
+//                 << "x" << roi.y << "+" << roi.height << std::endl;
+// #endif
 
             // Create the first tile file
             // createTile(roi, this->tilesPath, this->name, drId++,
@@ -229,10 +229,10 @@ void RegTiledRTCollection::customTiling() {
                     this->tw+this->border, h-ti);
                 rois.push_back(roi);
 
-#ifdef DEBUG
-                std::cout << "creating roi " << roi.x << "+" << roi.width 
-                    << "x" << roi.y << "+" << roi.height << std::endl;
-#endif
+// #ifdef DEBUG
+//                 std::cout << "creating roi " << roi.x << "+" << roi.width 
+//                     << "x" << roi.y << "+" << roi.height << std::endl;
+// #endif
 
                 // Create a tile file
                 // createTile(roi, this->tilesPath, this->name, drId++,
@@ -250,18 +250,20 @@ void RegTiledRTCollection::customTiling() {
                 w-tj, h-ti);
             rois.push_back(roi);
 
-#ifdef DEBUG
-            std::cout << "creating roi " << roi.x << "+" << roi.width 
-                << "x" << roi.y << "+" << roi.height << std::endl;
-#endif
+// #ifdef DEBUG
+//             std::cout << "creating roi " << roi.x << "+" << roi.width 
+//                 << "x" << roi.y << "+" << roi.height << std::endl;
+// #endif
 
             // Create a tile file
             // createTile(roi, this->tilesPath, this->name, drId++,
             //     this->refDDRName, this->rts);
         }
 
+#ifdef PROFILING
         // Gets std-dev of dense tiles' sizes
-        stddev(rois, mat, "ALLSTDDEV");
+        stddev(rois, mat, "ALL");
+#endif
 
         // Creates the actual tiles with the correct size
         int drId = 0;

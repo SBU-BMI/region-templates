@@ -101,3 +101,7 @@ if(RTEMPLATES_UNIT_TESTS)
 	include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 	add_subdirectory("tests")
 endif(RTEMPLATES_UNIT_TESTS)
+
+if(PROFILING)
+    add_definitions(-DPROFILING)
+endif(PROFILING)

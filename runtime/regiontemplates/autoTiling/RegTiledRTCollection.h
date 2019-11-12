@@ -10,6 +10,7 @@
 #include "openslide.h"
 
 #include "TiledRTCollection.h"
+#include "tilingAlgs/tilingUtil.h"
 
 class RegTiledRTCollection : public TiledRTCollection {
 private:

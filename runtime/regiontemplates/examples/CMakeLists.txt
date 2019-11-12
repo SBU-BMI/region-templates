@@ -91,3 +91,7 @@ add_subdirectory("HelloWorldRT")
 #add_subdirectory("HelloWorldRT")
 #add_subdirectory("RTPipelineBundle")
 #add_subdirectory("FireDetection")
+
+if(PROFILING)
+    add_definitions(-DPROFILING)
+endif(PROFILING)

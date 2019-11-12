@@ -26,3 +26,7 @@ include_directories("./tilingAlgs")
 
 target_link_libraries("${libname}" ${OpenCV_LIBS})
 target_link_libraries("${libname}" openslide)
+
+if(PROFILING)
+    add_definitions(-DPROFILING)
+endif(PROFILING)

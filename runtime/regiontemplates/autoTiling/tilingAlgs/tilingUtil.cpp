@@ -15,7 +15,7 @@ void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name) {
     for (rect_t r : rs)
         var += pow(cost(img, r)-mean, 2);
     
-    std::cout << "[PROFILING][" << name << "]" 
+    std::cout << "[PROFILING][STDDEV][" << name << "]" 
         << (sqrt(var/(rs.size()-1))) << std::endl;
 }
 
@@ -23,6 +23,12 @@ void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name) {
 void printRect(rect_t r) {
     std::cout << r.xi << ":" << r.xo << "," << r.yi << ":" << r.yo;
 }
+
+// // Returns the sum of all pixels' values of the roi 'r' of an input image
+// inline int pxSum(const cv::Mat& img, const cv::Rect_<int64_t>& r) {
+//     return cv::sum(img(cv::Range(r.y, r.y+r.height), 
+//                        cv::Range(r.x, r.x+r.width)))[0];
+// }
 
 /*****************************************************************************/
 /**                           Log Split Algorithm                           **/

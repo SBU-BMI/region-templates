@@ -42,3 +42,8 @@ if(BUILD_SAMPLE_APPLICATIONS)
 	add_subdirectory("examples/abcde")
 	add_subdirectory("tests")
 endif(BUILD_SAMPLE_APPLICATIONS)
+
+if(PROFILING)
+    add_definitions(-DPROFILING)
+endif(PROFILING)
+

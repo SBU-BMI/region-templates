@@ -123,6 +123,10 @@ private:
 	void setCache(Cache* cache);
 #endif
 
+#ifdef PROFILING
+    long long workerPrepareTime;
+#endif
+
 public:
 
     static Worker* getInstance(const int manager_rank=0, const int rank=0, const int max_active_components=1, const int CPUCores=1, const int GPUs=0, const int schedType=ExecEngineConstants::FCFS_QUEUE, const bool dataLocalityAware=false, const bool prefetching=false, bool cacheOnRead = false);

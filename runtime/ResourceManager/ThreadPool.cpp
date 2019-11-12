@@ -7,11 +7,23 @@
 
 #include "ThreadPool.h"
 
+#ifdef PROFILING
+#include <mpi.h>
+#endif
 
 // GPU functions called to initialize device.
 //void warmUp(int device);
 //void *cudaMemAllocWrapper(int dataSize);
 //void cudaFreeMemWrapper(void *data_ptr);
+
+#ifdef PROFILING
+long long ClockGetTime()
+{
+        struct timeval ts;
+        gettimeofday(&ts, NULL);
+        return (ts.tv_sec*1000000 + (ts.tv_usec))/1000LL;
+}
+#endif
 
 void *callThread(void *arg){
 	ThreadPool *tp = (ThreadPool *)((threadData*) arg)->threadPoolPtr;
@@ -297,9 +309,15 @@ void ThreadPool::processTasks(int procType, int tid)
 	Task* downloadingTask = NULL;
 	vector<int> downloadArgIds;
 
-	// ProcessTime example
-	struct timeval startTime;
-	struct timeval endTime;
+// #ifdef PROFILING
+// 	// ProcessTime example
+// 	struct timeval startTime;
+// 	struct timeval endTime;
+// #endif
+
+#ifdef PROFILING
+	long long sumOfExecTimes = 0;
+#endif
 
 	// Increment tasks semaphore to avoid the thread from get stuck when taking the prefetched task
 	if(this->prefetching == true && procType == ExecEngineConstants::GPU ){
@@ -413,11 +431,12 @@ void ThreadPool::processTasks(int procType, int tid)
 
 		procPoint:
 
-		gettimeofday(&startTime, NULL);
+#ifdef PROFILING
+		long taskExecT1 = ClockGetTime();
+		// gettimeofday(&startTime, NULL);
+		// double tSComp = startTime.tv_sec*1000000 + (startTime.tv_usec);
+#endif
 
-		double tSComp = startTime.tv_sec*1000000 + (startTime.tv_usec);
-
-//		printf("StartTime:%f\n",(tSComp)/1000000);
 		try{
 			
 			std::cout << "Executing, task.id: "<< curTask->getId() << std::endl;
@@ -505,14 +524,16 @@ void ThreadPool::processTasks(int procType, int tid)
 			continue;
 		}
 
-		gettimeofday(&endTime, NULL);
+#ifdef PROFILING
+		long taskExecT2 = ClockGetTime();
+    	sumOfExecTimes += taskExecT2-taskExecT1;
 
-
-
-		// calculate time in microseconds
-		double tS = startTime.tv_sec*1000000 + (startTime.tv_usec);
-		double tE = endTime.tv_sec*1000000  + (endTime.tv_usec);
-		printf("procType:%d  tid:%d procTime = %f\n", procType, tid,  (tE-tS)/1000000);
+// 		// calculate time in microseconds
+// 		gettimeofday(&endTime, NULL);
+// 		double tS = startTime.tv_sec*1000000 + (startTime.tv_usec);
+// 		double tE = endTime.tv_sec*1000000  + (endTime.tv_usec);
+// 		printf("procType:%d  tid:%d procTime = %f\n", procType, tid,  (tE-tS)/1000000);
+#endif
 
 		// October 04, 2013. Commenting out line bellow to work with GPUs without compiling w/ cuda/gpu suppport
 	//	if(procType == ExecEngineConstants::CPU){
@@ -535,6 +556,13 @@ void ThreadPool::processTasks(int procType, int tid)
 //		}
 
 	}
+
+#ifdef PROFILING
+	int mpi_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+	cout << "[PROFILING][TASK_EXEC][R" << mpi_rank << "] " 
+		 << sumOfExecTimes << endl;
+#endif
 
 	printf("Leaving procType:%d  tid:%d #t_pending=%d\n", procType, tid, this->execEngine->getCountTasksPending());
 //	if(ExecEngineConstants::GPU == procType && gpuTempDataSize >0){

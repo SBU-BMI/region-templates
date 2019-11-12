@@ -102,15 +102,19 @@ void IrregTiledRTCollection::customTiling() {
             }
         }
 
+#ifdef PROFILING
         // Gets std-dev of dense tiles' sizes
-        stddev(preTiledAreas, thMask, "DENSESTDDEV");
+        stddev(preTiledAreas, thMask, "DENSE");
+#endif
 
         // Send resulting tiles to the final output
         finalTiles.insert(finalTiles.end(), 
             preTiledAreas.begin(), preTiledAreas.end());
 
+#ifdef PROFILING
         // Gets std-dev of all tiles' sizes
-        stddev(finalTiles, thMask, "ALLSTDDEV");
+        stddev(finalTiles, thMask, "ALL");
+#endif
 
         // Convert rect_t to cv::Rect_ and add borders
         std::list<cv::Rect_<int64_t> > tiles;

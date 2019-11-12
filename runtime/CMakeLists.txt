@@ -136,3 +136,8 @@ if(USE_DISTILER)
 	add_subdirectory("disTiler")
 	# target_link_libraries("${libname}" disTiler)
 endif(USE_DISTILER)
+
+option(PROFILING "Output profiling info on execution time." OFF)
+if(PROFILING)
+    add_definitions(-DPROFILING)
+endif(PROFILING)

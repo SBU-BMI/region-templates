@@ -32,6 +32,10 @@ Worker::Worker(const int manager_rank, const int rank, const int max_active_comp
 	std::cout << " Worker: "<< rank << " cacheOnRead: "<< this->cache->isCacheOnRead() << std::endl;
 #endif
 
+#ifdef PROFILING
+    this->workerPrepareTime = 0;
+#endif
+
 	pthread_mutex_init(&this->computedComponentsLock, NULL);
 	pthread_mutex_init(&this->activeComponentsRefLoc, NULL);
 
@@ -287,6 +291,10 @@ void Worker::workerProcess()
 	char flag = MessageTag::MANAGER_READY;
 	while (flag != MessageTag::MANAGER_FINISHED && flag != MessageTag::MANAGER_ERROR) {
 
+#ifdef PROFILING
+    	long workerPrepareT1 = Util::ClockGetTime();
+#endif
+
 		// tell the manager - ready
 		// Also states the type of thread (CPU or GPU or ...) this is
 		char ready[2];
@@ -357,6 +365,12 @@ void Worker::workerProcess()
 				}else{
 					std::cout << "Error: Failed to load PipelineComponent!"<<std::endl;
 				}
+
+#ifdef PROFILING
+    			long workerPrepareT2 = Util::ClockGetTime();
+    			this->workerPrepareTime += workerPrepareT2-workerPrepareT1;
+#endif
+
 				break;
 			}
 			case MessageTag::MANAGER_FINISHED:
@@ -396,6 +410,12 @@ void Worker::workerProcess()
 			this->notifyComponentsCompleted();
 		}
 	}
+
+#ifdef PROFILING
+    std::cout << "[PROFILING][WORKER_PREP_TIME][R" << this->rank << "] " 
+    	<< this->workerPrepareTime << std::endl;
+#endif
+
 	//std::cout<< "ENDDDD EXECUTION = "<< this->getComputedComponentSize() <<std::endl;
 	// Assert that all tasks queued for execution are completed before leaving
 	this->getResourceManager()->endExecution();
