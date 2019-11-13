@@ -102,19 +102,19 @@ void IrregTiledRTCollection::customTiling() {
             }
         }
 
-#ifdef PROFILING
-        // Gets std-dev of dense tiles' sizes
-        stddev(preTiledAreas, thMask, "DENSE");
-#endif
+// #ifdef PROFILING
+//         // Gets std-dev of dense tiles' sizes
+//         stddev(preTiledAreas, thMask, "DENSE");
+// #endif
 
         // Send resulting tiles to the final output
         finalTiles.insert(finalTiles.end(), 
             preTiledAreas.begin(), preTiledAreas.end());
 
-#ifdef PROFILING
-        // Gets std-dev of all tiles' sizes
-        stddev(finalTiles, thMask, "ALL");
-#endif
+// #ifdef PROFILING
+//         // Gets std-dev of all tiles' sizes
+//         stddev(finalTiles, thMask, "ALL");
+// #endif
 
         // Convert rect_t to cv::Rect_ and add borders
         std::list<cv::Rect_<int64_t> > tiles;
@@ -129,15 +129,15 @@ void IrregTiledRTCollection::customTiling() {
             tiles.push_back(cv::Rect_<int64_t>(
                 r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
 
-// #ifdef DEBUG
+#ifdef DEBUG
             cv::rectangle(maskMat, cv::Point(r->xi,r->yi), 
                 cv::Point(r->xo,r->yo),(0,0,0),3);
-// #endif
+#endif
         }
 
-// #ifdef DEBUG
+#ifdef DEBUG
         cv::imwrite("./maskf.png", maskMat);
-// #endif
+#endif
 
         // Actually tile the image given the list of ROIs
         int drId=0;
