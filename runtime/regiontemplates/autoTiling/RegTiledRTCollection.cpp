@@ -293,7 +293,6 @@ void RegTiledRTCollection::customTiling() {
 
         // Close .svs file
         openslide_close(osr);
-        exit(-10);
 
         // Add the current image tiles to the tiles vector
         this->tiles.push_back(newRois);

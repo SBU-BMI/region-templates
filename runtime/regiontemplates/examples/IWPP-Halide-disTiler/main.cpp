@@ -613,6 +613,9 @@ int main(int argc, char *argv[]) {
         cout << "\t\t3: KD_TREE_ALG_AREA" << endl;
         cout << "\t\t4: KD_TREE_ALG_COST" << endl;
         cout << "\t\t5: FIXED_GRID_TILING" << endl;
+        cout << "\t\t6: HBAL_TRIE_QUAD_TREE_ALG" << endl;
+        cout << "\t\t7: CBAL_TRIE_QUAD_TREE_ALG" << endl;
+        cout << "\t\t8: CBAL_POINT_QUAD_TREE_ALG" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
         
         exit(0);
@@ -724,7 +727,7 @@ int main(int argc, char *argv[]) {
 #ifdef PROFILING
     long tilingT2 = Util::ClockGetTime();
     cout << "[PROFILING][TILING_TIME] " << (tilingT2-tilingT1) << endl;
-    cout << "[PROFILING][TILES]: " << tCollImg->getNumRTs() << endl;
+    cout << "[PROFILING][TILES] " << tCollImg->getNumRTs() << endl;
 #endif
 
     // Create an instance of the two stages for each image tile pair
