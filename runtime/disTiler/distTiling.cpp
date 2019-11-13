@@ -231,30 +231,30 @@ int distExec(int argc, char* argv[], cv::Mat& inImg) {
 
     int np, rank;
 
-    // initialize mpi and separate manager from worker nodes
-    if (MPI_Init(&argc, &argv) != 0) {
-        cout << "[distExec] Init error" << endl;
-        exit(1);
-    }
+    // // initialize mpi and separate manager from worker nodes
+    // if (MPI_Init(&argc, &argv) != 0) {
+    //     cout << "[distExec] Init error" << endl;
+    //     exit(1);
+    // }
 
-    if (MPI_Comm_size(MPI_COMM_WORLD, &np) != 0 
-            || MPI_Comm_rank(MPI_COMM_WORLD, &rank) != 0) {
-        cout << "[distExec] Rank error" << endl;
-        exit(1);
-    }
+    // if (MPI_Comm_size(MPI_COMM_WORLD, &np) != 0 
+    //         || MPI_Comm_rank(MPI_COMM_WORLD, &rank) != 0) {
+    //     cout << "[distExec] Rank error" << endl;
+    //     exit(1);
+    // }
 
-    // node 0 is the manager
-    if (rank == 0) {
-        managerProc(rank, np, inImg);
-        cv::imwrite("./output.png", inImg);
-    } else {
-        std::cout << "[" << rank << "][distExec] Starting worker" << std::endl;
-        workerProc(rank);
-        std::cout << "[" << rank << "][distExec] Worker finished" << std::endl;
-    }
+    // // node 0 is the manager
+    // if (rank == 0) {
+    //     managerProc(rank, np, inImg);
+    //     cv::imwrite("./output.png", inImg);
+    // } else {
+    //     std::cout << "[" << rank << "][distExec] Starting worker" << std::endl;
+    //     workerProc(rank);
+    //     std::cout << "[" << rank << "][distExec] Worker finished" << std::endl;
+    // }
 
-    MPI_Barrier(MPI_COMM_WORLD); 
-    MPI_Finalize();
+    // MPI_Barrier(MPI_COMM_WORLD); 
+    // MPI_Finalize();
 
     return 0;
 }
