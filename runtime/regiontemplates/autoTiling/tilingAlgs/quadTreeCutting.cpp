@@ -61,6 +61,7 @@ void heightBalancedTrieQuadTreeCutting(const cv::Mat& img,
                 // Splits the current tile and add them to the next level
                 std::list<rect_t> newTs;
                 trieSplit4(*r, newTs);
+                r=oldAreas->erase(r);
                 newAreas->insert(newAreas->end(), newTs.begin(), newTs.end());
                 curTiles += 3; // 1 original removed and 4 smaller added
 
