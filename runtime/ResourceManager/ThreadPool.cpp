@@ -17,6 +17,7 @@
 //void cudaFreeMemWrapper(void *data_ptr);
 
 #ifdef PROFILING
+int thread_id=0;
 long long ClockGetTime()
 {
         struct timeval ts;
@@ -275,6 +276,10 @@ void ThreadPool::preassignmentSelectiveDownload(Task* task, Task* preAssigned, c
 void ThreadPool::processTasks(int procType, int tid)
 {
 
+#ifdef PROFILING
+	int thisThreadId = thread_id++;
+#endif
+
 #ifdef WITH_CUDA
 	cv::cuda::Stream *stream;
 
@@ -438,8 +443,11 @@ void ThreadPool::processTasks(int procType, int tid)
 #endif
 
 		try{
-			
+#ifdef PROFILING
+			std::cout << "[T" << thisThreadId << "] Executing, task.id: "<< curTask->getId() << std::endl;
+#else
 			std::cout << "Executing, task.id: "<< curTask->getId() << std::endl;
+#endif
 			curTask->run(procType, tid);
 
 			if(curTask->getStatus() != ExecEngineConstants::ACTIVE){
