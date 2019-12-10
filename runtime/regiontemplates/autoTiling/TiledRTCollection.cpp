@@ -5,12 +5,13 @@
 /*****************************************************************************/
 
 TiledRTCollection::TiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath) {
+    std::string refDDRName, std::string tilesPath, CostFunction* cfunc) {
 
     this->tiled = false;
     this->name = name;
     this->refDDRName = refDDRName;
     this->tilesPath = tilesPath;
+    this->cfunc = cfunc;
 }
 
 TiledRTCollection::~TiledRTCollection() {
@@ -96,18 +97,21 @@ void TiledRTCollection::tileImages() {
 
     this->tiled = true;
 
+// #define DEBUG
+// #define PROFILING2
+
 #ifdef DEBUG
     std::cout << "==== format: tile x:width, y:height" << std::endl;
 #endif
 
-#ifdef PROFILING
+#ifdef PROFILING2
     // Creates a list of costs for each tile for each image
     std::list<int64_t> costs;
     // Creates a list of perimeters for each tile for each image
     std::list<int64_t> perims;
-#endif
+#endif // #ifdef PROFILING2
 
-#if defined(DEBUG) || defined(PROFILING)
+#if defined(DEBUG) || defined(PROFILING2)
     // For each image tiled
     for (int i=0; i<this->getTiles().size(); i++) {
 
@@ -134,10 +138,10 @@ void TiledRTCollection::tileImages() {
                 (0,0,0),3);
 #endif // #ifdef DEBUG
 
-#ifdef PROFILING
-            costs.emplace_back(cost(tiledImg, tile));
+#ifdef PROFILING2
+            costs.emplace_back(this->cfunc->cost(tiledImg, tile));
             perims.emplace_back(2*tile.width + 2*tile.height);
-#endif // #ifdef PROFILING
+#endif // #ifdef PROFILING2
 
         }
 
@@ -148,7 +152,7 @@ void TiledRTCollection::tileImages() {
 
     }
 
-#ifdef PROFILING
+#ifdef PROFILING2
     // Calculates stddev of tiles cost
     float mean = 0;
     for (int64_t c : costs)
@@ -157,6 +161,7 @@ void TiledRTCollection::tileImages() {
     float var = 0;
     for (int64_t c : costs)
         var += pow(c-mean, 2);
+    std::cout << std::fixed << "[PROFILING][AVERAGE] " << mean << std::endl;
     std::cout << std::fixed << "[PROFILING][STDDEV] " 
         << (sqrt(var/(costs.size()-1))) << std::endl;
 
@@ -166,9 +171,9 @@ void TiledRTCollection::tileImages() {
         sumPerim += p;
     std::cout << "[PROFILING][SUMOFPERIMS] " << sumPerim << std::endl;
 
-#endif // #ifdef PROFILING
+#endif // #ifdef PROFILING2
 
-#endif // #if defined(DEBUG) || defined(PROFILING)
+#endif // #if defined(DEBUG) || defined(PROFILING2)
 
 }
 

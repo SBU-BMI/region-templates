@@ -54,7 +54,8 @@ void stddev(std::list<cv::Rect_<int64_t>> rs,
 
 RegTiledRTCollection::RegTiledRTCollection(std::string name, 
     std::string refDDRName, std::string tilesPath, int64_t tw, int64_t th, 
-    int64_t border) : TiledRTCollection(name, refDDRName, tilesPath) {
+    int64_t border, CostFunction* cfunc) 
+        : TiledRTCollection(name, refDDRName, tilesPath, cfunc) {
 
     if (border > tw || border > th) {
         std::cout << "Border cannot be greater than a tile's width" 
@@ -70,7 +71,8 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
 
 RegTiledRTCollection::RegTiledRTCollection(std::string name, 
     std::string refDDRName, std::string tilesPath, int64_t nTiles, 
-    int64_t border) : TiledRTCollection(name, refDDRName, tilesPath) {
+    int64_t border, CostFunction* cfunc) 
+        : TiledRTCollection(name, refDDRName, tilesPath, cfunc) {
 
     this->border = border;
     this->nTiles = nTiles;

@@ -14,7 +14,9 @@
 #include "RegTiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
+#include "costFuncs/CostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
+#include "costFuncs/ThresholdBGCostFunction.h"
 
 using std::cout;
 using std::endl;
@@ -711,13 +713,14 @@ int main(int argc, char *argv[]) {
     long tilingT1 = Util::ClockGetTime();
 #endif
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    CostFunction* cfunc = new ThresholdBGCostFunction((ThresholdBGMasker*)bgm);
     TiledRTCollection* tCollImg;
     if (tilerAlg == FIXED_GRID_TILING) {
         tCollImg = new RegTiledRTCollection("input", 
-                "input", Ipath, nTiles, border);
+                "input", Ipath, nTiles, border, cfunc);
     } else {
         tCollImg = new IrregTiledRTCollection("input", 
-            "input", Ipath, border, bgm, 
+            "input", Ipath, border, cfunc, bgm, 
             preTilerAlg, tilerAlg, nTiles);
     }
 

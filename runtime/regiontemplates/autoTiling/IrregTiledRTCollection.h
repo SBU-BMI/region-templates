@@ -11,6 +11,7 @@
 
 #include "TiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
+#include "costFuncs/CostFunction.h"
 #include "tilingAlgs/tilingUtil.h"
 #include "tilingAlgs/denseFromBG.h"
 #include "tilingAlgs/listCutting.h"
@@ -34,7 +35,7 @@ protected:
 
 public:
     IrregTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int border, BGMasker* bgm, 
+        std::string tilesPath, int border, CostFunction* cfunc, BGMasker* bgm, 
         PreTilerAlg_t preTier=NO_PRE_TILER, TilerAlg_t tilingAlg=NO_TILER, 
         int nTiles=0);
 };

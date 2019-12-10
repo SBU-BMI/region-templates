@@ -1,9 +1,10 @@
 #include "IrregTiledRTCollection.h"
 
 IrregTiledRTCollection::IrregTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int border, BGMasker* bgm, 
-    PreTilerAlg_t preTier, TilerAlg_t tilingAlg, int nTiles) 
-        : TiledRTCollection(name, refDDRName, tilesPath) {
+    std::string refDDRName, std::string tilesPath, int border, 
+    CostFunction* cfunc, BGMasker* bgm, PreTilerAlg_t preTier, 
+    TilerAlg_t tilingAlg, int nTiles) 
+        : TiledRTCollection(name, refDDRName, tilesPath, cfunc) {
 
     this->border = border;
     this->bgm = bgm;

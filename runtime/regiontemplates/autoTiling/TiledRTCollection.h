@@ -12,6 +12,7 @@
 #include "RegionTemplate.h"
 #include "svs/svsUtils.h"
 #include "tilingAlgs/tilingUtil.h"
+#include "costFuncs/CostFunction.h"
 
 static const std::string TILE_EXT = ".tiff";
 
@@ -27,6 +28,9 @@ protected:
     std::vector<std::list<cv::Rect_<int64_t> > > tiles;
     // vector<pair<DR name, actual RT object with the only DR>
     std::vector<std::pair<std::string, RegionTemplate*> > rts;
+
+    // Cost function for profiling the final tiles generated
+    CostFunction* cfunc;
     
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
@@ -35,7 +39,7 @@ protected:
 
 public:
     TiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath);
+        std::string tilesPath, CostFunction* cfunc);
     ~TiledRTCollection();
 
     void addImage(std::string path);

@@ -11,6 +11,7 @@
 
 #include "TiledRTCollection.h"
 #include "tilingAlgs/tilingUtil.h"
+#include "costFuncs/CostFunction.h"
 
 class RegTiledRTCollection : public TiledRTCollection {
 private:
@@ -27,9 +28,11 @@ protected:
 
 public:
     RegTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t tw, int64_t th, int64_t border);
+        std::string tilesPath, int64_t tw, int64_t th, int64_t border,
+        CostFunction* cfunc);
     RegTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t nTiles, int64_t border);
+        std::string tilesPath, int64_t nTiles, int64_t border,
+        CostFunction* cfunc);
 };
 
 #endif
