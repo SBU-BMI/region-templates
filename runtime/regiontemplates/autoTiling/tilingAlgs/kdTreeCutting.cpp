@@ -36,7 +36,7 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
         newAreas = new std::list<rect_t>();
         oldAreas->push_back(initial);
         bool orient = false;
-        int curTiles = 0;
+        int curTiles = 1;
         for (int i=0; i<levels && curTiles<nTiles; i++) {
             for (std::list<rect_t>::iterator r=oldAreas->begin(); 
                 r!=oldAreas->end(); r++) {
@@ -61,7 +61,7 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
                 }
 
                 if (curTiles >= nTiles) {
-                    newAreas->insert(r++, oldAreas->begin(), oldAreas->end());
+                    newAreas->insert(newAreas->begin(), ++r, oldAreas->end());
                     break;
                 }
             }
