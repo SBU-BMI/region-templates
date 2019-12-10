@@ -97,8 +97,8 @@ void TiledRTCollection::tileImages() {
 
     this->tiled = true;
 
-#define DEBUG
-#define PROFILING2
+// #define DEBUG
+// #define PROFILING2
 
 #ifdef DEBUG
     std::cout << "==== format: tile x:width, y:height" << std::endl;
