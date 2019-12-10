@@ -68,6 +68,12 @@ inline int64_t cost(const cv::Mat& img, const rect_t& r) {
     return cv::sum(img(cv::Range(r.yi, r.yo), cv::Range(r.xi, r.xo)))[0];
 }
 
+template <typename T>
+inline int64_t cost(const cv::Mat& img, const cv::Rect_<T>& r) {
+    return cv::sum(img(cv::Range(r.y, r.y+r.height), 
+                       cv::Range(r.x, r.x+r.width)))[0];
+}
+
 inline int64_t cost(const cv::Mat& img, int64_t yi, int64_t yo, 
         int64_t xi, int64_t xo) {
     return cv::sum(img(cv::Range(yi, yo), cv::Range(xi, xo)))[0];

@@ -14,4 +14,6 @@ bool isSVS(std::string path);
 void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 
     int level, cv::Mat& thisTile);
 
+void osrFilenameToCVMat(std::string filename, cv::Mat& matOut);
+
 #endif

@@ -11,6 +11,7 @@
 
 #include "RegionTemplate.h"
 #include "svs/svsUtils.h"
+#include "tilingAlgs/tilingUtil.h"
 
 static const std::string TILE_EXT = ".tiff";
 

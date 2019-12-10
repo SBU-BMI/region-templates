@@ -95,6 +95,81 @@ void TiledRTCollection::tileImages() {
     customTiling();
 
     this->tiled = true;
+
+#ifdef DEBUG
+    std::cout << "==== format: tile x:width, y:height" << std::endl;
+#endif
+
+#ifdef PROFILING
+    // Creates a list of costs for each tile for each image
+    std::list<int64_t> costs;
+    // Creates a list of perimeters for each tile for each image
+    std::list<int64_t> perims;
+#endif
+
+#if defined(DEBUG) || defined(PROFILING)
+    // For each image tiled
+    for (int i=0; i<this->getTiles().size(); i++) {
+
+#ifdef DEBUG
+        std::cout << "image " << i << std::endl;
+#endif // #ifdef DEBUG
+
+        cv::Mat tiledImg;
+        osrFilenameToCVMat(this->initialPaths[i], tiledImg);
+
+        // For each tile of the current image
+        for (cv::Rect_<int64_t> tile : tiles[i]) {
+
+#ifdef DEBUG
+            // Print tile
+            std::cout << "\ttile " << tile.x << ":" << tile.width
+                << ", " << tile.y << ":" << tile.height << std::endl;
+
+            // Adds tile rectangle region to tiled image
+            cv::rectangle(tiledImg, 
+                cv::Point(tile.x,tile.y), 
+                cv::Point(tile.x+tile.width,
+                          tile.y+tile.height),
+                (0,0,0),3);
+#endif // #ifdef DEBUG
+
+#ifdef PROFILING
+            costs.emplace_back(cost(tiledImg, tile));
+            perims.emplace_back(2*tile.width + 2*tile.height);
+#endif // #ifdef PROFILING
+
+        }
+
+#ifdef DEBUG
+        std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
+        cv::imwrite(outname, tiledImg);
+#endif // #ifdef DEBUG
+
+    }
+
+#ifdef PROFILING
+    // Calculates stddev of tiles cost
+    float mean = 0;
+    for (int64_t c : costs)
+        mean += c;
+    mean /= costs.size();
+    float var = 0;
+    for (int64_t c : costs)
+        var += pow(c-mean, 2);
+    std::cout << std::fixed << "[PROFILING][STDDEV] " 
+        << (sqrt(var/(costs.size()-1))) << std::endl;
+
+    // Calculates the sum of perimeters
+    int64_t sumPerim = 0;
+    for (int64_t p : perims)
+        sumPerim += p;
+    std::cout << "[PROFILING][SUMOFPERIMS] " << sumPerim << std::endl;
+
+#endif // #ifdef PROFILING
+
+#endif // #if defined(DEBUG) || defined(PROFILING)
+
 }
 
 // Performs the tiling using a previously tiled TRTC

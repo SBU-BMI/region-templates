@@ -50,3 +50,19 @@ void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r,
 
     return;
 }
+
+void osrFilenameToCVMat(std::string filename, cv::Mat& matOut) {
+    openslide_t* osr;
+    int64_t w = -1;
+    int64_t h = -1;
+
+    // Opens svs input file
+    osr = openslide_open(filename.c_str());
+
+    // Gets info of largest image
+    openslide_get_level0_dimensions(osr, &w, &h);
+
+    // Gets the cv image from the osr format
+    cv::Rect_<int64_t> roi(0, 0, w, h);
+    osrRegionToCVMat(osr, roi, 0, matOut);
+}

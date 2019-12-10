@@ -80,7 +80,7 @@ endif (USE_ACTIVE_HARMONY)
 if(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 	add_subdirectory("autoTiling")
 	target_link_libraries("${libname}" autotiling)
-	include_directories(${AutoTiling_SOURCE_DIR})
+	target_include_directories("${libname}" PRIVATE ${AutoTiling_SOURCE_DIR})
 endif(WITH_DISTRIBUTED_TILLING_EXAMPLE)
 
 #if(USE_DATA_SPACES)

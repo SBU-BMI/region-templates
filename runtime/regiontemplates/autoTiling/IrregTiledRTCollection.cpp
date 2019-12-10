@@ -17,7 +17,7 @@ IrregTiledRTCollection::IrregTiledRTCollection(std::string name,
 void IrregTiledRTCollection::customTiling() {
     std::string drName;
     // Go through all images
-    for (int i=0; i<initialPaths.size(); i++) {
+    for (int i=0; i<this->initialPaths.size(); i++) {
         // Create the list of tiles for the current image
         std::list<cv::Rect_<int64_t>> rois;
 
@@ -32,7 +32,7 @@ void IrregTiledRTCollection::customTiling() {
         cv::Mat maskMat;
 
         // Opens svs input file
-        osr = openslide_open(initialPaths[i].c_str());
+        osr = openslide_open(this->initialPaths[i].c_str());
 
         // Gets info of largest image
         openslide_get_level0_dimensions(osr, &w, &h);
@@ -156,7 +156,7 @@ void IrregTiledRTCollection::customTiling() {
             DataRegion *dr = new DenseDataRegion2D();
             dr->setRoi(tile);
             dr->setSvs();
-            
+
             // Create new RT tile from roi
             std::string drName = "t" + to_string(drId);
             dr->setName(drName);
