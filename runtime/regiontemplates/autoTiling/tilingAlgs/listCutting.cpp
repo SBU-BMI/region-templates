@@ -1,7 +1,7 @@
 #include "listCutting.h"
 
 void listCutting(const cv::Mat& img, std::list<rect_t>& dense, 
-    int nTiles, TilerAlg_t type) {
+    int nTiles, TilerAlg_t type, CostFunction* cfunc) {
 
     // Calculates the target average cost of a dense tile
     int avgCost = cv::sum(img)[0]/nTiles;
@@ -27,9 +27,9 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense,
             exit(-1);
         }
         if (type == LIST_ALG_HALF)
-            splitTileLog(*dIt, img, cost(img, *dIt)/2, newt1, newt2);
+            splitTileLog(*dIt, img, cfunc, cost(img, *dIt)/2, newt1, newt2);
         else if (type == LIST_ALG_EXPECT)
-            splitTileLog(*dIt, img, avgCost, newt1, newt2);
+            splitTileLog(*dIt, img, cfunc, avgCost, newt1, newt2);
         else {
             std::cout << "[listCutting] Bad listCutting alg type: "
                 << type << std::endl;

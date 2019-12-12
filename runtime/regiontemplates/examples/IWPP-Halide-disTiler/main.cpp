@@ -14,7 +14,7 @@
 #include "RegTiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
-#include "costFuncs/CostFunction.h"
+#include "CostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
 

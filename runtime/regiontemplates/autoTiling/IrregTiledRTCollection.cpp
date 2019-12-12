@@ -79,14 +79,14 @@ void IrregTiledRTCollection::customTiling() {
             switch (this->tilingAlg) {
                 case LIST_ALG_HALF:
                 case LIST_ALG_EXPECT: {
-                    listCutting(thMask, preTiledAreas, 
-                        this->nTiles, this->tilingAlg);
+                    listCutting(thMask, preTiledAreas, this->nTiles, 
+                        this->tilingAlg, this->cfunc);
                     break;
                 }
                 case KD_TREE_ALG_AREA:
                 case KD_TREE_ALG_COST: {
-                    kdTreeCutting(thMask, preTiledAreas,
-                        this->nTiles, this->tilingAlg);
+                    kdTreeCutting(thMask, preTiledAreas, this->nTiles, 
+                        this->tilingAlg, this->cfunc);
                     break;
                 }
                 case HBAL_TRIE_QUAD_TREE_ALG: {
@@ -96,8 +96,8 @@ void IrregTiledRTCollection::customTiling() {
                 }
                 case CBAL_TRIE_QUAD_TREE_ALG:
                 case CBAL_POINT_QUAD_TREE_ALG: {
-                    costBalancedQuadTreeCutting(thMask, 
-                        preTiledAreas, this->nTiles, this->tilingAlg);
+                    costBalancedQuadTreeCutting(thMask, preTiledAreas, 
+                        this->nTiles, this->tilingAlg, this->cfunc);
                     break;
                 }
             }

@@ -10,15 +10,15 @@ void trieSplit4(const rect_t& r, std::list<rect_t>& newTs) {
 }
 
 void costBasedSplit4(const rect_t& r, const cv::Mat& img, 
-    std::list<rect_t>& newTs) {
+    std::list<rect_t>& newTs, CostFunction* cfunc) {
 
     int64_t tileCost = cost(img, r);
 
     // Performs the log split for both vertical and horizontal orientations
     rect_t newt1h, newt2h;
-    splitTileLog(r, img, tileCost/2, newt1h, newt2h, 0.2, -1);
+    splitTileLog(r, img, cfunc, tileCost/2, newt1h, newt2h, 0.2, -1);
     rect_t newt1v, newt2v;
-    splitTileLog(r, img, tileCost/2, newt1v, newt2v, 0.2, 1);
+    splitTileLog(r, img, cfunc, tileCost/2, newt1v, newt2v, 0.2, 1);
 
     // Creates the tiles by intersecting both splits
     newTs.push_back({r.xi, r.yi, newt1h.xo, newt1v.yo});
@@ -94,7 +94,7 @@ void heightBalancedTrieQuadTreeCutting(const cv::Mat& img,
 // split in the attempt to balance the cost of the new sub-tiles).
 // At least nTiles are always generated.
 void costBalancedQuadTreeCutting(const cv::Mat& img, 
-    std::list<rect_t>& dense, int nTiles, TilerAlg_t type) {
+    std::list<rect_t>& dense, int nTiles, TilerAlg_t type, CostFunction* cfunc) {
 
     // Create a multiset of tiles ordered by the cost function. This is to 
     // avoid re-sorting of the dense list whilst enabling O(1) access
@@ -125,7 +125,7 @@ void costBalancedQuadTreeCutting(const cv::Mat& img,
         if (type == CBAL_TRIE_QUAD_TREE_ALG)
             trieSplit4(*dIt, newTs);
         else if (type == CBAL_POINT_QUAD_TREE_ALG)
-            costBasedSplit4(*dIt, img, newTs);
+            costBasedSplit4(*dIt, img, newTs, cfunc);
         else {
             std::cout << "[costBalancedQuadTreeCutting] Bad "
                 << "costBalancedQuadTreeCutting alg type: " 

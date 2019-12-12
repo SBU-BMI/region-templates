@@ -40,8 +40,8 @@ void printRect(rect_t r) {
 // and a horizontal sweep are performed, being returned the pair of regions
 // with the smallest difference between areas.
 // Orient: 0 = both, -1 = horizontal only, +1 = vetical only
-void splitTileLog(const rect_t& r, const cv::Mat& img, int expCost, 
-    rect_t& newt1, rect_t& newt2, float acc, int orient) {
+void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
+    int expCost, rect_t& newt1, rect_t& newt2, float acc, int orient) {
 
     // Gets upper and lower bounds for the expected cost
     int upperCost = expCost + expCost*acc;
@@ -51,8 +51,8 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, int expCost,
     // Horizontal sweeping
     int pivotxLen = (r.xo - r.xi)/2;
     int pivotx = r.xi + pivotxLen;
-    int cost1h = cost(img, r.yi, r.yo, r.xi, pivotx);
-    int cost2h = cost(img, r.yi, r.yo, pivotx+1, r.xo);
+    int cost1h = cfunc->cost(img, r.yi, r.yo, r.xi, pivotx);
+    int cost2h = cfunc->cost(img, r.yi, r.yo, pivotx+1, r.xo);
     int areah;
     if (orient <= 0) {
 
@@ -70,8 +70,8 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, int expCost,
             else
                 pivotx += pivotxLen;
 
-            cost1h = cost(img, r.yi, r.yo, r.xi, pivotx);
-            cost2h = cost(img, r.yi, r.yo, pivotx+1, r.xo);
+            cost1h = cfunc->cost(img, r.yi, r.yo, r.xi, pivotx);
+            cost2h = cfunc->cost(img, r.yi, r.yo, pivotx+1, r.xo);
         }
 
         // Calculate difference between areas of new tiles 1 and 2
@@ -82,8 +82,8 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, int expCost,
     // Vertical sweeping
     int pivotyLen = (r.yo - r.yi)/2;
     int pivoty = r.yi + pivotyLen;
-    int cost1v = cost(img, r.yi, pivoty, r.xi, r.xo);
-    int cost2v = cost(img, pivoty+1, r.yo, r.xi, r.xo);
+    int cost1v = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
+    int cost2v = cfunc->cost(img, pivoty+1, r.yo, r.xi, r.xo);
     int areav;
     if (orient >= 0) {
 
@@ -101,8 +101,8 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, int expCost,
             else
                 pivoty += pivotyLen;
 
-            cost1v = cost(img, r.yi, pivoty, r.xi, r.xo);
-            cost2v = cost(img, pivoty+1, r.yo, r.xi, r.xo);
+            cost1v = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
+            cost2v = cfunc->cost(img, pivoty+1, r.yo, r.xi, r.xo);
         }
 
         // Calculate difference between areas of new tiles 1 and 2

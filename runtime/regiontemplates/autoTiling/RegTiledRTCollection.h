@@ -11,7 +11,7 @@
 
 #include "TiledRTCollection.h"
 #include "tilingAlgs/tilingUtil.h"
-#include "costFuncs/CostFunction.h"
+#include "CostFunction.h"
 
 class RegTiledRTCollection : public TiledRTCollection {
 private:

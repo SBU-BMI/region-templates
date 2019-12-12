@@ -8,11 +8,12 @@
 #include <opencv/cv.hpp>
 
 #include "tilingUtil.h"
+#include "CostFunction.h"
 
 void heightBalancedTrieQuadTreeCutting(const cv::Mat& img, 
     std::list<rect_t>& dense, int nTiles);
 
 void costBalancedQuadTreeCutting(const cv::Mat& img, 
-    std::list<rect_t>& dense, int nTiles, TilerAlg_t type);
+    std::list<rect_t>& dense, int nTiles, TilerAlg_t type, CostFunction* cfunc);
 
 #endif // QUAD_TREE_CUTTING_H_

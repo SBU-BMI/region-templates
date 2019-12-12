@@ -16,15 +16,15 @@ void splitTileArea(rect_t initial, rect_t& newL, rect_t& newR, bool orient) {
 
 // Splits an 'initial' tile in two tiles with the same cost, according
 // to the input 'orient'ation.
-void splitTileCost(const cv::Mat& img, rect_t initial, rect_t& newL, 
-    rect_t& newR, bool orient) {
+void splitTileCost(const cv::Mat& img, CostFunction* cfunc, rect_t initial, 
+    rect_t& newL, rect_t& newR, bool orient) {
 
     int cost = cv::sum(img)[0]/2;
-    splitTileLog(initial, img, cost, newL, newR, 0.2, orient?1:-1);
+    splitTileLog(initial, img, cfunc, cost, newL, newR, 0.2, orient?1:-1);
 }
 
 void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense, 
-    int nTiles, TilerAlg_t type) {
+    int nTiles, TilerAlg_t type, CostFunction* cfunc) {
 
     // Calculates the number of cuts tree levels required
     int levels = ceil(log((float)nTiles/dense.size())/log(2));
@@ -45,7 +45,7 @@ void kdTreeCutting(const cv::Mat& img, std::list<rect_t>& dense,
                 if (type == KD_TREE_ALG_AREA)
                     splitTileArea(*r, newL, newR, orient);
                 else if (type == KD_TREE_ALG_COST)
-                    splitTileCost(img, *r, newL, newR, orient);
+                    splitTileCost(img, cfunc, *r, newL, newR, orient);
                 else {
                     std::cout << "[kdTreeCutting] Bad kdTreeCutting"
                         << " alg type: " << type << std::endl;

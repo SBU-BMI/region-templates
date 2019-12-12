@@ -12,7 +12,7 @@
 #include "RegionTemplate.h"
 #include "svs/svsUtils.h"
 #include "tilingAlgs/tilingUtil.h"
-#include "costFuncs/CostFunction.h"
+#include "CostFunction.h"
 
 static const std::string TILE_EXT = ".tiff";
 

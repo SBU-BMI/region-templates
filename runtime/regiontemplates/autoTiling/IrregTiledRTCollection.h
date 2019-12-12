@@ -11,7 +11,7 @@
 
 #include "TiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
-#include "costFuncs/CostFunction.h"
+#include "CostFunction.h"
 #include "tilingAlgs/tilingUtil.h"
 #include "tilingAlgs/denseFromBG.h"
 #include "tilingAlgs/listCutting.h"

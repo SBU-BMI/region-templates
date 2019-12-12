@@ -12,6 +12,7 @@ public:
     // virtual T cost(cv::Mat img) = 0;
     virtual int64_t cost(cv::Mat img) {std::cout << "bad cost..." << std::endl; exit(-1);};
     int64_t cost(cv::Mat img, cv::Rect_<int64_t> tile);
+    int64_t cost(cv::Mat img, int64_t yi, int64_t yo, int64_t xi, int64_t xo);
 };
 
 #endif

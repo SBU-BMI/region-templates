@@ -8,6 +8,8 @@
 
 #include <opencv/cv.hpp>
 
+#include "CostFunction.h"
+
 // Pre-tiling algs types
 enum PreTilerAlg_t {
     NO_PRE_TILER,
@@ -121,7 +123,7 @@ void printRect(rect_t r);
 // and a horizontal sweep are performed, being returned the pair of regions
 // with the smallest difference between areas.
 // Orient: 0 = both, -1 = horizontal only, +1 = vetical only
-void splitTileLog(const rect_t& r, const cv::Mat& img, int expCost, 
-    rect_t& newt1, rect_t& newt2, float acc=0.2, int orient = 0);
+void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
+    int expCost, rect_t& newt1, rect_t& newt2, float acc=0.2, int orient = 0);
 
 #endif // UTIL_H_
