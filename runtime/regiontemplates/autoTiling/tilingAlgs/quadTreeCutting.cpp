@@ -44,7 +44,7 @@ void heightBalancedTrieQuadTreeCutting(const cv::Mat& img,
         oldAreas = new std::list<rect_t>();
         newAreas = new std::list<rect_t>();
         oldAreas->push_back(initial);
-        int curTiles = 0;
+        int curTiles = 1;
 
         // Go through the number of expected levels
         for (int i=0; i<levels && curTiles<nTiles; i++) {
@@ -55,20 +55,18 @@ void heightBalancedTrieQuadTreeCutting(const cv::Mat& img,
                 // Avoid the creation of a null tile (i.e., zero area tile)
                 if (r->xo-r->xi <= 1 || r->yo-r->yi <= 1) {
                     dense.push_back(*r);
-                    continue;
+                } else {
+                    // Splits the current tile and add them to the next level
+                    std::list<rect_t> newTs;
+                    trieSplit4(*r, newTs);
+                    newAreas->insert(newAreas->end(), newTs.begin(), newTs.end());
+                    curTiles += 3; // 1 original removed and 4 smaller added
                 }
-
-                // Splits the current tile and add them to the next level
-                std::list<rect_t> newTs;
-                trieSplit4(*r, newTs);
-                r=oldAreas->erase(r);
-                newAreas->insert(newAreas->end(), newTs.begin(), newTs.end());
-                curTiles += 3; // 1 original removed and 4 smaller added
 
                 // Adds the remaining tiles to the next level since the 
                 // number of necessary tiles was reached
                 if (curTiles >= nTiles) {
-                    newAreas->insert(newAreas->begin(), r++, oldAreas->end());
+                    newAreas->insert(newAreas->begin(), ++r, oldAreas->end());
                     break;
                 }
             }
