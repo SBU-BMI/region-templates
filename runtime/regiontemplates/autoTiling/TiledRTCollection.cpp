@@ -31,50 +31,58 @@ std::pair<std::string, RegionTemplate*> TiledRTCollection::getRT(int id) {
 //   tile containing the full image.
 void TiledRTCollection::customTiling() {
     // Only a single name is required since there is only one tile
-    std::string drName = to_string(0);
+    std::string drName = "t0";
 
     // Go through all images
     for (int i=0; i<initialPaths.size(); i++) {
-        // Open image for tiling
-        int64_t w = -1;
-        int64_t h = -1;
+        
+        cv::Mat tile;
         openslide_t* osr;
-        int32_t osrMaxLevel = 0; // svs standard: max level = 0
-        cv::Mat mat;
-        osr = openslide_open(initialPaths[i].c_str());
-        openslide_get_level0_dimensions(osr, &w, &h);
+
+        // Checks file extension
+        if (!isSVS(initialPaths[i])) {
+            tile = cv::imread(initialPaths[i]);
+        } else {
+            // Open svs image for tiling
+            int64_t w = -1;
+            int64_t h = -1;
+            int32_t osrMaxLevel = 0; // svs standard: max level = 0
+            osr = openslide_open(initialPaths[i].c_str());
+            openslide_get_level0_dimensions(osr, &w, &h);
+
+            // Create the tile mat
+            cv::Rect_<int64_t> roi(0, 0, w, h);
+            osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
+        }
 
         // Create the full roi and add it to the roi's vector
-        cv::Rect_<int64_t> roi(0, 0, w, h);
+        cv::Rect_<int64_t> roi(0, 0, tile.cols, tile.rows);
         cv::Rect_<int64_t> rois[] = {roi};
         this->tiles.push_back(std::list<cv::Rect_<int64_t>>(rois, 
             rois + sizeof(rois)/sizeof(cv::Rect_<int64_t>)));
 
-        // Create a tile file
-        cv::Mat tile;
-        osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
-
-        std::string path = this->tilesPath + "/" + name + "/";
-        path += "/i" + to_string(i) + TILE_EXT;
-        cv::imwrite(path, tile);
-
         // Create new RT tile from roi
         DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
         ddr2d->setName(drName);
-        ddr2d->setId(refDDRName);
+        ddr2d->setId(this->refDDRName);
         ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
         ddr2d->setIsAppInput(true);
         ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-        ddr2d->setInputFileName(path);
+        ddr2d->setInputFileName(initialPaths[i]);
+        
+        // Sets svs ddr parameters and closes svs image
+        if (isSVS(initialPaths[i])) {
+            ddr2d->setSvs();
+            ddr2d->setRoi(roi);
+            openslide_close(osr);
+        }
+
         RegionTemplate* newRT = new RegionTemplate();
         newRT->setName(this->name);
         newRT->insertDataRegion(ddr2d);
 
         this->rts.push_back(
             std::pair<std::string, RegionTemplate*>(drName, newRT));
-
-        // Close .svs file
-        openslide_close(osr);
     }
 }
 
@@ -120,10 +128,19 @@ void TiledRTCollection::tileImages() {
 #endif // #ifdef DEBUG
 
         cv::Mat tiledImg;
-        osrFilenameToCVMat(this->initialPaths[i], tiledImg);
+        if (isSVS(initialPaths[i]))
+            osrFilenameToCVMat(this->initialPaths[i], tiledImg);
+        else
+            tiledImg = cv::imread(this->initialPaths[i]);
 
         // For each tile of the current image
         for (cv::Rect_<int64_t> tile : tiles[i]) {
+
+#ifdef PROFILING2
+            std::cout << this->initialPaths[i] << std::endl;
+            costs.emplace_back(this->cfunc->cost(tiledImg, tile));
+            perims.emplace_back(2*tile.width + 2*tile.height);
+#endif // #ifdef PROFILING2
 
 #ifdef DEBUG
             // Print tile
@@ -137,11 +154,6 @@ void TiledRTCollection::tileImages() {
                           tile.y+tile.height),
                 (0,0,0),3);
 #endif // #ifdef DEBUG
-
-#ifdef PROFILING2
-            costs.emplace_back(this->cfunc->cost(tiledImg, tile));
-            perims.emplace_back(2*tile.width + 2*tile.height);
-#endif // #ifdef PROFILING2
 
         }
 

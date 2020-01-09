@@ -172,6 +172,7 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     return 0;
 }
 
+// int id=0;
 // Needs to be static for referencing across mpi processes/nodes
 static struct : RTF::HalGen {
     std::string getName() {return "get_background";}
@@ -181,6 +182,8 @@ static struct : RTF::HalGen {
 
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
+        // std::string name = "input" + std::to_string(id++) + ".tiff";
+        // cv::imwrite(name, im_ios[0]);
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
 
         uint8_t blue = ((ArgumentInt*)params[0])->getArgValue();
@@ -715,14 +718,16 @@ int main(int argc, char *argv[]) {
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     CostFunction* cfunc = new ThresholdBGCostFunction((ThresholdBGMasker*)bgm);
     TiledRTCollection* tCollImg;
-    if (tilerAlg == FIXED_GRID_TILING) {
-        tCollImg = new RegTiledRTCollection("input", 
-                "input", Ipath, nTiles, border, cfunc);
-    } else {
-        tCollImg = new IrregTiledRTCollection("input", 
-            "input", Ipath, border, cfunc, bgm, 
-            preTilerAlg, tilerAlg, nTiles);
-    }
+    // if (tilerAlg == FIXED_GRID_TILING) {
+    //     tCollImg = new RegTiledRTCollection("input", 
+    //             "input", Ipath, nTiles, border, cfunc);
+    // } else {
+    //     tCollImg = new IrregTiledRTCollection("input", 
+    //         "input", Ipath, border, cfunc, bgm, 
+    //         preTilerAlg, tilerAlg, nTiles);
+    // }
+
+    tCollImg = new TiledRTCollection("input", "input", Ipath, cfunc);
 
     tCollImg->addImage(Ipath);
     tCollImg->tileImages();
