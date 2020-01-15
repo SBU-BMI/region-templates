@@ -137,7 +137,6 @@ void TiledRTCollection::tileImages() {
         for (cv::Rect_<int64_t> tile : tiles[i]) {
 
 #ifdef PROFILING2
-            std::cout << this->initialPaths[i] << std::endl;
             costs.emplace_back(this->cfunc->cost(tiledImg, tile));
             perims.emplace_back(2*tile.width + 2*tile.height);
 #endif // #ifdef PROFILING2
