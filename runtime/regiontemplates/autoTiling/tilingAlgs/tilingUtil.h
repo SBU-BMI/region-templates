@@ -18,12 +18,11 @@ enum PreTilerAlg_t {
 
 // Tiling algs types
 enum TilerAlg_t {
-    NO_TILER,
+    FIXED_GRID_TILING,
     LIST_ALG_HALF,
     LIST_ALG_EXPECT,
     KD_TREE_ALG_AREA,
     KD_TREE_ALG_COST,
-    FIXED_GRID_TILING, // Here only for testing: parameter on PipelineManager
     HBAL_TRIE_QUAD_TREE_ALG,
     CBAL_TRIE_QUAD_TREE_ALG,
     CBAL_POINT_QUAD_TREE_ALG,
