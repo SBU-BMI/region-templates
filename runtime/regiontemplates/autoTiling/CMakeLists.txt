@@ -12,7 +12,7 @@ set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
 
 # Source files
 set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp 
-    IrregTiledRTCollection.cpp CostFunction.cpp 
+    IrregTiledRTCollection.cpp BGPreTiledRTCollection.cpp CostFunction.cpp 
     costFuncs/ThresholdBGMasker.cpp costFuncs/ThresholdBGCostFunction.cpp 
     svs/svsUtils.cpp tilingAlgs/tilingUtil.cpp tilingAlgs/denseFromBG.cpp 
     tilingAlgs/listCutting.cpp tilingAlgs/kdTreeCutting.cpp 
