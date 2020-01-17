@@ -2,14 +2,12 @@
 
 IrregTiledRTCollection::IrregTiledRTCollection(std::string name, 
     std::string refDDRName, std::string tilesPath, int border, 
-    CostFunction* cfunc, BGMasker* bgm, PreTilerAlg_t preTier, 
-    TilerAlg_t tilingAlg, int nTiles) 
+    CostFunction* cfunc, BGMasker* bgm, TilerAlg_t tilingAlg, int nTiles) 
         : TiledRTCollection(name, refDDRName, tilesPath, cfunc) {
 
     this->border = border;
     this->bgm = bgm;
     this->nTiles = nTiles;
-    this->preTier = preTier;
     this->tilingAlg = tilingAlg;
 }
 
@@ -51,66 +49,41 @@ void IrregTiledRTCollection::customTiling() {
         ratiow /= w;
         ratioh /= h;
 
-        // Perfeorms the preTiling if required
+        // Creates a list of a single full-image tile for dense tiling
         std::list<rect_t> finalTiles;
-        std::list<rect_t> preTiledAreas;
         cv::Mat thMask = bgm->bgMask(maskMat);
-        switch (this->preTier) {
-            case DENSE_BG_SEPARATOR: {
-                tileDenseFromBG(thMask, preTiledAreas, finalTiles, &maskMat);
-                break;
-            }
-            case NO_PRE_TILER: { // just return the full image as a single tile
-                preTiledAreas.push_back({0, 0, maskMat.cols, maskMat.rows});
-                break;
-            }
-        }
+        finalTiles.push_back({0, 0, maskMat.cols, maskMat.rows});
         
         // Ensure that thMask is a binary mat
         thMask.convertTo(thMask, CV_8U);
         cv::threshold(thMask, thMask, 0, 255, cv::THRESH_BINARY);
 
-        if (preTiledAreas.size() >= this->nTiles) {
-            std::cout << "[IrregTiledRTCollection] No dense tiling"
-                << " performed, wanted " << this->nTiles 
-                << " but already have " << preTiledAreas.size()
-                << " tiles." << std::endl;
-        } else {
-            switch (this->tilingAlg) {
-                case LIST_ALG_HALF:
-                case LIST_ALG_EXPECT: {
-                    listCutting(thMask, preTiledAreas, this->nTiles, 
-                        this->tilingAlg, this->cfunc);
-                    break;
-                }
-                case KD_TREE_ALG_AREA:
-                case KD_TREE_ALG_COST: {
-                    kdTreeCutting(thMask, preTiledAreas, this->nTiles, 
-                        this->tilingAlg, this->cfunc);
-                    break;
-                }
-                case HBAL_TRIE_QUAD_TREE_ALG: {
-                    heightBalancedTrieQuadTreeCutting(thMask, 
-                        preTiledAreas, this->nTiles);
-                    break;
-                }
-                case CBAL_TRIE_QUAD_TREE_ALG:
-                case CBAL_POINT_QUAD_TREE_ALG: {
-                    costBalancedQuadTreeCutting(thMask, preTiledAreas, 
-                        this->nTiles, this->tilingAlg, this->cfunc);
-                    break;
-                }
+        // Performs actual dense tiling
+        switch (this->tilingAlg) {
+            case LIST_ALG_HALF:
+            case LIST_ALG_EXPECT: {
+                listCutting(thMask, finalTiles, this->nTiles, 
+                    this->tilingAlg, this->cfunc);
+                break;
+            }
+            case KD_TREE_ALG_AREA:
+            case KD_TREE_ALG_COST: {
+                kdTreeCutting(thMask, finalTiles, this->nTiles, 
+                    this->tilingAlg, this->cfunc);
+                break;
+            }
+            case HBAL_TRIE_QUAD_TREE_ALG: {
+                heightBalancedTrieQuadTreeCutting(thMask, 
+                    finalTiles, this->nTiles);
+                break;
+            }
+            case CBAL_TRIE_QUAD_TREE_ALG:
+            case CBAL_POINT_QUAD_TREE_ALG: {
+                costBalancedQuadTreeCutting(thMask, finalTiles, 
+                    this->nTiles, this->tilingAlg, this->cfunc);
+                break;
             }
         }
-
-// #ifdef PROFILING
-//         // Gets std-dev of dense tiles' sizes
-//         stddev(preTiledAreas, thMask, "DENSE");
-// #endif
-
-        // Send resulting tiles to the final output
-        finalTiles.insert(finalTiles.end(), 
-            preTiledAreas.begin(), preTiledAreas.end());
 
 // #ifdef PROFILING
 //         // Gets std-dev of all tiles' sizes

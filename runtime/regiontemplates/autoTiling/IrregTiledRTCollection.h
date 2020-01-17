@@ -36,8 +36,7 @@ protected:
 public:
     IrregTiledRTCollection(std::string name, std::string refDDRName, 
         std::string tilesPath, int border, CostFunction* cfunc, BGMasker* bgm, 
-        PreTilerAlg_t preTier=NO_PRE_TILER, TilerAlg_t tilingAlg=FIXED_GRID_TILING, 
-        int nTiles=0);
+        TilerAlg_t tilingAlg=FIXED_GRID_TILING, int nTiles=0);
 };
 
 #endif

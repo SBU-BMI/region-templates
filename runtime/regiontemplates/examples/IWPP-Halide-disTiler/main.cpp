@@ -749,7 +749,7 @@ int main(int argc, char *argv[]) {
             } else {
                 tCollImg = new IrregTiledRTCollection("input", 
                     "input", Ipath, border, cfunc, bgm, 
-                    NO_PRE_TILER, denseTilingAlg, nTiles);
+                    denseTilingAlg, nTiles);
             }
             break;
         }
@@ -763,7 +763,6 @@ int main(int argc, char *argv[]) {
         case HYBRID_RESSPLIT:
             break;
     }
-
 
     tCollImg->addImage(Ipath);
     tCollImg->tileImages();
