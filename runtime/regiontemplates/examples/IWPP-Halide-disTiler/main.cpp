@@ -13,6 +13,7 @@
 #include "TiledRTCollection.h"
 #include "RegTiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
+#include "HybridDenseTiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
 #include "CostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
@@ -661,6 +662,12 @@ int main(int argc, char *argv[]) {
         cpuThreads = atoi(argv[findArgPos("-c", argc, argv)+1]);
     }
 
+    // Number of gpu threads
+    int gpuThreads = 1;
+    if (findArgPos("-g", argc, argv) != -1) {
+        cpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
+    }
+
     // Number of expected dense tiles for irregular tiling
     int nTilesPerThread = 1;
     if (findArgPos("-t", argc, argv) != -1) {
@@ -768,11 +775,15 @@ int main(int argc, char *argv[]) {
             break;
         }
         case HYBRID_DENSE:
-            // HybridTiledRTCollection ht = new HybridTiledRTCollection("input",
-            //     "input", Ipath, {borderL1, borderL2}, {cfuncR1, cfuncR2}, 
-            //     preTilerAlg, {tilerAlgR1, tilerAlgR2}, {nTilesR1, nTilesR2})
+            tCollImg = new HybridDenseTiledRTCollection(
+                "input", "input", Ipath, border, cfunc, bgm, denseTilingAlg, 
+                nTilesPerThread*cpuThreads, nTilesPerThread*gpuThreads);
             break;
         case HYBRID_PRETILER:
+            // HybridTiledRTCollection ht = new HybridTiledRTCollection(
+            //     "input", "input", Ipath, {borderL1, borderL2}, 
+            //     {cfuncR1, cfuncR2}, preTilerAlg, {tilerAlgR1, tilerAlgR2}, 
+            //     {nTilesR1, nTilesR2});
             break;
         case HYBRID_RESSPLIT:
             break;
