@@ -29,6 +29,20 @@ enum TilingAlgorithm_t {
     HYBRID_RESSPLIT,
 };
 
+// Should use ExecEngineConstants::GPU ... 
+typedef int Target_t;
+inline Target_t tgt(TilingAlgorithm_t tilingAlg, Target_t target) {
+    switch (tilingAlg) {
+        case NO_TILING:
+        case CPU_DENSE:
+            return ExecEngineConstants::CPU;
+        case HYBRID_DENSE:
+        case HYBRID_PRETILER:
+        case HYBRID_RESSPLIT:
+            return target;
+    }
+}
+
 int findArgPos(std::string s, int argc, char** argv) {
     for (int i=1; i<argc; i++)
         if (std::string(argv[i]).compare(s)==0)
@@ -184,8 +198,8 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 // Needs to be static for referencing across mpi processes/nodes
 static struct : RTF::HalGen {
     std::string getName() {return "get_background";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
@@ -214,8 +228,8 @@ bool r1 = RTF::AutoStage::registerStage(&get_background);
 
 static struct : RTF::HalGen {
     std::string getName() {return "get_rbc";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
@@ -307,8 +321,8 @@ bool r2 = RTF::AutoStage::registerStage(&get_rbc);
 
 static struct : RTF::HalGen {
     std::string getName() {return "invert";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
@@ -345,8 +359,8 @@ bool r3 = RTF::AutoStage::registerStage(&invert);
 // Structuring element must have odd width and height
 static struct : RTF::HalGen {
     std::string getName() {return "erode";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
@@ -400,8 +414,8 @@ bool r4 = RTF::AutoStage::registerStage(&erode);
 
 static struct : RTF::HalGen {
     std::string getName() {return "dilate";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
@@ -453,8 +467,8 @@ bool r5 = RTF::AutoStage::registerStage(&dilate);
 
 static struct : RTF::HalGen {
     std::string getName() {return "pre_fill_holes";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
@@ -495,8 +509,8 @@ bool r6 = RTF::AutoStage::registerStage(&pre_fill_holes);
 // Needs to be static for referencing across mpi processes/nodes
 static struct : RTF::HalGen {
     std::string getName() {return "imreconstruct";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Get params
@@ -533,7 +547,7 @@ static struct : RTF::HalGen {
 
         // Define halide stage
         Halide::Func halCpu;
-        halCpu.define_extern("loopedIwppRecon", {hI, hJ, this->getTarget(), 
+        halCpu.define_extern("loopedIwppRecon", {hI, hJ, target, 
             Halide::UInt(8).code(), hOut}, Halide::UInt(8), 2);
         // halCpu.define_extern("loopedIwppRecon", {hI, hJ, this->getTarget(), 
         //     hOut}, Halide::UInt(8), 2);
@@ -548,8 +562,8 @@ bool r7 = RTF::AutoStage::registerStage(&imreconstruct);
 
 static struct : RTF::HalGen {
     std::string getName() {return "pre_fill_holes2";}
-    int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, 
+    // int getTarget() {return ExecEngineConstants::CPU;}
+    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         // Wraps the input and output cv::mat's with halide buffers
@@ -586,7 +600,7 @@ static struct : RTF::HalGen {
         // hIn32(x,y) = Halide::cast<int32_t>(hIn(x,y));
         // recon.define_extern("loopedIwppRecon", {hIn32, hMarker, 
         recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
-            this->getTarget(), Halide::Int(32).code(), hRecon}, 
+            target, Halide::Int(32).code(), hRecon}, 
             Halide::Int(32), 2);
         // output(x,y) = Halide::cast<uint8_t>(hOut(x,y));
 
@@ -800,20 +814,21 @@ int main(int argc, char *argv[]) {
         RTF::AutoStage stage0({tCollImg->getRT(i).second, rtBackground}, 
             {new ArgumentInt(blue), new ArgumentInt(green), 
              new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
-            {&get_background}, i);
+            {&get_background}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
         
         // rbc = get_rbc(input)
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtRBC}, 
             {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
-            {tiles[i].height, tiles[i].width}, {&get_rbc}, i);
+            {tiles[i].height, tiles[i].width}, {&get_rbc}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage1.after(&stage0);
         stage1.genStage(sysEnv);
 
         // rc = invert(input[2])
         RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, 
             {new ArgumentInt(0)}, {tiles[i].height, tiles[i].width}, 
-            {&invert}, i);
+            {&invert}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage2.after(&stage1);
         stage2.genStage(sysEnv);
         
@@ -822,42 +837,45 @@ int main(int argc, char *argv[]) {
         RTF::AutoStage stage3({rtRC, rtEroded}, 
             {new ArgumentInt(disk19raw_width), 
              new ArgumentIntArray(disk19raw, disk19raw_size)}, 
-            {tiles[i].height, tiles[i].width}, {&erode}, i);
+            {tiles[i].height, tiles[i].width}, {&erode}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage3.after(&stage2);
         stage3.genStage(sysEnv);
         RTF::AutoStage stage4({rtEroded, rtRcOpen}, 
             {new ArgumentInt(disk19raw_width), 
              new ArgumentIntArray(disk19raw, disk19raw_size)}, 
-            {tiles[i].height, tiles[i].width}, {&dilate}, i);
+            {tiles[i].height, tiles[i].width}, {&dilate}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
         RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
             {new ArgumentInt(0)}, {tiles[i].height, tiles[i].width}, 
-            {&imreconstruct}, i);
+            {&imreconstruct}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage5.after(&stage4);
         stage5.genStage(sysEnv);
 
         // pre_fill = (rc - imrec(rc_open, rc)) > G1
         RTF::AutoStage stage6({rtRecon, rtRC, rtPreFill}, 
             {new ArgumentInt(G1)}, {tiles[i].height, tiles[i].width}, 
-            {&pre_fill_holes}, i);
+            {&pre_fill_holes}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage6.after(&stage5);
         stage6.genStage(sysEnv);
 
         // bw1 = fill_holes(pre_fill) = invert(imrec(invert(preFill)))
         RTF::AutoStage stage7({rtPreFill, rtInvRecon}, 
             {new ArgumentInt(-1)}, {tiles[i].height, tiles[i].width}, 
-            {&invert}, i);
+            {&invert}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage7.after(&stage6);
         stage7.genStage(sysEnv);
         RTF::AutoStage stage8({rtInvRecon, rtPreFill2}, {}, 
-            {tiles[i].height, tiles[i].width}, {&pre_fill_holes2}, i);
+            {tiles[i].height, tiles[i].width}, {&pre_fill_holes2}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage8.after(&stage7);
         stage8.genStage(sysEnv);
         RTF::AutoStage stage9({rtPreFill2, rtBw1},
             {new ArgumentInt(-1)}, {tiles[i].height, tiles[i].width}, 
-            {&invert}, i);
+            {&invert}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage9.after(&stage8);
         stage9.genStage(sysEnv);
 

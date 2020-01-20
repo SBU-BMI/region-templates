@@ -108,7 +108,7 @@ int RTF::Internal::AutoStage::run() {
             // std::cout << "sched " 
             //     << (procType==ExecEngineConstants::CPU?"CPU ":"GPU ")
             //     << schedules[procType] << std::endl;
-            schedules[procType]->realize(im_ios, params);
+            schedules[procType]->realize(im_ios, procType, params);
 
             // Assigns the output mat to its DataRegion
 #ifdef DEBUG

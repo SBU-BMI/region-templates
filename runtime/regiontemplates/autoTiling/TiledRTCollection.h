@@ -16,6 +16,9 @@
 
 static const std::string TILE_EXT = ".tiff";
 
+// Should use ExecEngineConstants::GPU ... 
+typedef int Target_t;
+
 class TiledRTCollection {
 private:
     bool tiled;
@@ -28,6 +31,7 @@ protected:
     std::vector<std::list<cv::Rect_<int64_t> > > tiles;
     // vector<pair<DR name, actual RT object with the only DR>
     std::vector<std::pair<std::string, RegionTemplate*> > rts;
+    std::vector<Target_t> tileTarget; // used only for hybrid tiling
 
     // Cost function for profiling the final tiles generated
     CostFunction* cfunc;
@@ -44,6 +48,7 @@ public:
 
     void addImage(std::string path);
     std::pair<std::string, RegionTemplate*> getRT(int id);
+    Target_t getTileTarget(int id);
     int getNumRTs() {
         return rts.size();
     }

@@ -14,8 +14,6 @@
 #include "Argument.h"
 #include "ExecEngineConstants.h"
 
-#define DATA_T uint8_t
-
 namespace RTF {
 
 // Should use ExecEngineConstants::GPU ... 
@@ -24,9 +22,9 @@ typedef int Target_t;
 // Interface for realizing halide pipelines inside RTF
 struct HalGen {
     virtual std::string getName() = 0;
-    virtual Target_t getTarget() = 0;
+    // virtual Target_t getTarget() = 0;
     static std::vector<ArgumentBase*> _dft; // default empty constructor variable
-    virtual void realize(std::vector<cv::Mat>& im_ios, 
+    virtual void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
         std::vector<ArgumentBase*>& params = _dft) = 0;
 };
 
@@ -71,21 +69,39 @@ class AutoStage {
 public:
     AutoStage(std::vector<RegionTemplate*> rts, 
         std::vector<ArgumentBase*> params, std::vector<int64_t> out_shape, 
-        std::list<HalGen*> schedules, int tileId=-1) : rts(rts), params(params), 
-        out_shape(out_shape), last_stage(true), tileId(tileId) {
+        std::list<HalGen*> schedules, Target_t target, int tileId) 
+            : rts(rts), params(params), out_shape(out_shape), 
+            last_stage(true), tileId(tileId) {
         
         this->generatedStage = NULL;
 
         // Converts the schedules list to a map 
         // id'ed by the target of the schedule
         for (HalGen* hg : schedules) {
-            this->schedules[hg->getTarget()] = hg;
+            this->schedules[target] = hg;
 
             // Registers the stage locally (node wise) for later
             // retrieval for execution
             this->registerStage(hg);
         }
     }
+    // AutoStage(std::vector<RegionTemplate*> rts, 
+    //     std::vector<ArgumentBase*> params, std::vector<int64_t> out_shape, 
+    //     std::list<HalGen*> schedules, int tileId) : rts(rts), params(params), 
+    //     out_shape(out_shape), last_stage(true), tileId(tileId) {
+        
+    //     this->generatedStage = NULL;
+
+    //     // Converts the schedules list to a map 
+    //     // id'ed by the target of the schedule
+    //     for (HalGen* hg : schedules) {
+    //         this->schedules[hg->getTarget()] = hg;
+
+    //         // Registers the stage locally (node wise) for later
+    //         // retrieval for execution
+    //         this->registerStage(hg);
+    //     }
+    // }
     virtual ~AutoStage() {};
 
     // Creates a dependency bond
