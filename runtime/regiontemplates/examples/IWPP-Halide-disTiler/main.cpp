@@ -630,6 +630,8 @@ int main(int argc, char *argv[]) {
              << " to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
         cout << "\t-p <bgThr>/<erode>/<dilate>" << endl;
+        cout << "\t-to (tiling only: generate tile images "
+             << "without executing)" << endl;
 
         cout << "\t-a <tiling algorithm>" << endl;
         cout << "\t\tValues (default=0):" << endl;
@@ -705,6 +707,12 @@ int main(int argc, char *argv[]) {
     int border = 0;
     if (findArgPos("-b", argc, argv) != -1) {
         border = atoi(argv[findArgPos("-b", argc, argv)+1]);
+    }
+
+    // Tiling only
+    bool tilingOnly = false;
+    if (findArgPos("-to", argc, argv) != -1) {
+        tilingOnly = true;
     }
 
 #ifdef PROFILING
@@ -797,6 +805,12 @@ int main(int argc, char *argv[]) {
     cout << "[PROFILING][TILING_TIME] " << (tilingT2-tilingT1) << endl;
     cout << "[PROFILING][TILES] " << tCollImg->getNumRTs() << endl;
 #endif
+
+    if (tilingOnly) {
+        sysEnv.startupExecution();
+        sysEnv.finalizeSystem();
+        return 0;
+    }
 
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution

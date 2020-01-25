@@ -48,9 +48,9 @@ include_directories(${nscalesrcdir}/normalization)
 # nscale lib dir
 link_directories(${nscalebuilddir}/lib)
 
-add_executable(segtest segTest.cpp)
-target_link_libraries(segtest ${OpenCV_LIBS})
-target_link_libraries(segtest segment normalization featuresAll)
+# add_executable(segtest segTest.cpp)
+# target_link_libraries(segtest ${OpenCV_LIBS})
+# target_link_libraries(segtest segment normalization featuresAll)
 
 if(PROFILING)
     add_definitions(-DPROFILING)

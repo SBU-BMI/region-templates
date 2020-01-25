@@ -95,7 +95,7 @@ void TiledRTCollection::customTiling() {
 
 // Performs the autoTiler algorithm while updating the internal tiles 
 //   representation std::map<int, std::vector<cv::Rect_<int64_t>>>
-void TiledRTCollection::tileImages() {
+void TiledRTCollection::tileImages(bool tilingOnly) {
     // A tiling process can only occur once
     if (this->tiled) {
         std::cout << "RT collection already tiled. Cannot re-tile it. " 
@@ -111,6 +111,36 @@ void TiledRTCollection::tileImages() {
     customTiling();
 
     this->tiled = true;
+
+    if (tilingOnly) {
+        for (int i=0; i<this->getTiles().size(); i++) {
+
+            std::cout << "image " << i << std::endl;
+
+            cv::Mat tiledImg;
+            if (isSVS(initialPaths[i]))
+                osrFilenameToCVMat(this->initialPaths[i], tiledImg);
+            else
+                tiledImg = cv::imread(this->initialPaths[i]);
+
+            // For each tile of the current image
+            for (cv::Rect_<int64_t> tile : tiles[i]) {
+                // Print tile
+                std::cout << "\ttile " << tile.x << ":" << tile.width
+                    << ", " << tile.y << ":" << tile.height << std::endl;
+
+                // Adds tile rectangle region to tiled image
+                cv::rectangle(tiledImg, 
+                    cv::Point(tile.x,tile.y), 
+                    cv::Point(tile.x+tile.width,
+                              tile.y+tile.height),
+                    (0,0,0),3);
+            }
+
+            std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
+            cv::imwrite(outname, tiledImg);
+        }
+    }
 
 #define DEBUG
 #define PROFILING2
@@ -164,8 +194,10 @@ void TiledRTCollection::tileImages() {
         }
 
 #ifdef DEBUG
-        std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
-        cv::imwrite(outname, tiledImg);
+        if (!tilingOnly) {
+            std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
+            cv::imwrite(outname, tiledImg);
+        }
 #endif // #ifdef DEBUG
 
     }

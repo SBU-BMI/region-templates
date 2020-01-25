@@ -53,7 +53,7 @@ public:
         return rts.size();
     }
 
-    void tileImages();
+    void tileImages(bool tilingOnly=false);
 
     // tiling methods for mask tiling, based on a previous tiling
     void tileImages(std::vector<std::list<cv::Rect_<int64_t>>> tiles);
