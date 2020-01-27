@@ -21,6 +21,8 @@ void IrregTiledRTCollection::customTiling() {
         std::list<cv::Rect_<int64_t>> rois;
 
         // Open image for tiling
+        int64_t w0 = -1;
+        int64_t h0 = -1;
         int64_t w = -1;
         int64_t h = -1;
         openslide_t* osr;
@@ -34,9 +36,9 @@ void IrregTiledRTCollection::customTiling() {
         osr = openslide_open(this->initialPaths[i].c_str());
 
         // Gets info of largest image
-        openslide_get_level0_dimensions(osr, &w, &h);
-        ratiow = w;
-        ratioh = h;
+        openslide_get_level0_dimensions(osr, &w0, &h0);
+        ratiow = w0;
+        ratioh = h0;
 
         // Opens smallest image as a cv mat
         osrMinLevel = openslide_get_level_count(osr) - 1; // last level
@@ -115,10 +117,23 @@ void IrregTiledRTCollection::customTiling() {
             std::string path = this->tilesPath;
 
             // Converts the tile roi for the bigger image
-            tile.x *= ratiow;
-            tile.width *= ratiow;
-            tile.y *= ratioh;
-            tile.height *= ratioh;
+            // tile.x *= ratiow;
+            // tile.width *= ratiow;
+            // tile.y *= ratioh;
+            // tile.height *= ratioh;
+
+            tile.x = std::max((int64_t)floor(ratiow*tile.x), 
+                (int64_t)0);
+            if (ceil(tile.x+ratiow*tile.width) >= (int64_t)w0)
+                tile.width = (int64_t)(w0-tile.x);
+            else
+                tile.width = (int64_t)ceil(ratiow*tile.width);
+            tile.y = std::max((int64_t)floor(ratioh*tile.y), 
+                (int64_t)0);
+            if (ceil(tile.y+ratioh*tile.height) >= (int64_t)h0)
+                tile.height = (int64_t)(h0-tile.y);
+            else
+                tile.height = (int64_t)ceil(ratioh*tile.height);
 
             // Creates the dr as a svs data region for
             // lazy read/write of input file
