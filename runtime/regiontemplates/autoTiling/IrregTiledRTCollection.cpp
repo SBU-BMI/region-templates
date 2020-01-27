@@ -54,32 +54,32 @@ void IrregTiledRTCollection::customTiling() {
         cv::Mat thMask = bgm->bgMask(maskMat);
         finalTiles.push_back({0, 0, maskMat.cols, maskMat.rows});
         
-        // Ensure that thMask is a binary mat
-        thMask.convertTo(thMask, CV_8U);
-        cv::threshold(thMask, thMask, 0, 255, cv::THRESH_BINARY);
+        // // Ensure that thMask is a binary mat
+        // thMask.convertTo(thMask, CV_8U);
+        // cv::threshold(thMask, thMask, 0, 255, cv::THRESH_BINARY);
 
         // Performs actual dense tiling
         switch (this->tilingAlg) {
             case LIST_ALG_HALF:
             case LIST_ALG_EXPECT: {
-                listCutting(thMask, finalTiles, this->nTiles, 
+                listCutting(maskMat, finalTiles, this->nTiles, 
                     this->tilingAlg, this->cfunc);
                 break;
             }
             case KD_TREE_ALG_AREA:
             case KD_TREE_ALG_COST: {
-                kdTreeCutting(thMask, finalTiles, this->nTiles, 
+                kdTreeCutting(maskMat, finalTiles, this->nTiles, 
                     this->tilingAlg, this->cfunc);
                 break;
             }
             case HBAL_TRIE_QUAD_TREE_ALG: {
-                heightBalancedTrieQuadTreeCutting(thMask, 
+                heightBalancedTrieQuadTreeCutting(maskMat, 
                     finalTiles, this->nTiles);
                 break;
             }
             case CBAL_TRIE_QUAD_TREE_ALG:
             case CBAL_POINT_QUAD_TREE_ALG: {
-                costBalancedQuadTreeCutting(thMask, finalTiles, 
+                costBalancedQuadTreeCutting(maskMat, finalTiles, 
                     this->nTiles, this->tilingAlg, this->cfunc);
                 break;
             }
@@ -91,21 +91,21 @@ void IrregTiledRTCollection::customTiling() {
                 r!=finalTiles.end(); r++) {
 
 #ifdef DEBUG
-            cv::rectangle(thMask, cv::Point(r->xi,r->yi), 
+            cv::rectangle(maskMat, cv::Point(r->xi,r->yi), 
                 cv::Point(r->xo,r->yo),(255,255,255),3);
 #endif
 
             r->xi = std::max(r->xi-this->border, (int64_t)0);
-            r->xo = std::min(r->xo+this->border, (int64_t)thMask.cols);
+            r->xo = std::min(r->xo+this->border, (int64_t)maskMat.cols);
             r->yi = std::max(r->yi-this->border, (int64_t)0);
-            r->yo = std::min(r->yo+this->border, (int64_t)thMask.rows);
+            r->yo = std::min(r->yo+this->border, (int64_t)maskMat.rows);
 
             tiles.push_back(cv::Rect_<int64_t>(
                 r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
         }
 
 #ifdef DEBUG
-        cv::imwrite("./maskf.png", thMask);
+        cv::imwrite("./maskf.png", maskMat);
 #endif
 
         // Actually tile the image given the list of ROIs

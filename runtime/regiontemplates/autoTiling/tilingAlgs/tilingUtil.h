@@ -61,24 +61,24 @@ typedef struct rect_t {
 /**                            Cost Calculations                            **/
 /*****************************************************************************/
 
-inline int64_t cost(const cv::Mat& img) {
-    return cv::sum(img)[0];
-}
+// inline int64_t cost(const cv::Mat& img) {
+//     return cv::sum(img)[0];
+// }
 
-inline int64_t cost(const cv::Mat& img, const rect_t& r) {
-    return cv::sum(img(cv::Range(r.yi, r.yo), cv::Range(r.xi, r.xo)))[0];
-}
+// inline int64_t cost(const cv::Mat& img, const rect_t& r) {
+//     return cv::sum(img(cv::Range(r.yi, r.yo), cv::Range(r.xi, r.xo)))[0];
+// }
 
-template <typename T>
-inline int64_t cost(const cv::Mat& img, const cv::Rect_<T>& r) {
-    return cv::sum(img(cv::Range(r.y, r.y+r.height), 
-                       cv::Range(r.x, r.x+r.width)))[0];
-}
+// template <typename T>
+// inline int64_t cost(const cv::Mat& img, const cv::Rect_<T>& r) {
+//     return cv::sum(img(cv::Range(r.y, r.y+r.height), 
+//                        cv::Range(r.x, r.x+r.width)))[0];
+// }
 
-inline int64_t cost(const cv::Mat& img, int64_t yi, int64_t yo, 
-        int64_t xi, int64_t xo) {
-    return cv::sum(img(cv::Range(yi, yo), cv::Range(xi, xo)))[0];
-}
+// inline int64_t cost(const cv::Mat& img, int64_t yi, int64_t yo, 
+//         int64_t xi, int64_t xo) {
+//     return cv::sum(img(cv::Range(yi, yo), cv::Range(xi, xo)))[0];
+// }
 
 inline bool between(int64_t x, int64_t init, int64_t end) {
     return x >= init && x <= end;
@@ -88,17 +88,19 @@ inline int64_t area (rect_t r) {
     return (r.xo-r.xi) * (r.yo-r.yi);
 }
 
-// Functor for sorting a container of rect_t using the added cost of said
-// region on the img parameter.
-// NOTE: when instantiating container, use double parenthesis to avoid 
-// compiler confusion of the declared object with a function:
-// Cont<t1, rect_tCostFunct> obj((rect_tCostFunct(img)))
+// // Functor for sorting a container of rect_t using the added cost of said
+// // region on the img parameter.
+// // NOTE: when instantiating container, use double parenthesis to avoid 
+// // compiler confusion of the declared object with a function:
+// // Cont<t1, rect_tCostFunct> obj((rect_tCostFunct(img)))
 
 struct rect_tCostFunct{
     const cv::Mat& img;
-    rect_tCostFunct(const cv::Mat& img) : img(img) {}
+    const CostFunction* cfunc;
+    rect_tCostFunct(const cv::Mat& img, CostFunction* cfunc) : img(img), cfunc(cfunc) {}
     bool operator()(const rect_t& a, const rect_t& b) {
-        return cost(img, a) > cost(img, b);
+        return this->cfunc->cost(this->img, a.yi, a.yo, a.xi, a.xo) >
+               this->cfunc->cost(this->img, b.yi, b.yo, b.xi, b.xo);
     }
 };
 

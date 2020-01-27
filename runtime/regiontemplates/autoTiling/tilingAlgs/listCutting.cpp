@@ -8,7 +8,7 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense,
 
     // Create a multiset of tiles ordered by the cost function. This is to 
     // avoid re-sorting of the dense list whilst enabling O(1) access
-    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img)));
+    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img, cfunc)));
     for (rect_t r : dense) {
         sDense.insert(r);
     }
@@ -27,7 +27,8 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense,
             exit(-1);
         }
         if (type == LIST_ALG_HALF)
-            splitTileLog(*dIt, img, cfunc, cost(img, *dIt)/2, newt1, newt2);
+            splitTileLog(*dIt, img, cfunc, 
+                cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo)/2, newt1, newt2);
         else if (type == LIST_ALG_EXPECT)
             splitTileLog(*dIt, img, cfunc, avgCost, newt1, newt2);
         else {

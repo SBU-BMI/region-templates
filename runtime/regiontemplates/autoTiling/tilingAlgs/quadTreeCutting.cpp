@@ -12,7 +12,7 @@ void trieSplit4(const rect_t& r, std::list<rect_t>& newTs) {
 void costBasedSplit4(const rect_t& r, const cv::Mat& img, 
     std::list<rect_t>& newTs, CostFunction* cfunc) {
 
-    int64_t tileCost = cost(img, r);
+    int64_t tileCost = cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
 
     // Performs the log split for both vertical and horizontal orientations
     rect_t newt1h, newt2h;
@@ -96,7 +96,7 @@ void costBalancedQuadTreeCutting(const cv::Mat& img,
 
     // Create a multiset of tiles ordered by the cost function. This is to 
     // avoid re-sorting of the dense list whilst enabling O(1) access
-    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img)));
+    std::multiset<rect_t, rect_tCostFunct> sDense((rect_tCostFunct(img, cfunc)));
     for (rect_t r : dense) {
         sDense.insert(r);
     }

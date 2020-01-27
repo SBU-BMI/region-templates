@@ -5,15 +5,15 @@
 /*****************************************************************************/
 
 // prints the std dev of a tile inside an image. Used for profiling
-void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name) {
+void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name, CostFunction* cfunc) {
     float mean = 0;
     for (rect_t r : rs)
-        mean += cost(img, r);
+        mean += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
     mean /= rs.size();
 
     float var = 0;
     for (rect_t r : rs)
-        var += pow(cost(img, r)-mean, 2);
+        var += pow(cfunc->cost(img, r.yi, r.yo, r.xi, r.xo)-mean, 2);
     
     std::cout << "[PROFILING][STDDEV][" << name << "]" 
         << (sqrt(var/(rs.size()-1))) << std::endl;

@@ -117,43 +117,43 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
 
             std::cout << "image " << i << std::endl;
 
-            cv::Mat tiledImg;
+            cv::Mat baseImg;
             if (isSVS(initialPaths[i]))
-                osrFilenameToCVMat(this->initialPaths[i], tiledImg);
+                osrFilenameToCVMat(this->initialPaths[i], baseImg);
             else
-                tiledImg = cv::imread(this->initialPaths[i]);
+                baseImg = cv::imread(this->initialPaths[i]);
             
             // get cost image
-            tiledImg = this->cfunc->costImg(tiledImg);
-            cv::Mat tiledImgColor;
-            cv::cvtColor(tiledImg, tiledImgColor, cv::COLOR_GRAY2RGB);
+            cv::Mat tiledImg;
+            tiledImg = this->cfunc->costImg(baseImg);
+            cv::cvtColor(tiledImg, tiledImg, cv::COLOR_GRAY2RGB);
 
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : tiles[i]) {
                 // Print tile with readable unber format
                 setlocale(LC_NUMERIC, "en_US.utf-8");
                 char cost[50];
-                sprintf(cost, "%'2ld", this->cfunc->cost(tiledImg, tile));
+                sprintf(cost, "%'2ld", this->cfunc->cost(baseImg, tile));
                 std::cout << "\ttile " << tile.x << ":" << tile.width
                     << "\t" << tile.y << ":" << tile.height << "\tcost: " << 
                     cost << std::endl;
 
                 // Adds tile rectangle region to tiled image
-                cv::rectangle(tiledImgColor, 
+                cv::rectangle(tiledImg, 
                     cv::Point(tile.x,tile.y), 
                     cv::Point(tile.x+tile.width,
                               tile.y+tile.height),
                     (255,255,255),5);
 
                 // Add cost to image as text
-                cv::putText(tiledImgColor, 
+                cv::putText(tiledImg, 
                     cost,
                     cv::Point(tile.x+10, tile.y+tile.height/2),
                     cv::FONT_HERSHEY_SIMPLEX, 3, (255,255,255), 7);
             }
 
             std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
-            cv::imwrite(outname, tiledImgColor);
+            cv::imwrite(outname, tiledImg);
         }
     }
 
