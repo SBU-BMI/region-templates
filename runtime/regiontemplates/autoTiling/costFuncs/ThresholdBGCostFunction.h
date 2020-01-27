@@ -24,6 +24,7 @@ public:
 
     // T cost(cv::Mat img);
     int64_t cost(cv::Mat img);
+    cv::Mat costImg(cv::Mat img);
 };
 
 #endif

@@ -684,10 +684,10 @@ int main(int argc, char *argv[]) {
         std::string params = argv[findArgPos("-p", argc, argv)+1];
         std::size_t l = params.find_last_of("/");
         dilate_param = atoi(params.substr(l+1).c_str());
-        params = params.substr(0, l-1);
+        params = params.substr(0, l);
         l = params.find_last_of("/");
         erode_param = atoi(params.substr(l+1).c_str());
-        bgThr = atoi(params.substr(0, l-1).c_str());
+        bgThr = atoi(params.substr(0, l).c_str());
     }
 
     // Full tiling algorithm
@@ -798,7 +798,7 @@ int main(int argc, char *argv[]) {
     }
 
     tCollImg->addImage(Ipath);
-    tCollImg->tileImages();
+    tCollImg->tileImages(tilingOnly);
 
 #ifdef PROFILING
     long tilingT2 = Util::ClockGetTime();

@@ -85,15 +85,15 @@ void IrregTiledRTCollection::customTiling() {
             }
         }
 
-// #ifdef PROFILING
-//         // Gets std-dev of all tiles' sizes
-//         stddev(finalTiles, thMask, "ALL");
-// #endif
-
         // Convert rect_t to cv::Rect_ and add borders
         std::list<cv::Rect_<int64_t> > tiles;
         for (std::list<rect_t>::iterator r=finalTiles.begin(); 
                 r!=finalTiles.end(); r++) {
+
+#ifdef DEBUG
+            cv::rectangle(thMask, cv::Point(r->xi,r->yi), 
+                cv::Point(r->xo,r->yo),(255,255,255),3);
+#endif
 
             r->xi = std::max(r->xi-this->border, (int64_t)0);
             r->xo = std::min(r->xo+this->border, (int64_t)thMask.cols);
@@ -102,15 +102,10 @@ void IrregTiledRTCollection::customTiling() {
 
             tiles.push_back(cv::Rect_<int64_t>(
                 r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
-
-#ifdef DEBUG
-            cv::rectangle(maskMat, cv::Point(r->xi,r->yi), 
-                cv::Point(r->xo,r->yo),(0,0,0),3);
-#endif
         }
 
 #ifdef DEBUG
-        cv::imwrite("./maskf.png", maskMat);
+        cv::imwrite("./maskf.png", thMask);
 #endif
 
         // Actually tile the image given the list of ROIs

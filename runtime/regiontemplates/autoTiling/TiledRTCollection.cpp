@@ -122,28 +122,43 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                 osrFilenameToCVMat(this->initialPaths[i], tiledImg);
             else
                 tiledImg = cv::imread(this->initialPaths[i]);
+            
+            // get cost image
+            tiledImg = this->cfunc->costImg(tiledImg);
+            cv::Mat tiledImgColor;
+            cv::cvtColor(tiledImg, tiledImgColor, cv::COLOR_GRAY2RGB);
 
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : tiles[i]) {
-                // Print tile
+                // Print tile with readable unber format
+                setlocale(LC_NUMERIC, "en_US.utf-8");
+                char cost[50];
+                sprintf(cost, "%'2ld", this->cfunc->cost(tiledImg, tile));
                 std::cout << "\ttile " << tile.x << ":" << tile.width
-                    << ", " << tile.y << ":" << tile.height << std::endl;
+                    << "\t" << tile.y << ":" << tile.height << "\tcost: " << 
+                    cost << std::endl;
 
                 // Adds tile rectangle region to tiled image
-                cv::rectangle(tiledImg, 
+                cv::rectangle(tiledImgColor, 
                     cv::Point(tile.x,tile.y), 
                     cv::Point(tile.x+tile.width,
                               tile.y+tile.height),
-                    (0,0,0),3);
+                    (255,255,255),5);
+
+                // Add cost to image as text
+                cv::putText(tiledImgColor, 
+                    cost,
+                    cv::Point(tile.x+10, tile.y+tile.height/2),
+                    cv::FONT_HERSHEY_SIMPLEX, 3, (255,255,255), 7);
             }
 
             std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
-            cv::imwrite(outname, tiledImg);
+            cv::imwrite(outname, tiledImgColor);
         }
     }
 
-#define DEBUG
-#define PROFILING2
+// #define DEBUG
+// #define PROFILING2
 
 #ifdef DEBUG
     std::cout << "==== format: tile x:width, y:height" << std::endl;
