@@ -128,7 +128,7 @@ void RegTiledRTCollection::customTiling() {
             // Sc minimal is:
             k = sqrt((float)this->nTiles*(float)h/(float)w);
 
-            // ... Actually, since nx and ny are floats, we won't use this 
+            // ... Actually, since nx and ny are floats, we won't use these 
             // ... equations below.
             // // As such, we can calculate the tiles sizes
             // this->tw = min(floor((float)k*(float)w/(float)this->nTiles), 
@@ -232,6 +232,9 @@ void RegTiledRTCollection::customTiling() {
         std::cout << "Full size:" << w << "x" << h << std::endl;
         std::cout << "xTiles:" << xTiles << std::endl;
         std::cout << "yTiles:" << yTiles << std::endl;
+        std::cout << "border:" << this->border << std::endl;
+        std::cout << "tw:" << this->tw << std::endl;
+        std::cout << "th:" << this->th << std::endl;
 #endif
 
         // Check whether the border can generate an Out of Bounds (OoB)
@@ -252,8 +255,8 @@ void RegTiledRTCollection::customTiling() {
 
                 // Set the width and height no OoB check is required since
                 // this->border must be less than this->tw and this->th
-                int tjjTmp = tj==(yTiles-1)? w-tjTmp : this->tw+this->border;
-                int tiiTmp = ti==(xTiles-1)? h-tiTmp : this->th+this->border;
+                int tjjTmp = tj==(xTiles-1)? w-tjTmp : this->tw+this->border;
+                int tiiTmp = ti==(yTiles-1)? h-tiTmp : this->th+this->border;
                 
                 // Create the roi for the current tile
                 cv::Rect_<int64_t> roi(
