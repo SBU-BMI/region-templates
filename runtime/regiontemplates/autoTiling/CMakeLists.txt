@@ -10,11 +10,20 @@ include_directories(${OPENSLIDE_SRC_DIR})
 link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
 set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
 
+# add halide
+find_path(HALIDE_BUILD_PATH REQUIRED)
+include_directories(${HALIDE_BUILD_PATH}/include)
+link_directories(${HALIDE_BUILD_PATH}/lib)
+# add halide tools
+include_directories(${HALIDE_BUILD_PATH}/../tools)
+find_package(PNG REQUIRED)
+include_directories(${PNG_INCLUDE_DIR})
+
 # Source files
 set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp 
     IrregTiledRTCollection.cpp BGPreTiledRTCollection.cpp 
     HybridDenseTiledRTCollection.cpp 
-    CostFunction.cpp 
+    CostFunction.cpp costFuncs/OracleCostFunction.cpp
     costFuncs/ThresholdBGMasker.cpp costFuncs/ThresholdBGCostFunction.cpp 
     svs/svsUtils.cpp tilingAlgs/tilingUtil.cpp tilingAlgs/denseFromBG.cpp 
     tilingAlgs/listCutting.cpp tilingAlgs/kdTreeCutting.cpp 

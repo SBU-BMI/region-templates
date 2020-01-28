@@ -15,9 +15,11 @@
 #include "IrregTiledRTCollection.h"
 #include "HybridDenseTiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
+
 #include "CostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
+#include "costFuncs/OracleCostFunction.h"
 
 using std::cout;
 using std::endl;
