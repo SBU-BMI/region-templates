@@ -24,6 +24,8 @@
 using std::cout;
 using std::endl;
 
+#define PROFILING
+
 enum TilingAlgorithm_t {
     NO_TILING,
     CPU_DENSE,
@@ -628,7 +630,7 @@ int main(int argc, char *argv[]) {
         cout << "\t-t <Number of tiles per resource thread "
              << " to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
-        cout << "\t-p <bgThr>/<erode>/<dilate>" << endl;
+        cout << "\t-p <bgThr>/<erode>/<dilate> (default=100/4/10)" << endl;
         cout << "\t-to (tiling only: generate tile images "
              << "without executing)" << endl;
 

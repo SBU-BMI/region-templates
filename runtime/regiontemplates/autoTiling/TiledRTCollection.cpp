@@ -115,8 +115,6 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     if (tilingOnly) {
         for (int i=0; i<this->getTiles().size(); i++) {
 
-            std::cout << "image " << i << std::endl;
-
             cv::Mat baseImg;
             if (isSVS(initialPaths[i]))
                 osrFilenameToCVMat(this->initialPaths[i], baseImg);
@@ -128,7 +126,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
             tiledImg = this->cfunc->costImg(baseImg);
             cv::cvtColor(tiledImg, tiledImg, cv::COLOR_GRAY2RGB);
 
-            // int id=28;
+            // int id=0;
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : tiles[i]) {
                 // Print tile with readable unber format
@@ -164,8 +162,8 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
         }
     }
 
-// #define DEBUG
-// #define PROFILING2
+#define DEBUG
+#define PROFILING2
 
 #ifdef DEBUG
     std::cout << "==== format: tile x:width, y:height" << std::endl;
