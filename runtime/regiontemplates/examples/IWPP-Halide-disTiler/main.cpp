@@ -90,20 +90,20 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
 //        f.realize(); // without output buffer
 template <typename T>
 int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
-    int sched, halide_buffer_t* bOut);
+    int sched, halide_buffer_t* bOut, int cvDataType);
 extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     int sched, int T, halide_buffer_t* bOut) {
     switch (T) {
         case halide_type_uint:
-            return loopedIwppRecon<uint8_t>(bII, bJJ, sched, bOut);
+            return loopedIwppRecon<uint8_t>(bII, bJJ, sched, bOut, CV_8U);
         case halide_type_int:
-            return loopedIwppRecon<int32_t>(bII, bJJ, sched, bOut);
+            return loopedIwppRecon<int32_t>(bII, bJJ, sched, bOut, CV_32S);
     }
 }
 
 template <typename T>
 int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
-    int sched, halide_buffer_t* bOut) {
+    int sched, halide_buffer_t* bOut, int cvDataType) {
 
     // cout << "[loopedIwppRecon] init" << endl;
 
@@ -112,8 +112,8 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     Halide::Buffer<T> hOut(*bOut, "hOut");
     int32_t w = bII->dim[0].extent;
     int32_t h = bII->dim[1].extent;
-    cv::imwrite("hOut.png", cv::Mat(h, w, 
-        cv::DataType<T>::type, hOut.get()->raw_buffer()->host));
+    // cv::imwrite("hOut.png", cv::Mat(h, w, 
+    //     cv::DataType<T>::type, hOut.get()->raw_buffer()->host));
 
     Halide::Func rasterx("rasterx"), rastery("rastery"), arasterx, arastery;
     Halide::RDom se(-1,3,-1,3);
@@ -177,22 +177,19 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         if (sched == ExecEngineConstants::GPU) {
             JJ.copy_to_host();
         }
-        newSum = cv::sum(cv::Mat(h, w, CV_8U, JJ.get()->raw_buffer()->host))[0];
+        newSum = cv::sum(cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host))[0];
         // cout << "new - old: " << newSum << " - " << oldSum << endl;
         // if (it%10 == 0 && iin > 0) {
-        //     cv::Mat cvJ(h, w, CV_8U, JJ.get()->raw_buffer()->host);
+        //     cv::Mat cvJ(h, w, cvDataType, JJ.get()->raw_buffer()->host);
         //     cv::imwrite("out.png", cvJ);
         //     cout << "out" << endl;
         //     std::cin >> iin;
         // }
     } while(newSum != oldSum);
 
-    // Halide::Buffer<uint8_t> hOut(*bOut, "hOut");
     hOut.copy_from(JJ); // bad
     // cv::imwrite("loopedIwppRecon.png", 
-    //    cv::Mat(h, w, CV_8U, hOut.get()->raw_buffer()->host));
-
-    // hOut = JJ.copy();
+    //    cv::Mat(h, w, cvDataType, hOut.get()->raw_buffer()->host));
 
     return 0;
 }
@@ -549,7 +546,7 @@ static struct : RTF::HalGen {
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
 
         // Define halide stage
-        Halide::Func halCpu;
+        Halide::Func halCpu("halCpu");
         halCpu.define_extern("loopedIwppRecon", {hI, hJ, target, 
             Halide::UInt(8).code(), hOut}, Halide::UInt(8), 2);
         // halCpu.define_extern("loopedIwppRecon", {hI, hJ, this->getTarget(), 
@@ -557,7 +554,7 @@ static struct : RTF::HalGen {
 
         // Adds the cpu implementation to the schedules output
         cout << "[imreconstruct][cpu] Realizing..." << endl;
-        halCpu.realize();
+        halCpu.realize(hOut);
         cout << "[imreconstruct][cpu] Done..." << endl;
     }
 } imreconstruct;
@@ -615,7 +612,7 @@ static struct : RTF::HalGen {
         recon.realize(hRecon);
         // output.realize(hOut);
         cout << "[pre_fill_holes2][cpu] Done..." << endl;
-        cv::imwrite("pre_fill2.png", cvRecon);
+        // cv::imwrite("pre_fill2.png", cvRecon);
     }
 } pre_fill_holes2;
 bool r8 = RTF::AutoStage::registerStage(&pre_fill_holes2);
