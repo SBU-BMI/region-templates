@@ -168,8 +168,8 @@ void RegTiledRTCollection::customTiling() {
         int bestPrm;
 
         // Get the info for the first combination
-        int xTilesTmp = floor(k);
-        int yTilesTmp = floor(nTiles/k);
+        int xTilesTmp = floor(nTiles/k);
+        int yTilesTmp = floor(k);
         int curNtTmp = xTilesTmp * yTilesTmp;
         long curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
 
@@ -180,8 +180,8 @@ void RegTiledRTCollection::customTiling() {
         bestPrm = curPrm;
 
         // Check if the second combination is better
-        xTilesTmp = ceil(k);
-        yTilesTmp = floor(nTiles/k);
+        xTilesTmp = floor(nTiles/k);
+        yTilesTmp = ceil(k);
         curNtTmp = xTilesTmp * yTilesTmp;
         curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
         // If the number of tiles is better or if it is the same as the best, 
@@ -195,8 +195,8 @@ void RegTiledRTCollection::customTiling() {
         }
 
         // Check if the third combination is better
-        xTilesTmp = floor(k);
-        yTilesTmp = ceil(nTiles/k);
+        xTilesTmp = ceil(nTiles/k);
+        yTilesTmp = floor(k);
         curNtTmp = xTilesTmp * yTilesTmp;
         curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
         // If the number of tiles is better or if it is the same as the best, 
@@ -210,8 +210,8 @@ void RegTiledRTCollection::customTiling() {
         }
 
         // Check if the fourth combination is better
-        xTilesTmp = ceil(k);
-        yTilesTmp = ceil(nTiles/k);
+        xTilesTmp = ceil(nTiles/k);
+        yTilesTmp = ceil(k);
         curNtTmp = xTilesTmp * yTilesTmp;
         curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
         // If the number of tiles is better or if it is the same as the best, 
@@ -257,7 +257,7 @@ void RegTiledRTCollection::customTiling() {
                 // this->border must be less than this->tw and this->th
                 int tjjTmp = tj==(xTiles-1)? w-tjTmp : this->tw+this->border;
                 int tiiTmp = ti==(yTiles-1)? h-tiTmp : this->th+this->border;
-                
+
                 // Create the roi for the current tile
                 cv::Rect_<int64_t> roi(
                     tjTmp, tiTmp, tjjTmp, tiiTmp);
