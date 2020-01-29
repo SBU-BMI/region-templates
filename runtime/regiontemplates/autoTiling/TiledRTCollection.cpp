@@ -93,7 +93,7 @@ void TiledRTCollection::customTiling() {
     }
 }
 
-#define CREATE_TILES
+// #define CREATE_TILES
 
 // Performs the autoTiler algorithm while updating the internal tiles 
 //   representation std::map<int, std::vector<cv::Rect_<int64_t>>>

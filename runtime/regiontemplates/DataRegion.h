@@ -63,6 +63,9 @@ private:
 	friend class RegionTemplate;
 	friend class DataRegionFactory;
 
+	// Abort flag, useb by distributed tiling + halide
+	bool wasAborted;
+
 protected:
 	// cache level, type, and id of the worker in which it is stored
 	int cacheLevel;
@@ -147,6 +150,9 @@ public:
 	void setCachedDataSize(long cachedDataSize);
 	int getStorageLevel() const;
 	void setStorageLevel(int storageLevel);
+
+	bool aborted();
+	void abort();
 };
 
 

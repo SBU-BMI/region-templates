@@ -481,9 +481,10 @@ void RTPipelineComponentBase::updateRegionTemplateInfo(RegionTemplate* rt) {
 			drCur->setCacheLevel(dr->getCacheLevel());
 			drCur->setCacheType(dr->getCacheType());
 			drCur->setCachedDataSize(dr->getCachedDataSize());
+			if (dr->aborted()) drCur->abort();
 #ifdef DEBUG
 			std::cout << "CompName: "<< this->getComponentName() <<" Updating region template: "<< rt->getName() << " data region: "
-					<< dr->getName()<<" dr->id: "<< drCur->getId() << " dr->timestamp: "<<dr->getTimestamp() << "dr->version: "<<dr->getVersion()
+					<< dr->getName()<<" dr->id: "<< drCur->getId() << " dr->timestamp: " << dr->getTimestamp() << " dr->version: "<< dr->getVersion()
 					<< " componentId: "<< this->getId()<< std::endl;
 #endif
 

@@ -100,22 +100,30 @@ int RTF::Internal::AutoStage::run() {
                 << schedules.begin()->second->getName() << std::endl;
 #endif
             std::vector<cv::Mat> im_ios;
+            bool aborted = false;
             for (int i=0; i<this->dr_ios.size(); i++) {
                 im_ios.emplace_back(cv::Mat(this->dr_ios[i]->getData()));
+                if (this->dr_ios[i]->aborted()) {
+                    aborted = true;
+                    break;
+                }
             }
 
-            // Executes the halide stage
-            // std::cout << "sched " 
-            //     << (procType==ExecEngineConstants::CPU?"CPU ":"GPU ")
-            //     << schedules[procType] << std::endl;
-            schedules[procType]->realize(im_ios, procType, params);
+            // Executes the halide stage if not aborted
+            if (!aborted)
+                aborted = schedules[procType]->realize(im_ios, procType, params);
+
+            // set abort flag for all further data regions
+            if(aborted)
+                for (int i=0; i<this->dr_ios.size(); i++)
+                    this->dr_ios[i]->abort();
+                
 
             // Assigns the output mat to its DataRegion
 #ifdef DEBUG
             std::cout << "[Internal::AutoStage::_Task] realized " 
                 << std::endl;
 #endif
-            cv::imwrite("taskOut.png", im_ios[im_ios.size()-1]);
         }
     }* currentTask = new _Task(local_schedules, dr_ios, this->getArguments());
 

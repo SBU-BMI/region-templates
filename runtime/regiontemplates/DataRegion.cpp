@@ -28,6 +28,8 @@ DataRegion::DataRegion() {
 	this->bb.setUb(Point(0,0,0));
 
 	this->svs = false;
+	
+	this->wasAborted = false;
 }
 
 DataRegion::~DataRegion() {
@@ -224,6 +226,10 @@ int DataRegion::serialize(char* buff) {
 		bb2IdIt++;
 	}
 
+	// pack aborted
+	memcpy(buff+serialized_bytes, &this->wasAborted, sizeof(bool));
+	serialized_bytes += sizeof(bool);
+
 	return serialized_bytes;
 }
 
@@ -358,6 +364,11 @@ int DataRegion::deserialize(char* buff) {
 		this->insertBB2IdElement(bb, id);
 	}
 
+	bool wasAborted;
+	memcpy(&wasAborted, buff+deserialized_bytes, sizeof(bool));
+	deserialized_bytes += sizeof(bool);
+	this->wasAborted = wasAborted;
+
 	return deserialized_bytes;
 }
 
@@ -488,6 +499,9 @@ int DataRegion::serializationSize() {
 
 		bb2IdIt++;
 	}
+
+	// pack wasAborted
+	size_bytes += sizeof(bool);
 
 	return size_bytes;
 }
@@ -631,4 +645,12 @@ int DataRegion::getStorageLevel() const {
 
 void DataRegion::setStorageLevel(int storageLevel) {
 	this->storageLevel = storageLevel;
+}
+
+bool DataRegion::aborted() {
+	return this->wasAborted;
+}
+
+void DataRegion::abort() {
+	this->wasAborted = true;
 }

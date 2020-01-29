@@ -346,6 +346,10 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, DataRegion* dr, b
 												   copyData, dr->getIsAppInput());
 			//this->cacheLayers[i]->unlock();
 
+			// updates abort value (used for distributed tiling + halide)
+			if (retValue != NULL && dr->aborted())
+				retValue->abort();
+
 			// update instrumentation
 			if(retValue != NULL) {
 				// time elapsed in read operation

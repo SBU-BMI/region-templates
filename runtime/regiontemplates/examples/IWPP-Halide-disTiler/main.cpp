@@ -25,7 +25,7 @@ using std::cout;
 using std::endl;
 
 #define PROFILING
-#define PROFILING_STAGES
+// #define PROFILING_STAGES
 
 enum TilingAlgorithm_t {
     NO_TILING,
@@ -238,7 +238,7 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 static struct : RTF::HalGen {
     std::string getName() {return "get_background";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -285,6 +285,16 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_background] " << (st3-st2) << endl;
         #endif
+
+        int bgArea = cv::countNonZero(im_ios[1]);
+        float ratio = (float)bgArea / (float)(im_ios[1].size().area());
+        // check if there is too much background
+        std::cout << "[get_background] ratio: " << ratio << std::endl;
+        if (ratio >= 0.9) {
+            std::cout << "[get_background] aborted!" << std::endl;
+            return true; // abort if more than 90% background
+        } else
+            return false;
     }
 } get_background;
 bool r1 = RTF::AutoStage::registerStage(&get_background);
@@ -292,7 +302,7 @@ bool r1 = RTF::AutoStage::registerStage(&get_background);
 static struct : RTF::HalGen {
     std::string getName() {return "get_rbc";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -301,7 +311,7 @@ static struct : RTF::HalGen {
 
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
 
         // Get params
         float T1 = ((ArgumentFloat*)params[0])->getArgValue();
@@ -418,6 +428,8 @@ static struct : RTF::HalGen {
         long st6 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_rbc] " << (st6-st5+st3-st2) << endl;
         #endif
+
+        return false;
     }
 } get_rbc;
 bool r2 = RTF::AutoStage::registerStage(&get_rbc);
@@ -425,7 +437,7 @@ bool r2 = RTF::AutoStage::registerStage(&get_rbc);
 static struct : RTF::HalGen {
     std::string getName() {return "invert";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -476,6 +488,8 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][invert] " << (st3-st2) << endl;
         #endif
+
+        return false;
     }
 } invert;
 bool r3 = RTF::AutoStage::registerStage(&invert);
@@ -486,7 +500,7 @@ bool r3 = RTF::AutoStage::registerStage(&invert);
 static struct : RTF::HalGen {
     std::string getName() {return "erode";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -557,6 +571,8 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
         #endif
+
+        return false;
     }
 } erode;
 bool r4 = RTF::AutoStage::registerStage(&erode);
@@ -564,7 +580,7 @@ bool r4 = RTF::AutoStage::registerStage(&erode);
 static struct : RTF::HalGen {
     std::string getName() {return "dilate";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -633,6 +649,8 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
         #endif
+
+        return false;
     }
 } dilate;
 bool r5 = RTF::AutoStage::registerStage(&dilate);
@@ -640,7 +658,7 @@ bool r5 = RTF::AutoStage::registerStage(&dilate);
 static struct : RTF::HalGen {
     std::string getName() {return "pre_fill_holes";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -697,6 +715,8 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes] " << (st3-st2) << endl;
         #endif
+
+        return false;
     }
 } pre_fill_holes;
 bool r6 = RTF::AutoStage::registerStage(&pre_fill_holes);
@@ -705,7 +725,7 @@ bool r6 = RTF::AutoStage::registerStage(&pre_fill_holes);
 static struct : RTF::HalGen {
     std::string getName() {return "imreconstruct";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -772,6 +792,8 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][imreconstruct] " << (st3-st2) << endl;
         #endif
+
+        return false;
     }
 } imreconstruct;
 bool r7 = RTF::AutoStage::registerStage(&imreconstruct);
@@ -779,7 +801,7 @@ bool r7 = RTF::AutoStage::registerStage(&imreconstruct);
 static struct : RTF::HalGen {
     std::string getName() {return "pre_fill_holes2";}
     // int getTarget() {return ExecEngineConstants::CPU;}
-    void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
         #ifdef PROFILING_STAGES
@@ -849,6 +871,8 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes2] " << (st3-st2) << endl;
         #endif
+
+        return false;
     }
 } pre_fill_holes2;
 bool r8 = RTF::AutoStage::registerStage(&pre_fill_holes2);
@@ -1079,7 +1103,8 @@ int main(int argc, char *argv[]) {
         stage0.genStage(sysEnv);
         
         // rbc = get_rbc(input)
-        RTF::AutoStage stage1({tCollImg->getRT(i).second, rtRBC}, 
+        // Added rtBackground for aborting signal
+        RTF::AutoStage stage1({tCollImg->getRT(i).second, rtBackground, rtRBC}, 
             {new ArgumentFloat(T1), new ArgumentFloat(T2), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&get_rbc}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
@@ -1087,7 +1112,8 @@ int main(int argc, char *argv[]) {
         stage1.genStage(sysEnv);
 
         // rc = invert(input[2])
-        RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, 
+        // Added rtRBC for aborting signal
+        RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRBC, rtRC}, 
             {new ArgumentInt(0), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&invert}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);

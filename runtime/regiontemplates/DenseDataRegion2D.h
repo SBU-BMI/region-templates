@@ -58,7 +58,6 @@ public:
 	bool empty();
 	long getDataSize();
 
-
 	int getXDimensionSize();
 	int getYDimensionSize();
 };
