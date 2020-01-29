@@ -25,6 +25,7 @@ using std::cout;
 using std::endl;
 
 #define PROFILING
+#define PROFILING_STAGES
 
 enum TilingAlgorithm_t {
     NO_TILING,
@@ -109,6 +110,10 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 
     // cout << "[loopedIwppRecon] init" << endl;
 
+    #ifdef PROFILING_STAGES
+    long st0 = Util::ClockGetTime();
+    #endif
+
     Halide::Buffer<T> II(*bII, "II");
     Halide::Buffer<T> JJ(*bJJ, "JJ");
     Halide::Buffer<T> hOut(*bOut, "hOut");
@@ -148,7 +153,6 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         rastery.reorder(y,x).serial(y);
         rastery.split(x, xo, xi, 16);
         rastery.vectorize(xi).parallel(xo);
-        rastery.compile_jit();
     } else if (sched == ExecEngineConstants::GPU) {
         Halide::Var bx, by, tx, ty;
         rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
@@ -157,9 +161,15 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         II.set_host_dirty();
         JJ.set_host_dirty();
     }
+
     // target.set_feature(Halide::Target::Debug);
     rastery.compile_jit(target);
     // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
+
+    #ifdef PROFILING_STAGES
+    long st1 = Util::ClockGetTime();
+    cout << "[PROFILING][IWPP_COMP] " << (st1-st0) << endl;
+    #endif
 
     unsigned long oldSum = 0;
     unsigned long newSum = 0;
@@ -169,6 +179,11 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     unsigned long iin = 1;
 
     do {
+
+        #ifdef PROFILING_STAGES2
+        long st2 = Util::ClockGetTime();
+        #endif
+
         it++;
         oldSum = newSum;
         rastery.realize(JJ);
@@ -179,6 +194,11 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         if (sched == ExecEngineConstants::GPU) {
             JJ.copy_to_host();
         }
+
+        #ifdef PROFILING_STAGES2
+        long st3 = Util::ClockGetTime();
+        #endif
+
         newSum = cv::sum(cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host))[0];
         // cout << "new - old: " << newSum << " - " << oldSum << endl;
         // if (it%10 == 0 && iin > 0) {
@@ -187,11 +207,28 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         //     cout << "out" << endl;
         //     std::cin >> iin;
         // }
+
+        #ifdef PROFILING_STAGES2
+        long st4 = Util::ClockGetTime();
+        cout << "[PROFILING][IWPP_REALZ] " << (st3-st2) << endl;
+        cout << "[PROFILING][IWPP_SUM] " << (st4-st3) << endl;
+        #endif
+
     } while(newSum != oldSum);
+
+    #ifdef PROFILING_STAGES
+    long st5 = Util::ClockGetTime();
+    std::cout << "[PROFILING][IWPP] iterations: " << it << std::endl;
+    #endif
 
     hOut.copy_from(JJ); // bad
     // cv::imwrite("loopedIwppRecon.png", 
     //    cv::Mat(h, w, cvDataType, hOut.get()->raw_buffer()->host));
+
+    #ifdef PROFILING_STAGES2
+    long st6 = Util::ClockGetTime();
+    std::cout << "[PROFILING][IWPP_CPY] " << (st6-st5) << std::endl;
+    #endif
 
     return 0;
 }
@@ -204,6 +241,10 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
+
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         // std::string name = "input" + std::to_string(id++) + ".tiff";
@@ -214,6 +255,8 @@ static struct : RTF::HalGen {
         uint8_t green = ((ArgumentInt*)params[1])->getArgValue();
         uint8_t red = ((ArgumentInt*)params[2])->getArgValue();
 
+        int tileId = ((ArgumentInt*)params[3])->getArgValue();
+
         // Define halide stage
         Halide::Var x, y, c;
         Halide::Func get_bg;
@@ -221,9 +264,27 @@ static struct : RTF::HalGen {
         get_bg(x,y) = 255 * Halide::cast<uint8_t>(
             (hIn(x,y,0) > blue) & (hIn(x,y,1) > green) & (hIn(x,y,2) > red));
 
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][get_background] " << (st1-st0) << endl;
+        #endif
+        
+        cout << "[get_background][cpu] Compiling..." << endl;
+        get_bg.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][get_background] " << (st2-st1) << endl;
+        #endif
+
         cout << "[get_background][cpu] Realizing..." << endl;
         get_bg.realize(hOut);
         cout << "[get_background][cpu] Done..." << endl;
+
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_background] " << (st3-st2) << endl;
+        #endif
     }
 } get_background;
 bool r1 = RTF::AutoStage::registerStage(&get_background);
@@ -234,6 +295,10 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
+
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
@@ -241,6 +306,8 @@ static struct : RTF::HalGen {
         // Get params
         float T1 = ((ArgumentFloat*)params[0])->getArgValue();
         float T2 = ((ArgumentFloat*)params[1])->getArgValue();
+
+        int tileId = ((ArgumentInt*)params[2])->getArgValue();        
 
         // Basic assertions
         assert(im_ios[0].channels() == 3);
@@ -280,9 +347,25 @@ static struct : RTF::HalGen {
         bw1(x,y) = Halide::cast<uint8_t>(imR2G(x,y) > T1);
         bw2(x,y) = Halide::cast<uint8_t>(imR2G(x,y) > T2)*255;
 
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        #endif
+        
+        cout << "[get_rbc][cpu] Compiling..." << endl;
+        bw1.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        #endif
+
         // Realizes bw1 to identify if any pixels were found
         cout << "[get_rbc][cpu] Realizing pre-rbc..." << endl;
         bw1.realize(hbw1);
+        
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        #endif
+
         int nonz = cv::countNonZero(cvbw1);
         cout << "[get_rbc][cpu] Done pre-rbc..." << endl;
 
@@ -314,9 +397,27 @@ static struct : RTF::HalGen {
         rbc2(x,y) = marker(x,y) & imR2B(x,y);
         // rbc.compute_root();
 
+        #ifdef PROFILING_STAGES
+        long st4 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][get_rbc] " << (st4-st3+st1-st0) << endl;
+        #endif
+        
+        cout << "[get_rbc][cpu] Compiling..." << endl;
+        rbc2.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st5 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][get_rbc] " << (st5-st4+st2-st1) << endl;
+        #endif
+
         cout << "[get_rbc][cpu] Realizing propagation..." << endl;
         rbc2.realize(hOut);
         cout << "[get_rbc][cpu] Done" << endl;
+        
+        #ifdef PROFILING_STAGES
+        long st6 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_rbc] " << (st6-st5+st3-st2) << endl;
+        #endif
     }
 } get_rbc;
 bool r2 = RTF::AutoStage::registerStage(&get_rbc);
@@ -327,6 +428,10 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
+
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
@@ -334,6 +439,7 @@ static struct : RTF::HalGen {
         // Get params
         // channel to be inverted (if -1, then input is grayscale)
         int channel = ((ArgumentInt*)params[0])->getArgValue();
+        int tileId = ((ArgumentInt*)params[1])->getArgValue();
 
         if (channel == -1)
             assert(im_ios[0].channels() == 1);
@@ -349,9 +455,27 @@ static struct : RTF::HalGen {
         else
             invert(x,y) = std::numeric_limits<uint8_t>::max()-hIn(x,y,channel);
 
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][invert] " << (st1-st0) << endl;
+        #endif
+        
+        cout << "[invert][cpu] Compiling..." << endl;
+        invert.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][invert] " << (st2-st1) << endl;
+        #endif
+        
         cout << "[invert][cpu] Realizing..." << endl;
         invert.realize(hOut);
         cout << "[invert][cpu] Done..." << endl;
+
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][invert] " << (st3-st2) << endl;
+        #endif
     }
 } invert;
 bool r3 = RTF::AutoStage::registerStage(&invert);
@@ -364,6 +488,10 @@ static struct : RTF::HalGen {
     // int getTarget() {return ExecEngineConstants::CPU;}
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
+
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
 
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
@@ -379,6 +507,7 @@ static struct : RTF::HalGen {
             }
         }
         Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
+        int tileId = ((ArgumentInt*)params[2])->getArgValue();
         
         // basic assertions for that ensures that this will work
         assert(hSE.width()%2 != 0);
@@ -407,9 +536,27 @@ static struct : RTF::HalGen {
         Halide::Var pix;
         erode.fuse(x,y,pix).parallel(pix);
 
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][erode] " << (st1-st0) << endl;
+        #endif
+        
+        cout << "[erode][cpu] Compiling..." << endl;
+        erode.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
+        #endif
+
         cout << "[erode][cpu] Realizing..." << endl;
         erode.realize(hOut);
         cout << "[erode][cpu] Done..." << endl;
+
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
+        #endif
     }
 } erode;
 bool r4 = RTF::AutoStage::registerStage(&erode);
@@ -419,6 +566,10 @@ static struct : RTF::HalGen {
     // int getTarget() {return ExecEngineConstants::CPU;}
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
+
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
 
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
@@ -434,6 +585,7 @@ static struct : RTF::HalGen {
             }
         }
         Halide::Buffer<uint8_t> hSE = mat2buf<uint8_t>(&cvSE, "hSE");
+        int tileId = ((ArgumentInt*)params[2])->getArgValue();
 
         // sizes must be odd
         assert(hSE.width()%2 == 1);
@@ -460,9 +612,27 @@ static struct : RTF::HalGen {
         Halide::Var pix;
         dilate.fuse(x,y,pix).parallel(pix);
 
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][dilate] " << (st1-st0) << endl;
+        #endif
+        
+        cout << "[dilate][cpu] Compiling..." << endl;
+        dilate.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][dilate] " << (st2-st1) << endl;
+        #endif
+
         cout << "[dilate][cpu] Realizing..." << endl;
         dilate.realize(hOut);
         cout << "[dilate][cpu] Done..." << endl;
+
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
+        #endif
     }
 } dilate;
 bool r5 = RTF::AutoStage::registerStage(&dilate);
@@ -473,6 +643,10 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
+
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hRecon = mat2buf<uint8_t>(&im_ios[0], "cvRecon");
         Halide::Buffer<uint8_t> hRC = mat2buf<uint8_t>(&im_ios[1], "hRC");
@@ -480,6 +654,7 @@ static struct : RTF::HalGen {
 
         // Get params
         int G1 = ((ArgumentInt*)params[0])->getArgValue();
+        int tileId = ((ArgumentInt*)params[1])->getArgValue();
 
         // sizes must be odd
         assert(im_ios[0].channels() == 1);
@@ -501,9 +676,27 @@ static struct : RTF::HalGen {
         preFill.compute_root();
         preFill.parallel(x);
 
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][pre_fill_holes] " << (st1-st0) << endl;
+        #endif
+        
+        cout << "[pre_fill_holes][cpu] Compiling..." << endl;
+        preFill.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][pre_fill_holes] " << (st2-st1) << endl;
+        #endif
+
         cout << "[pre_fill_holes][cpu] Realizing..." << endl;
         preFill.realize(hOut);
         cout << "[pre_fill_holes][cpu] Done..." << endl;
+
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes] " << (st3-st2) << endl;
+        #endif
     }
 } pre_fill_holes;
 bool r6 = RTF::AutoStage::registerStage(&pre_fill_holes);
@@ -515,7 +708,12 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
+
         // Get params
+        int tileId = ((ArgumentInt*)params[2])->getArgValue();
         // channel to be inverted (if -1, then input is grayscale)
         int emptyAny = ((ArgumentInt*)params[0])->getArgValue();
         cv::Mat *cvI, *cvJ, *cvOut;
@@ -551,13 +749,29 @@ static struct : RTF::HalGen {
         Halide::Func halCpu("halCpu");
         halCpu.define_extern("loopedIwppRecon", {hI, hJ, target, 
             Halide::UInt(8).code(), hOut}, Halide::UInt(8), 2);
-        // halCpu.define_extern("loopedIwppRecon", {hI, hJ, this->getTarget(), 
-        //     hOut}, Halide::UInt(8), 2);
+
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][imreconstruct] " << (st1-st0) << endl;
+        #endif
+        
+        cout << "[imreconstruct][cpu] Compiling..." << endl;
+        halCpu.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][imreconstruct] " << (st2-st1) << endl;
+        #endif
 
         // Adds the cpu implementation to the schedules output
         cout << "[imreconstruct][cpu] Realizing..." << endl;
         halCpu.realize(hOut);
         cout << "[imreconstruct][cpu] Done..." << endl;
+
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][imreconstruct] " << (st3-st2) << endl;
+        #endif
     }
 } imreconstruct;
 bool r7 = RTF::AutoStage::registerStage(&imreconstruct);
@@ -568,10 +782,17 @@ static struct : RTF::HalGen {
     void realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        #ifdef PROFILING_STAGES
+        long st0 = Util::ClockGetTime();
+        #endif
+
         // Wraps the input and output cv::mat's with halide buffers
         // hIn = pre_fill = image
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+
+        // get params
+        int tileId = ((ArgumentInt*)params[0])->getArgValue();
 
         // input image must be grayscale
         assert(im_ios[0].channels() == 1);
@@ -599,22 +820,35 @@ static struct : RTF::HalGen {
         cout << "hRecon: " << hRecon.width() << "x" << hRecon.height() << endl;
         cout << "hMarker: " << hMarker.width() << "x" << hMarker.height() << endl;
 
-        // hIn32(x,y) = Halide::cast<int32_t>(hIn(x,y));
-        // recon.define_extern("loopedIwppRecon", {hIn32, hMarker, 
         recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
             target, Halide::Int(32).code(), hRecon}, 
             Halide::Int(32), 2);
-        // output(x,y) = Halide::cast<uint8_t>(hOut(x,y));
 
         // Schedules
         hIn32.compute_root();
         recon.compute_root();
 
+        #ifdef PROFILING_STAGES
+        long st1 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][pre_fill_holes2] " << (st1-st0) << endl;
+        #endif
+        
+        cout << "[pre_fill_holes2][cpu] Compiling..." << endl;
+        recon.compile_jit();
+
+        #ifdef PROFILING_STAGES
+        long st2 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][pre_fill_holes2] " << (st2-st1) << endl;
+        #endif
+
         cout << "[pre_fill_holes2][cpu] Realizing..." << endl;
         recon.realize(hRecon);
-        // output.realize(hOut);
         cout << "[pre_fill_holes2][cpu] Done..." << endl;
-        // cv::imwrite("pre_fill2.png", cvRecon);
+        
+        #ifdef PROFILING_STAGES
+        long st3 = Util::ClockGetTime();
+        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes2] " << (st3-st2) << endl;
+        #endif
     }
 } pre_fill_holes2;
 bool r8 = RTF::AutoStage::registerStage(&pre_fill_holes2);
@@ -839,13 +1073,14 @@ int main(int argc, char *argv[]) {
         // bgArea = countNonZero(background) -> exit if ratio > 0.9
         RTF::AutoStage stage0({tCollImg->getRT(i).second, rtBackground}, 
             {new ArgumentInt(blue), new ArgumentInt(green), 
-             new ArgumentInt(red)}, {tiles[i].height, tiles[i].width}, 
-            {&get_background}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+             new ArgumentInt(red), new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&get_background}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
         
         // rbc = get_rbc(input)
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtRBC}, 
-            {new ArgumentFloat(T1), new ArgumentFloat(T2)}, 
+            {new ArgumentFloat(T1), new ArgumentFloat(T2), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&get_rbc}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage1.after(&stage0);
@@ -853,8 +1088,9 @@ int main(int argc, char *argv[]) {
 
         // rc = invert(input[2])
         RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRC}, 
-            {new ArgumentInt(0)}, {tiles[i].height, tiles[i].width}, 
-            {&invert}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            {new ArgumentInt(0), new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&invert}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage2.after(&stage1);
         stage2.genStage(sysEnv);
         
@@ -862,46 +1098,52 @@ int main(int argc, char *argv[]) {
         // rc_open = dilate(erode(rc, disk19raw), disk19raw)
         RTF::AutoStage stage3({rtRC, rtEroded}, 
             {new ArgumentInt(disk19raw_width), 
-             new ArgumentIntArray(disk19raw, disk19raw_size)}, 
+             new ArgumentIntArray(disk19raw, disk19raw_size),
+             new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&erode}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage3.after(&stage2);
         stage3.genStage(sysEnv);
         RTF::AutoStage stage4({rtEroded, rtRcOpen}, 
             {new ArgumentInt(disk19raw_width), 
-             new ArgumentIntArray(disk19raw, disk19raw_size)}, 
+             new ArgumentIntArray(disk19raw, disk19raw_size),
+             new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&dilate}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
         RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
-            {new ArgumentInt(0)}, {tiles[i].height, tiles[i].width}, 
-            {&imreconstruct}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            {new ArgumentInt(0), new ArgumentInt(0), new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&imreconstruct}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage5.after(&stage4);
         stage5.genStage(sysEnv);
 
         // pre_fill = (rc - imrec(rc_open, rc)) > G1
         RTF::AutoStage stage6({rtRecon, rtRC, rtPreFill}, 
-            {new ArgumentInt(G1)}, {tiles[i].height, tiles[i].width}, 
-            {&pre_fill_holes}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            {new ArgumentInt(G1), new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&pre_fill_holes}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage6.after(&stage5);
         stage6.genStage(sysEnv);
 
         // bw1 = fill_holes(pre_fill) = invert(imrec(invert(preFill)))
         RTF::AutoStage stage7({rtPreFill, rtInvRecon}, 
-            {new ArgumentInt(-1)}, {tiles[i].height, tiles[i].width}, 
-            {&invert}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            {new ArgumentInt(-1), new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&invert}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage7.after(&stage6);
         stage7.genStage(sysEnv);
-        RTF::AutoStage stage8({rtInvRecon, rtPreFill2}, {}, 
+        RTF::AutoStage stage8({rtInvRecon, rtPreFill2}, {new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&pre_fill_holes2}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage8.after(&stage7);
         stage8.genStage(sysEnv);
         RTF::AutoStage stage9({rtPreFill2, rtBw1},
-            {new ArgumentInt(-1)}, {tiles[i].height, tiles[i].width}, 
-            {&invert}, tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            {new ArgumentInt(-1), new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&invert}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage9.after(&stage8);
         stage9.genStage(sysEnv);
 
