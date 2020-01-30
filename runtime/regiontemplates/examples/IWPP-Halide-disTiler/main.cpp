@@ -25,7 +25,7 @@ using std::cout;
 using std::endl;
 
 #define PROFILING
-// #define PROFILING_STAGES
+#define PROFILING_STAGES
 
 enum TilingAlgorithm_t {
     NO_TILING,
@@ -440,13 +440,18 @@ static struct : RTF::HalGen {
     bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        if (im_ios.size() != 3) {
+            std::cout << "[invert] missing RTs: input, abortion flag, output" << std::endl;
+            exit(-1);
+        }
+
         #ifdef PROFILING_STAGES
         long st0 = Util::ClockGetTime();
         #endif
 
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[1], "hOut");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(&im_ios[2], "hOut");
 
         // Get params
         // channel to be inverted (if -1, then input is grayscale)
@@ -1017,6 +1022,14 @@ int main(int argc, char *argv[]) {
         0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
         0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
     
+    // 3x3
+    int se3raw_width = 3;
+    int se3raw_size = se3raw_width*se3raw_width;
+    int se3raw[se3raw_size] = {
+        1, 1, 1,
+        1, 1, 1, 
+        1, 1, 1};
+    
     // Creates the inputs using RT's autoTiler
 #ifdef PROFILING
     long tilingT1 = Util::ClockGetTime();
@@ -1154,8 +1167,31 @@ int main(int argc, char *argv[]) {
         stage6.after(&stage5);
         stage6.genStage(sysEnv);
 
-        // bw1 = fill_holes(pre_fill) = invert(imrec(invert(preFill)))
-        RTF::AutoStage stage7({rtPreFill, rtInvRecon}, 
+        /* FILL HOLES closing
+         * Using closing algorithm: dilate then erode
+         */
+        // RTF::AutoStage stage7({rtPreFill, rtPreFill2}, 
+        //     {new ArgumentInt(se3raw_width), 
+        //      new ArgumentIntArray(se3raw, se3raw_size),
+        //      new ArgumentInt(i)}, 
+        //     {tiles[i].height, tiles[i].width}, {&dilate}, 
+        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        // stage7.after(&stage6);
+        // stage7.genStage(sysEnv);
+        // RTF::AutoStage stage8({rtPreFill2, rtBw1}, 
+        //     {new ArgumentInt(se3raw_width), 
+        //      new ArgumentIntArray(se3raw, se3raw_size),
+        //      new ArgumentInt(i)}, 
+        //     {tiles[i].height, tiles[i].width}, {&erode}, 
+        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        // stage8.after(&stage7);
+        // stage8.genStage(sysEnv);
+
+        /* FILL HOLES WORKING
+         * However it takes too log to execute using iwpp.
+         */
+        // bw1 = fill_holes(pre_fill) = invert(imrec(invert(pre_fill)))
+        RTF::AutoStage stage7({rtPreFill, rtRBC, rtInvRecon}, 
             {new ArgumentInt(-1), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&invert}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
@@ -1166,7 +1202,7 @@ int main(int argc, char *argv[]) {
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage8.after(&stage7);
         stage8.genStage(sysEnv);
-        RTF::AutoStage stage9({rtPreFill2, rtBw1},
+        RTF::AutoStage stage9({rtPreFill2, rtRBC, rtBw1},
             {new ArgumentInt(-1), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&invert}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
