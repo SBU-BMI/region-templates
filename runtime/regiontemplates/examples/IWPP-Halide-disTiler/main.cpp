@@ -104,6 +104,8 @@ extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     }
 }
 
+// #define ANTIRASTER
+
 template <typename T>
 int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     int sched, halide_buffer_t* bOut, int cvDataType) {
@@ -122,7 +124,9 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     // cv::imwrite("hOut.png", cv::Mat(h, w, 
     //     cv::DataType<T>::type, hOut.get()->raw_buffer()->host));
 
-    Halide::Func rasterx("rasterx"), rastery("rastery"), arasterx, arastery;
+    Halide::Func rasterx("rasterx"), rastery("rastery");
+    Halide::Func trsp1("trsp1"), trsp2("trsp2");
+    Halide::Func arasterx("arasterx"), arastery("arastery");
     Halide::RDom se(-1,3,-1,3);
     Halide::Var x("x"), y("y");
 
@@ -138,11 +142,18 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 
     // Functions for vertical and horizontal propagation
     rasterx(x,y) = min(I(x,y), maximum(J(x+se.x,y)));
-    // arasterx(w-x,y) = min(I(w-x,y), maximum(rasterx(w-x+se.x, y)));
     rasterxc(x,y) = rasterx(xc,yc);
     rastery(x,y) = min(I(x,y), maximum(rasterxc(x,y+se.y)));
-    // arastery(x,h-y) = min(I(x,h-y), maximum(rastery(x, h-y+se.y)));
 
+    #ifdef ANTIRASTER
+    trsp1(x,y) = rastery(w-x-1,h-y-1);
+
+    arasterx(x,y) = min(I(w-x-1,h-y-1), maximum(trsp1(clamp(x+se.x,0,w-1),y)));
+    arastery(x,y) = min(I(w-x-1,h-y-1), maximum(arasterx(x,clamp(y+se.y,0,h-1))));
+
+    trsp2(x,y) = arastery(w-x-1,h-y-1);
+    #endif
+    
     // Schedule
     rasterx.compute_root();
     Halide::Target target = Halide::get_host_target();
@@ -162,8 +173,26 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         JJ.set_host_dirty();
     }
 
+
+    #ifdef ANTIRASTER
+    Halide::Var xi, xo, yi, yo;
+    arasterx.split(y, yo, yi, 16);
+    arasterx.vectorize(yi).parallel(yo);
+    arastery.reorder(y,x).serial(y);
+    arastery.split(x, xo, xi, 16);
+    arastery.vectorize(xi).parallel(xo);
+
+    rastery.compute_root();
+    arasterx.compute_root();    
+    arastery.compute_root();
+    #endif
+
     // target.set_feature(Halide::Target::Debug);
+    #ifdef ANTIRASTER
+    trsp2.compile_jit(target);
+    #else
     rastery.compile_jit(target);
+    #endif
     // rastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
 
     #ifdef PROFILING_STAGES
@@ -186,7 +215,11 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
 
         it++;
         oldSum = newSum;
+        #ifdef ANTIRASTER
+        trsp2.realize(JJ);
+        #else
         rastery.realize(JJ);
+        #endif
         // Copy from GPU to host is done every realization which is
         // inefficient. However this is just done as a proof of concept for
         // having a CPU and a GPU sched (more work necessary for running the 
@@ -200,7 +233,6 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         #endif
 
         newSum = cv::sum(cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host))[0];
-        // cout << "new - old: " << newSum << " - " << oldSum << endl;
         // if (it%10 == 0 && iin > 0) {
         //     cv::Mat cvJ(h, w, cvDataType, JJ.get()->raw_buffer()->host);
         //     cv::imwrite("out.png", cvJ);
