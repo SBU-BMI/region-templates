@@ -93,8 +93,6 @@ void TiledRTCollection::customTiling() {
     }
 }
 
-// #define CREATE_TILES
-
 // Performs the autoTiler algorithm while updating the internal tiles 
 //   representation std::map<int, std::vector<cv::Rect_<int64_t>>>
 void TiledRTCollection::tileImages(bool tilingOnly) {
@@ -128,9 +126,8 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
             tiledImg = this->cfunc->costImg(baseImg);
             cv::cvtColor(tiledImg, tiledImg, cv::COLOR_GRAY2RGB);
 
-            #ifdef CREATE_TILES
+            // tiles files ids
             int id=0;
-            #endif
 
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : tiles[i]) {
@@ -155,13 +152,11 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                     cv::Point(tile.x+10, tile.y+tile.height/2),
                     cv::FONT_HERSHEY_SIMPLEX, 3, (255,255,255), 7);
 
-                #ifdef CREATE_TILES
                 // create tile image
                 cv::Mat tileMat = cv::Mat(baseImg, cv::Rect(tile.x, tile.y, 
                     tile.width, tile.height));
                 std::string outname = "./tiles/t" + std::to_string(id++) + ".png";
                 cv::imwrite(outname, tileMat);
-                #endif // CREATE_TILES
             }
 
             std::string outname = "./tiled-" + this->initialPaths[i] + ".png";

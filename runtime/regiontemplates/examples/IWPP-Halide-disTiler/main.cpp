@@ -1202,44 +1202,44 @@ int main(int argc, char *argv[]) {
         /* FILL HOLES closing
          * Using closing algorithm: dilate then erode
          */
-        // RTF::AutoStage stage7({rtPreFill, rtPreFill2}, 
-        //     {new ArgumentInt(se3raw_width), 
-        //      new ArgumentIntArray(se3raw, se3raw_size),
-        //      new ArgumentInt(i)}, 
-        //     {tiles[i].height, tiles[i].width}, {&dilate}, 
-        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
-        // stage7.after(&stage6);
-        // stage7.genStage(sysEnv);
-        // RTF::AutoStage stage8({rtPreFill2, rtBw1}, 
-        //     {new ArgumentInt(se3raw_width), 
-        //      new ArgumentIntArray(se3raw, se3raw_size),
-        //      new ArgumentInt(i)}, 
-        //     {tiles[i].height, tiles[i].width}, {&erode}, 
-        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
-        // stage8.after(&stage7);
-        // stage8.genStage(sysEnv);
+        RTF::AutoStage stage7({rtPreFill, rtPreFill2}, 
+            {new ArgumentInt(se3raw_width), 
+             new ArgumentIntArray(se3raw, se3raw_size),
+             new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&dilate}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        stage7.after(&stage6);
+        stage7.genStage(sysEnv);
+        RTF::AutoStage stage8({rtPreFill2, rtBw1}, 
+            {new ArgumentInt(se3raw_width), 
+             new ArgumentIntArray(se3raw, se3raw_size),
+             new ArgumentInt(i)}, 
+            {tiles[i].height, tiles[i].width}, {&erode}, 
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        stage8.after(&stage7);
+        stage8.genStage(sysEnv);
 
         /* FILL HOLES WORKING
          * However it takes too log to execute using iwpp.
          */
-        // bw1 = fill_holes(pre_fill) = invert(imrec(invert(pre_fill)))
-        RTF::AutoStage stage7({rtPreFill, rtRBC, rtInvRecon}, 
-            {new ArgumentInt(-1), new ArgumentInt(i)}, 
-            {tiles[i].height, tiles[i].width}, {&invert}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
-        stage7.after(&stage6);
-        stage7.genStage(sysEnv);
-        RTF::AutoStage stage8({rtInvRecon, rtPreFill2}, {new ArgumentInt(i)}, 
-            {tiles[i].height, tiles[i].width}, {&pre_fill_holes2}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
-        stage8.after(&stage7);
-        stage8.genStage(sysEnv);
-        RTF::AutoStage stage9({rtPreFill2, rtRBC, rtBw1},
-            {new ArgumentInt(-1), new ArgumentInt(i)}, 
-            {tiles[i].height, tiles[i].width}, {&invert}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
-        stage9.after(&stage8);
-        stage9.genStage(sysEnv);
+        // // bw1 = fill_holes(pre_fill) = invert(imrec(invert(pre_fill)))
+        // RTF::AutoStage stage7({rtPreFill, rtRBC, rtInvRecon}, 
+        //     {new ArgumentInt(-1), new ArgumentInt(i)}, 
+        //     {tiles[i].height, tiles[i].width}, {&invert}, 
+        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        // stage7.after(&stage6);
+        // stage7.genStage(sysEnv);
+        // RTF::AutoStage stage8({rtInvRecon, rtPreFill2}, {new ArgumentInt(i)}, 
+        //     {tiles[i].height, tiles[i].width}, {&pre_fill_holes2}, 
+        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        // stage8.after(&stage7);
+        // stage8.genStage(sysEnv);
+        // RTF::AutoStage stage9({rtPreFill2, rtRBC, rtBw1},
+        //     {new ArgumentInt(-1), new ArgumentInt(i)}, 
+        //     {tiles[i].height, tiles[i].width}, {&invert}, 
+        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        // stage9.after(&stage8);
+        // stage9.genStage(sysEnv);
 
         // // bw1_t,compcount2 = bwareaopen2(bw1) //-> exit if compcount2 == 0
         // -=- seg_norbc = bwselect(diffIm > G2, bw1_t) & (rbc == 0)
