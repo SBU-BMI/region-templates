@@ -112,6 +112,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
 
     this->tiled = true;
 
+    // create tiles image
     if (tilingOnly) {
         for (int i=0; i<this->getTiles().size(); i++) {
 
@@ -121,6 +122,9 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
             else
                 baseImg = cv::imread(this->initialPaths[i]);
             
+            std::cout << "[TiledRTCollection] image " << this->initialPaths[i] 
+                << " size: " << baseImg.rows << "x" << baseImg.cols << std::endl;
+
             // get cost image
             cv::Mat tiledImg;
             tiledImg = this->cfunc->costImg(baseImg);
@@ -136,8 +140,8 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                 char cost[50];
                 sprintf(cost, "%'2ld", this->cfunc->cost(baseImg, tile));
                 std::cout << "\ttile " << tile.x << ":" << tile.width
-                    << "\t" << tile.y << ":" << tile.height << "\tcost: " << 
-                    cost << std::endl;
+                    << "\t" << tile.y << ":" << tile.height << "\tcost: " 
+                    << cost << std::endl;
 
                 // Adds tile rectangle region to tiled image
                 cv::rectangle(tiledImg, 
@@ -233,7 +237,8 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     float var = 0;
     for (int64_t c : costs)
         var += pow(c-mean, 2);
-    std::cout << std::fixed << "[PROFILING][AVERAGE] " << mean << std::endl;
+    std::cout << std::fixed << "[PROFILING][AVERAGEP] " << mean << std::endl;
+    std::cout << "[PROFILING][AVERAGEI] " << ((int64_t)mean) << std::endl;
     std::cout << std::fixed << "[PROFILING][STDDEV] " 
         << (sqrt(var/(costs.size()-1))) << std::endl;
 

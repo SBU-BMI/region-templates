@@ -20,6 +20,7 @@
 #include "costFuncs/ThresholdBGMasker.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
+#include "costFuncs/PropagateDistCostFunction.h"
 
 using std::cout;
 using std::endl;
@@ -213,13 +214,17 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         long st2 = Util::ClockGetTime();
         #endif
 
-        it++;
-        oldSum = newSum;
+        #ifdef PROP_DEBUG
+        // make a deep copy of the current state
+        cv::Mat cvJ = cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host).clone();
+        #endif
+
         #ifdef ANTIRASTER
         trsp2.realize(JJ);
         #else
         rastery.realize(JJ);
-        #endif
+        #endif // ANTIRASTER
+
         // Copy from GPU to host is done every realization which is
         // inefficient. However this is just done as a proof of concept for
         // having a CPU and a GPU sched (more work necessary for running the 
@@ -232,13 +237,26 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         long st3 = Util::ClockGetTime();
         #endif
 
+        it++;
+        oldSum = newSum;
         newSum = cv::sum(cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host))[0];
-        // if (it%10 == 0 && iin > 0) {
-        //     cv::Mat cvJ(h, w, cvDataType, JJ.get()->raw_buffer()->host);
-        //     cv::imwrite("out.png", cvJ);
-        //     cout << "out" << endl;
+        
+        #ifdef PROP_DEBUG
+        if (it%10 == 0 && iin > 0) {
+        // if (iin > 0) {
+            cv::Mat cvJJ(h, w, cvDataType, JJ.get()->raw_buffer()->host);
+            cv::subtract(cvJJ, cvJ, cvJ);
+            cv::abs(cvJ);
+            cvJ *= 255;
+            cv::imwrite("outJJ.png", cvJJ);
+            cv::imwrite("outJ.png", cvJ);
+            cout << "it " << it << ", sum " << newSum << endl;
+            #include <unistd.h>
+            usleep(500000);
         //     std::cin >> iin;
-        // }
+        }
+        #endif // PROP_DEBUG
+
 
         #ifdef PROFILING_STAGES2
         long st4 = Util::ClockGetTime();
@@ -251,6 +269,7 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     #ifdef PROFILING_STAGES
     long st5 = Util::ClockGetTime();
     std::cout << "[PROFILING][IWPP] iterations: " << it << std::endl;
+    std::cout << "[PROFILING][IWPP_EXEC] " << (st5-st1) << std::endl;
     #endif
 
     hOut.copy_from(JJ); // bad
@@ -1067,7 +1086,8 @@ int main(int argc, char *argv[]) {
     long tilingT1 = Util::ClockGetTime();
 #endif
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    CostFunction* cfunc = new ThresholdBGCostFunction((ThresholdBGMasker*)bgm);
+    // CostFunction* cfunc = new ThresholdBGCostFunction((ThresholdBGMasker*)bgm);
+    CostFunction* cfunc = new PropagateDistCostFunction((ThresholdBGMasker*)bgm);
     
     TiledRTCollection* tCollImg;
     switch (tilingAlg) {
