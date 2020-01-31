@@ -149,8 +149,12 @@ void RegTiledRTCollection::customTiling() {
             
             createTile(r, this->tilesPath, this->name, 0,
                 this->refDDRName, this->rts);
-
+            rois.push_back(r);
             this->tiles.push_back(rois);
+
+            // Close .svs file
+            openslide_close(osr);
+
             return;
         }
 

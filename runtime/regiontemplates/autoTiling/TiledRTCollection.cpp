@@ -112,6 +112,11 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
 
     this->tiled = true;
 
+    // Creates a list of costs for each tile for each image
+    std::list<int64_t> costs;
+    // Creates a list of perimeters for each tile for each image
+    std::list<int64_t> perims;
+
     // create tiles image
     if (tilingOnly) {
         for (int i=0; i<this->getTiles().size(); i++) {
@@ -134,14 +139,20 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
             int id=0;
 
             // For each tile of the current image
-            for (cv::Rect_<int64_t> tile : tiles[i]) {
+            for (cv::Rect_<int64_t> tile : this->tiles[i]) {
+                // Gets basic info from tile
+                int64_t tileCost = this->cfunc->cost(baseImg, tile);
+                costs.emplace_back(tileCost);
+                perims.emplace_back(2*tile.width + 2*tile.height);
+
                 // Print tile with readable unber format
-                setlocale(LC_NUMERIC, "en_US.utf-8");
-                char cost[50];
-                sprintf(cost, "%'2ld", this->cfunc->cost(baseImg, tile));
-                std::cout << "\ttile " << tile.x << ":" << tile.width
-                    << "\t" << tile.y << ":" << tile.height << "\tcost: " 
-                    << cost << std::endl;
+                setlocale(LC_NUMERIC, "pt_BR.utf-8");
+                char c_cost[50];
+                sprintf(c_cost, "%'2ld", tileCost);
+                std::cout << "\ttile " << tile.y << ":" << tile.height
+                    << "\t" << tile.x << ":" << tile.width << "\tcost: " 
+                    << c_cost << std::endl;
+
 
                 // Adds tile rectangle region to tiled image
                 cv::rectangle(tiledImg, 
@@ -152,7 +163,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
 
                 // Add cost to image as text
                 cv::putText(tiledImg, 
-                    cost,
+                    c_cost,
                     cv::Point(tile.x+10, tile.y+tile.height/2),
                     cv::FONT_HERSHEY_SIMPLEX, 3, (255,255,255), 7);
 
@@ -168,67 +179,6 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
         }
     }
 
-#define DEBUG
-#define PROFILING2
-
-#ifdef DEBUG
-    std::cout << "==== format: tile x:width, y:height" << std::endl;
-#endif
-
-#ifdef PROFILING2
-    // Creates a list of costs for each tile for each image
-    std::list<int64_t> costs;
-    // Creates a list of perimeters for each tile for each image
-    std::list<int64_t> perims;
-#endif // #ifdef PROFILING2
-
-#if defined(DEBUG) || defined(PROFILING2)
-    // For each image tiled
-    for (int i=0; i<this->getTiles().size(); i++) {
-
-#ifdef DEBUG
-        std::cout << "image " << i << std::endl;
-#endif // #ifdef DEBUG
-
-        cv::Mat tiledImg;
-        if (isSVS(initialPaths[i]))
-            osrFilenameToCVMat(this->initialPaths[i], tiledImg);
-        else
-            tiledImg = cv::imread(this->initialPaths[i]);
-
-        // For each tile of the current image
-        for (cv::Rect_<int64_t> tile : tiles[i]) {
-
-#ifdef PROFILING2
-            costs.emplace_back(this->cfunc->cost(tiledImg, tile));
-            perims.emplace_back(2*tile.width + 2*tile.height);
-#endif // #ifdef PROFILING2
-
-#ifdef DEBUG
-            // Print tile
-            std::cout << "\ttile " << tile.x << ":" << tile.width
-                << ", " << tile.y << ":" << tile.height << std::endl;
-
-            // Adds tile rectangle region to tiled image
-            cv::rectangle(tiledImg, 
-                cv::Point(tile.x,tile.y), 
-                cv::Point(tile.x+tile.width,
-                          tile.y+tile.height),
-                (0,0,0),3);
-#endif // #ifdef DEBUG
-
-        }
-
-#ifdef DEBUG
-        if (!tilingOnly) {
-            std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
-            cv::imwrite(outname, tiledImg);
-        }
-#endif // #ifdef DEBUG
-
-    }
-
-#ifdef PROFILING2
     // Calculates stddev of tiles cost
     float mean = 0;
     for (int64_t c : costs)
@@ -237,20 +187,22 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     float var = 0;
     for (int64_t c : costs)
         var += pow(c-mean, 2);
-    std::cout << std::fixed << "[PROFILING][AVERAGEP] " << mean << std::endl;
-    std::cout << "[PROFILING][AVERAGEI] " << ((int64_t)mean) << std::endl;
-    std::cout << std::fixed << "[PROFILING][STDDEV] " 
-        << (sqrt(var/(costs.size()-1))) << std::endl;
+    float stddev = sqrt(var/(costs.size()-1));
+    
+    // Make the results readable for humans...
+    setlocale(LC_NUMERIC, "pt_BR.utf-8");
+    char c_mean[50];
+    char c_stddev[50];
+    sprintf(c_mean, "%'2f", mean);
+    sprintf(c_stddev, "%'2f", stddev);
+    std::cout << "[PROFILING][AVERAGE] " << c_mean << std::endl;
+    std::cout << "[PROFILING][STDDEV] " << c_stddev << std::endl;
 
     // Calculates the sum of perimeters
     int64_t sumPerim = 0;
     for (int64_t p : perims)
         sumPerim += p;
     std::cout << "[PROFILING][SUMOFPERIMS] " << sumPerim << std::endl;
-
-#endif // #ifdef PROFILING2
-
-#endif // #if defined(DEBUG) || defined(PROFILING2)
 
 }
 
