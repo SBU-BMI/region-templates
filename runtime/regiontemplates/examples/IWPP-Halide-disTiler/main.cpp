@@ -588,7 +588,7 @@ static struct : RTF::HalGen {
         int seHeight = (hSE.height()-1)/2;
 
         // Define halide stage
-        Halide::Var x, y, xi, yi;
+        Halide::Var x, y, xi, yi, xo, yo;
         Halide::Func mask;
         Halide::Func erode;
 
@@ -603,8 +603,9 @@ static struct : RTF::HalGen {
         erode(x,y) = minimum(mask(xc,yc,se.x,se.y));
 
         // Schedules
-        Halide::Var pix;
-        erode.fuse(x,y,pix).parallel(pix);
+        Halide::Var t;
+        erode.tile(x, y, xo, yo, xi, yi, 16, 16);
+        erode.fuse(xo,yo,t).parallel(t);
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
@@ -667,7 +668,7 @@ static struct : RTF::HalGen {
         int seHeight = (hSE.height()-1)/2;
 
         // Define halide stage
-        Halide::Var x, y, xi, yi;
+        Halide::Var x, y, xi, yi, xo, yo;
         Halide::Func mask;
         Halide::Func dilate;
 
@@ -681,8 +682,9 @@ static struct : RTF::HalGen {
         dilate(x,y) = maximum(mask(xc,yc,se.x,se.y));
 
         // Schedules
-        Halide::Var pix;
-        dilate.fuse(x,y,pix).parallel(pix);
+        Halide::Var t;
+        dilate.tile(x, y, xo, yo, xi, yi, 16, 16);
+        dilate.fuse(xo,yo,t).parallel(t);
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();

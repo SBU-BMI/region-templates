@@ -35,6 +35,7 @@ int64_t PropagateDistCostFunction::cost(cv::Mat img) const {
     // cv::Mat cont = bgImg.clone();
     // cv::cvtColor(cont, cont, cv::COLOR_GRAY2RGB);
 
+    int curMax2;
     for (std::vector<cv::Point> contour : contours) {
     	cv::Rect_<int64_t> r = cv::boundingRect(contour);
 	    
@@ -45,7 +46,7 @@ int64_t PropagateDistCostFunction::cost(cv::Mat img) const {
 	    //     (255,255,255),5);
 
     	curMax = sqrt(pow(r.height,2) + pow(r.width,2));
-    	int curMaxTmp = max(r.height, r.width);
+    	curMax2 = std::max(r.height, r.width);
 
     	if (curMax>maxDist) maxDist=curMax;
     }
