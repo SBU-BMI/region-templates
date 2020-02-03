@@ -18,6 +18,7 @@
 
 #include "CostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
+#include "costFuncs/ColorThresholdBGMasker.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PropagateDistCostFunction.h"
@@ -949,6 +950,7 @@ int main(int argc, char *argv[]) {
              << " to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
         cout << "\t-p <bgThr>/<erode>/<dilate> (default=100/4/10)" << endl;
+        cout << "\t\t for color propag function <e1>/<e2>/<d1 and d2> (default=10/15/10)" << endl;
         cout << "\t-to (tiling only: generate tile images "
              << "without executing)" << endl;
 
@@ -1089,9 +1091,10 @@ int main(int argc, char *argv[]) {
 #ifdef PROFILING
     long tilingT1 = Util::ClockGetTime();
 #endif
-    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    // CostFunction* cfunc = new ThresholdBGCostFunction((ThresholdBGMasker*)bgm);
-    CostFunction* cfunc = new PropagateDistCostFunction((ThresholdBGMasker*)bgm);
+    // BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    BGMasker* bgm = new ColorThresholdBGMasker(dilate_param, erode_param);
+    
+    CostFunction* cfunc = new PropagateDistCostFunction(bgThr, erode_param, dilate_param);
     
     TiledRTCollection* tCollImg;
     switch (tilingAlg) {

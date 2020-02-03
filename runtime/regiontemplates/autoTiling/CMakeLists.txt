@@ -25,7 +25,8 @@ set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp
     HybridDenseTiledRTCollection.cpp 
     CostFunction.cpp costFuncs/OracleCostFunction.cpp 
     costFuncs/PropagateDistCostFunction.cpp
-    costFuncs/ThresholdBGMasker.cpp costFuncs/ThresholdBGCostFunction.cpp 
+    costFuncs/ThresholdBGMasker.cpp costFuncs/ColorThresholdBGMasker.cpp 
+    costFuncs/ThresholdBGCostFunction.cpp 
     svs/svsUtils.cpp tilingAlgs/tilingUtil.cpp tilingAlgs/denseFromBG.cpp 
     tilingAlgs/listCutting.cpp tilingAlgs/kdTreeCutting.cpp 
     tilingAlgs/quadTreeCutting.cpp)

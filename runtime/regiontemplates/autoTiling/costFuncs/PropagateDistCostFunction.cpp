@@ -1,11 +1,11 @@
 #include "PropagateDistCostFunction.h"
 
-PropagateDistCostFunction::PropagateDistCostFunction(int bgThr, int dilate, int erode) {
-    this->bgm = new ThresholdBGMasker(bgThr, dilate, erode);
-}
-
-PropagateDistCostFunction::PropagateDistCostFunction(ThresholdBGMasker* bgm) {
-    this->bgm = bgm;
+// PropagateDistCostFunction::PropagateDistCostFunction(int e1, int d1, int e2, int d2) {
+PropagateDistCostFunction::PropagateDistCostFunction(int e1, int e2, int d) {
+	this->e1=e1;
+	this->d1=d;
+	this->e2=e2;
+	this->d2=d;
 }
 
 // We approximate the cost of an image as:
@@ -22,41 +22,63 @@ PropagateDistCostFunction::PropagateDistCostFunction(ThresholdBGMasker* bgm) {
 // iterations and this approximated maximum feret diameter.
 // Thus, the final cost is approximated as imgSize * maxDiag
 int64_t PropagateDistCostFunction::cost(cv::Mat img) const {
-    cv::Mat bgImg = this->bgm->bgMask(img);
+    // dense mask
+    ColorThresholdBGMasker bgmDense(this->e1, this->d1);
+    cv::Mat denseMask = bgmDense.bgMask(img);
 
-    // imwrite("cost-bg.png", bgImg);
-
-    // approximate max feret diameter though a rectangular bounding box
+    // approximate max feret diameter of dense mask though a rectangular bounding box
     int64_t maxDist=0;
     int64_t curMax;
 	std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(bgImg, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+    cv::findContours(denseMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
-    // cv::Mat cont = bgImg.clone();
-    // cv::cvtColor(cont, cont, cv::COLOR_GRAY2RGB);
+    #ifdef DEBUG
+    cv::Mat cont = denseMask.clone();
+    cv::cvtColor(cont, cont, cv::COLOR_GRAY2RGB);
+    #endif
 
-    int curMax2;
     for (std::vector<cv::Point> contour : contours) {
     	cv::Rect_<int64_t> r = cv::boundingRect(contour);
-	    
-	    // cv::rectangle(cont, 
-	    //     cv::Point(r.x,r.y), 
-	    //     cv::Point(r.x+r.width,
-	    //               r.y+r.height),
-	    //     (255,255,255),5);
+	    #ifdef DEBUG
+	    cv::rectangle(cont, 
+	        cv::Point(r.x,r.y), 
+	        cv::Point(r.x+r.width,
+	                  r.y+r.height),
+	        (255,255,255),5);
+    	#endif
 
     	curMax = sqrt(pow(r.height,2) + pow(r.width,2));
-    	curMax2 = std::max(r.height, r.width);
 
     	if (curMax>maxDist) maxDist=curMax;
     }
-    std::cout << "[PropagateDistCostFunction] curMax: " << curMax << std::endl;
-    std::cout << "[PropagateDistCostFunction] curMax2: " << curMax2 << std::endl;
-    // imwrite("cost-cont.png", cont);
 
-    return maxDist * img.cols * img.rows;
+
+    // sparse mask
+    ColorThresholdBGMasker bgmSparse(this->e2, this->d2);
+    cv::Mat sparseMask = bgmSparse.bgMask(img);
+
+
+    long final = maxDist * cv::sum(sparseMask)[0];
+
+
+    #ifdef DEBUG
+    imwrite("cost-cont.png", cont);
+    imwrite("cost-cont2.png", sparseMask);
+
+    setlocale(LC_NUMERIC, "pt_BR.utf-8");
+    char c_cost[50];
+    sprintf(c_cost, "%'2ld", final);
+
+    std::cout << "[PropagateDistCostFunction] maxDist: " 
+    	<< maxDist << std::endl;
+    std::cout << "[PropagateDistCostFunction] final: " 
+    	<< c_cost << std::endl;
+    #endif
+
+    return final;
 }
 
 cv::Mat PropagateDistCostFunction::costImg(cv::Mat img) const {
-    return this->bgm->bgMask(img);
+    ColorThresholdBGMasker bgmDense(this->e1, this->d1);
+    return bgmDense.bgMask(img);
 }

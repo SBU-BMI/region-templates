@@ -6,7 +6,8 @@
 #include <opencv/cv.hpp>
 
 #include "CostFunction.h"
-#include "ThresholdBGMasker.h"
+#include "BGMasker.h"
+#include "ColorThresholdBGMasker.h"
 
 #define CV_MAX_PIX_VAL 255
 #define CV_THR_BIN 0
@@ -14,11 +15,12 @@
 
 class PropagateDistCostFunction : public CostFunction {
 private:
-    ThresholdBGMasker* bgm;
+    int e1, d1;
+    int e2, d2;
     
 public:
-    PropagateDistCostFunction(int bgThr, int dilate, int erode);
-    PropagateDistCostFunction(ThresholdBGMasker* bgm);
+    // PropagateDistCostFunction(int e1=10, int d1=10, int e2=15, int d2=10);
+    PropagateDistCostFunction(int e1=10, int e2=15, int d2=10);
 
     // T cost(cv::Mat img);
     int64_t cost(cv::Mat img) const;
