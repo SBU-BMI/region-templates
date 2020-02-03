@@ -24,20 +24,34 @@ PropagateDistCostFunction::PropagateDistCostFunction(ThresholdBGMasker* bgm) {
 int64_t PropagateDistCostFunction::cost(cv::Mat img) const {
     cv::Mat bgImg = this->bgm->bgMask(img);
 
+    // imwrite("cost-bg.png", bgImg);
+
     // approximate max feret diameter though a rectangular bounding box
     int64_t maxDist=0;
     int64_t curMax;
 	std::vector<std::vector<cv::Point>> contours;
     cv::findContours(bgImg, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
+    // cv::Mat cont = bgImg.clone();
+    // cv::cvtColor(cont, cont, cv::COLOR_GRAY2RGB);
+
     for (std::vector<cv::Point> contour : contours) {
     	cv::Rect_<int64_t> r = cv::boundingRect(contour);
+	    
+	    // cv::rectangle(cont, 
+	    //     cv::Point(r.x,r.y), 
+	    //     cv::Point(r.x+r.width,
+	    //               r.y+r.height),
+	    //     (255,255,255),5);
 
-    	curMax = sqrt(r.height^2 * r.width^2);
-    	// curMax = max(r.height, r.width);
+    	curMax = sqrt(pow(r.height,2) + pow(r.width,2));
+    	int curMaxTmp = max(r.height, r.width);
 
     	if (curMax>maxDist) maxDist=curMax;
     }
+    std::cout << "[PropagateDistCostFunction] curMax: " << curMax << std::endl;
+    std::cout << "[PropagateDistCostFunction] curMax2: " << curMax2 << std::endl;
+    // imwrite("cost-cont.png", cont);
 
     return maxDist * img.cols * img.rows;
 }

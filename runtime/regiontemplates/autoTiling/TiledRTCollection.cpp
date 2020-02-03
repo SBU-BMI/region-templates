@@ -174,7 +174,13 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                 cv::imwrite(outname, tileMat);
             }
 
-            std::string outname = "./tiled-" + this->initialPaths[i] + ".png";
+            // remove "/"
+            int slLoc;
+            std::string outname = this->initialPaths[i];
+            while ((slLoc=outname.find("/")) != std::string::npos) {
+                outname.replace(slLoc, 1, "");
+            }
+            outname = "./tiled-" + outname + ".png";
             cv::imwrite(outname, tiledImg);
         }
     }
