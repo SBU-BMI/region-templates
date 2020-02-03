@@ -749,8 +749,10 @@ static struct : RTF::HalGen {
         preFill(hRecon.width()-1,y) = Halide::cast<uint8_t>(0);
 
         // Schedules
+        Halide::Var t, xo, yo, xi, yi;
         preFill.compute_root();
-        preFill.parallel(x);
+        preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
+        preFill.fuse(xo,yo,t).parallel(t);
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
