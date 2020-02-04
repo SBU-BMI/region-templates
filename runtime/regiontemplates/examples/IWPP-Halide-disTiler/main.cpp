@@ -1091,8 +1091,8 @@ int main(int argc, char *argv[]) {
 #ifdef PROFILING
     long tilingT1 = Util::ClockGetTime();
 #endif
-    // BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    BGMasker* bgm = new ColorThresholdBGMasker(dilate_param, erode_param);
+    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    // BGMasker* bgm = new ColorThresholdBGMasker(dilate_param, erode_param);
     
     CostFunction* cfunc = new PropagateDistCostFunction(bgThr, erode_param, dilate_param);
     

@@ -54,10 +54,19 @@ void TiledRTCollection::customTiling() {
             int64_t w = -1;
             int64_t h = -1;
             int32_t osrMaxLevel = 0; // svs standard: max level = 0
+
             osr = openslide_open(initialPaths[i].c_str());
-            openslide_get_level0_dimensions(osr, &w, &h);
+
+            // // get all levels info
+            // int levels = openslide_get_level_count(osr);
+            // std::cout << "=============levels " << levels << std::endl;
+            // for (int i=0; i<levels; i++) {
+            //     openslide_get_level_dimensions(osr, i, &w, &h);
+            //     std::cout << "level " << i << " " << w << "x" << h << std::endl;
+            // }
 
             // Create the tile mat
+            openslide_get_level0_dimensions(osr, &w, &h);
             cv::Rect_<int64_t> roi(0, 0, w, h);
             osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
         }
