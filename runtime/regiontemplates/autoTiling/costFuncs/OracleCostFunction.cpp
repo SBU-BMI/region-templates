@@ -526,7 +526,7 @@ OracleCostFunction::OracleCostFunction() {
 
 }
 
-int64_t OracleCostFunction::cost(cv::Mat img) const {
+double OracleCostFunction::cost(cv::Mat img) const {
     // Input parameters
     unsigned char blue = 200;
     unsigned char green = 200;

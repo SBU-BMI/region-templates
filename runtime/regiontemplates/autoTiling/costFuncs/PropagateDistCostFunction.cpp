@@ -25,7 +25,7 @@ PropagateDistCostFunction::PropagateDistCostFunction(BGMasker* bgm) {
 // As such, we assume a direct proportionality between the number of
 // iterations and this approximated maximum feret diameter.
 // Thus, the final cost is approximated as imgSize * maxDiag
-int64_t PropagateDistCostFunction::cost(cv::Mat img) const {
+double PropagateDistCostFunction::cost(cv::Mat img) const {
     // dense mask
     cv::Mat thrsMask = this->bgm->bgMask(img);
 
@@ -57,9 +57,9 @@ int64_t PropagateDistCostFunction::cost(cv::Mat img) const {
 
     int64_t thrsSum = cv::sum(thrsMask)[0];
 
-    // int64_t final = maxDist * thrsSum * img.cols * img.rows;
-    // int64_t final = maxDist * img.cols * img.rows;
-    int64_t final = thrsSum * img.cols * img.rows;
+    // double final = (double)maxDist * (double)thrsSum * (double)img.cols * (double)img.rows / pow(10,9);
+    double final = maxDist * img.cols * img.rows;
+    // double final = thrsSum * img.cols * img.rows;
 
     return final;
 }

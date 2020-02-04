@@ -14,7 +14,7 @@ ThresholdBGCostFunction::ThresholdBGCostFunction(ThresholdBGMasker* bgm) {
 
 // template <typename T>
 // T ThresholdBGCostFunction<T>::cost(cv::Mat img) {
-int64_t ThresholdBGCostFunction::cost(cv::Mat img) const {
+double ThresholdBGCostFunction::cost(cv::Mat img) const {
     cv::Mat bgImg = this->bgm->bgMask(img);
     return cv::sum(cv::sum(bgImg))[0];
 }

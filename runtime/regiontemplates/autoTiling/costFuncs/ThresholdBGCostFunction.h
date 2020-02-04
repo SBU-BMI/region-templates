@@ -23,7 +23,7 @@ public:
     ThresholdBGCostFunction(ThresholdBGMasker* bgm);
 
     // T cost(cv::Mat img);
-    int64_t cost(cv::Mat img) const;
+    double cost(cv::Mat img) const;
     cv::Mat costImg(cv::Mat img) const;
 };
 

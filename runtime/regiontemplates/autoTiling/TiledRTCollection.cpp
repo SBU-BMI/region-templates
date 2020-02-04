@@ -176,13 +176,16 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                     cv::Point(tile.x+10, tile.y+tile.height/2),
                     cv::FONT_HERSHEY_SIMPLEX, 3, (255,255,255), 7);
 
-                // create tile image
-                cv::Mat tileMat = cv::Mat(baseImg, cv::Rect(tile.x, tile.y, 
-                    tile.width, tile.height));
-                std::string outname = "./tiles/t" + std::to_string(id++) + ".png";
-                cv::imwrite(outname, tileMat);
+                if (this->getTiles().size() > 1) {
+                    // create tile image
+                    cv::Mat tileMat = cv::Mat(baseImg, cv::Rect(tile.x, tile.y, 
+                        tile.width, tile.height));
+                    std::string outname = "./tiles/t" + std::to_string(id++) + ".png";
+                    cv::imwrite(outname, tileMat);
+                }
             }
 
+            #ifdef DEBUG
             // remove "/"
             int slLoc;
             std::string outname = this->initialPaths[i];
@@ -190,26 +193,27 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                 outname.replace(slLoc, 1, "");
             }
             outname = "./tiled-" + outname + ".png";
-            cv::imwrite(outname, tiledImg);
+            // cv::imwrite(outname, tiledImg);
+            #endif
         }
     }
 
     // Calculates stddev of tiles cost
-    float mean = 0;
-    for (int64_t c : costs)
+    double mean = 0;
+    for (double c : costs)
         mean += c;
     mean /= costs.size();
-    float var = 0;
+    double var = 0;
     for (int64_t c : costs)
         var += pow(c-mean, 2);
-    float stddev = sqrt(var/(costs.size()-1));
+    double stddev = sqrt(var/(costs.size()-1));
     
     // Make the results readable for humans...
     setlocale(LC_NUMERIC, "pt_BR.utf-8");
-    char c_mean[50];
-    char c_stddev[50];
-    sprintf(c_mean, "%'2f", mean);
-    sprintf(c_stddev, "%'2f", stddev);
+    char c_mean[150];
+    char c_stddev[150];
+    sprintf(c_mean, "%'2lf", mean);
+    sprintf(c_stddev, "%'2lf", stddev);
     std::cout << "[PROFILING][AVERAGE] " << c_mean << std::endl;
     std::cout << "[PROFILING][STDDEV] " << c_stddev << std::endl;
 
