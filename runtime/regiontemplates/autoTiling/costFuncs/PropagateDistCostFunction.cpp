@@ -57,8 +57,8 @@ int64_t PropagateDistCostFunction::cost(cv::Mat img) const {
 
     int64_t thrsSum = cv::sum(thrsMask)[0];
 
-    int64_t final = maxDist * thrsSum * img.cols * img.rows;
-    // int64_t final = maxDist * img.cols * img.rows;
+    // int64_t final = maxDist * thrsSum * img.cols * img.rows;
+    int64_t final = maxDist * img.cols * img.rows;
     // int64_t final = thrsSum * img.cols * img.rows;
 
     return final;
