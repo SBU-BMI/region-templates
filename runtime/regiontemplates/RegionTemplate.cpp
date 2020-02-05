@@ -140,9 +140,9 @@ DataRegion* RegionTemplate::getDataRegion(std::string drName, std::string drId, 
 					Cache* auxCache = this->getCache();
 					//pthread_mutex_lock(&auxCache->globalLock);
 					if(auxCache != NULL){
-// #ifdef DEBUG
+#ifdef DEBUG
 						std::cout << "auxCache->getDR: " << this->getName() << ":"<< this->getId() << ":"<< retValue->getName() << ":"<<  retValue->getId() << ":"<<  retValue->getTimestamp() << ":"<<  retValue->getVersion() << ":"<<  true << ":"<<  auxCache->getWorkerId() << ":"<<  retValue->getWorkerId() << std::endl;
-// #endif
+#endif
 
 						retValue = auxCache->getDR(this->getName(), this->getId(), retValue);
 													// , retValue->getName(),

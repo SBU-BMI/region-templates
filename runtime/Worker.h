@@ -30,8 +30,6 @@ class Cache;
 #endif
 class CallBackComponentExecution;
 
-#define PROFILING
-
 class Worker {
 
 private:

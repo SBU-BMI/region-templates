@@ -10,11 +10,25 @@ bool isSVS(std::string path) {
 void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 
     int level, cv::Mat& thisTile) {
 
+    #ifdef PROFILING
+    long t1 = Util::ClockGetTime();
+    #endif
+
     uint32_t* osrRegion = new uint32_t[r.width * r.height];
     openslide_read_region(osr, osrRegion, r.x, r.y, level, r.width, r.height);
 
+    #ifdef PROFILING
+    long t2 = Util::ClockGetTime();
+    std::cout << "[osrRegionToCVMat] svs open: " << (t2-t1) << std::endl;
+    #endif
+
     thisTile = cv::Mat(r.height, r.width, CV_8UC3, cv::Scalar(0, 0, 0));
     int64_t numOfPixelPerTile = thisTile.total();
+
+    #ifdef PROFILING
+    long t3 = Util::ClockGetTime();
+    std::cout << "[osrRegionToCVMat] cv mat create: " << (t3-t2) << std::endl;
+    #endif
 
     for (int64_t it = 0; it < numOfPixelPerTile; ++it) {
         uint32_t p = osrRegion[it];
@@ -45,6 +59,11 @@ void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r,
         thisTile.at<cv::Vec3b>(it)[1] = g;
         thisTile.at<cv::Vec3b>(it)[2] = r;
     }
+
+    #ifdef PROFILING
+    long t4 = Util::ClockGetTime();
+    std::cout << "[osrRegionToCVMat] cv mat convert/update: " << (t4-t3) << std::endl;
+    #endif
 
     delete[] osrRegion;
 
