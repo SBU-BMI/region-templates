@@ -10,6 +10,8 @@ bool isSVS(std::string path) {
 void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 
     int level, cv::Mat& thisTile) {
 
+    #define PROFILING
+
     #ifdef PROFILING
     long t1 = Util::ClockGetTime();
     #endif
