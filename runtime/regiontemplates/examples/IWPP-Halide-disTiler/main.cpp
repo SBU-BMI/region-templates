@@ -949,8 +949,7 @@ int main(int argc, char *argv[]) {
         cout << "\t-t <Number of tiles per resource thread "
              << " to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
-        cout << "\t-p <bgThr>/<erode>/<dilate> (default=100/4/10)" << endl;
-        cout << "\t\t for color propag function <e1>/<e2>/<d1 and d2> (default=10/15/10)" << endl;
+        cout << "\t-p <bgThr>/<erode>/<dilate> (default=150/4/2)" << endl;
         cout << "\t-to (tiling only: generate tile images "
              << "without executing)" << endl;
 
@@ -998,9 +997,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Pre-tiler parameters
-    int bgThr = 100;
+    int bgThr = 150;
     int erode_param = 4;
-    int dilate_param = 10;
+    int dilate_param = 2;
     if (findArgPos("-p", argc, argv) != -1) {
         std::string params = argv[findArgPos("-p", argc, argv)+1];
         std::size_t l = params.find_last_of("/");
@@ -1092,8 +1091,6 @@ int main(int argc, char *argv[]) {
     long tilingT1 = Util::ClockGetTime();
 #endif
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    // BGMasker* bgm = new ColorThresholdBGMasker(dilate_param, erode_param);
-    
     CostFunction* cfunc = new PropagateDistCostFunction(bgThr, erode_param, dilate_param);
     
     TiledRTCollection* tCollImg;
