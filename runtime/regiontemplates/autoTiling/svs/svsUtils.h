@@ -7,6 +7,8 @@
 
 #include "openslide.h"
 
+#include "Util.h"
+
 // Verifies whether the extension is .svs 
 bool isSVS(std::string path);
 
