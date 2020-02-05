@@ -293,6 +293,7 @@ void Worker::workerProcess()
 
 #ifdef PROFILING
     	long workerPrepareT1 = Util::ClockGetTime();
+    	long workerPrepareT3;
 #endif
 
 		// tell the manager - ready
@@ -352,8 +353,20 @@ void Worker::workerProcess()
 					// Start transaction. All tasks created within the execution engine will be associated to this one
 					this->getResourceManager()->startTransaction(callBackTask);
 
+					#ifdef PROFILING
+					long workerPrepareT2 = Util::ClockGetTime();
+					std::cout << "[PROFILING][WORKER_PREP_SUBTIME_BR][R" << this->rank << "] " 
+    						  << (workerPrepareT2-workerPrepareT1) << std::endl;
+					#endif
+
 					// Execute component function that instantiates tasks within the execution engine
 					pc->run();
+
+					#ifdef PROFILING
+					workerPrepareT3 = Util::ClockGetTime();
+					std::cout << "[PROFILING][WORKER_PREP_SUBTIME_R][R" << this->rank << "] " 
+    						  << (workerPrepareT3-workerPrepareT2) << std::endl;
+					#endif
 
 					// Stop transaction: defines the end of the transaction associated to the current component
 					this->getResourceManager()->endTransaction();
@@ -366,10 +379,12 @@ void Worker::workerProcess()
 					std::cout << "Error: Failed to load PipelineComponent!"<<std::endl;
 				}
 
-#ifdef PROFILING
-    			long workerPrepareT2 = Util::ClockGetTime();
-    			this->workerPrepareTime += workerPrepareT2-workerPrepareT1;
-#endif
+				#ifdef PROFILING
+    			long workerPrepareT4 = Util::ClockGetTime();
+    			this->workerPrepareTime += workerPrepareT4-workerPrepareT1;
+    			std::cout << "[PROFILING][WORKER_PREP_SUBTIME_AR][R" << this->rank << "] " 
+    					  << (workerPrepareT4-workerPrepareT3) << std::endl;
+				#endif
 
 				break;
 			}

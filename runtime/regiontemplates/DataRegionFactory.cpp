@@ -147,6 +147,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 
 	if(drType == -1) return false; // means not an input and no lock file found
 
+	std::cout << "[DataRegionFactory] trying to read" << std::endl;
 
 	switch(drType){
 		case DataRegionType::DENSE_REGION_2D: {
@@ -177,6 +178,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 					osrRegionToCVMat(svsFile, inDr->roi, maxLevel, 
 						chunkData);
 					dr2D->setData(chunkData);
+					std::cout << "[DataRegionFactory] read SVS file" << std::endl;
 				} else {
 					std::cout << "[DataRegionFactory] cache is null" << std::endl;
 					exit(10);

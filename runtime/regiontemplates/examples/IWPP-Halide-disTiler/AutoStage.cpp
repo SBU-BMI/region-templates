@@ -39,7 +39,7 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
     this->addInputOutputDataRegion(last_rt->getName(), dr_name, 
         RTPipelineComponentBase::OUTPUT);
 };
-
+#define DEBUG
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
@@ -56,6 +56,8 @@ int RTF::Internal::AutoStage::run() {
             rt->getDataRegion(drName));
         dr_ios.emplace_back(dr);
     }
+
+    std::cout << "===========" << std::endl;
 
     // Output buffer must be pre-allocated for the halide pipeline
     cv::Mat* cvOut = new cv::Mat(this->out_shape[0], 
