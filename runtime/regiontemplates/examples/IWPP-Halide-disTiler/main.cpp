@@ -204,74 +204,46 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     Halide::Buffer<T> hOut(*bOut, "hOut");
     int32_t w = bII->dim[0].extent;
     int32_t h = bII->dim[1].extent;
-    // cv::imwrite("hOut.png", cv::Mat(h, w, 
-    //     cv::DataType<T>::type, hOut.get()->raw_buffer()->host));
 
     Halide::Func rasterx("rasterx"), rastery("rastery");
     Halide::Func arasterx("arasterx"), arastery("arastery");
     Halide::Func output("output");
-    Halide::RDom se(-1,3,-1,3);
     Halide::Var x("x"), y("y");
 
-    // Clamping rasterx for rastery input
-    Halide::Expr xc = clamp(x, 0, w-1);
-    Halide::Expr yc = clamp(y, 0, h-1);
-    Halide::Func rasterxc("rasterxc");
-    
     // raster
-    rasterx(x,y) = JJ(x,y);
+    rasterx(x,y) = Halide::undef<T>();
     Halide::RDom propx(1, w-2, 0, h-1);
     rasterx(propx.x,propx.y) = min(II(propx.x,propx.y), max(rasterx(propx.x+1,propx.y), max(rasterx(propx.x,propx.y), rasterx(propx.x-1,propx.y))));
 
-    rastery(x,y) = rasterx(x,y);
+    rastery(x,y) = Halide::undef<T>();
     Halide::RDom propy(0, w-1, 1, h-2);
     Halide::Expr maxy = max(rastery(propy.x,propy.y+1), max(rastery(propy.x,propy.y), rastery(propy.x,propy.y-1)));
     rastery(propy.x,propy.y) = min(II(propy.x,propy.y), maxy);
 
-    // inverting the raster output for hacking anti-raster
-    Halide::Expr IIinv = II(w-propx.x-1,h-propx.y-1);
-    Halide::Expr inv = rastery(w-x-1,h-y-1);
-
     // anti-raster
-    arasterx(x,y) = inv;
-    arasterx(propx.x,propx.y) = min(IIinv, max(arasterx(propx.x+1,propx.y), max(arasterx(propx.x,propx.y), arasterx(propx.x-1,propx.y))));
+    arasterx(x,y) = Halide::undef<T>();
+    arasterx(w-propx.x-1,h-propx.y-1) = min(II(w-propx.x-1,h-propx.y-1), max(arasterx(w-propx.x,h-propx.y-1), max(arasterx(w-propx.x-1,h-propx.y-1), arasterx(w-propx.x-2,h-propx.y-1))));
 
-    arastery(x,y) = arasterx(x,y);
-    Halide::Expr amaxy = max(arastery(propy.x,propy.y+1), max(arastery(propy.x,propy.y), arastery(propy.x,propy.y-1)));
-    arastery(propy.x,propy.y) = min(II(w-propy.x-1,h-propy.y-1), amaxy);
-
-    // one final invert for having the output correct
-    output(x,y) = arastery(w-x-1,h-y-1);
+    arastery(x,y) = Halide::undef<T>();
+    Halide::Expr amaxy = max(arastery(w-propy.x-1,h-propy.y), max(arastery(w-propy.x-1,h-propy.y), arastery(w-propy.x-1,h-propy.y-2)));
+    arastery(w-propy.x-1,h-propy.y-1) = min(II(w-propy.x-1,h-propy.y-1), amaxy);
 
     // Schedule
-    rasterx.compute_root();
-    rastery.compute_root();
-    arasterx.compute_root();
-    arastery.compute_root();
-
     Halide::Target target = Halide::get_host_target();
     if (sched == ExecEngineConstants::CPU) {
-        Halide::Var xi, xo, yi, yo;
         Halide::RVar rxi, rxo, ryi, ryo;
 
-        rasterx.split(y, yo, yi, 4);
-        rasterx.vectorize(yi).parallel(yo);
         rasterx.update(0).split(propx.y, ryo, ryi, 4);
         rasterx.update(0).vectorize(ryi).parallel(ryo);
 
-        // reorder to parallelize the loop top level
-        rastery.split(x, xo, xi, 4).reorder(y,xi,xo);
-        rastery.vectorize(xi).parallel(xo);
+        // reorder to parallelize the loop top level (i.e., x for y rastering)
         rastery.update(0).split(propy.x, rxo, rxi, 4).reorder(propy.y,rxi,rxo);
         rastery.update(0).vectorize(rxi).parallel(rxo);
 
-        arasterx.split(y, yo, yi, 4);
-        arasterx.vectorize(yi).parallel(yo);
         arasterx.update(0).split(propx.y, ryo, ryi, 4);
         arasterx.update(0).vectorize(ryi).parallel(ryo);
 
-        arastery.split(x, xo, xi, 4).reorder(y,xi,xo);
-        arastery.vectorize(xi).parallel(xo);
+        // reorder to parallelize the loop top level (i.e., x for y rastering)
         arastery.update(0).split(propy.x, rxo, rxi, 4).reorder(propy.y,rxi,rxo);
         arastery.update(0).vectorize(rxi).parallel(rxo);
 
@@ -284,8 +256,8 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         JJ.set_host_dirty();
     }
 
-    output.compile_jit();
-    output.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
+    arastery.compile_jit();
+    arastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
 
     #ifdef PROFILING_STAGES
     long st1 = Util::ClockGetTime();
@@ -310,7 +282,14 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         cv::Mat cvJ = cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host).clone();
         #endif
 
-        output.realize(JJ);
+        // Realize each raster separately for avoiding allocation of temporary buffers
+        // between stages (courtesy of the required compute_root between stages)
+        // This is better given that every stage can be updated in-place (i.e., perfect
+        // data independence for the opposite coordinate of each raster)
+        rasterx.realize(JJ);
+        rastery.realize(JJ);
+        arasterx.realize(JJ);
+        arastery.realize(JJ);
 
         // Copy from GPU to host is done every realization which is
         // inefficient. However this is just done as a proof of concept for
