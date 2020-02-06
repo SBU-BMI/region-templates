@@ -7,6 +7,13 @@
 #include "FileUtils.h"
 #include "HistologicalEntities.h"
 
+long long Util::ClockGetTime()
+{
+        struct timeval ts;
+        gettimeofday(&ts, NULL);
+        return (ts.tv_sec*1000000 + (ts.tv_usec))/1000LL;
+}
+
 using namespace std;
 
 int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned char blue, 
@@ -20,7 +27,8 @@ int segmentNuclei(const cv::Mat& img, cv::Mat& output, unsigned char blue,
     int minSizeSeg, int maxSizeSeg,  int fillHolesConnectivity, 
     int reconConnectivity, int watershedConnectivity);
 
-int main () {
+int main(int argc, char const *argv[]) {
+
     // Input parameters
     unsigned char blue = 200;
     unsigned char green = 200;
@@ -38,7 +46,7 @@ int main () {
     int reconConnectivity = 4;
     int watershedConnectivity = 4;
 
-    cv::Mat inputImage = cv::imread("tcga60m.tiff",  cv::IMREAD_COLOR);
+    cv::Mat inputImage = cv::imread(argv[1],  cv::IMREAD_COLOR);
     cv::Mat outMask;
 
     cout << "in: " << inputImage.cols << "x" << inputImage.rows << endl;
@@ -48,7 +56,7 @@ int main () {
             green, red, T1, T2, G1, minSize, maxSize, G2, 
             fillHolesConnectivity, reconConnectivity);
 
-    cv::imwrite("outMask.png", outMask);
+    cv::imwrite("outMask.tiff", outMask);
 }
 
 
@@ -291,23 +299,29 @@ cv::Mat morphOpen(const cv::Mat& image, const cv::Mat& kernel) {
     //  morphologyEx(image, seg_open, CV_MOP_OPEN, disk3, Point(1,1)); //, Point(-1, -1), 1, BORDER_REFLECT);
     cv::Mat t_image;
 
+    uint64_t t0 = Util::ClockGetTime();
     copyMakeBorder(image, t_image, bw, bw, bw, bw, cv::BORDER_CONSTANT, std::numeric_limits<unsigned char>::max());
     //  if (bw > 1) imwrite("test-input-cpu.ppm", t_image);
     cv::Mat t_erode = cv::Mat::zeros(t_image.size(), t_image.type());
     erode(t_image, t_erode, kernel);
-    // cv::imwrite("ref/3eroded.png", t_erode);
-
     cv::Mat erode_roi = t_erode(cv::Rect(bw, bw, image.cols, image.rows));
+    cv::imwrite("ref/3eroded.tiff", t_erode);
+    t_erode.release();
+    uint64_t t1 = Util::ClockGetTime();
+    std::cout << "[erode] time: " << (t1-t0) << std::endl;
+
+    uint64_t t2 = Util::ClockGetTime();
     cv::Mat t_erode2;
     copyMakeBorder(erode_roi,t_erode2, bw, bw, bw, bw, cv::BORDER_CONSTANT, std::numeric_limits<unsigned char>::min());
     cv::Mat t_open = cv::Mat::zeros(t_erode2.size(), t_erode2.type());
     dilate(t_erode2, t_open, kernel);
     cv::Mat open = t_open(cv::Rect(bw, bw,image.cols, image.rows));
-
+    cv::imwrite("ref/3rcOpen.tiff", t_open);
     t_open.release();
     t_erode2.release();
     erode_roi.release();
-    t_erode.release();
+    uint64_t t3 = Util::ClockGetTime();
+    std::cout << "[dilate] time: " << (t3-t2) << std::endl;
 
     return open;
 }
@@ -324,6 +338,81 @@ inline void propagate(const cv::Mat& image, cv::Mat& output, std::queue<int>& xQ
         xQ.push(x);
         yQ.push(y);
     }
+}
+
+template <typename T>
+// seeds=rcopen=J, image=rc=I
+cv::Mat imreconstructSeq(const cv::Mat& seeds, const cv::Mat& image, int connectivity) {
+    CV_Assert(image.channels() == 1);
+    CV_Assert(seeds.channels() == 1);
+
+
+    cv::Mat output(seeds.size() + cv::Size(2,2), seeds.type());
+    copyMakeBorder(seeds, output, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
+    cv::Mat input(image.size() + cv::Size(2,2), image.type());
+    copyMakeBorder(image, input, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
+
+    T pval, preval;
+    int xminus, xplus, yminus, yplus;
+    int maxx = output.cols - 1;
+    int maxy = output.rows - 1;
+    std::queue<int> xQ;
+    std::queue<int> yQ;
+    T* oPtr;
+    T* oPtrMinus;
+    T* oPtrPlus;
+    T* iPtr;
+    T* iPtrPlus;
+    T* iPtrMinus;
+
+    int it = 0;
+    long newSum=0, oldSum=0;
+
+    do {
+        // raster scan
+        for (int y = 1; y < maxy; ++y) {
+
+            oPtr = output.ptr<T>(y);
+            oPtrMinus = output.ptr<T>(y-1);
+            oPtrPlus = output.ptr<T>(y+1);
+            iPtr = input.ptr<T>(y);
+
+            preval = oPtr[0];
+            for (int x = 1; x < maxx; ++x) {
+                pval = oPtr[x];
+
+                // walk through the neighbor pixels, left and up (N+(p)) only
+                pval = max(pval, max(preval, oPtrMinus[x]));
+                preval = min(pval, iPtr[x]);
+                oPtr[x] = preval;
+            }
+        }
+
+        // anti-raster scan
+        for (int y = maxy-1; y > 0; --y) {
+            oPtr = output.ptr<T>(y);
+            oPtrMinus = output.ptr<T>(y-1);
+            oPtrPlus = output.ptr<T>(y+1);
+            iPtr = input.ptr<T>(y);
+
+            preval = oPtr[maxx];
+            for (int x = maxx-1; x > 0; --x) {
+                pval = oPtr[x];
+                // walk through the neighbor pixels, right and down (N-(p)) only
+                pval = max(pval, max(preval, oPtrPlus[x]));
+                preval = min(pval, iPtr[x]);
+                oPtr[x] = preval;
+            }
+        }
+
+        it++;
+        oldSum = newSum;
+        newSum = cv::sum(output)[0];
+    } while(newSum != oldSum);
+
+    std::cout << "[imreconstruct] iterations: " << it << std::endl;
+
+    return output(cv::Range(1, maxy), cv::Range(1, maxx));
 }
 
 template <typename T>
@@ -560,7 +649,7 @@ cv::Mat imfillHoles(const cv::Mat& image, bool binary, int connectivity) {
 
     // now do the work...
     mask = invert<T>(mask);
-    // imwrite("ref/5invRecon.png", mask);
+    imwrite("ref/5invRecon.tiff", mask);
 
     cv::Mat output;
     if (binary == true) {
@@ -576,8 +665,8 @@ cv::Mat imfillHoles(const cv::Mat& image, bool binary, int connectivity) {
     //      imwrite("test/in-fillholes-gray-mask.pgm", mask);
         output = imreconstruct<T>(marker, mask, connectivity);
     }
-    imwrite("ref/5pre_fill2.png", output);
-    //  uint64_t t2 = cci::common::event::timestampInUS();
+    imwrite("ref/5pre_fill2.tiff", output);
+    //  uint64_t t2 = Util::ClockGetTime();
     //TODO: TEMP std::cout << "    imfill hole imrecon took " << t2-t1 << "ms" << std::endl;
 
     output = invert<T>(output);
@@ -645,17 +734,19 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
 
     cout << "[plFindNucleusCandidates] init" << endl;
 
-    uint64_t t0 = cci::common::event::timestampInUS();
+    uint64_t t0 = Util::ClockGetTime();
 
     std::vector<cv::Mat> bgr;
     split(img, bgr);
 
     cv::Mat background = getBackground(bgr, blue, green, red);
-    // cv::imwrite("ref/0background.png", background);
-    cout << "ref/0background.png" << endl;
 
     int bgArea = countNonZero(background);
     float ratio = (float)bgArea / (float)(img.size().area());
+
+    cv::imwrite("ref/0background.tiff", background);
+    uint64_t t1 = Util::ClockGetTime();
+    std::cout << "[getBackground] time: " << (t1-t0) << std::endl;
 
     cout << "[plFindNucleusCandidates] 1" << endl;
     if (ratio >= 0.99) {
@@ -666,11 +757,13 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
         return ::nscale::HistologicalEntities::BACKGROUND_LIKELY;
     }
 
-
+    uint64_t t2 = Util::ClockGetTime();
     cv::Mat rbc = getRBC(bgr, T1, T2);
-    // cv::imwrite("ref/1rbc.png", rbc);
-    cout << "ref/1rbc.png" << endl;
     int rbcPixelCount = countNonZero(rbc);
+    cv::imwrite("ref/1rbc.tiff", rbc);
+    uint64_t t3 = Util::ClockGetTime();
+    std::cout << "[getRBC] time: " << (t3-t2) << std::endl;
+
 
 //  imwrite("test/out-rbc.pbm", rbc);
     /*
@@ -679,11 +772,13 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
     rc_recon = imreconstruct(rc_open,rc);
     diffIm = rc-rc_recon;
      */
+
+    uint64_t t4 = Util::ClockGetTime();
     cv::Mat rc = invert<unsigned char>(bgr[2]);
-    // cv::imwrite("ref/2rc.png", rc);
-    cout << "ref/2rc.png" << endl;
-    uint64_t t1 = cci::common::event::timestampInUS();
-//  std::cout << "RBC detection: " << t1-t0 << std::endl; 
+    uint64_t t5 = Util::ClockGetTime();
+    std::cout << "[invert] time: " << (t5-t4) << std::endl;
+    cv::imwrite("ref/2rc.tiff", rc);
+
 
     cv::Mat rc_open(rc.size(), rc.type());
     //cv::Mat disk19 = getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(19,19));
@@ -712,10 +807,10 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
     cv::Mat disk19(disk19vec);
     disk19 = disk19.reshape(1, 19);
     rc_open = morphOpen<unsigned char>(rc, disk19);
-    // cv::imwrite("ref/3rc_open.png", rc_open);
+    // cv::imwrite("ref/3rc_open.tiff", rc_open);
 //  morphologyEx(rc, rc_open, CV_MOP_OPEN, disk19, Point(-1, -1), 1);
 
-    uint64_t t2 = cci::common::event::timestampInUS();
+    // uint64_t t2 = Util::ClockGetTime();
 //  std::cout << "Morph Open: " << t2-t1 << std::endl; 
 
 // for generating test data 
@@ -723,11 +818,17 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
 //  imwrite("in-imrecon-gray-mask.pgm", rc);
 // END  generating test data
 
-    cv::Mat rc_recon = imreconstruct<unsigned char>(rc_open, rc, 
+    uint64_t t6 = Util::ClockGetTime();
+    cv::Mat rc_recon = imreconstructSeq<unsigned char>(rc_open, rc, 
         reconConnectivity);
-    // cv::imwrite("ref/4rc_recon.png", rc_recon);
+    // cv::Mat rc_recon = imreconstruct<unsigned char>(rc_open, rc, 
+    //     reconConnectivity);
+    cv::imwrite("ref/4rc_recon.tiff", rc_recon);
+    uint64_t t7 = Util::ClockGetTime();
+    std::cout << "[imreconstruct] time: " << (t7-t6) << std::endl;
 
 
+    uint64_t t8 = Util::ClockGetTime();
     cv::Mat diffIm = rc - rc_recon;
 //  imwrite("test/out-redchannelvalleys.ppm", diffIm);
     int rc_openPixelCount = countNonZero(rc_open);
@@ -741,14 +842,16 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
     // it is now a parameter
     //unsigned char G1 = 80;
     cv::Mat diffIm2 = diffIm > G1;
-    // cv::imwrite("ref/5pre_fill.png", diffIm2);
+    cv::imwrite("ref/5pre_fill.tiff", diffIm2);
+    uint64_t t9 = Util::ClockGetTime();
+    std::cout << "[preFill] time: " << (t9-t8) << std::endl;
 
 //  imwrite("in-fillHolesDump.ppm", diffIm2);
     cv::Mat bw1 = imfillHoles<unsigned char>(diffIm2, true, 
         fillHolesConnectivity);
-    // cv::imwrite("ref/6bw1.png", bw1);
+    cv::imwrite("ref/6bw1.tiff", bw1);
 //  imwrite("test/out-rcvalleysfilledholes.ppm", bw1);
-    uint64_t t3 = cci::common::event::timestampInUS();
+    // uint64_t t3 = Util::ClockGetTime();
 //  std::cout << "ReconToNuclei " << t3-t2 << std::endl; 
 
 
@@ -776,7 +879,7 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
 //#if defined (USE_UF_CCL)
     cv::Mat bw1_t = bwareaopen2(bw1, false, true, minSize, 
         maxSize, 8, compcount2);
-    cv::imwrite("ref/7bw1_t.png", bw1_t);
+    cv::imwrite("ref/7bw1_t.tiff", bw1_t);
 //  printf(" cpu compcount 11-1000 = %d\n", compcount2);
 //#else
 //  cv::Mat bw1_t = ::nscale::bwareaopen<unsigned char>(bw1, 11, 1000, 8, compcount);
@@ -802,7 +905,7 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
 
     seg_norbc = bwselect<unsigned char>(bw2, bw1_t, 8);
     seg_norbc = seg_norbc & (rbc == 0);
-    cv::imwrite("ref/8seg_norbc.png", seg_norbc);
+    cv::imwrite("ref/8seg_norbc.tiff", seg_norbc);
 
 //  imwrite("test/out-nucleicandidatesnorbc.ppm", seg_norbc);
 
@@ -997,15 +1100,15 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
 
 //      */
 // //  long long int t1, t2;
-// //  t1 = ::cci::common::event::timestampInUS();
+// //  t1 = ::Util::ClockGetTime();
 //     cv::Mat minima = localMinima<float>(image, connectivity);
-// //  t2 = ::cci::common::event::timestampInUS();
+// //  t2 = ::Util::ClockGetTime();
 // //  printf("    cpu localMinima = %lld\n", t2-t1);
 
-// //  t1 = ::cci::common::event::timestampInUS();
+// //  t1 = ::Util::ClockGetTime();
 //     // watershed is sensitive to label values.  need to relabel.
 //     cv::Mat_<int> labels = bwlabel2(minima, connectivity, true);
-// //  t2 = ::cci::common::event::timestampInUS();
+// //  t2 = ::Util::ClockGetTime();
 // //  printf("    cpu UF bwlabel2 = %lld\n", t2-t1);
 
 
@@ -1014,17 +1117,17 @@ int plFindNucleusCandidates(const cv::Mat& img, cv::Mat& seg_norbc, unsigned cha
 //     copyMakeBorder(labels, temp, 1, 1, 1, 1, cv::BORDER_CONSTANT, cv::Scalar_<int>(0));
 //     copyMakeBorder(origImage, input, 1, 1, 1, 1, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
-// //  t1 = ::cci::common::event::timestampInUS();
+// //  t1 = ::Util::ClockGetTime();
 
 //         // input: seeds are labeled from 1 to n, with 0 as background or unknown regions
 //     // output has -1 as borders.
 //     watershed(input, temp);
-// //  t2 = ::cci::common::event::timestampInUS();
+// //  t2 = ::Util::ClockGetTime();
 // //  printf("    CPU watershed = %lld\n", t2-t1);
 
-// //  t1 = ::cci::common::event::timestampInUS();
+// //  t1 = ::Util::ClockGetTime();
 //     output = border<int>(temp, (int)-1);
-// //  t2 = ::cci::common::event::timestampInUS();
+// //  t2 = ::Util::ClockGetTime();
 // //  printf("    CPU watershed border fix = %lld\n", t2-t1);
 
 //     return output(cv::Rect(1,1, image.cols, image.rows));
