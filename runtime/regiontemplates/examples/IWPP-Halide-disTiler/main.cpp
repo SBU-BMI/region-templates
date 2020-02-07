@@ -87,89 +87,6 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
     }
 }
 
-template <typename T>
-int loopedIwppReconSeq(const cv::Mat* image, const cv::Mat* J, cv::Mat* JJ) {
-    cv::copyMakeBorder(*J, *JJ, 1, 1, 1, 1, cv::BORDER_REPLICATE);
-    cv::Mat I(image->size() + cv::Size(2,2), image->type());
-    cv::copyMakeBorder(*image, I, 1, 1, 1, 1, cv::BORDER_REPLICATE);
-
-    T pval, preval;
-    int maxx = JJ->cols - 1;
-    int maxy = JJ->rows - 1;
-    T* oPtr;
-    T* oPtrMinus;
-    T* oPtrPlus;
-    T* iPtr;
-
-    unsigned long oldSum = 0;
-    unsigned long newSum = 0;
-    unsigned long it = 0;
-
-    #ifdef PROFILING_STAGES
-    long st0 = Util::ClockGetTime();
-    #endif
-
-    do {
-        // raster scan
-        for (int y = 1; y < maxy; ++y) {
-            oPtr = JJ->ptr<T>(y);
-            oPtrMinus = JJ->ptr<T>(y-1);
-            iPtr = I.ptr<T>(y);
-
-            preval = oPtr[0];
-            for (int x = 1; x < maxx; ++x) {
-                pval = oPtr[x];
-
-                // walk through the neighbor pixels, left and up (N+(p)) only
-                pval = max(pval, max(preval, oPtrMinus[x]));
-                preval = min(pval, iPtr[x]);
-                oPtr[x] = preval;
-            }
-        }
-
-        // anti-raster scan
-        for (int y = maxy-1; y > 0; --y) {
-            oPtr = JJ->ptr<T>(y);
-            oPtrPlus = JJ->ptr<T>(y+1);
-            iPtr = I.ptr<T>(y);
-
-            preval = oPtr[maxx];
-            for (int x = maxx-1; x > 0; --x) {
-                pval = oPtr[x];
-
-                // walk through the neighbor pixels, right and down (N-(p)) only
-                pval = max(pval, max(preval, oPtrPlus[x]));
-                preval = min(pval, iPtr[x]);
-                oPtr[x] = preval;
-
-                // capture the seeds
-                // walk through the neighbor pixels, right and down (N-(p)) only
-                pval = oPtr[x];
-            }
-        }
-
-        oldSum = newSum;
-        newSum = cv::sum(*JJ)[0];
-        it++;
-
-        int iin=1;
-        if (it%10 == 0 && iin > 0) {
-        // if (iin > 0) {
-            cv::imwrite("outJJ.png", *JJ);
-            cout << "it " << it << ", sum " << newSum << endl;
-            // #include <unistd.h>
-            // usleep(500000);
-            std::cin >> iin;
-        }
-    } while(newSum != oldSum);
-
-    #ifdef PROFILING_STAGES
-    long st1 = Util::ClockGetTime();
-    cout << "[PROFILING][loopedIwppReconSeq] " << (st1-st0) << endl;
-    cout << "[PROFILING][loopedIwppReconSeq] iterations: " << it << endl;
-    #endif
-}
-
 enum IwppExec {
     SERIAL,
     NONE,
@@ -196,6 +113,7 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
     Halide::Var x("x"), y("y");
 
     // domains for the non-serial versions
+    Halide::RDom prop({{1, w-1}, {1, h-1}}, "prop");
     Halide::RDom propx({{1, w-1}, {0, h-1}}, "propx");
     Halide::RDom propy({{0, w-1}, {1, h-1}}, "propy");
     Halide::RDom apropx({{1, w-1}, {0, h-1}}, "apropx");
@@ -204,18 +122,14 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
     // Create the pipeline
     if (exOpt == SERIAL) {
         // raster
-        Halide::RDom prop(1, w-1, 1, h-1);
         rasterx(x,y) = Halide::undef<T>();
         Halide::Expr maxDr = max(rasterx(prop.x,prop.y-1), max(rasterx(prop.x,prop.y), rasterx(prop.x-1,prop.y)));
         rasterx(prop.x,prop.y) = min(II(prop.x,prop.y), maxDr);
-        rasterx.serial(x).serial(y);
-        rasterx.compile_jit();
+
         // anti-raster
         arasterx(x,y) = Halide::undef<T>();
         Halide::Expr maxDar = max(arasterx(w-prop.x-1,h-prop.y), max(arasterx(w-prop.x-1,h-prop.y-1), arasterx(w-prop.x,h-prop.y-1)));
         arasterx(w-prop.x-1,h-prop.y-1) = min(II(w-prop.x-1,h-prop.y-1), maxDar);
-        arasterx.serial(x).serial(y);
-        arasterx.compile_jit();
     } else {
         // raster
         rasterx(x,y) = Halide::undef<T>();
@@ -242,7 +156,24 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
 
     // Schedule
     Halide::Target target = Halide::get_host_target();
-    if (exOpt != SERIAL) {
+    if (exOpt == SERIAL) {
+        Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
+        Halide::RVar rvect("rvect");
+        
+        // int sFactor = (h-(h%4))/4;
+        int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
+
+        rasterx.update(0).split(prop.y, ryo, ryi, sFactor);
+        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        rasterx.update(0).parallel(ryo);
+
+        arasterx.update(0).split(prop.y, ryo, ryi, sFactor);
+        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        arasterx.update(0).parallel(ryo);
+
+        rasterx.compile_jit();
+        arasterx.compile_jit();
+    } else {
         if (sched == ExecEngineConstants::CPU) {
             Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
 
@@ -283,7 +214,7 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
     }
 
     // rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML);
-    rastery.compile_to_lowered_stmt("rastery.html", {}, Halide::HTML);
+    // rastery.compile_to_lowered_stmt("rastery.html", {}, Halide::HTML);
     // arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML);
     // arastery.compile_to_lowered_stmt("arastery.html", {}, Halide::HTML);
 
@@ -305,10 +236,10 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
         long st2 = Util::ClockGetTime();
         #endif
 
-        #ifdef PROP_DEBUG
+        // #ifdef PROP_DEBUG
         // make a deep copy of the current state
-        cv::Mat cvJ = cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host).clone();
-        #endif
+        // newSum-=cv::sum(cv::Mat(h, w, CV_16S, JJ.get()->raw_buffer()->host))[0];
+        // #endif
 
         // Realize each raster separately for avoiding allocation of temporary buffers
         // between stages (courtesy of the required compute_root between stages)
@@ -365,7 +296,7 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
 
         it++;
         oldSum = newSum;
-        newSum = cv::sum(cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host))[0];
+        newSum = cv::sum(cv::Mat(h, w, CV_16S, JJ.get()->raw_buffer()->host))[0];
         
         #ifdef PROP_DEBUG
         // if (it%10 == 0 && iin > 0) {
@@ -920,7 +851,6 @@ static struct : RTF::HalGen {
         // Get params
         int tileId = ((ArgumentInt*)params[2])->getArgValue();
         IwppExec exOpt = static_cast<IwppExec>(((ArgumentInt*)params[3])->getArgValue());
-        int sequential = 0;
         // channel to be inverted (if -1, then input is grayscale)
         int emptyAny = ((ArgumentInt*)params[0])->getArgValue();
         cv::Mat *cvI, *cvJ, *cvOut;
@@ -947,17 +877,28 @@ static struct : RTF::HalGen {
             cvOut = &im_ios[2];
         }
 
-        if (sequential == 1) {
-            loopedIwppReconSeq<uint8_t>(cvI, cvJ, cvOut);
-            cv::imwrite("outUpJJ.png", *cvOut);
-        } else {
-            // Wraps the input and output cv::mat's with halide buffers
-            Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI, "hI");
-            Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
-            Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
+        // cv::Mat cvI32(cvI->size(), CV_32S);
+        // cvI->convertTo(cvI32, CV_32S);
+        // cv::Mat cvJ32(cvJ->size(), CV_32S);
+        // cvJ->convertTo(cvJ32, CV_32S);
+        // cv::Mat cvOut32(cvOut->size(), CV_32S);
+        // cvOut->convertTo(cvOut32, CV_32S);
 
-            loopedIwppRecon(hI, hJ, target, hOut, cvI->depth(), exOpt);
-        }
+        // // Wraps the input and output cv::mat's with halide buffers
+        // Halide::Buffer<int32_t> hI = mat2buf<int32_t>(&cvI32, "hI");
+        // Halide::Buffer<int32_t> hJ = mat2buf<int32_t>(&cvJ32, "hJ");
+        // Halide::Buffer<int32_t> hOut = mat2buf<int32_t>(&cvOut32, "hOut");
+
+        // loopedIwppRecon(hI, hJ, target, hOut, cvI32.depth(), exOpt);
+
+        // cvOut32.convertTo(*cvOut, CV_8U);
+
+        // Wraps the input and output cv::mat's with halide buffers
+        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI, "hI");
+        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
+        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
+
+        loopedIwppRecon(hI, hJ, target, hOut, cvI->depth(), exOpt);
 
         return false;
     }
@@ -1152,7 +1093,7 @@ int main(int argc, char *argv[]) {
     }
 
     // iwpp parallelism option
-    int iwppOp = FULL;
+    int iwppOp = SERIAL;
     if (findArgPos("-i", argc, argv) != -1) {
         iwppOp = atoi(argv[findArgPos("-i", argc, argv)+1]);
     }

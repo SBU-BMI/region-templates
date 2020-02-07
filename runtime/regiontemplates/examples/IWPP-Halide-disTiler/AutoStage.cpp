@@ -112,11 +112,21 @@ int RTF::Internal::AutoStage::run() {
             // Executes the halide stage if not aborted
             if (!aborted)
                 aborted = schedules[procType]->realize(im_ios, procType, params);
-
-            // set abort flag for all further data regions
-            if(aborted)
-                for (int i=0; i<this->dr_ios.size(); i++)
+            else {
+                std::string abortStr = "[Internal::AutoStage::_Task]";
+                abortStr += " Aborted exec of tiles with size ";
+                for (int i=0; i<this->dr_ios.size(); i++) {
+                    // set abort flag for all further data regions
                     this->dr_ios[i]->abort();
+
+                    abortStr += this->dr_ios[i]->getData().rows;
+                    abortStr += "x";
+                    abortStr += this->dr_ios[i]->getData().cols;
+                    abortStr += " ";
+                }
+                std::cout << abortStr << std::endl;
+            }
+
                 
 
             // Assigns the output mat to its DataRegion
