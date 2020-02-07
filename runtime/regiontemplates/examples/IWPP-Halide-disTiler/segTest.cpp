@@ -371,10 +371,8 @@ cv::Mat imreconstructSeq(const cv::Mat& seeds, const cv::Mat& image, int connect
     do {
         // raster scan
         for (int y = 1; y < maxy; ++y) {
-
             oPtr = output.ptr<T>(y);
             oPtrMinus = output.ptr<T>(y-1);
-            oPtrPlus = output.ptr<T>(y+1);
             iPtr = input.ptr<T>(y);
 
             preval = oPtr[0];
@@ -389,14 +387,13 @@ cv::Mat imreconstructSeq(const cv::Mat& seeds, const cv::Mat& image, int connect
         }
 
         // anti-raster scan
-        for (int y = maxy-1; y > 0; --y) {
+        for (int y = maxy-1; y >= 0; --y) {
             oPtr = output.ptr<T>(y);
-            oPtrMinus = output.ptr<T>(y-1);
             oPtrPlus = output.ptr<T>(y+1);
             iPtr = input.ptr<T>(y);
 
             preval = oPtr[maxx];
-            for (int x = maxx-1; x > 0; --x) {
+            for (int x = maxx-1; x >= 0; --x) {
                 pval = oPtr[x];
                 // walk through the neighbor pixels, right and down (N-(p)) only
                 pval = max(pval, max(preval, oPtrPlus[x]));
@@ -408,6 +405,7 @@ cv::Mat imreconstructSeq(const cv::Mat& seeds, const cv::Mat& image, int connect
         it++;
         oldSum = newSum;
         newSum = cv::sum(output)[0];
+
     } while(newSum != oldSum);
 
     std::cout << "[imreconstruct] iterations: " << it << std::endl;

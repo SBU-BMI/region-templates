@@ -170,28 +170,17 @@ int loopedIwppReconSeq(const cv::Mat* image, const cv::Mat* J, cv::Mat* JJ) {
     #endif
 }
 
-// CPU sched still marginally better since data is copied to and from device
-// on every propagation loop instance
-// usage: Halide::Func f; 
-//        f.define_extern*({all inputs and outputs}); 
-//        f.realize(); // without output buffer
-template <typename T>
-int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
-    int sched, halide_buffer_t* bOut, int cvDataType);
-extern "C" int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
-    int sched, int T, halide_buffer_t* bOut) {
-    switch (T) {
-        case halide_type_uint:
-            return loopedIwppRecon<uint8_t>(bII, bJJ, sched, bOut, CV_8U);
-        case halide_type_int:
-            return loopedIwppRecon<int32_t>(bII, bJJ, sched, bOut, CV_32S);
-    }
-}
+enum IwppExec {
+    SERIAL,
+    NONE,
+    PARALLELIZED,
+    VECTORIZED,
+    FULL
+};
 
-// #define ANTIRASTER
 template <typename T>
-int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
-    int sched, halide_buffer_t* bOut, int cvDataType) {
+int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
+    int sched, Halide::Buffer<T>& hOut, int cvDataType, IwppExec exOpt) {
 
     // cout << "[loopedIwppRecon] init" << endl;
 
@@ -199,65 +188,104 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     long st0 = Util::ClockGetTime();
     #endif
 
-    Halide::Buffer<T> II(*bII, "II");
-    Halide::Buffer<T> JJ(*bJJ, "JJ");
-    Halide::Buffer<T> hOut(*bOut, "hOut");
-    int32_t w = bII->dim[0].extent;
-    int32_t h = bII->dim[1].extent;
+    int32_t w = II.width();
+    int32_t h = II.height();
 
     Halide::Func rasterx("rasterx"), rastery("rastery");
     Halide::Func arasterx("arasterx"), arastery("arastery");
-    Halide::Func output("output");
     Halide::Var x("x"), y("y");
 
-    // raster
-    rasterx(x,y) = Halide::undef<T>();
-    Halide::RDom propx(1, w-2, 0, h-1);
-    rasterx(propx.x,propx.y) = min(II(propx.x,propx.y), max(rasterx(propx.x+1,propx.y), max(rasterx(propx.x,propx.y), rasterx(propx.x-1,propx.y))));
+    // domains for the non-serial versions
+    Halide::RDom propx({{1, w-1}, {0, h-1}}, "propx");
+    Halide::RDom propy({{0, w-1}, {1, h-1}}, "propy");
+    Halide::RDom apropx({{1, w-1}, {0, h-1}}, "apropx");
+    Halide::RDom apropy({{0, w-1}, {1, h-1}}, "apropy");
 
-    rastery(x,y) = Halide::undef<T>();
-    Halide::RDom propy(0, w-1, 1, h-2);
-    Halide::Expr maxy = max(rastery(propy.x,propy.y+1), max(rastery(propy.x,propy.y), rastery(propy.x,propy.y-1)));
-    rastery(propy.x,propy.y) = min(II(propy.x,propy.y), maxy);
+    // Create the pipeline
+    if (exOpt == SERIAL) {
+        // raster
+        Halide::RDom prop(1, w-1, 1, h-1);
+        rasterx(x,y) = Halide::undef<T>();
+        Halide::Expr maxDr = max(rasterx(prop.x,prop.y-1), max(rasterx(prop.x,prop.y), rasterx(prop.x-1,prop.y)));
+        rasterx(prop.x,prop.y) = min(II(prop.x,prop.y), maxDr);
+        rasterx.serial(x).serial(y);
+        rasterx.compile_jit();
+        // anti-raster
+        arasterx(x,y) = Halide::undef<T>();
+        Halide::Expr maxDar = max(arasterx(w-prop.x-1,h-prop.y), max(arasterx(w-prop.x-1,h-prop.y-1), arasterx(w-prop.x,h-prop.y-1)));
+        arasterx(w-prop.x-1,h-prop.y-1) = min(II(w-prop.x-1,h-prop.y-1), maxDar);
+        arasterx.serial(x).serial(y);
+        arasterx.compile_jit();
+    } else {
+        // raster
+        rasterx(x,y) = Halide::undef<T>();
+        Halide::Expr maxrx = max(rasterx(propx.x,propx.y), 
+                                 rasterx(propx.x-1,propx.y));
+        rasterx(propx.x,propx.y) = min(II(propx.x,propx.y), maxrx);
 
-    // anti-raster
-    arasterx(x,y) = Halide::undef<T>();
-    arasterx(w-propx.x-1,h-propx.y-1) = min(II(w-propx.x-1,h-propx.y-1), max(arasterx(w-propx.x,h-propx.y-1), max(arasterx(w-propx.x-1,h-propx.y-1), arasterx(w-propx.x-2,h-propx.y-1))));
+        rastery(x,y) = Halide::undef<T>();
+        Halide::Expr maxry = max(rastery(propy.x,propy.y), 
+                                 rastery(propy.x,propy.y-1));
+        rastery(propy.x,propy.y) = min(II(propy.x,propy.y), maxry);
 
-    arastery(x,y) = Halide::undef<T>();
-    Halide::Expr amaxy = max(arastery(w-propy.x-1,h-propy.y), max(arastery(w-propy.x-1,h-propy.y), arastery(w-propy.x-1,h-propy.y-2)));
-    arastery(w-propy.x-1,h-propy.y-1) = min(II(w-propy.x-1,h-propy.y-1), amaxy);
+        // anti-raster
+        arasterx(x,y) = Halide::undef<T>();
+        Halide::Expr maxarx = max(arasterx(w-apropx.x-1,h-apropx.y-1), 
+                                  arasterx(w-apropx.x,h-apropx.y-1));
+        arasterx(w-apropx.x-1,h-apropx.y-1) = min(II(w-apropx.x-1,h-apropx.y-1), maxarx);
+
+        arastery(x,y) = Halide::undef<T>();
+        Halide::Expr maxary = max(arastery(w-apropy.x-1,h-apropy.y-1), 
+                                  arastery(w-apropy.x-1,h-apropy.y));
+        arastery(w-apropy.x-1,h-apropy.y-1) = min(II(w-apropy.x-1,h-apropy.y-1), maxary);
+    }
 
     // Schedule
     Halide::Target target = Halide::get_host_target();
-    if (sched == ExecEngineConstants::CPU) {
-        Halide::RVar rxi, rxo, ryi, ryo;
+    if (exOpt != SERIAL) {
+        if (sched == ExecEngineConstants::CPU) {
+            Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
 
-        rasterx.update(0).split(propx.y, ryo, ryi, 4);
-        rasterx.update(0).vectorize(ryi).parallel(ryo);
+            rasterx.update(0).split(propx.y, ryo, ryi, 4);
+            arasterx.update(0).split(apropx.y, ryo, ryi, 4);
+            // rastery.update(0).split(propy.x, rxo, rxi, 4);
+            // arastery.update(0).split(apropy.x, rxo, rxi, 4);;
 
-        // reorder to parallelize the loop top level (i.e., x for y rastering)
-        rastery.update(0).split(propy.x, rxo, rxi, 4).reorder(propy.y,rxi,rxo);
-        rastery.update(0).vectorize(rxi).parallel(rxo);
+            if (exOpt == PARALLELIZED || exOpt == FULL) {
+                rasterx.update(0).parallel(ryo);
+                arasterx.update(0).parallel(ryo);
+                // reorder to parallelize the loop top level (i.e., x for y rastering)
+                // rastery.update(0).reorder(propy.y,rxo).parallel(rxo);
+                // arastery.update(0).reorder(apropy.y,rxo).parallel(rxo);
+            }
+            if (exOpt == VECTORIZED || exOpt == FULL){
+                rasterx.update(0).vectorize(ryi);
+                arasterx.update(0).vectorize(ryi);
+                // reorder to parallelize the loop top level (i.e., x for y rastering)
+                // rastery.update(0).reorder(propy.y,rxo).vectorize(rxi);
+                // arastery.update(0).reorder(apropy.y,rxo).vectorize(rxi);
+            }
+        } else if (sched == ExecEngineConstants::GPU) {
+            Halide::Var bx, by, tx, ty;
+            rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
+            rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
+            target.set_feature(Halide::Target::CUDA);
+            II.set_host_dirty();
+            JJ.set_host_dirty();
+        }
 
-        arasterx.update(0).split(propx.y, ryo, ryi, 4);
-        arasterx.update(0).vectorize(ryi).parallel(ryo);
+        // rastery.trace_stores();
 
-        // reorder to parallelize the loop top level (i.e., x for y rastering)
-        arastery.update(0).split(propy.x, rxo, rxi, 4).reorder(propy.y,rxi,rxo);
-        arastery.update(0).vectorize(rxi).parallel(rxo);
-
-    } else if (sched == ExecEngineConstants::GPU) {
-        Halide::Var bx, by, tx, ty;
-        rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-        rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-        target.set_feature(Halide::Target::CUDA);
-        II.set_host_dirty();
-        JJ.set_host_dirty();
+        rasterx.compile_jit();
+        rastery.compile_jit();
+        arasterx.compile_jit();
+        arastery.compile_jit();
     }
 
-    arastery.compile_jit();
-    arastery.compile_to_lowered_stmt("raster.html", {}, Halide::HTML);
+    // rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML);
+    rastery.compile_to_lowered_stmt("rastery.html", {}, Halide::HTML);
+    // arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML);
+    // arastery.compile_to_lowered_stmt("arastery.html", {}, Halide::HTML);
 
     #ifdef PROFILING_STAGES
     long st1 = Util::ClockGetTime();
@@ -271,8 +299,8 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     // Create a cv::Mat wrapper for the halide pipeline output buffer
     unsigned long iin = 1;
 
+    #define PROFILING_STAGES2
     do {
-
         #ifdef PROFILING_STAGES2
         long st2 = Util::ClockGetTime();
         #endif
@@ -286,10 +314,42 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         // between stages (courtesy of the required compute_root between stages)
         // This is better given that every stage can be updated in-place (i.e., perfect
         // data independence for the opposite coordinate of each raster)
-        rasterx.realize(JJ);
-        rastery.realize(JJ);
-        arasterx.realize(JJ);
-        arastery.realize(JJ);
+        #ifdef PROFILING_STAGES2
+        long sti0, sti1, sti2, sti3, sti4;
+        #endif
+        if (exOpt == SERIAL){
+            #ifdef PROFILING_STAGES2
+            sti0 = Util::ClockGetTime();
+            #endif
+            rasterx.realize(JJ);
+            #ifdef PROFILING_STAGES2
+            sti1 = Util::ClockGetTime();
+            #endif
+            arasterx.realize(JJ);
+            #ifdef PROFILING_STAGES2
+            sti2 = Util::ClockGetTime();
+            #endif
+        } else {
+            #ifdef PROFILING_STAGES2
+            sti0 = Util::ClockGetTime();
+            #endif
+            rasterx.realize(JJ); // <================= x
+            #ifdef PROFILING_STAGES2
+            sti1 = Util::ClockGetTime();
+            #endif
+            rastery.realize(JJ); // <================= y
+            #ifdef PROFILING_STAGES2
+            sti2 = Util::ClockGetTime();
+            #endif
+            arasterx.realize(JJ); // <================ ax
+            #ifdef PROFILING_STAGES2
+            sti3 = Util::ClockGetTime();
+            #endif
+            arastery.realize(JJ); // <================ ay
+            #ifdef PROFILING_STAGES2
+            sti4 = Util::ClockGetTime();
+            #endif
+        }
 
         // Copy from GPU to host is done every realization which is
         // inefficient. However this is just done as a proof of concept for
@@ -308,24 +368,30 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
         newSum = cv::sum(cv::Mat(h, w, cvDataType, JJ.get()->raw_buffer()->host))[0];
         
         #ifdef PROP_DEBUG
-        if (it%10 == 0 && iin > 0) {
-        // if (iin > 0) {
+        // if (it%10 == 0 && iin > 0) {
+        if (iin > 0) {
             cv::Mat cvJJ(h, w, cvDataType, JJ.get()->raw_buffer()->host);
             cv::subtract(cvJJ, cvJ, cvJ);
             cv::abs(cvJ);
             cvJ *= 255;
             cv::imwrite("outJJ.png", cvJJ);
-            cv::imwrite("outJ.png", cvJ);
+            cv::imwrite("outProp.png", cvJ);
             #include <unistd.h>
-            usleep(500000);
-        //     std::cin >> iin;
+            // usleep(500000);
+            std::cin >> iin;
         }
         #endif // PROP_DEBUG
 
         #ifdef PROFILING_STAGES2
         long st4 = Util::ClockGetTime();
-        cout << "[PROFILING][IWPP_REALZ] " << (st3-st2) << endl;
-        cout << "[PROFILING][IWPP_SUM] " << (st4-st3) << endl;
+        cout << "[PROFILING][IWPP_IT_TIME] " << (st4-st2) << endl;
+        if (exOpt == SERIAL)
+            cout << "[PROFILING][IWPP_SERIAL] " << (sti1-sti0) 
+                 << ", " << (sti2-sti1) << std::endl;
+        else
+            cout << "[PROFILING][IWPP_4SCAN] " << (sti1-sti0) 
+                 << ", " << (sti2-sti1) << ", " << (sti3-sti2) 
+                 << ", " << (sti4-sti3) << std::endl;
         #endif
 
     } while(newSum != oldSum);
@@ -339,11 +405,6 @@ int loopedIwppRecon(halide_buffer_t* bII, halide_buffer_t* bJJ,
     hOut.copy_from(JJ); // bad
     // cv::imwrite("loopedIwppRecon.png", 
     //    cv::Mat(h, w, cvDataType, hOut.get()->raw_buffer()->host));
-
-    #ifdef PROFILING_STAGES2
-    long st6 = Util::ClockGetTime();
-    std::cout << "[PROFILING][IWPP_CPY] " << (st6-st5) << std::endl;
-    #endif
 
     return 0;
 }
@@ -858,6 +919,7 @@ static struct : RTF::HalGen {
 
         // Get params
         int tileId = ((ArgumentInt*)params[2])->getArgValue();
+        IwppExec exOpt = static_cast<IwppExec>(((ArgumentInt*)params[3])->getArgValue());
         int sequential = 0;
         // channel to be inverted (if -1, then input is grayscale)
         int emptyAny = ((ArgumentInt*)params[0])->getArgValue();
@@ -894,33 +956,7 @@ static struct : RTF::HalGen {
             Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
             Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
 
-            // Define halide stage
-            Halide::Func halCpu("halCpu");
-            halCpu.define_extern("loopedIwppRecon", {hI, hJ, target, 
-                Halide::UInt(8).code(), hOut}, Halide::UInt(8), 2);
-
-            #ifdef PROFILING_STAGES
-            long st1 = Util::ClockGetTime();
-            cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][imreconstruct] " << (st1-st0) << endl;
-            #endif
-            
-            cout << "[imreconstruct][cpu] Compiling..." << endl;
-            halCpu.compile_jit();
-
-            #ifdef PROFILING_STAGES
-            long st2 = Util::ClockGetTime();
-            cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][imreconstruct] " << (st2-st1) << endl;
-            #endif
-
-            // Adds the cpu implementation to the schedules output
-            cout << "[imreconstruct][cpu] Realizing..." << endl;
-            halCpu.realize(hOut);
-            cout << "[imreconstruct][cpu] Done..." << endl;
-
-            #ifdef PROFILING_STAGES
-            long st3 = Util::ClockGetTime();
-            cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][imreconstruct] " << (st3-st2) << endl;
-            #endif
+            loopedIwppRecon(hI, hJ, target, hOut, cvI->depth(), exOpt);
         }
 
         return false;
@@ -965,42 +1001,41 @@ static struct : RTF::HalGen {
 
         // Define halide stage
         Halide::Var x, y;
-        Halide::Func hIn32("hIn32");
         Halide::Func recon("recon");
         Halide::Func output("output");
 
         cout << "hRecon: " << hRecon.width() << "x" << hRecon.height() << endl;
         cout << "hMarker: " << hMarker.width() << "x" << hMarker.height() << endl;
 
-        recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
-            target, Halide::Int(32).code(), hRecon}, 
-            Halide::Int(32), 2);
+        // loopedIwppRecon(hIn, hMarker, target, cvRecon.depth(), hRecon);
+        // recon.define_extern("loopedIwppRecon", {hIn, hMarker, 
+        //     target, Halide::Int(32).code(), hRecon}, 
+        //     Halide::Int(32), 2);
 
-        // Schedules
-        hIn32.compute_root();
-        recon.compute_root();
+        // // Schedules
+        // recon.compute_root();
 
-        #ifdef PROFILING_STAGES
-        long st1 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][pre_fill_holes2] " << (st1-st0) << endl;
-        #endif
+        // #ifdef PROFILING_STAGES
+        // long st1 = Util::ClockGetTime();
+        // cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][pre_fill_holes2] " << (st1-st0) << endl;
+        // #endif
         
-        cout << "[pre_fill_holes2][cpu] Compiling..." << endl;
-        recon.compile_jit();
+        // cout << "[pre_fill_holes2][cpu] Compiling..." << endl;
+        // recon.compile_jit();
 
-        #ifdef PROFILING_STAGES
-        long st2 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][pre_fill_holes2] " << (st2-st1) << endl;
-        #endif
+        // #ifdef PROFILING_STAGES
+        // long st2 = Util::ClockGetTime();
+        // cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][pre_fill_holes2] " << (st2-st1) << endl;
+        // #endif
 
-        cout << "[pre_fill_holes2][cpu] Realizing..." << endl;
-        recon.realize(hRecon);
-        cout << "[pre_fill_holes2][cpu] Done..." << endl;
+        // cout << "[pre_fill_holes2][cpu] Realizing..." << endl;
+        // recon.realize(hRecon);
+        // cout << "[pre_fill_holes2][cpu] Done..." << endl;
         
-        #ifdef PROFILING_STAGES
-        long st3 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes2] " << (st3-st2) << endl;
-        #endif
+        // #ifdef PROFILING_STAGES
+        // long st3 = Util::ClockGetTime();
+        // cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes2] " << (st3-st2) << endl;
+        // #endif
 
         return false;
     }
@@ -1029,6 +1064,18 @@ int main(int argc, char *argv[]) {
         cout << "\t\t2: Hybrid dense tiling" << endl;
         cout << "\t\t3: Pre-tiler hybrid tiling" << endl;
         cout << "\t\t4: Res-split hybrid tiling" << endl;
+
+        cout << "\t-i <iwpp parallelism>" << endl;
+        cout << "\t\tValues (default=3):" << endl;
+        cout << "\t\t0: Serialized execution (raster/anti-raster)" << endl;
+        cout << "\t\t1: Sequential execution with "
+             << "4 scanlines" << endl;
+        cout << "\t\t2: Parallelized execution "
+             << "(4 scanlines, parallel on outer loops)" << endl;
+        cout << "\t\t3: Vectorized execution "
+             << "(4 scanlines, vectorized on inner loops)" << endl;
+        cout << "\t\t4: Full (4 scanlines with both "
+             << "parallel and vectorized execution)" << endl;
 
         cout << "\t-d <dense tiling algorithm>" << endl;
         cout << "\t\tValues (default=0):" << endl;
@@ -1102,6 +1149,12 @@ int main(int argc, char *argv[]) {
     bool tilingOnly = false;
     if (findArgPos("-to", argc, argv) != -1) {
         tilingOnly = true;
+    }
+
+    // iwpp parallelism option
+    int iwppOp = FULL;
+    if (findArgPos("-i", argc, argv) != -1) {
+        iwppOp = atoi(argv[findArgPos("-i", argc, argv)+1]);
     }
 
 #ifdef PROFILING
@@ -1278,7 +1331,8 @@ int main(int argc, char *argv[]) {
         stage4.genStage(sysEnv);
 
         RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
-            {new ArgumentInt(0), new ArgumentInt(0), new ArgumentInt(i)}, 
+            {new ArgumentInt(0), new ArgumentInt(0), 
+             new ArgumentInt(i), new ArgumentInt(iwppOp)}, 
             {tiles[i].height, tiles[i].width}, {&imreconstruct}, 
             tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage5.after(&stage4);
