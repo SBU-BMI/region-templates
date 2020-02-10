@@ -176,7 +176,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                     cv::Point(tile.x+10, tile.y+tile.height/2),
                     cv::FONT_HERSHEY_SIMPLEX, 3, (255,255,255), 7);
 
-                if (this->getTiles().size() > 1) {
+                if (this->tiles[i].size() > 1) {
                     // create tile image
                     cv::Mat tileMat = cv::Mat(baseImg, cv::Rect(tile.x, tile.y, 
                         tile.width, tile.height));

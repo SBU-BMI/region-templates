@@ -13,19 +13,28 @@ find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIR})
 
 # Creates lib of AutoStage
-set(libname autostage)
-add_library("${libname}" SHARED AutoStage.cpp)
-target_link_libraries("${libname}" runtimesystem)
-target_link_libraries("${libname}" regiontemplates)
-target_link_libraries("${libname}" Halide)
+set(autostage)
+add_library(autostage SHARED AutoStage.cpp)
+target_link_libraries(autostage runtimesystem)
+target_link_libraries(autostage regiontemplates)
+target_link_libraries(autostage Halide)
+
+# Creates lib of halide iwpp
+set(halideiwpp)
+add_library(halideiwpp SHARED HalideIwpp.cpp)
+target_link_libraries(halideiwpp runtimesystem)
+target_link_libraries(halideiwpp regiontemplates)
+target_link_libraries(halideiwpp Halide)
+target_link_libraries(halideiwpp ${OpenCV_LIBS})
+
 
 # Creates executable to be built from the files listed
-add_executable(iwpp main.cpp IwppRecon.cpp)
+add_executable(iwpp main.cpp)
 target_link_libraries(iwpp Halide)
 target_link_libraries(iwpp ${OpenCV_LIBS})
 target_link_libraries(iwpp -ljpeg)
 target_link_libraries(iwpp ${PNG_LIBRARY})
-target_link_libraries(iwpp "${libname}")
+target_link_libraries(iwpp autostage halideiwpp)
 # target_link_libraries(iwpp regiontemplates)
 # target_link_libraries(iwpp runtimesystem)
 

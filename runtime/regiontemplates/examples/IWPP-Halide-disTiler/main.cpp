@@ -23,6 +23,8 @@
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PropagateDistCostFunction.h"
 
+#include "HalideIwpp.h"
+
 using std::cout;
 using std::endl;
 
@@ -86,14 +88,6 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
         return Halide::Buffer<T>(data, m->cols, m->rows, name);
     }
 }
-
-enum IwppExec {
-    SERIAL,
-    NONE,
-    PARALLELIZED,
-    VECTORIZED,
-    FULL
-};
 
 template <typename T>
 // seeds=rcopen=J, image=rc=I
@@ -168,297 +162,6 @@ int imreconstructSeq(const cv::Mat* image, const cv::Mat* seeds, cv::Mat* JJ) {
     imwrite("outputSeqIwpp.png", output);
 
     output.copyTo(*JJ);
-    return 0;
-}
-
-template <typename T>
-Halide::Func halSum(Halide::Buffer<T>& JJ) {
-    Halide::Var x("x"), y("y");
-    Halide::RDom r({{0,JJ.width()-1},{0,JJ.height()-1}}, "r");
-    // Halide::RDom ry({{0,JJ.height()-1}}, "ry");
-
-    // Performs parallel sum on the coordinate with the highest value
-    Halide::Func pSum("pSum"), pZero("pZero"), cJJ("cJJ");
-
-    pSum(x) = Halide::cast<long>(0);//Halide::undef<uint16_t>();
-
-    // pSum(x) += Halide::cast<long>(JJ(x,ry));
-    pSum(r.x) += Halide::cast<long>(JJ(r.x,r.y));
-
-    // Schedule
-    Halide::RVar rxo, rxi;
-    Halide::Var xo, xi;
-
-    // // Merges the outer loop of pSum=0 with the sum update(0) func 
-    // pSum.compute_at(pSum.in(), x);
-    // pSum = pSum.in();
-
-    pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
-    pSum.update(0).vectorize(rxi).parallel(rxo);
-
-    pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML);
-
-    return pSum;
-}
-
-template <typename T>
-int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
-    int sched, Halide::Buffer<T>& hOut, int cvDataType, IwppExec exOpt) {
-
-    // cout << "[loopedIwppRecon] init" << endl;
-
-    #ifdef PROFILING_STAGES
-    long st0 = Util::ClockGetTime();
-    #endif
-
-    int32_t w = II.width();
-    int32_t h = II.height();
-
-    Halide::Func rasterx("rasterx"), rastery("rastery");
-    Halide::Func arasterx("arasterx"), arastery("arastery");
-    Halide::Var x("x"), y("y");
-
-    // domains for the non-serial versions
-    Halide::RDom prop({{1, w-1}, {1, h-1}}, "prop");
-    Halide::RDom propx({{1, w-1}, {0, h-1}}, "propx");
-    Halide::RDom propy({{0, w-1}, {1, h-1}}, "propy");
-    Halide::RDom apropx({{1, w-1}, {0, h-1}}, "apropx");
-    Halide::RDom apropy({{0, w-1}, {1, h-1}}, "apropy");
-
-    // Create the pipeline
-    if (exOpt == SERIAL) {
-        // raster
-        rasterx(x,y) = Halide::undef<T>();
-        Halide::Expr maxDr = max(rasterx(prop.x,prop.y-1), max(rasterx(prop.x,prop.y), rasterx(prop.x-1,prop.y)));
-        rasterx(prop.x,prop.y) = min(II(prop.x,prop.y), maxDr);
-
-        // anti-raster
-        arasterx(x,y) = Halide::undef<T>();
-        Halide::Expr maxDar = max(arasterx(w-prop.x-1,h-prop.y), max(arasterx(w-prop.x-1,h-prop.y-1), arasterx(w-prop.x,h-prop.y-1)));
-        arasterx(w-prop.x-1,h-prop.y-1) = min(II(w-prop.x-1,h-prop.y-1), maxDar);
-    } else {
-        // raster
-        rasterx(x,y) = Halide::undef<T>();
-        Halide::Expr maxrx = max(rasterx(propx.x,propx.y), 
-                                 rasterx(propx.x-1,propx.y));
-        rasterx(propx.x,propx.y) = min(II(propx.x,propx.y), maxrx);
-
-        rastery(x,y) = Halide::undef<T>();
-        Halide::Expr maxry = max(rastery(propy.x,propy.y), 
-                                 rastery(propy.x,propy.y-1));
-        rastery(propy.x,propy.y) = min(II(propy.x,propy.y), maxry);
-
-        // anti-raster
-        arasterx(x,y) = Halide::undef<T>();
-        Halide::Expr maxarx = max(arasterx(w-apropx.x-1,h-apropx.y-1), 
-                                  arasterx(w-apropx.x,h-apropx.y-1));
-        arasterx(w-apropx.x-1,h-apropx.y-1) = min(II(w-apropx.x-1,h-apropx.y-1), maxarx);
-
-        arastery(x,y) = Halide::undef<T>();
-        Halide::Expr maxary = max(arastery(w-apropy.x-1,h-apropy.y-1), 
-                                  arastery(w-apropy.x-1,h-apropy.y));
-        arastery(w-apropy.x-1,h-apropy.y-1) = min(II(w-apropy.x-1,h-apropy.y-1), maxary);
-    }
-
-    // Schedule
-    Halide::Target target = Halide::get_host_target();
-    if (exOpt == SERIAL) {
-        Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
-        Halide::RVar rvect("rvect");
-        
-        // int sFactor = (h-(h%4))/4;
-        int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
-
-        rasterx.update(0).split(prop.y, ryo, ryi, sFactor);
-        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        rasterx.update(0).parallel(ryo);
-
-        arasterx.update(0).split(prop.y, ryo, ryi, sFactor);
-        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        arasterx.update(0).parallel(ryo);
-
-        rasterx.compile_jit();
-        arasterx.compile_jit();
-    } else {
-        if (sched == ExecEngineConstants::CPU) {
-            Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
-
-            rasterx.update(0).split(propx.y, ryo, ryi, 4);
-            arasterx.update(0).split(apropx.y, ryo, ryi, 4);
-            // rastery.update(0).split(propy.x, rxo, rxi, 4);
-            // arastery.update(0).split(apropy.x, rxo, rxi, 4);;
-
-            if (exOpt == PARALLELIZED || exOpt == FULL) {
-                rasterx.update(0).parallel(ryo);
-                arasterx.update(0).parallel(ryo);
-                // reorder to parallelize the loop top level (i.e., x for y rastering)
-                // rastery.update(0).reorder(propy.y,rxo).parallel(rxo);
-                // arastery.update(0).reorder(apropy.y,rxo).parallel(rxo);
-            }
-            if (exOpt == VECTORIZED || exOpt == FULL){
-                rasterx.update(0).vectorize(ryi);
-                arasterx.update(0).vectorize(ryi);
-                // reorder to parallelize the loop top level (i.e., x for y rastering)
-                // rastery.update(0).reorder(propy.y,rxo).vectorize(rxi);
-                // arastery.update(0).reorder(apropy.y,rxo).vectorize(rxi);
-            }
-        } else if (sched == ExecEngineConstants::GPU) {
-            Halide::Var bx, by, tx, ty;
-            rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-            rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-            target.set_feature(Halide::Target::CUDA);
-            II.set_host_dirty();
-            JJ.set_host_dirty();
-        }
-
-        // rastery.trace_stores();
-
-        rasterx.compile_jit();
-        rastery.compile_jit();
-        arasterx.compile_jit();
-        arastery.compile_jit();
-    }
-
-    // rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML);
-    // rastery.compile_to_lowered_stmt("rastery.html", {}, Halide::HTML);
-    // arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML);
-    // arastery.compile_to_lowered_stmt("arastery.html", {}, Halide::HTML);
-
-    #ifdef PROFILING_STAGES
-    long st1 = Util::ClockGetTime();
-    cout << "[PROFILING][IWPP_COMP] " << (st1-st0) << endl;
-    #endif
-
-    // Sum structures
-    unsigned long oldSum = 0;
-    unsigned long newSum = 0;
-    Halide::Func lsum = halSum(JJ);
-    long* dLineSum = new long[w];//(JJ.width(), 1, CV_16U);
-    // cv::Mat* m = &cvLineSum;
-    Halide::Buffer<long> hLineSum = Halide::Buffer<long>(dLineSum, w, "hLineSum");
-
-    unsigned long it = 0;
-    unsigned long iin = 1;
-
-    #define PROFILING_STAGES2
-    do {
-        #ifdef PROFILING_STAGES2
-        long st2 = Util::ClockGetTime();
-        #endif
-
-        // #ifdef PROP_DEBUG
-        // make a deep copy of the current state
-        // newSum-=cv::sum(cv::Mat(h, w, CV_16S, JJ.get()->raw_buffer()->host))[0];
-        // #endif
-
-        // Realize each raster separately for avoiding allocation of temporary buffers
-        // between stages (courtesy of the required compute_root between stages)
-        // This is better given that every stage can be updated in-place (i.e., perfect
-        // data independence for the opposite coordinate of each raster)
-        #ifdef PROFILING_STAGES2
-        long sti0, sti1, sti2, sti3, sti4;
-        #endif
-        if (exOpt == SERIAL){
-            #ifdef PROFILING_STAGES2
-            sti0 = Util::ClockGetTime();
-            #endif
-            rasterx.realize(JJ);
-            #ifdef PROFILING_STAGES2
-            sti1 = Util::ClockGetTime();
-            #endif
-            arasterx.realize(JJ);
-            #ifdef PROFILING_STAGES2
-            sti2 = Util::ClockGetTime();
-            #endif
-        } else {
-            #ifdef PROFILING_STAGES2
-            sti0 = Util::ClockGetTime();
-            #endif
-            rasterx.realize(JJ); // <================= x
-            #ifdef PROFILING_STAGES2
-            sti1 = Util::ClockGetTime();
-            #endif
-            rastery.realize(JJ); // <================= y
-            #ifdef PROFILING_STAGES2
-            sti2 = Util::ClockGetTime();
-            #endif
-            arasterx.realize(JJ); // <================ ax
-            #ifdef PROFILING_STAGES2
-            sti3 = Util::ClockGetTime();
-            #endif
-            arastery.realize(JJ); // <================ ay
-            #ifdef PROFILING_STAGES2
-            sti4 = Util::ClockGetTime();
-            #endif
-        }
-
-        // Copy from GPU to host is done every realization which is
-        // inefficient. However this is just done as a proof of concept for
-        // having a CPU and a GPU sched (more work necessary for running the 
-        // sum on GPU). 
-        if (sched == ExecEngineConstants::GPU) {
-            JJ.copy_to_host();
-        }
-
-        #ifdef PROFILING_STAGES2
-        long st3 = Util::ClockGetTime();
-        #endif
-
-        it++;
-        oldSum = newSum;
-
-        std::cout << "realizing sum" << std::endl;
-        lsum.realize(hLineSum);
-        newSum = 0;
-        for (int i=0; i<w; i++)
-            newSum += dLineSum[i];
-        std::cout << "newSum halide " << newSum << std::endl;
-        
-        // newSum = cv::sum(cv::Mat(h, w, CV_16S, JJ.get()->raw_buffer()->host))[0];
-        // std::cout << "newSum " << newSum << std::endl;
-        
-        #ifdef PROP_DEBUG
-        // if (it%10 == 0 && iin > 0) {
-        if (iin > 0) {
-            cv::Mat cvJJ(h, w, cvDataType, JJ.get()->raw_buffer()->host);
-            cv::subtract(cvJJ, cvJ, cvJ);
-            cv::abs(cvJ);
-            cvJ *= 255;
-            cv::imwrite("outJJ.png", cvJJ);
-            cv::imwrite("outProp.png", cvJ);
-            #include <unistd.h>
-            // usleep(500000);
-            std::cin >> iin;
-        }
-        #endif // PROP_DEBUG
-
-        #ifdef PROFILING_STAGES2
-        long st4 = Util::ClockGetTime();
-        cout << "[PROFILING][IWPP_SUM_TIME] " << (st4-st3) << endl;
-        cout << "[PROFILING][IWPP_IT_TIME] " << (st4-st2) << endl;
-        if (exOpt == SERIAL)
-            cout << "[PROFILING][IWPP_SERIAL] " << (sti1-sti0) 
-                 << ", " << (sti2-sti1) << std::endl;
-        else
-            cout << "[PROFILING][IWPP_4SCAN] " << (sti1-sti0) 
-                 << ", " << (sti2-sti1) << ", " << (sti3-sti2) 
-                 << ", " << (sti4-sti3) << std::endl;
-        #endif
-
-    } while(newSum != oldSum);
-
-    delete[] dLineSum;
-
-    #ifdef PROFILING_STAGES
-    long st5 = Util::ClockGetTime();
-    std::cout << "[PROFILING][IWPP] iterations: " << it << std::endl;
-    std::cout << "[PROFILING][IWPP_EXEC] " << (st5-st1) << std::endl;
-    #endif
-
-    hOut.copy_from(JJ); // bad
-    // cv::imwrite("loopedIwppRecon.png", 
-    //    cv::Mat(h, w, cvDataType, hOut.get()->raw_buffer()->host));
-
     return 0;
 }
 
@@ -999,30 +702,12 @@ static struct : RTF::HalGen {
             cvOut = &im_ios[2];
         }
 
-        // cv::Mat cvI32(cvI->size(), CV_32S);
-        // cvI->convertTo(cvI32, CV_32S);
-        // cv::Mat cvJ32(cvJ->size(), CV_32S);
-        // cvJ->convertTo(cvJ32, CV_32S);
-        // cv::Mat cvOut32(cvOut->size(), CV_32S);
-        // cvOut->convertTo(cvOut32, CV_32S);
-
-        // // Wraps the input and output cv::mat's with halide buffers
-        // Halide::Buffer<int32_t> hI = mat2buf<int32_t>(&cvI32, "hI");
-        // Halide::Buffer<int32_t> hJ = mat2buf<int32_t>(&cvJ32, "hJ");
-        // Halide::Buffer<int32_t> hOut = mat2buf<int32_t>(&cvOut32, "hOut");
-
-        // loopedIwppRecon(hI, hJ, target, hOut, cvI32.depth(), exOpt);
-
-        // cvOut32.convertTo(*cvOut, CV_8U);
-
         // Wraps the input and output cv::mat's with halide buffers
         Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI, "hI");
         Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
 
-        loopedIwppRecon(hI, hJ, target, hOut, cvI->depth(), exOpt);
-
-        // imreconstructSeq<uint8_t>(cvI, cvJ, cvOut);
+        loopedIwppRecon(exOpt, hI, hJ, hOut);
 
         return false;
     }
