@@ -96,6 +96,112 @@ enum IwppExec {
 };
 
 template <typename T>
+// seeds=rcopen=J, image=rc=I
+int imreconstructSeq(const cv::Mat* image, const cv::Mat* seeds, cv::Mat* JJ) {
+    CV_Assert(image->channels() == 1);
+    CV_Assert(seeds->channels() == 1);
+
+
+    cv::Mat output(seeds->size() + cv::Size(2,2), seeds->type());
+    copyMakeBorder(*seeds, output, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
+    cv::Mat input(image->size() + cv::Size(2,2), image->type());
+    copyMakeBorder(*image, input, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
+
+    T pval, preval;
+    int xminus, xplus, yminus, yplus;
+    int maxx = output.cols - 1;
+    int maxy = output.rows - 1;
+    std::queue<int> xQ;
+    std::queue<int> yQ;
+    T* oPtr;
+    T* oPtrMinus;
+    T* oPtrPlus;
+    T* iPtr;
+    T* iPtrPlus;
+    T* iPtrMinus;
+
+    int it = 0;
+    long newSum=0, oldSum=0;
+
+    do {
+        // raster scan
+        for (int y = 1; y < maxy; ++y) {
+            oPtr = output.ptr<T>(y);
+            oPtrMinus = output.ptr<T>(y-1);
+            iPtr = input.ptr<T>(y);
+
+            preval = oPtr[0];
+            for (int x = 1; x < maxx; ++x) {
+                pval = oPtr[x];
+
+                // walk through the neighbor pixels, left and up (N+(p)) only
+                pval = max(pval, max(preval, oPtrMinus[x]));
+                preval = min(pval, iPtr[x]);
+                oPtr[x] = preval;
+            }
+        }
+
+        // anti-raster scan
+        for (int y = maxy-1; y >= 0; --y) {
+            oPtr = output.ptr<T>(y);
+            oPtrPlus = output.ptr<T>(y+1);
+            iPtr = input.ptr<T>(y);
+
+            preval = oPtr[maxx];
+            for (int x = maxx-1; x >= 0; --x) {
+                pval = oPtr[x];
+                // walk through the neighbor pixels, right and down (N-(p)) only
+                pval = max(pval, max(preval, oPtrPlus[x]));
+                preval = min(pval, iPtr[x]);
+                oPtr[x] = preval;
+            }
+        }
+
+        it++;
+        oldSum = newSum;
+        newSum = cv::sum(output)[0];
+
+    } while(newSum != oldSum);
+
+    std::cout << "[imreconstruct] iterations: " << it << std::endl;
+
+    imwrite("outputSeqIwpp.png", output);
+
+    output.copyTo(*JJ);
+    return 0;
+}
+
+template <typename T>
+Halide::Func halSum(Halide::Buffer<T>& JJ) {
+    Halide::Var x("x"), y("y");
+    Halide::RDom r({{0,JJ.width()-1},{0,JJ.height()-1}}, "r");
+    // Halide::RDom ry({{0,JJ.height()-1}}, "ry");
+
+    // Performs parallel sum on the coordinate with the highest value
+    Halide::Func pSum("pSum"), pZero("pZero"), cJJ("cJJ");
+
+    pSum(x) = Halide::cast<long>(0);//Halide::undef<uint16_t>();
+
+    // pSum(x) += Halide::cast<long>(JJ(x,ry));
+    pSum(r.x) += Halide::cast<long>(JJ(r.x,r.y));
+
+    // Schedule
+    Halide::RVar rxo, rxi;
+    Halide::Var xo, xi;
+
+    // // Merges the outer loop of pSum=0 with the sum update(0) func 
+    // pSum.compute_at(pSum.in(), x);
+    // pSum = pSum.in();
+
+    pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
+    pSum.update(0).vectorize(rxi).parallel(rxo);
+
+    pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML);
+
+    return pSum;
+}
+
+template <typename T>
 int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
     int sched, Halide::Buffer<T>& hOut, int cvDataType, IwppExec exOpt) {
 
@@ -223,11 +329,15 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
     cout << "[PROFILING][IWPP_COMP] " << (st1-st0) << endl;
     #endif
 
+    // Sum structures
     unsigned long oldSum = 0;
     unsigned long newSum = 0;
-    unsigned long it = 0;
+    Halide::Func lsum = halSum(JJ);
+    long* dLineSum = new long[w];//(JJ.width(), 1, CV_16U);
+    // cv::Mat* m = &cvLineSum;
+    Halide::Buffer<long> hLineSum = Halide::Buffer<long>(dLineSum, w, "hLineSum");
 
-    // Create a cv::Mat wrapper for the halide pipeline output buffer
+    unsigned long it = 0;
     unsigned long iin = 1;
 
     #define PROFILING_STAGES2
@@ -296,7 +406,16 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
 
         it++;
         oldSum = newSum;
-        newSum = cv::sum(cv::Mat(h, w, CV_16S, JJ.get()->raw_buffer()->host))[0];
+
+        std::cout << "realizing sum" << std::endl;
+        lsum.realize(hLineSum);
+        newSum = 0;
+        for (int i=0; i<w; i++)
+            newSum += dLineSum[i];
+        std::cout << "newSum halide " << newSum << std::endl;
+        
+        // newSum = cv::sum(cv::Mat(h, w, CV_16S, JJ.get()->raw_buffer()->host))[0];
+        // std::cout << "newSum " << newSum << std::endl;
         
         #ifdef PROP_DEBUG
         // if (it%10 == 0 && iin > 0) {
@@ -315,6 +434,7 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
 
         #ifdef PROFILING_STAGES2
         long st4 = Util::ClockGetTime();
+        cout << "[PROFILING][IWPP_SUM_TIME] " << (st4-st3) << endl;
         cout << "[PROFILING][IWPP_IT_TIME] " << (st4-st2) << endl;
         if (exOpt == SERIAL)
             cout << "[PROFILING][IWPP_SERIAL] " << (sti1-sti0) 
@@ -326,6 +446,8 @@ int loopedIwppRecon(Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
         #endif
 
     } while(newSum != oldSum);
+
+    delete[] dLineSum;
 
     #ifdef PROFILING_STAGES
     long st5 = Util::ClockGetTime();
@@ -899,6 +1021,8 @@ static struct : RTF::HalGen {
         Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
 
         loopedIwppRecon(hI, hJ, target, hOut, cvI->depth(), exOpt);
+
+        // imreconstructSeq<uint8_t>(cvI, cvJ, cvOut);
 
         return false;
     }
