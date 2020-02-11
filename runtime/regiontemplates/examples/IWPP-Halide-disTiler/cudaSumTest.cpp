@@ -1,7 +1,8 @@
 #include <iostream>
 
 #include "cv.hpp"
-#include "opencv2/gpu/gpu.hpp"
+#include "opencv2/core/cuda.hpp"
+#include "opencv2/cudaarithm.hpp"
 
 #include "Halide.h"
 
@@ -10,20 +11,20 @@ int main(int argc, char const *argv[]) {
     // Create base img
     int w = 10;
     int h = 10;
-    cv::Mat cvHostInput(h, w, CV_32S, cv::Scalar(0));
-    cv::Mat cvHostOutput(h, w, CV_32S, cv::Scalar(0));
-    cv::Mat cvHostRef(h, w, CV_32S, cv::Scalar(0));
+    cv::Mat cvHostInput(cv::Size(h, w), CV_32SC1, cv::Scalar(0));//, cv::Mat::CONTINUOUS_FLAG);
+    cv::Mat cvHostOutput(cv::Size(h, w), CV_32SC1, cv::Scalar(0));
+    cv::Mat cvHostRef(cv::Size(h, w), CV_32SC1, cv::Scalar(0));
     for (int i=0; i<h; i++) {
         for (int j=0; j<w; j++) {
-            cvRef.at<int>(i,j) = i+j;
+            cvHostRef.at<int>(i,j) = i;
         }
     }
     
     // 0. opencv sum on host ==================================================
-    std::cout << "[0] sum: " << cv::sum(cvRef)[0] << std::endl;
+    std::cout << "[0] sum: " << cv::sum(cvHostRef)[0] << std::endl;
 
     // 1. opencv sum on dev ===================================================
-    cv::gpu::GpuMat cvDevRef;
+    cv::cuda::GpuMat cvDevRef;
     cvDevRef.upload(cvHostRef);
 
     // Perform sum
@@ -31,7 +32,7 @@ int main(int argc, char const *argv[]) {
     std::cout << "[1] cv sum on dev: " << gSum << std::endl;
 
     // 2. opencv sum after halide =============================================
-    cv::gpu::GpuMat cvDevInput, cvDevOutput;
+    cv::cuda::GpuMat cvDevInput, cvDevOutput;
     cvDevInput.upload(cvHostInput);
     cvDevOutput.upload(cvHostInput);
 
@@ -40,28 +41,37 @@ int main(int argc, char const *argv[]) {
     target.set_feature(Halide::Target::CUDA);
 
     // Create Halide Buffers
-    Halide::Buffer<int> hHostInput(cvHostInput.data, w, h, "hHostInput");
-    Halide::Buffer<int> hHostOutput(cvHostOutput.data, w, h, "hHostOutput");
-    Halide::Buffer<int> hDevInput(nullptr, w, h, "hDevInput");
+    Halide::Buffer<int> hHostInput((int*)cvHostInput.data, {w, h}, "hHostInput");
+
+    buffer_t hDevOutputB = {0, NULL, {w,h}, {1,cvDevOutput.step/sizeof(int)}, {0,0}, sizeof(int)};
+    Halide::Buffer<int> hHostOutput((int*)cvHostOutput.data, {w, h}, "hHostOutput");
+
+
+    Halide::Buffer<int> hDevInput(nullptr, {w, h}, "hDevInput");
     hDevInput.device_wrap_native(Halide::DeviceAPI::CUDA, (intptr_t)cvDevInput.data, target);
-    Halide::Buffer<int> hDevOutput(nullptr, w, h, "hDevOutput");
+    Halide::Buffer<int> hDevOutput(hDevOutputB, "hDevOutput");
     hDevOutput.device_wrap_native(Halide::DeviceAPI::CUDA, (intptr_t)cvDevOutput.data, target);
 
     // Halide pipelines
-    Halide::Func fcpu, fgpu;
-    Halide::Var x("x,"), y("y");
+    Halide::Func fcpu("fcpu"), fgpu("fgpu");
+    Halide::Var x("x"), y("y"), t, b;
 
-    fcpu(x,y) = hHostInput(x,y) + x + y;
-    fgpu(x,y) = hDevInput(x,y) + x + y;
+    fcpu(x,y) = hHostInput(x,y) + x;
+    fgpu(x,y) = hDevInput(x,y) + x;
 
     fcpu.compile_jit();
-    fgpu.compile_jit(target);
-
     fcpu.realize(hHostOutput);
+
+    fgpu.gpu_tile(y, b, t, 1);
+    //fgpu.split(y,t,b,1).reorder(t,b);
+    //fgpu.gpu_blocks(b).gpu_threads(t);
+    fgpu.compile_jit(target);
+    fgpu.compile_to_lowered_stmt("fgpu.html", {}, Halide::HTML, target);
     fgpu.realize(hDevOutput);
 
     std::cout << "[2] cpu sum: " << ((long)cv::sum(cvHostOutput)[0]) << std::endl;
     std::cout << "[2] gpu sum: " << ((long)cv::cuda::sum(cvDevOutput)[0]) << std::endl;
-    
+    std::cout << "[2] cvDevInput step: " << cvDevOutput.step << std::endl;
+    std::cout << "[2] cvHostInput step: " << cvHostOutput.step << std::endl;
     return 0;
 }
