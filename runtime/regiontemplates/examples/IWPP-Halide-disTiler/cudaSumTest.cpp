@@ -7,23 +7,25 @@
 
 int main(int argc, char const *argv[]) {
     
-    // 1. simple opencv sum ===================================================
-
     // Get input image
-    cv::Mat input = cv::imread(argv[1], CV_LOAD_IMAGE_COLOR);
+    cv::Mat input = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
 
-    // Create GPU data
+    // 0. cpu opencv sum - ref ================================================
+    long cpuS = cv::sum(input)[0];
+    std::cout << "cpuS: " << cpuS << std::endl;
+
+
+    // 1. simple opencv sum ===================================================
     cv::gpu::GpuMat gpuData;
     gpuData.upload(input);
 
     // Perform sum
-    long s =  cv::cuda::sum(gpuData)[0];
+    long gSum =  cv::cuda::sum(gpuData)[0];
 
-    std::cout << "sum: " << s << std::endl;
+    std::cout << "gSum: " << gSum << std::endl;
 
     // 2. halide exec with opencv gpu mat =====================================
     // Create GPU data
-    cv::Mat input = cv::imread(argv[1], CV_LOAD_IMAGE_COLOR);
     cv::gpu::GpuMat cvDevData;
     cvDevData.upload(input);
 

@@ -1,6 +1,23 @@
 #include "HalideIwpp.h"
 
 template <typename T>
+Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
+    T* data = (T*)m->data;
+    if (m->channels() > 1) {
+        // Halide works with planar memory layout by default thus we need 
+        // to ensure that it wraps the interleaved representation of opencv
+        // correctly. This way, we can use the standard x,y,c indexing.
+        // Still needs to set the Func's stride if the output Buffer also has
+        // 3 channels:
+        // func.output_buffer().dim(0).set_stride(3);
+        return Halide::Buffer<T>::make_interleaved(data, 
+            m->cols, m->rows, m->channels(), name);
+    } else {
+        return Halide::Buffer<T>(data, m->cols, m->rows, name);
+    }
+}
+
+template <typename T>
 Halide::Func halSum(Halide::Buffer<T>& JJ) {
 
     // Performs parallel sum on the coordinate with the highest value
@@ -169,6 +186,10 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
 template <typename T>
 int loopedIwppReconGPU(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
     Halide::Buffer<T>& hOut) {
+
+
+
+
 
     // Initial time
     long st0, st1, st2, st3, st4, st5;
