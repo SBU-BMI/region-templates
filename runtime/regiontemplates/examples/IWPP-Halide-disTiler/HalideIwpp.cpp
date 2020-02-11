@@ -54,7 +54,7 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     int32_t h = II.height();
     Halide::Func rasterx("rasterx"), arasterx("arasterx");
     Halide::Var x("x"), y("y");
-    Halide::RDom prop({{1, w-1}, {1, h-1}}, "prop");
+    Halide::RDom prop({{1, w}, {1, h}}, "prop");
 
     // Raster definition
     rasterx(x,y) = Halide::undef<T>();
@@ -202,7 +202,7 @@ int loopedIwppReconGPU(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>&
     int32_t h = II.height();
     Halide::Func rasterx("rasterx"), arasterx("arasterx");
     Halide::Var x("x"), y("y");
-    Halide::RDom prop({{1, w-1}, {1, h-1}}, "prop");
+    Halide::RDom prop({{1, w}, {1, h}}, "prop");
 
     // Raster definition
     rasterx(x,y) = Halide::undef<T>();
