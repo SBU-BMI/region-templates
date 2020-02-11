@@ -38,8 +38,10 @@ target_link_libraries(iwpp autostage halideiwpp)
 # target_link_libraries(iwpp regiontemplates)
 # target_link_libraries(iwpp runtimesystem)
 
-
-
+# Create GPU testing executable
+add_executable(hgpu cudaSumTest.cpp)
+target_link_libraries(hgpu Halide)
+target_link_libraries(hgpu ${OpenCV_LIBS})
 
 # nscale dirs
 find_path(NSCALE_SRC_DIR REQUIRED)
