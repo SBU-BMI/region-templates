@@ -4,6 +4,9 @@
 #include <iostream>
 
 #include "cv.hpp"
+#include "opencv2/core/cuda.hpp"
+// #include "opencv2/cudaarithm.hpp"
+
 #include "Halide.h"
 
 #include "ExecEngineConstants.h"

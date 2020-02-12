@@ -42,13 +42,12 @@ int main(int argc, char const *argv[]) {
 
     // Create Halide Buffers
     Halide::Buffer<int> hHostInput((int*)cvHostInput.data, {w, h}, "hHostInput");
-
-    buffer_t hDevOutputB = {0, NULL, {w,h}, {1,cvDevOutput.step/sizeof(int)}, {0,0}, sizeof(int)};
     Halide::Buffer<int> hHostOutput((int*)cvHostOutput.data, {w, h}, "hHostOutput");
-
 
     Halide::Buffer<int> hDevInput(nullptr, {w, h}, "hDevInput");
     hDevInput.device_wrap_native(Halide::DeviceAPI::CUDA, (intptr_t)cvDevInput.data, target);
+
+    buffer_t hDevOutputB = {0, NULL, {w,h}, {1,cvDevOutput.step/sizeof(int)}, {0,0}, sizeof(int)};
     Halide::Buffer<int> hDevOutput(hDevOutputB, "hDevOutput");
     hDevOutput.device_wrap_native(Halide::DeviceAPI::CUDA, (intptr_t)cvDevOutput.data, target);
 
@@ -63,8 +62,6 @@ int main(int argc, char const *argv[]) {
     fcpu.realize(hHostOutput);
 
     fgpu.gpu_tile(y, b, t, 1);
-    //fgpu.split(y,t,b,1).reorder(t,b);
-    //fgpu.gpu_blocks(b).gpu_threads(t);
     fgpu.compile_jit(target);
     fgpu.compile_to_lowered_stmt("fgpu.html", {}, Halide::HTML, target);
     fgpu.realize(hDevOutput);
