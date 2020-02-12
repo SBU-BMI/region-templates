@@ -702,12 +702,19 @@ static struct : RTF::HalGen {
             cvOut = &im_ios[2];
         }
 
-        // Wraps the input and output cv::mat's with halide buffers
-        Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI, "hI");
-        Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
-        Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
-
-        loopedIwppRecon(exOpt, hI, hJ, hOut);
+        int op=1;
+        if (op==0) {
+            // Wraps the input and output cv::mat's with halide buffers
+            Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI, "hI");
+            Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
+            Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
+            loopedIwppRecon(exOpt, hI, hJ, hOut);
+        } else {
+            cv::cuda::GpuMat cvDevI, cvDevJ;
+            cvDevI.upload(*cvI);
+            cvDevJ.upload(*cvJ);
+            loopedIwppReconGPU<uint8_t>(exOpt, cvDevI, cvDevJ, *cvOut);
+        }
 
         return false;
     }

@@ -5,7 +5,7 @@
 
 #include "cv.hpp"
 #include "opencv2/core/cuda.hpp"
-// #include "opencv2/cudaarithm.hpp"
+#include "opencv2/cudaarithm.hpp"
 
 #include "Halide.h"
 
@@ -26,8 +26,8 @@ extern int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II,
     Halide::Buffer<T>& JJ, Halide::Buffer<T>& hOut);
 
 template <typename T>
-extern int loopedIwppReconGPU(IwppExec exOpt, Halide::Buffer<T>& II, 
-    Halide::Buffer<T>& JJ, Halide::Buffer<T>& hOut);
+extern int loopedIwppReconGPU(IwppExec exOpt, cv::cuda::GpuMat& cvDevI, 
+    cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut);
 
 
 
