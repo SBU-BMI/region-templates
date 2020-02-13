@@ -723,7 +723,7 @@ static struct : RTF::HalGen {
             cvJ = &im_ios[1];
             cvOut = &im_ios[2];
         }
-
+        
         cv::cuda::GpuMat cvDevI, cvDevJ;
         Halide::Buffer<uint8_t> hI;
         Halide::Buffer<uint8_t> hJ;
@@ -738,11 +738,11 @@ static struct : RTF::HalGen {
             Halide::Target target = Halide::get_host_target();
             target.set_feature(Halide::Target::CUDA);
 
-            hI = gpuMat2buf<T>(cvDevI, target, "hI");
-            hJ = gpuMat2buf<T>(cvDevJ, target, "hJ");
-
             cvDevI.upload(*cvI);
             cvDevJ.upload(*cvJ);
+ 
+            hI = gpuMat2buf<uint8_t>(cvDevI, target, "hI");
+            hJ = gpuMat2buf<uint8_t>(cvDevJ, target, "hJ");
             // loopedIwppReconGPU<uint8_t>(exOpt, cvDevI, cvDevJ, *cvOut);
             #else
             std::cout << "No cuda support" << std::endl;

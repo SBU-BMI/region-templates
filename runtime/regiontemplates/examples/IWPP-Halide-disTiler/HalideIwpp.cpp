@@ -108,42 +108,52 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         rasterx.update(0).split(prop.y, ryo, ryi, sFactor);
         rasterx.update(0).parallel(ryo);
         if (exOpt == CPU_REORDER) {
-            rasterx.update(0).split(prop.x, rxo, rxi, sFactor);
+            rasterx.update(0).split(prop.x, rxo, rxi, w/4);
             rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
             rasterx.update(0).vectorize(rxo);
         }
-        rasterx.compile_jit();
 
         // Schedules Anti-Raster
         arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
         arasterx.update(0).split(prop.y, ryo, ryi, sFactor);
         arasterx.update(0).parallel(ryo);
         if (exOpt == CPU_REORDER) {
-            arasterx.update(0).split(prop.x, rxo, rxi, sFactor);
+            arasterx.update(0).split(prop.x, rxo, rxi, w/4);
             arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
             arasterx.update(0).vectorize(rxo);
         }
-        arasterx.compile_jit();
     } else if (exOpt == GPU || GPU_REORDER) {
         #ifdef WITH_CUDA
-        Halide::Target target = Halide::get_host_target();
+        target = Halide::get_host_target();
         target.set_feature(Halide::Target::CUDA);
 
-        int minYScanlines = 32;
+        std::cout << "[IWPP] With CUDA" << std::endl;
+
+        int minYScanlines = 512;
+        int minXsize = 512;
         int threadsSize = 32;
         
         // Schedules Raster
         rasterx.gpu_blocks(y).gpu_threads(x);
+        arasterx.gpu_blocks(y).gpu_threads(x);
         rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
         rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines);
-        if (GPU_REORDER) {
-            rasterx.update(0).split(prop.x, rxo, rxi, sFactor);
+        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines);
+        if (exOpt == GPU_REORDER) {
+            std::cout << "[IWPP] With reorder" << std::endl;
+            rasterx.update(0).split(prop.x, rxo, rxi, minXsize);
             rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
             rasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
+            arasterx.update(0).split(prop.x, rxo, rxi, minXsize);
+            arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            arasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
         } else {
             Halide::RVar b("b"), t("t");
             rasterx.update(0).split(ryo, b, t, threadsSize);
             rasterx.update(0).gpu_blocks(b).gpu_threads(t);
+            arasterx.update(0).split(ryo, b, t, threadsSize);
+            arasterx.update(0).gpu_blocks(b).gpu_threads(t);
         }
         #else
         std::cout << "[HalideIwpp] Attempted to schedule for GPU without "
@@ -152,8 +162,11 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         #endif
     }
 
-    rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML);
-    arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML);
+    rasterx.compile_jit(target);
+    arasterx.compile_jit(target);
+
+    //rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML, target);
+    //arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML, target);
 
     // Halide compilation time
     st1 = Util::ClockGetTime();
