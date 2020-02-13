@@ -38,11 +38,6 @@ target_link_libraries(iwpp autostage halideiwpp)
 # target_link_libraries(iwpp regiontemplates)
 # target_link_libraries(iwpp runtimesystem)
 
-# Create GPU testing executable
-add_executable(hgpu cudaSumTest.cpp)
-target_link_libraries(hgpu Halide)
-target_link_libraries(hgpu ${OpenCV_LIBS})
-
 # nscale dirs
 find_path(NSCALE_SRC_DIR REQUIRED)
 find_path(NSCALE_BUILD_DIR REQUIRED)
@@ -59,9 +54,17 @@ include_directories(${nscalesrcdir}/normalization)
 # nscale lib dir
 link_directories(${nscalebuilddir}/lib)
 
-add_executable(segtest segTest.cpp)
-target_link_libraries(segtest ${OpenCV_LIBS})
-target_link_libraries(segtest segment normalization)
+################### TESTS
+
+# # Create GPU testing executable
+# add_executable(hgpu cudaSumTest.cpp)
+# target_link_libraries(hgpu Halide)
+# target_link_libraries(hgpu ${OpenCV_LIBS})
+
+# # Segmentation reference of results
+# add_executable(segtest segTest.cpp)
+# target_link_libraries(segtest ${OpenCV_LIBS})
+# target_link_libraries(segtest segment normalization)
 
 if(PROFILING)
     add_definitions(-DPROFILING)

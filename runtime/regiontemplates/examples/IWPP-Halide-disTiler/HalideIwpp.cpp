@@ -63,7 +63,7 @@ Halide::Func halSum(Halide::Buffer<T>& JJ) {
 #define PROFILING_STAGES2
 template <typename T>
 int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
-    Halide::Buffer<T>& hOut) {
+    Halide::Buffer<T>& hOut, cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut) {
 
     // Initial time
     long st0, st1, st2, st3, st4, st5;
@@ -76,40 +76,75 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     int32_t h = II.height();
     Halide::Func rasterx("rasterx"), arasterx("arasterx");
     Halide::Var x("x"), y("y");
-    Halide::RDom prop({{1, w-1}, {1, h-1}}, "prop");
+    Halide::RDom prop({{0, w}, {0, h}}, "prop");
 
     // Raster definition
+    using Halide::clamp;
     rasterx(x,y) = Halide::undef<T>();
-    Halide::Expr maxDr = max(rasterx(prop.x,prop.y-1), max(rasterx(prop.x,prop.y), rasterx(prop.x-1,prop.y)));
+    Halide::Expr maxDr = max(rasterx(prop.x,clamp(prop.y-1,0,h-1)), 
+                         max(rasterx(prop.x,prop.y), 
+                             rasterx(clamp(prop.x-1, 0, w-1),prop.y)));
     rasterx(prop.x,prop.y) = min(II(prop.x,prop.y), maxDr);
 
     // Anti-raster definition
     arasterx(x,y) = Halide::undef<T>();
-    Halide::Expr maxDar = max(arasterx(w-prop.x-1,h-prop.y), max(arasterx(w-prop.x-1,h-prop.y-1), arasterx(w-prop.x,h-prop.y-1)));
+    Halide::Expr maxDar = max(arasterx(w-prop.x-1,clamp(h-prop.y,0,h-1)), 
+                          max(arasterx(w-prop.x-1,h-prop.y-1), 
+                              arasterx(clamp(w-prop.x,0,w-1),h-prop.y-1)));
     arasterx(w-prop.x-1,h-prop.y-1) = min(II(w-prop.x-1,h-prop.y-1), maxDar);
+
+    std::cout << "size: " << h << "x" << w << std::endl;
 
 
     // Scheduling variables
     Halide::Target target = Halide::get_host_target();
-    Halide::RVar ryi("ryi"), ryo("ryo");
+    Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
     
     int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
 
-    if (exOpt == CPU) {
+    if (exOpt == CPU || exOpt == CPU_REORDER) {
         // Schedules Raster
-        rasterx.update(0).split(prop.y, ryo, ryi, sFactor);
         rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        rasterx.update(0).split(prop.y, ryo, ryi, sFactor);
         rasterx.update(0).parallel(ryo);
+        if (exOpt == CPU_REORDER) {
+            rasterx.update(0).split(prop.x, rxo, rxi, sFactor);
+            rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            rasterx.update(0).vectorize(rxo);
+        }
         rasterx.compile_jit();
 
         // Schedules Anti-Raster
-        arasterx.update(0).split(prop.y, ryo, ryi, sFactor);
         arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        arasterx.update(0).split(prop.y, ryo, ryi, sFactor);
         arasterx.update(0).parallel(ryo);
+        if (exOpt == CPU_REORDER) {
+            arasterx.update(0).split(prop.x, rxo, rxi, sFactor);
+            arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            arasterx.update(0).vectorize(rxo);
+        }
         arasterx.compile_jit();
-    } else if (exOpt == GPU) {
+    } else if (exOpt == GPU || GPU_REORDER) {
         #ifdef WITH_CUDA
+        Halide::Target target = Halide::get_host_target();
+        target.set_feature(Halide::Target::CUDA);
 
+        int minYScanlines = 32;
+        int threadsSize = 32;
+        
+        // Schedules Raster
+        rasterx.gpu_blocks(y).gpu_threads(x);
+        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines);
+        if (GPU_REORDER) {
+            rasterx.update(0).split(prop.x, rxo, rxi, sFactor);
+            rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            rasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
+        } else {
+            Halide::RVar b("b"), t("t");
+            rasterx.update(0).split(ryo, b, t, threadsSize);
+            rasterx.update(0).gpu_blocks(b).gpu_threads(t);
+        }
         #else
         std::cout << "[HalideIwpp] Attempted to schedule for GPU without "
             << "CUDA support." << std::endl;
@@ -117,17 +152,8 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         #endif
     }
 
-
-        // } else if (sched == ExecEngineConstants::GPU) {
-        //     Halide::Var bx, by, tx, ty;
-        //     rasterx.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-        //     rastery.gpu_tile(x, y, bx, by, tx, ty, 16, 16);
-        //     target.set_feature(Halide::Target::CUDA);
-        //     II.set_host_dirty();
-        //     JJ.set_host_dirty();
-        // }
-
-    // rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML);
+    rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML);
+    arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML);
 
     // Halide compilation time
     st1 = Util::ClockGetTime();
@@ -155,27 +181,25 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         arasterx.realize(JJ);
         sti2 = Util::ClockGetTime();
 
-        // // Copy from GPU to host is done every realization which is
-        // // inefficient. However this is just done as a proof of concept for
-        // // having a CPU and a GPU sched (more work necessary for running the 
-        // // sum on GPU). 
-        // if (sched == ExecEngineConstants::GPU) {
-        //     JJ.copy_to_host();
-        // }
-
         // Raster/Anti-raster time
         st3 = Util::ClockGetTime();
 
         it++;
         oldSum = newSum;
 
-        // Performs parallel sum of the matrix across x, then sequentially
-        // sums the result
-        lsum.realize(hLineSum);
-        st4 = Util::ClockGetTime();
-        newSum = 0;
-        for (int i=0; i<w; i++)
-            newSum += dLineSum[i];
+        if (exOpt == CPU || exOpt == CPU_REORDER) {
+            // Performs parallel sum of the matrix across x, then sequentially
+            // sums the result
+            lsum.realize(hLineSum);
+            st4 = Util::ClockGetTime();
+            newSum = 0;
+            for (int i=0; i<w; i++)
+                newSum += dLineSum[i];
+        } else if (exOpt == GPU || exOpt == GPU_REORDER) {
+            #ifdef WITH_CUDA
+            newSum = cv::cuda::sum(cvDevJ)[0];
+            #endif
+        }
 
         // Full iteration time
         st5 = Util::ClockGetTime();
@@ -183,8 +207,7 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         //#ifdef IT_DEBUG
         cout << "[PROFILING] it: " << it << ", sum = " << newSum << std::endl;
         cout << "[PROFILING][IWPP_PROP_TIME] " << (st3-st2) << endl;
-        cout << "[PROFILING][IWPP_SUM_TIME] h=" << (st4-st3) 
-             << ", s=" << (st5-st4) << endl;
+        cout << "[PROFILING][IWPP_SUM_TIME] " << (st5-st3) << endl;
         cout << "[PROFILING][IWPP_FULL_IT_TIME] " << (st5-st2) << std::endl;
         //#endif
 
@@ -193,7 +216,10 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     delete[] dLineSum;
 
     // Copy result to output
-    hOut.copy_from(JJ); // bad
+    if (exOpt == CPU || exOpt == CPU_REORDER)
+        hOut.copy_from(JJ); // bad
+    else if (exOpt == GPU || exOpt == GPU_REORDER)
+        cvDevJ.download(cvHostOut);
 
     // Final iwpp time
     long st6 = Util::ClockGetTime();
@@ -206,6 +232,7 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     return 0;
 }
 
+#ifdef WITH_CUDA
 template <typename T>
 int loopedIwppReconGPU(IwppExec exOpt, cv::cuda::GpuMat& cvDevI, 
     cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut) {
@@ -367,9 +394,11 @@ int loopedIwppReconGPU(IwppExec exOpt, cv::cuda::GpuMat& cvDevI,
 
     return 0;
 }
+template int loopedIwppReconGPU<unsigned char>(IwppExec exOpt, 
+    cv::cuda::GpuMat& cvDevI, cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut);
+#endif // WITH_CUDA
 
 
 template int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<unsigned char>& II, 
-    Halide::Buffer<unsigned char>& JJ, Halide::Buffer<unsigned char>& hOut);
-template int loopedIwppReconGPU<unsigned char>(IwppExec exOpt, cv::cuda::GpuMat& cvDevI, cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut);
-
+    Halide::Buffer<unsigned char>& JJ, Halide::Buffer<unsigned char>& hOut,
+    cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut);

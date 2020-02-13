@@ -89,6 +89,28 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name="unnamed") {
     }
 }
 
+// This manual setup is required since GPU data may have a different
+// memory displacement than on host memory. Tldr, need to fix
+// the stride of Halide::Buffer for data already on GPU.
+template <typename T>
+Halide::Buffer<T> gpuMat2buf(cv::cuda::GpuMat& m, Halide::Target& t, 
+        std::string name="") {
+
+    //int extents[] = {m.cols, m.rows};
+    //int strides[] = {1, ((int)m.step)/((int)sizeof(T))};
+    //int mins[] = {0, 0};
+    buffer_t devB = {0, NULL, {m.cols, m.rows}, 
+                     {1, ((int)m.step)/((int)sizeof(T))}, 
+                     {0, 0}, sizeof(T)};
+
+    
+    Halide::Buffer<T> hDev = name.empty() ? 
+        Halide::Buffer<T>(devB) : Halide::Buffer<T>(devB, name);
+    hDev.device_wrap_native(Halide::DeviceAPI::CUDA, (intptr_t)m.data, t);
+
+    return hDev;
+}
+
 template <typename T>
 // seeds=rcopen=J, image=rc=I
 int imreconstructSeq(const cv::Mat* image, const cv::Mat* seeds, cv::Mat* JJ) {
@@ -702,19 +724,32 @@ static struct : RTF::HalGen {
             cvOut = &im_ios[2];
         }
 
-        int op=1;
-        if (op==0) {
+        cv::cuda::GpuMat cvDevI, cvDevJ;
+        Halide::Buffer<uint8_t> hI;
+        Halide::Buffer<uint8_t> hJ;
+        Halide::Buffer<uint8_t> hOut;
+        if (exOpt == CPU || exOpt == CPU_REORDER) {
             // Wraps the input and output cv::mat's with halide buffers
-            Halide::Buffer<uint8_t> hI = mat2buf<uint8_t>(cvI, "hI");
-            Halide::Buffer<uint8_t> hJ = mat2buf<uint8_t>(cvJ, "hJ");
-            Halide::Buffer<uint8_t> hOut = mat2buf<uint8_t>(cvOut, "hOut");
-            loopedIwppRecon(exOpt, hI, hJ, hOut);
-        } else {
-            cv::cuda::GpuMat cvDevI, cvDevJ;
+            hI = mat2buf<uint8_t>(cvI, "hI");
+            hJ = mat2buf<uint8_t>(cvJ, "hJ");
+            hOut = mat2buf<uint8_t>(cvOut, "hOut");
+        } else if (exOpt == GPU || exOpt == GPU_REORDER) {
+            #ifdef WITH_CUDA
+            Halide::Target target = Halide::get_host_target();
+            target.set_feature(Halide::Target::CUDA);
+
+            hI = gpuMat2buf<T>(cvDevI, target, "hI");
+            hJ = gpuMat2buf<T>(cvDevJ, target, "hJ");
+
             cvDevI.upload(*cvI);
             cvDevJ.upload(*cvJ);
-            loopedIwppReconGPU<uint8_t>(exOpt, cvDevI, cvDevJ, *cvOut);
+            // loopedIwppReconGPU<uint8_t>(exOpt, cvDevI, cvDevJ, *cvOut);
+            #else
+            std::cout << "No cuda support" << std::endl;
+            exit(-1);
+            #endif // WITH_CUDA
         }
+        loopedIwppRecon(exOpt, hI, hJ, hOut, cvDevJ, *cvOut);
 
         return false;
     }
@@ -823,17 +858,10 @@ int main(int argc, char *argv[]) {
         cout << "\t\t4: Res-split hybrid tiling" << endl;
 
         cout << "\t-i <iwpp parallelism>" << endl;
-        cout << "\t\tValues (default=3):" << endl;
-        cout << "\t\t0: Serialized execution (raster/anti-raster)" << endl;
-        cout << "\t\t1: Sequential execution with "
-             << "4 scanlines" << endl;
-        cout << "\t\t2: Parallelized execution "
-             << "(4 scanlines, parallel on outer loops)" << endl;
-        cout << "\t\t3: Vectorized execution "
-             << "(4 scanlines, vectorized on inner loops)" << endl;
-        cout << "\t\t4: Full (4 scanlines with both "
-             << "parallel and vectorized execution)" << endl;
-
+        cout << "\t\tValues (default=0):" << endl;
+        cout << "\t\t0: CPU only execution" << endl;
+        cout << "\t\t1: GPU only execution" << endl;
+        
         cout << "\t-d <dense tiling algorithm>" << endl;
         cout << "\t\tValues (default=0):" << endl;
         cout << "\t\t0: FIXED_GRID_TILING" << endl;
@@ -909,7 +937,7 @@ int main(int argc, char *argv[]) {
     }
 
     // iwpp parallelism option
-    int iwppOp = SERIAL;
+    int iwppOp = CPU;
     if (findArgPos("-i", argc, argv) != -1) {
         iwppOp = atoi(argv[findArgPos("-i", argc, argv)+1]);
     }
