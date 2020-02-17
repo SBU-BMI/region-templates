@@ -71,99 +71,86 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     st0 = Util::ClockGetTime();
 
     // Basic variables for the pipeline
-    Halide::Target target = Halide::get_host_target();
     int32_t w = II.width();
     int32_t h = II.height();
     Halide::Func rasterx("rasterx"), arasterx("arasterx");
-    // Halide::Var x("x"), y("y");
+    Halide::Var x("x"), y("y");
     Halide::RDom prop({{0, w}, {0, h}}, "prop");
-
-    // Creates a copy of JJ for non-in-place realization
-    Halide::Buffer<T> JJ2;
-    cv::cuda::GpuMat cvDevJ2;
-    if (exOpt == CPU || exOpt == CPU_REORDER) {
-        JJ2 = JJ.copy();
-    } else if (exOpt == GPU || exOpt == GPU_REORDER) {
-        cvDevJ2 = cvDevJ.copy();
-        target.set_feature(Halide::Target::CUDA);
-        JJ2 = gpuMat2buf(cvDevJ2, target, "hJ2");
-    }
 
     // Raster definition
     using Halide::clamp;
-    // rasterx(x,y) = Halide::undef<T>();
-    Halide::Expr maxDr = max(JJ(prop.x,clamp(prop.y-1,0,h-1)), 
-                         max(JJ(prop.x,prop.y), 
-                             JJ(clamp(prop.x-1, 0, w-1),prop.y)));
+    rasterx(x,y) = Halide::undef<T>();
+    Halide::Expr maxDr = max(rasterx(prop.x,clamp(prop.y-1,0,h-1)), 
+                         max(rasterx(prop.x,prop.y), 
+                             rasterx(clamp(prop.x-1, 0, w-1),prop.y)));
     rasterx(prop.x,prop.y) = min(II(prop.x,prop.y), maxDr);
 
     // Anti-raster definition
-    // arasterx(x,y) = Halide::undef<T>();
-    Halide::Expr maxDar = max(JJ2(w-prop.x-1,clamp(h-prop.y,0,h-1)), 
-                          max(JJ2(w-prop.x-1,h-prop.y-1), 
-                              JJ2(clamp(w-prop.x,0,w-1),h-prop.y-1)));
+    arasterx(x,y) = Halide::undef<T>();
+    Halide::Expr maxDar = max(arasterx(w-prop.x-1,clamp(h-prop.y,0,h-1)), 
+                          max(arasterx(w-prop.x-1,h-prop.y-1), 
+                              arasterx(clamp(w-prop.x,0,w-1),h-prop.y-1)));
     arasterx(w-prop.x-1,h-prop.y-1) = min(II(w-prop.x-1,h-prop.y-1), maxDar);
 
     std::cout << "size: " << h << "x" << w << std::endl;
 
-
     // Scheduling variables
+    Halide::Target target = Halide::get_host_target();
     Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
     
     int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
 
     if (exOpt == CPU || exOpt == CPU_REORDER) {
         // Schedules Raster
-        // rasterx.allow_race_conditions(); // for parallel (ryo)
-        rasterx.split(prop.y, ryo, ryi, sFactor);
-        rasterx.parallel(ryo);
+        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        rasterx.update(0).split(prop.y, ryo, ryi, sFactor);
+        rasterx.update(0).parallel(ryo);
         if (exOpt == CPU_REORDER) {
-            rasterx.split(prop.x, rxo, rxi, w/4);
-            rasterx.reorder(rxi,ryi,rxo,ryo);
-            rasterx.vectorize(rxo);
+            rasterx.update(0).split(prop.x, rxo, rxi, w/4);
+            rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            rasterx.update(0).vectorize(rxo);
         }
 
         // Schedules Anti-Raster
-        // arasterx.allow_race_conditions(); // for parallel (ryo)
-        arasterx.split(prop.y, ryo, ryi, sFactor);
-        arasterx.parallel(ryo);
+        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        arasterx.update(0).split(prop.y, ryo, ryi, sFactor);
+        arasterx.update(0).parallel(ryo);
         if (exOpt == CPU_REORDER) {
-            arasterx.split(prop.x, rxo, rxi, w/4);
-            arasterx.reorder(rxi,ryi,rxo,ryo);
-            arasterx.vectorize(rxo);
+            arasterx.update(0).split(prop.x, rxo, rxi, w/4);
+            arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            arasterx.update(0).vectorize(rxo);
         }
     } else if (exOpt == GPU || exOpt == GPU_REORDER) {
         #ifdef WITH_CUDA
+        target.set_feature(Halide::Target::CUDA);
+
         std::cout << "[IWPP] With CUDA" << std::endl;
 
         int minYScanlines = 512;
-        int minXsize = 512;
-        int threadsSize = 32;
+        int minXsize = 512; // for reordering
+        int threadsSize = 32; // for no reordering
         
         // Schedules Raster
-        // rasterx.gpu_blocks(y).gpu_threads(x);
-        // rasterx.allow_race_conditions();
-        rasterx.split(prop.y, ryo, ryi, minYScanlines);
-        
-        // Schedules Anti-raster
-        // arasterx.allow_race_conditions();
-        // arasterx.gpu_blocks(y).gpu_threads(x);
-        arasterx.split(prop.y, ryo, ryi, minYScanlines);
-
+        rasterx.gpu_blocks(y).gpu_threads(x);
+        arasterx.gpu_blocks(y).gpu_threads(x);
+        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines);
+        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
+        arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines);
         if (exOpt == GPU_REORDER) {
             std::cout << "[IWPP] With reorder" << std::endl;
-            rasterx.split(prop.x, rxo, rxi, minXsize);
-            rasterx.reorder(rxi,ryi,rxo,ryo);
-            rasterx.gpu_blocks(ryo).gpu_threads(rxo);
-            arasterx.split(prop.x, rxo, rxi, minXsize);
-            arasterx.reorder(rxi,ryi,rxo,ryo);
-            arasterx.gpu_blocks(ryo).gpu_threads(rxo);
+            rasterx.update(0).split(prop.x, rxo, rxi, minXsize);
+            rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            rasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
+            arasterx.update(0).split(prop.x, rxo, rxi, minXsize);
+            arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+            arasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
         } else {
             Halide::RVar b("b"), t("t");
-            rasterx.split(ryo, b, t, threadsSize);
-            rasterx.gpu_blocks(b).gpu_threads(t);
-            arasterx.split(ryo, b, t, threadsSize);
-            arasterx.gpu_blocks(b).gpu_threads(t);
+            rasterx.update(0).split(ryo, b, t, threadsSize);
+            rasterx.update(0).gpu_blocks(b).gpu_threads(t);
+            arasterx.update(0).split(ryo, b, t, threadsSize);
+            arasterx.update(0).gpu_blocks(b).gpu_threads(t);
         }
         #else
         std::cout << "[HalideIwpp] Attempted to schedule for GPU without "
@@ -199,7 +186,7 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         // This is better given that every stage can be updated in-place (i.e., perfect
         // data independence for the opposite coordinate of each raster)
         sti0 = Util::ClockGetTime();
-        rasterx.realize(JJ2);
+        rasterx.realize(JJ);
         sti1 = Util::ClockGetTime();
         arasterx.realize(JJ);
         sti2 = Util::ClockGetTime();
