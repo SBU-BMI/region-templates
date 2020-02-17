@@ -731,7 +731,7 @@ static struct : RTF::HalGen {
         if (exOpt == CPU || exOpt == CPU_REORDER) {
             // Wraps the input and output cv::mat's with halide buffers
             hI = mat2buf<uint8_t>(cvI, "hI");
-            hJ = mat2buf<uint8_t>(cvJ, "hJ");
+            hJ = mat2buf<uint8_t>(cvJ, "hJ1");
             hOut = mat2buf<uint8_t>(cvOut, "hOut");
         } else if (exOpt == GPU || exOpt == GPU_REORDER) {
             #ifdef WITH_CUDA
@@ -742,7 +742,7 @@ static struct : RTF::HalGen {
             cvDevJ.upload(*cvJ);
  
             hI = gpuMat2buf<uint8_t>(cvDevI, target, "hI");
-            hJ = gpuMat2buf<uint8_t>(cvDevJ, target, "hJ");
+            hJ = gpuMat2buf<uint8_t>(cvDevJ, target, "hJ1");
             // loopedIwppReconGPU<uint8_t>(exOpt, cvDevI, cvDevJ, *cvOut);
             #else
             std::cout << "No cuda support" << std::endl;
