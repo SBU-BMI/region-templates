@@ -860,7 +860,9 @@ int main(int argc, char *argv[]) {
         cout << "\t-i <iwpp parallelism>" << endl;
         cout << "\t\tValues (default=0):" << endl;
         cout << "\t\t0: CPU only execution" << endl;
-        cout << "\t\t1: GPU only execution" << endl;
+        cout << "\t\t1: CPU only execution with vectorization" << endl;
+        cout << "\t\t2: GPU only execution" << endl;
+        cout << "\t\t3: GPU only execution with vectorization" << endl;
         
         cout << "\t-d <dense tiling algorithm>" << endl;
         cout << "\t\tValues (default=0):" << endl;

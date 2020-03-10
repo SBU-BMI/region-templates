@@ -43,7 +43,7 @@ template <typename T>
 Halide::Func halSum(Halide::Buffer<T>& JJ) {
 
     // Performs parallel sum on the coordinate with the highest value
-    Halide::RDom r({{0,JJ.width()-1},{0,JJ.height()-1}}, "r");
+    Halide::RDom r({{0,JJ.width()},{0,JJ.height()}}, "r");
     Halide::Var x("x");
     Halide::Func pSum("pSum");
     pSum(x) = Halide::cast<long>(0);//Halide::undef<uint16_t>();
@@ -103,20 +103,24 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     if (exOpt == CPU || exOpt == CPU_REORDER) {
         // Schedules Raster
         rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        rasterx.update(0).split(prop.y, ryo, ryi, sFactor);
+        rasterx.update(0).split(prop.y, ryo, ryi, sFactor, 
+            Halide::TailStrategy::GuardWithIf);
         rasterx.update(0).parallel(ryo);
         if (exOpt == CPU_REORDER) {
-            rasterx.update(0).split(prop.x, rxo, rxi, w/4);
+            rasterx.update(0).split(prop.x, rxo, rxi, w/4, 
+                Halide::TailStrategy::GuardWithIf);
             rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
             rasterx.update(0).vectorize(rxo);
         }
 
         // Schedules Anti-Raster
         arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        arasterx.update(0).split(prop.y, ryo, ryi, sFactor);
+        arasterx.update(0).split(prop.y, ryo, ryi, sFactor, 
+            Halide::TailStrategy::GuardWithIf);
         arasterx.update(0).parallel(ryo);
         if (exOpt == CPU_REORDER) {
-            arasterx.update(0).split(prop.x, rxo, rxi, w/4);
+            arasterx.update(0).split(prop.x, rxo, rxi, w/4, 
+                Halide::TailStrategy::GuardWithIf);
             arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
             arasterx.update(0).vectorize(rxo);
         }
@@ -134,22 +138,28 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         rasterx.gpu_blocks(y).gpu_threads(x);
         arasterx.gpu_blocks(y).gpu_threads(x);
         rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines);
+        rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines, 
+            Halide::TailStrategy::GuardWithIf);
         arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines);
+        arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines, 
+            Halide::TailStrategy::GuardWithIf);
         if (exOpt == GPU_REORDER) {
             std::cout << "[IWPP] With reorder" << std::endl;
-            rasterx.update(0).split(prop.x, rxo, rxi, minXsize);
+            rasterx.update(0).split(prop.x, rxo, rxi, minXsize, 
+                Halide::TailStrategy::GuardWithIf);
             rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
             rasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
-            arasterx.update(0).split(prop.x, rxo, rxi, minXsize);
+            arasterx.update(0).split(prop.x, rxo, rxi, minXsize, 
+                Halide::TailStrategy::GuardWithIf);
             arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
             arasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
         } else {
             Halide::RVar b("b"), t("t");
-            rasterx.update(0).split(ryo, b, t, threadsSize);
+            rasterx.update(0).split(ryo, b, t, threadsSize, 
+                Halide::TailStrategy::GuardWithIf);
             rasterx.update(0).gpu_blocks(b).gpu_threads(t);
-            arasterx.update(0).split(ryo, b, t, threadsSize);
+            arasterx.update(0).split(ryo, b, t, threadsSize, 
+                Halide::TailStrategy::GuardWithIf);
             arasterx.update(0).gpu_blocks(b).gpu_threads(t);
         }
         #else
