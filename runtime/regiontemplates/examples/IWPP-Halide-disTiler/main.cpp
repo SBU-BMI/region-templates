@@ -738,12 +738,13 @@ static struct : RTF::HalGen {
             Halide::Target target = Halide::get_host_target();
             target.set_feature(Halide::Target::CUDA);
 
+            // Upload inputs to gpu memory
             cvDevI.upload(*cvI);
             cvDevJ.upload(*cvJ);
  
+            // Create halide wrappers for the gpu mat's
             hI = gpuMat2buf<uint8_t>(cvDevI, target, "hI");
             hJ = gpuMat2buf<uint8_t>(cvDevJ, target, "hJ1");
-            // loopedIwppReconGPU<uint8_t>(exOpt, cvDevI, cvDevJ, *cvOut);
             #else
             std::cout << "No cuda support" << std::endl;
             exit(-1);
@@ -944,6 +945,9 @@ int main(int argc, char *argv[]) {
         iwppOp = atoi(argv[findArgPos("-i", argc, argv)+1]);
     }
 
+    float cpuPats = 1.0;
+    float gpuPats = 1.7;
+
 #ifdef PROFILING
     long fullExecT1 = Util::ClockGetTime();
 #endif
@@ -1000,7 +1004,8 @@ int main(int argc, char *argv[]) {
     long tilingT1 = Util::ClockGetTime();
 #endif
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    CostFunction* cfunc = new PropagateDistCostFunction(bgThr, erode_param, dilate_param);
+    // CostFunction* cfunc = new PropagateDistCostFunction(bgThr, erode_param, dilate_param);
+    CostFunction* cfunc = new ThresholdBGCostFunction(bgThr, dilate_param, erode_param);
     
     TiledRTCollection* tCollImg;
     switch (tilingAlg) {
@@ -1022,7 +1027,8 @@ int main(int argc, char *argv[]) {
         case HYBRID_DENSE:
             tCollImg = new HybridDenseTiledRTCollection(
                 "input", "input", Ipath, border, cfunc, bgm, denseTilingAlg, 
-                nTilesPerThread*cpuThreads, nTilesPerThread*gpuThreads);
+                nTilesPerThread*cpuThreads, nTilesPerThread*gpuThreads,
+                cpuPats, gpuPats);
             break;
         case HYBRID_PRETILER:
             // HybridTiledRTCollection ht = new HybridTiledRTCollection(

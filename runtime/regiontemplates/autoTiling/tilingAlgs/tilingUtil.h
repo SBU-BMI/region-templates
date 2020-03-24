@@ -125,6 +125,6 @@ void printRect(rect_t r);
 // with the smallest difference between areas.
 // Orient: 0 = both, -1 = horizontal only, +1 = vetical only
 void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
-    int expCost, rect_t& newt1, rect_t& newt2, float acc=0.02, int orient = 0);
+    double expCost, rect_t& newt1, rect_t& newt2, float acc=0.02, int orient = 0);
 
 #endif // UTIL_H_

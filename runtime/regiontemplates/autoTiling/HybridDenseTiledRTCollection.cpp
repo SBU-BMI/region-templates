@@ -3,13 +3,15 @@
 HybridDenseTiledRTCollection::HybridDenseTiledRTCollection(std::string name, 
     std::string refDDRName, std::string tilesPath, int border, 
     CostFunction* cfunc, BGMasker* bgm, TilerAlg_t tilingAlg, 
-        int nCpuTiles, int nGpuTiles) 
+        int nCpuTiles, int nGpuTiles, float cpuPATS, float gpuPATS) 
         : TiledRTCollection(name, refDDRName, tilesPath, cfunc) {
 
     this->border = border;
     this->bgm = bgm;
     this->nCpuTiles = nCpuTiles;
     this->nGpuTiles = nGpuTiles;
+    this->cpuPATS = cpuPATS;
+    this->gpuPATS = gpuPATS;
     this->tilingAlg = tilingAlg;
 }
 
@@ -62,32 +64,19 @@ void HybridDenseTiledRTCollection::customTiling() {
 
         // Performs actual dense tiling
         switch (this->tilingAlg) {
-            case LIST_ALG_HALF:
+            // case LIST_ALG_HALF:
             case LIST_ALG_EXPECT: {
-                listCutting(thMask, finalTiles, 
-                    this->nCpuTiles + this->nGpuTiles, 
-                    this->tilingAlg, this->cfunc);
+                std::cout << "[HybridDenseTiledRTCollection] Tiling for cpu="
+                    << this->nCpuTiles << ":" << this->cpuPATS << ", gpu="
+                    << this->nGpuTiles << ":" << this->gpuPATS << std::endl;
+                listCutting(thMask, finalTiles, this->nCpuTiles, this->nGpuTiles, 
+                    this->cpuPATS, this->gpuPATS, this->cfunc);
                 break;
             }
-            case KD_TREE_ALG_AREA:
-            case KD_TREE_ALG_COST: {
-                kdTreeCutting(thMask, finalTiles, 
-                    this->nCpuTiles + this->nGpuTiles, 
-                    this->tilingAlg, this->cfunc);
-                break;
-            }
-            case HBAL_TRIE_QUAD_TREE_ALG: {
-                heightBalancedTrieQuadTreeCutting(thMask, 
-                    finalTiles, this->nCpuTiles + this->nGpuTiles);
-                break;
-            }
-            case CBAL_TRIE_QUAD_TREE_ALG:
-            case CBAL_POINT_QUAD_TREE_ALG: {
-                costBalancedQuadTreeCutting(thMask, finalTiles, 
-                    this->nCpuTiles + this->nGpuTiles, 
-                    this->tilingAlg, this->cfunc);
-                break;
-            }
+            default:
+                std::cout << "[HybridDenseTiledRTCollection] Can only tile with " 
+                    << "LIST_ALG_EXPECT algorithm." << std::endl;
+                exit(-1);
         }
 
 // #ifdef PROFILING
@@ -108,14 +97,15 @@ void HybridDenseTiledRTCollection::customTiling() {
             tiles.push_back(cv::Rect_<int64_t>(
                 r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
 
+#define DEBUG
 #ifdef DEBUG
-            cv::rectangle(maskMat, cv::Point(r->xi,r->yi), 
-                cv::Point(r->xo,r->yo),(0,0,0),3);
+            cv::rectangle(thMask, cv::Point(r->xi,r->yi), 
+                cv::Point(r->xo,r->yo),(255,255,255),3);
 #endif
         }
 
 #ifdef DEBUG
-        cv::imwrite("./maskf.png", maskMat);
+        cv::imwrite("./maskf.png", thMask);
 #endif
 
         // Actually tile the image given the list of ROIs
@@ -152,8 +142,8 @@ void HybridDenseTiledRTCollection::customTiling() {
             rois.push_back(tile);
             this->rts.push_back(
                 std::pair<std::string, RegionTemplate*>(drName, newRT));
-            this->tileTarget.push_back(drId<this->nCpuTiles ?
-                ExecEngineConstants::CPU : ExecEngineConstants::GPU);
+            this->tileTarget.push_back(drId<this->nGpuTiles ?
+                ExecEngineConstants::GPU : ExecEngineConstants::CPU);
             drId++;
         }
 

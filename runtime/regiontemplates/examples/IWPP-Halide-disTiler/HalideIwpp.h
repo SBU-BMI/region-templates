@@ -1,7 +1,7 @@
 #ifndef HALIDE_IWPP_H_
 #define HALIDE_IWPP_H_ value
 
-#define WITH_CUDA
+// #define WITH_CUDA
 
 #include <iostream>
 

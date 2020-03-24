@@ -125,7 +125,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     std::list<int64_t> costs;
     // Creates a list of perimeters for each tile for each image
     std::list<int64_t> perims;
-
+#define DEBUG
     // create tiles image
     if (tilingOnly) {
         for (int i=0; i<this->getTiles().size(); i++) {
@@ -136,8 +136,12 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
             else
                 baseImg = cv::imread(this->initialPaths[i]);
             
+            setlocale(LC_NUMERIC, "pt_BR.utf-8");
+            char cost[50];
+            sprintf(cost, "%'2f", this->cfunc->cost(baseImg));
             std::cout << "[TiledRTCollection] image " << this->initialPaths[i] 
-                << " size: " << baseImg.rows << "x" << baseImg.cols << std::endl;
+                << " size: " << baseImg.rows << "x" << baseImg.cols 
+                << " cost=" << cost << std::endl;
 
             // get cost image
             cv::Mat tiledImg;
@@ -193,7 +197,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                 outname.replace(slLoc, 1, "");
             }
             outname = "./tiled-" + outname + ".png";
-            // cv::imwrite(outname, tiledImg);
+            cv::imwrite(outname, tiledImg);
             #endif
         }
     }

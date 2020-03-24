@@ -41,19 +41,23 @@ void printRect(rect_t r) {
 // with the smallest difference between areas.
 // Orient: 0 = both, -1 = horizontal only, +1 = vetical only
 void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
-    int expCost, rect_t& newt1, rect_t& newt2, float acc, int orient) {
+    double expCost, rect_t& newt1, rect_t& newt2, float acc, int orient) {
 
     // Gets upper and lower bounds for the expected cost
-    int upperCost = expCost + expCost*acc;
-    int lowerCost = expCost - expCost*acc;
+    long upperCost = expCost + expCost*acc;
+    long lowerCost = expCost - expCost*acc;
 
     ///////////////////////////////////////////////////////////////////////////
     // Horizontal sweeping
-    int pivotxLen = (r.xo - r.xi)/2;
-    int pivotx = r.xi + pivotxLen;
-    int cost1h = cfunc->cost(img, r.yi, r.yo, r.xi, pivotx);
-    int cost2h = cfunc->cost(img, r.yi, r.yo, pivotx+1, r.xo);
-    int areah;
+    long pivotxLen = (r.xo - r.xi)/2;
+    long pivotx = r.xi + pivotxLen;
+    long cost1h = cfunc->cost(img, r.yi, r.yo, r.xi, pivotx);
+    long cost2h = cfunc->cost(img, r.yi, r.yo, pivotx+1, r.xo);
+    long areah;
+
+    std::cout << "lowerCost " << lowerCost << std::endl;
+    std::cout << "upperCost " << upperCost << std::endl;
+
     if (orient <= 0) {
 
         // Finds through binary search the best horizontal pivot
@@ -61,11 +65,14 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
             && !between(cost2h, lowerCost, upperCost)
             && pivotxLen > 0) {
 
+            // std::cout << "cost1h " << cost1h << std::endl;
+            // std::cout << "cost2h " << cost2h << std::endl;
+
             // If the expected cost was not achieved, split the pivotLen
             // and try again, moving the pivot closer to the tile with
             // the greatest cost.
             pivotxLen /= 2;
-            if (cost1h > cost2h)
+            if (cost1h > cost2h && expCost > cost2h && expCost < cost1h)
                 pivotx -= pivotxLen;
             else
                 pivotx += pivotxLen;
@@ -80,11 +87,11 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
 
     ///////////////////////////////////////////////////////////////////////////
     // Vertical sweeping
-    int pivotyLen = (r.yo - r.yi)/2;
-    int pivoty = r.yi + pivotyLen;
-    int cost1v = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
-    int cost2v = cfunc->cost(img, pivoty+1, r.yo, r.xi, r.xo);
-    int areav;
+    long pivotyLen = (r.yo - r.yi)/2;
+    long pivoty = r.yi + pivotyLen;
+    long cost1v = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
+    long cost2v = cfunc->cost(img, pivoty+1, r.yo, r.xi, r.xo);
+    long areav;
     if (orient >= 0) {
 
         // Finds through binary search the best vertical pivot
@@ -92,11 +99,14 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
             && !between(cost2v, lowerCost, upperCost)
             && pivotyLen > 0) {
 
+            // std::cout << "cost1v " << cost1v << std::endl;
+            // std::cout << "cost2v " << cost2v << std::endl;
+
             // If the expected cost was not achieved, split the pivotLen
             // and try again, moving the pivot closer to the tile with
             // the greatest cost.
             pivotyLen /= 2;
-            if (cost1v > cost2v)
+            if (cost1v > cost2v && expCost > cost2v && expCost < cost1v)
                 pivoty -= pivotyLen;
             else
                 pivoty += pivotyLen;

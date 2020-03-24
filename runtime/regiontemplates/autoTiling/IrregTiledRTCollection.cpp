@@ -91,7 +91,7 @@ void IrregTiledRTCollection::customTiling() {
         std::list<cv::Rect_<int64_t> > tiles;
         for (std::list<rect_t>::iterator r=finalTiles.begin(); 
                 r!=finalTiles.end(); r++) {
-
+#define DEBUG
 #ifdef DEBUG
             cv::rectangle(maskMat, cv::Point(r->xi,r->yi), 
                 cv::Point(r->xo,r->yo),(255,255,255),3);
