@@ -1,7 +1,7 @@
 #ifndef HALIDE_IWPP_H_
 #define HALIDE_IWPP_H_ value
 
-// #define WITH_CUDA
+#define WITH_CUDA
 
 #include <iostream>
 
@@ -23,13 +23,16 @@ enum IwppExec {
     GPU_REORDER,
 };
 
+// Should use ExecEngineConstants::GPU ... 
+typedef int Target_t;
+
 template <typename T>
 Halide::Func halSum(Halide::Buffer<T>& JJ);
 
 template <typename T>
-extern int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, 
-	Halide::Buffer<T>& JJ, Halide::Buffer<T>& hOut, 
-	cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut);
+extern int loopedIwppRecon(Target_t target, IwppExec exOpt, 
+    Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,Halide::Buffer<T>& hOut, 
+    cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut);
 
 template <typename T>
 extern int loopedIwppReconGPU(IwppExec exOpt, cv::cuda::GpuMat& cvDevI, 

@@ -100,7 +100,7 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
         // Removes the first tile and insert the remaining large tile
         sDense.erase(dIt);
-        if (c1 > c2) {
+        if (c1 < c2) {
             sDense.insert(newt1);
             dense.push_back(newt2);
             sprintf(cost, "%'2f", c2);

@@ -220,7 +220,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][get_background] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][get_background] " << (st1-st0) << endl;
         #endif
         
         cout << "[get_background][cpu] Compiling..." << endl;
@@ -228,7 +228,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][get_background] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][get_background] " << (st2-st1) << endl;
         #endif
 
         cout << "[get_background][cpu] Realizing..." << endl;
@@ -237,7 +237,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_background] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_background] " << (st3-st2) << endl;
         #endif
 
         int bgArea = cv::countNonZero(im_ios[1]);
@@ -363,7 +363,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st4 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][get_rbc] " << (st4-st3+st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][get_rbc] " << (st4-st3+st1-st0) << endl;
         #endif
         
         cout << "[get_rbc][cpu] Compiling..." << endl;
@@ -371,7 +371,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st5 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][get_rbc] " << (st5-st4+st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][get_rbc] " << (st5-st4+st2-st1) << endl;
         #endif
 
         cout << "[get_rbc][cpu] Realizing propagation..." << endl;
@@ -380,7 +380,7 @@ static struct : RTF::HalGen {
         
         #ifdef PROFILING_STAGES
         long st6 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_rbc] " << (st6-st5+st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_rbc] " << (st6-st5+st3-st2) << endl;
         #endif
 
         return false;
@@ -428,7 +428,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][invert] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][invert] " << (st1-st0) << endl;
         #endif
         
         cout << "[invert][cpu] Compiling..." << endl;
@@ -436,7 +436,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][invert] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][invert] " << (st2-st1) << endl;
         #endif
         
         cout << "[invert][cpu] Realizing..." << endl;
@@ -445,7 +445,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][invert] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][invert] " << (st3-st2) << endl;
         #endif
 
         return false;
@@ -512,7 +512,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][erode] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][erode] " << (st1-st0) << endl;
         #endif
         
         cout << "[erode][cpu] Compiling..." << endl;
@@ -520,7 +520,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
         #endif
 
         cout << "[erode][cpu] Realizing..." << endl;
@@ -529,7 +529,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
         #endif
 
         return false;
@@ -591,7 +591,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][dilate] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][dilate] " << (st1-st0) << endl;
         #endif
         
         cout << "[dilate][cpu] Compiling..." << endl;
@@ -599,7 +599,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][dilate] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][dilate] " << (st2-st1) << endl;
         #endif
 
         cout << "[dilate][cpu] Realizing..." << endl;
@@ -608,7 +608,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
         #endif
 
         return false;
@@ -659,7 +659,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_PREP][pre_fill_holes] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][pre_fill_holes] " << (st1-st0) << endl;
         #endif
         
         cout << "[pre_fill_holes][cpu] Compiling..." << endl;
@@ -667,7 +667,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_COMP][pre_fill_holes] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][pre_fill_holes] " << (st2-st1) << endl;
         #endif
 
         cout << "[pre_fill_holes][cpu] Realizing..." << endl;
@@ -676,7 +676,7 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes] " << (st3-st2) << endl;
         #endif
 
         return false;
@@ -728,29 +728,33 @@ static struct : RTF::HalGen {
         Halide::Buffer<uint8_t> hI;
         Halide::Buffer<uint8_t> hJ;
         Halide::Buffer<uint8_t> hOut;
-        if (exOpt == CPU || exOpt == CPU_REORDER) {
+        // if (exOpt == CPU || exOpt == CPU_REORDER) {
+        if (target == ExecEngineConstants::CPU) {
+            exOpt = CPU_REORDER;
             // Wraps the input and output cv::mat's with halide buffers
             hI = mat2buf<uint8_t>(cvI, "hI");
             hJ = mat2buf<uint8_t>(cvJ, "hJ1");
             hOut = mat2buf<uint8_t>(cvOut, "hOut");
-        } else if (exOpt == GPU || exOpt == GPU_REORDER) {
+        // } else if (exOpt == GPU || exOpt == GPU_REORDER) {
+        } else if (target == ExecEngineConstants::GPU) {
             #ifdef WITH_CUDA
-            Halide::Target target = Halide::get_host_target();
-            target.set_feature(Halide::Target::CUDA);
+            exOpt = GPU_REORDER;
+            Halide::Target hTtarget = Halide::get_host_target();
+            hTtarget.set_feature(Halide::Target::CUDA);
 
             // Upload inputs to gpu memory
             cvDevI.upload(*cvI);
             cvDevJ.upload(*cvJ);
  
             // Create halide wrappers for the gpu mat's
-            hI = gpuMat2buf<uint8_t>(cvDevI, target, "hI");
-            hJ = gpuMat2buf<uint8_t>(cvDevJ, target, "hJ1");
+            hI = gpuMat2buf<uint8_t>(cvDevI, hTtarget, "hI");
+            hJ = gpuMat2buf<uint8_t>(cvDevJ, hTtarget, "hJ1");
             #else
             std::cout << "No cuda support" << std::endl;
             exit(-1);
             #endif // WITH_CUDA
         }
-        loopedIwppRecon(exOpt, hI, hJ, hOut, cvDevJ, *cvOut);
+        loopedIwppRecon(target, exOpt, hI, hJ, hOut, cvDevJ, *cvOut);
 
         return false;
     }

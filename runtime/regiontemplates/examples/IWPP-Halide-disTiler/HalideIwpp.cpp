@@ -62,8 +62,9 @@ Halide::Func halSum(Halide::Buffer<T>& JJ) {
 
 #define PROFILING_STAGES2
 template <typename T>
-int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ,
-    Halide::Buffer<T>& hOut, cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut) {
+int loopedIwppRecon(Target_t target, IwppExec exOpt, Halide::Buffer<T>& II, 
+    Halide::Buffer<T>& JJ,Halide::Buffer<T>& hOut, cv::cuda::GpuMat& cvDevJ, 
+    cv::Mat& cvHostOut) {
 
     // Initial time
     long st0, st1, st2, st3, st4, st5;
@@ -95,12 +96,11 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     std::cout << "size: " << h << "x" << w << std::endl;
 
     // Scheduling variables
-    Halide::Target target = Halide::get_host_target();
+    Halide::Target hTarget = Halide::get_host_target();
     Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
     
-    int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
-
     if (exOpt == CPU || exOpt == CPU_REORDER) {
+        int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
         // Schedules Raster
         rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
         rasterx.update(0).split(prop.y, ryo, ryi, sFactor, 
@@ -126,13 +126,19 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         }
     } else if (exOpt == GPU || exOpt == GPU_REORDER) {
         #ifdef WITH_CUDA
-        target.set_feature(Halide::Target::CUDA);
+        hTarget.set_feature(Halide::Target::CUDA);
 
-        std::cout << "[IWPP] With CUDA" << std::endl;
+        std::cout << "[" << target << "][IWPP] With CUDA" << std::endl;
 
-        int minYScanlines = 512;
-        int minXsize = 512; // for reordering
+        // int minYScanlines = 200;
+        // int minXsize = 200; // for reordering
+        int expected = 1664; // GTX 970
+        int minYScanlines = sqrt(h*w/expected) * 0.85;
+        int minXsize = minYScanlines; // for reordering
         int threadsSize = 32; // for no reordering
+        std::cout << "[" << target << "][IWPP] Tile size: " 
+            << minYScanlines << std::endl;
+
         
         // Schedules Raster
         rasterx.gpu_blocks(y).gpu_threads(x);
@@ -144,7 +150,7 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines, 
             Halide::TailStrategy::GuardWithIf);
         if (exOpt == GPU_REORDER) {
-            std::cout << "[IWPP] With reorder" << std::endl;
+            std::cout << "[" << target << "][IWPP] With reorder" << std::endl;
             rasterx.update(0).split(prop.x, rxo, rxi, minXsize, 
                 Halide::TailStrategy::GuardWithIf);
             rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
@@ -169,11 +175,11 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         #endif
     }
 
-    rasterx.compile_jit(target);
-    arasterx.compile_jit(target);
+    rasterx.compile_jit(hTarget);
+    arasterx.compile_jit(hTarget);
 
-    //rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML, target);
-    //arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML, target);
+    //rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML, hTarget);
+    //arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML, hTarget);
 
     // Halide compilation time
     st1 = Util::ClockGetTime();
@@ -191,10 +197,11 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         // Initial iteration time
         st2 = Util::ClockGetTime();
 
-        // Realize each raster separately for avoiding allocation of temporary buffers
-        // between stages (courtesy of the required compute_root between stages)
-        // This is better given that every stage can be updated in-place (i.e., perfect
-        // data independence for the opposite coordinate of each raster)
+        // Realize each raster separately for avoiding allocation of temporary 
+        // buffers between stages (courtesy of the required compute_root between 
+        // stages). This is better given that every stage can be updated in-place 
+        // (i.e., perfect data independence for the opposite coordinate of 
+        // each raster)
         sti0 = Util::ClockGetTime();
         rasterx.realize(JJ);
         sti1 = Util::ClockGetTime();
@@ -225,10 +232,14 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
         st5 = Util::ClockGetTime();
         
         //#ifdef IT_DEBUG
-        cout << "[PROFILING] it: " << it << ", sum = " << newSum << std::endl;
-        cout << "[PROFILING][IWPP_PROP_TIME] " << (st3-st2) << endl;
-        cout << "[PROFILING][IWPP_SUM_TIME] " << (st5-st3) << endl;
-        cout << "[PROFILING][IWPP_FULL_IT_TIME] " << (st5-st2) << std::endl;
+        cout << "[" << target << "][PROFILING] it: " << it << ", sum = " 
+            << newSum << std::endl;
+        cout << "[" << target << "][PROFILING][IWPP_PROP_TIME] " 
+            << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][IWPP_SUM_TIME] " 
+            << (st5-st3) << endl;
+        cout << "[" << target << "][PROFILING][IWPP_FULL_IT_TIME] " 
+            << (st5-st2) << std::endl;
         //#endif
 
     } while(newSum != oldSum);
@@ -244,14 +255,19 @@ int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<T>& II, Halide::Buffer<T>& JJ
     // Final iwpp time
     long st6 = Util::ClockGetTime();
 
-    std::cout << "[PROFILING][IWPP] iterations: " << it << std::endl;
-    std::cout << "[PROFILING][IWPP_COMP] " << (st1-st0) << std::endl;
-    std::cout << "[PROFILING][IWPP_EXEC] " << (st6-st1) << std::endl;
-    std::cout << "[PROFILING][IWPP_FULL] " << (st6-st0) << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP] iterations: " 
+        << it << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP_COMP] " 
+        << (st1-st0) << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP_EXEC] " 
+        << (st6-st1) << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP_FULL] " 
+        << (st6-st0) << std::endl;
 
     return 0;
 }
 
-template int loopedIwppRecon(IwppExec exOpt, Halide::Buffer<unsigned char>& II, 
-    Halide::Buffer<unsigned char>& JJ, Halide::Buffer<unsigned char>& hOut,
-    cv::cuda::GpuMat& cvDevJ, cv::Mat& cvHostOut);
+template int loopedIwppRecon(Target_t target, IwppExec exOpt, 
+    Halide::Buffer<unsigned char>& II, Halide::Buffer<unsigned char>& JJ,
+    Halide::Buffer<unsigned char>& hOut, cv::cuda::GpuMat& cvDevJ, 
+    cv::Mat& cvHostOut);
