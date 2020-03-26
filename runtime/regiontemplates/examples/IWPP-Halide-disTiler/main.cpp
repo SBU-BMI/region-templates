@@ -586,25 +586,42 @@ static struct : RTF::HalGen {
 
         // Schedules
         Halide::Var t;
-        dilate.tile(x, y, xo, yo, xi, yi, 16, 16);
-        dilate.fuse(xo,yo,t).parallel(t);
+        Halide::Target hTarget = Halide::get_host_target();
+        if (target == ExecEngineConstants::CPU) {
+            dilate.tile(x, y, xo, yo, xi, yi, 16, 16);
+            dilate.fuse(xo,yo,t).parallel(t);
+        } else if (target == ExecEngineConstants::GPU) {
+            hTarget.set_feature(Halide::Target::CUDA);
+            hTarget.set_feature(Halide::Target::Debug);
+            hOut.set_host_dirty();
+            dilate.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
+        }
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
         cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][dilate] " << (st1-st0) << endl;
         #endif
         
-        cout << "[dilate][cpu] Compiling..." << endl;
-        dilate.compile_jit();
+        string st;
+        if (target == ExecEngineConstants::CPU)
+            st = "cpu";
+        else if (target == ExecEngineConstants::GPU)
+            st = "gpu";
+
+        cout << "[dilate][" << st << "] Compiling..." << endl;
+        dilate.compile_jit(hTarget);
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
         cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][dilate] " << (st2-st1) << endl;
         #endif
 
-        cout << "[dilate][cpu] Realizing..." << endl;
+        cout << "[dilate][" << st << "] Realizing..." << endl;
         dilate.realize(hOut);
-        cout << "[dilate][cpu] Done..." << endl;
+        // if (target == ExecEngineConstants::GPU)
+        hOut.copy_to_host();
+        cv::imwrite("dilateout.png", im_ios[1]);
+        cout << "[dilate][" << st << "] Done..." << endl;
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
