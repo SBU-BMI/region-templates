@@ -88,13 +88,18 @@ int fixedGrid(int64_t nTiles, int64_t w, int64_t h, int64_t mw, int64_t mh,
     int64_t tw = floor(w/xTiles);
     int64_t th = floor(h/yTiles);
 
-    #ifdef DEBUG
+    // #ifdef DEBUG
     std::cout << "Full size:" << w << "x" << h << std::endl;
+    std::cout << "mw:" << mw << std::endl;
+    std::cout << "w:" << w << std::endl;
+    std::cout << "mh:" << mh << std::endl;
+    std::cout << "h:" << h << std::endl;
+
     std::cout << "xTiles:" << xTiles << std::endl;
     std::cout << "yTiles:" << yTiles << std::endl;
     std::cout << "tw:" << tw << std::endl;
     std::cout << "th:" << th << std::endl;
-    #endif
+    // #endif
 
     // Create regular tiles, except the last line and column
     for (int ti=0; ti<yTiles; ti++) {

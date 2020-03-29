@@ -68,30 +68,35 @@ void HybridDenseTiledRTCollection::customTiling() {
         // Performs actual dense tiling
         switch (this->tilingAlg) {
             case FIXED_GRID_TILING: {
-                std::cout << "[====================] Expected tiles: cpu " 
+                std::cout << "[HDT][FIXED_GRID_TILING] Expected tiles: cpu " 
                     << this->nCpuTiles << ", gpu " << this->nGpuTiles 
                     << std::endl;
+                std::cout << "[HDT][FIXED_GRID_TILING] Img size " 
+                    << h << "x" << w << std::endl;
+
+                // Percentage of gpu tile
+                float f = 0.6;
 
                 // Tile gpu subimage (top half)
-                long gw = h>w ? w : w/2;
+                long gw = h>w ? w : w*f;
                 long gmw = 0;
-                long gh = h>w ? h/2 : h;
+                long gh = h>w ? h*f : h;
                 long gmh = 0;
-                std::cout << "[====================] gpu tiles:" << std::endl;
+                std::cout << "[HDT][FIXED_GRID_TILING] gpu tiles:" << std::endl;
                 fixedGrid(this->nGpuTiles, gw, gh, gmw, gmh, finalTiles);
 
                 // Tile cpu subimage (second half)
-                long cw  = h>w ? w : w/2;
-                long cmw = h>w ? 0 : w/2;
-                long ch  = h>w ? h/2 : h;
-                long cmh = h>w ? h/2 : 0;
-                std::cout << "[====================] cpu tiles:" << std::endl;
+                long cw  = h>w ? w : w-w*f;
+                long cmw = h>w ? 0 : w*f;
+                long ch  = h>w ? h-h*f : h;
+                long cmh = h>w ? h*f : 0;
+                std::cout << "[HDT][FIXED_GRID_TILING] cpu tiles:" << std::endl;
                 fixedGrid(this->nCpuTiles, cw, ch, cmw, cmh, finalTiles);
 
                 break;
             }
             case LIST_ALG_EXPECT: {
-                std::cout << "[HybridDenseTiledRTCollection] Tiling for cpu="
+                std::cout << "[HDT][LIST_ALG_EXPECT] Tiling for cpu="
                     << this->nCpuTiles << ":" << this->cpuPATS << ", gpu="
                     << this->nGpuTiles << ":" << this->gpuPATS << std::endl;
                 listCutting(thMask, tiles, this->nCpuTiles, this->nGpuTiles, 
@@ -106,8 +111,8 @@ void HybridDenseTiledRTCollection::customTiling() {
                 break;
             }
             default:
-                std::cout << "[HybridDenseTiledRTCollection] Can only tile with " 
-                    << "LIST_ALG_EXPECT algorithm." << std::endl;
+                std::cout << "[HybridDenseTiledRTCollection] Invalid dense " 
+                    << "tiling algorithm." << std::endl;
                 exit(-1);
         }
 

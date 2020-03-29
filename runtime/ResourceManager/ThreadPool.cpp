@@ -568,8 +568,8 @@ void ThreadPool::processTasks(int procType, int tid)
 #ifdef PROFILING
 	int mpi_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-	cout << "[PROFILING][TASK_EXEC][R" << mpi_rank << "] " 
-		 << sumOfExecTimes << endl;
+	cout << "[PROFILING][TASK_EXEC][R" << mpi_rank << "][T" 
+		 << procType << "] " << sumOfExecTimes << endl;
 #endif
 
 	printf("Leaving procType:%d  tid:%d #t_pending=%d\n", procType, tid, this->execEngine->getCountTasksPending());

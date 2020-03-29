@@ -1111,7 +1111,8 @@ int main(int argc, char *argv[]) {
             {new ArgumentInt(blue), new ArgumentInt(green), 
              new ArgumentInt(red), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&get_background}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
         
         // rbc = get_rbc(input)
@@ -1119,7 +1120,8 @@ int main(int argc, char *argv[]) {
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtBackground, rtRBC}, 
             {new ArgumentFloat(T1), new ArgumentFloat(T2), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&get_rbc}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage1.after(&stage0);
         stage1.genStage(sysEnv);
 
@@ -1128,7 +1130,8 @@ int main(int argc, char *argv[]) {
         RTF::AutoStage stage2({tCollImg->getRT(i).second, rtRBC, rtRC}, 
             {new ArgumentInt(0), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&invert}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage2.after(&stage1);
         stage2.genStage(sysEnv);
         
@@ -1139,7 +1142,8 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&erode}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage3.after(&stage2);
         stage3.genStage(sysEnv);
         RTF::AutoStage stage4({rtEroded, rtRcOpen}, 
@@ -1147,7 +1151,8 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&dilate}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
@@ -1163,7 +1168,8 @@ int main(int argc, char *argv[]) {
         RTF::AutoStage stage6({rtRecon, rtRC, rtPreFill}, 
             {new ArgumentInt(G1), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&pre_fill_holes}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage6.after(&stage5);
         stage6.genStage(sysEnv);
 
@@ -1175,7 +1181,8 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(se3raw, se3raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&dilate}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage7.after(&stage6);
         stage7.genStage(sysEnv);
         RTF::AutoStage stage8({rtPreFill2, rtBw1}, 
@@ -1183,7 +1190,8 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(se3raw, se3raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&erode}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            ExecEngineConstants::CPU, i);
+            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage8.after(&stage7);
         stage8.genStage(sysEnv);
 
