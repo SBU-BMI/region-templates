@@ -75,7 +75,7 @@ void HybridDenseTiledRTCollection::customTiling() {
                     << h << "x" << w << std::endl;
 
                 // Percentage of gpu tile
-                float f = 0.6;
+                float f = 0.5;
 
                 // Tile gpu subimage (top half)
                 long gw = h>w ? w : w*f;

@@ -51,6 +51,7 @@ inline Target_t tgt(TilingAlgorithm_t tilingAlg, Target_t target) {
         case HYBRID_RESSPLIT:
             return target;
     }
+    // return ExecEngineConstants::GPU;
 }
 
 int findArgPos(std::string s, int argc, char** argv) {
@@ -220,7 +221,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][get_background] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_PREP][get_background] " << (st1-st0) << endl;
         #endif
         
         cout << "[get_background][cpu] Compiling..." << endl;
@@ -228,7 +230,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][get_background] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_COMP][get_background] " << (st2-st1) << endl;
         #endif
 
         cout << "[get_background][cpu] Realizing..." << endl;
@@ -237,7 +240,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_background] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_EXEC][get_background] " << (st3-st2) << endl;
         #endif
 
         int bgArea = cv::countNonZero(im_ios[1]);
@@ -363,7 +367,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st4 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][get_rbc] " << (st4-st3+st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_PREP][get_rbc] " << (st4-st3+st1-st0) << endl;
         #endif
         
         cout << "[get_rbc][cpu] Compiling..." << endl;
@@ -371,7 +376,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st5 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][get_rbc] " << (st5-st4+st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_COMP][get_rbc] " << (st5-st4+st2-st1) << endl;
         #endif
 
         cout << "[get_rbc][cpu] Realizing propagation..." << endl;
@@ -380,7 +386,8 @@ static struct : RTF::HalGen {
         
         #ifdef PROFILING_STAGES
         long st6 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][get_rbc] " << (st6-st5+st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_EXEC][get_rbc] " << (st6-st5+st3-st2) << endl;
         #endif
 
         return false;
@@ -395,7 +402,8 @@ static struct : RTF::HalGen {
                  std::vector<ArgumentBase*>& params) {
 
         if (im_ios.size() != 3) {
-            std::cout << "[invert] missing RTs: input, abortion flag, output" << std::endl;
+            std::cout << "[invert] missing RTs: input, abortion flag, output" 
+                << std::endl;
             exit(-1);
         }
 
@@ -428,7 +436,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][invert] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+            << "][STAGE_HAL_PREP][invert] " << (st1-st0) << endl;
         #endif
         
         cout << "[invert][cpu] Compiling..." << endl;
@@ -436,7 +445,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][invert] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+            << "][STAGE_HAL_COMP][invert] " << (st2-st1) << endl;
         #endif
         
         cout << "[invert][cpu] Realizing..." << endl;
@@ -445,7 +455,8 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][invert] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+            << "][STAGE_HAL_EXEC][invert] " << (st3-st2) << endl;
         #endif
 
         return false;
@@ -507,29 +518,50 @@ static struct : RTF::HalGen {
 
         // Schedules
         Halide::Var t;
-        erode.tile(x, y, xo, yo, xi, yi, 16, 16);
-        erode.fuse(xo,yo,t).parallel(t);
+        Halide::Target hTarget = Halide::get_host_target();
+        if (target == ExecEngineConstants::CPU) {
+            erode.tile(x, y, xo, yo, xi, yi, 16, 16);
+            erode.fuse(xo,yo,t).parallel(t);
+        } else if (target == ExecEngineConstants::GPU) {
+            hTarget.set_feature(Halide::Target::CUDA);
+            // hTarget.set_feature(Halide::Target::Debug);
+            hIn.set_host_dirty(); // Forcing copy from host to dev
+            hOut.set_host_dirty();
+            hSE.set_host_dirty();
+            erode.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
+        }
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][erode] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+            << "][STAGE_HAL_PREP][erode] " << (st1-st0) << endl;
         #endif
+
+        string st;
+        if (target == ExecEngineConstants::CPU)
+            st = "cpu";
+        else if (target == ExecEngineConstants::GPU)
+            st = "gpu";
         
-        cout << "[erode][cpu] Compiling..." << endl;
-        erode.compile_jit();
+        cout << "[erode][" << st << "] Compiling..." << endl;
+        erode.compile_jit(hTarget);
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
         #endif
 
-        cout << "[erode][cpu] Realizing..." << endl;
+        cout << "[erode][" << st << "] Realizing..." << endl;
         erode.realize(hOut);
-        cout << "[erode][cpu] Done..." << endl;
+        if (target == ExecEngineConstants::GPU)
+            hOut.copy_to_host();
+        cout << "[erode][" << st << "] Done..." << endl;
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
         #endif
 
         return false;
@@ -542,9 +574,6 @@ static struct : RTF::HalGen {
     // int getTarget() {return ExecEngineConstants::CPU;}
     bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
-
-        // Force CPU for now
-        target = ExecEngineConstants::CPU;
 
         #ifdef PROFILING_STAGES
         long st0 = Util::ClockGetTime();
@@ -586,6 +615,7 @@ static struct : RTF::HalGen {
         Halide::Expr yc = clamp(y, seHeight, hIn.height()-seHeight);
         Halide::RDom se(0, hSE.width()-1, 0, hSE.height()-1);
         dilate(x,y) = maximum(mask(xc,yc,se.x,se.y));
+        // dilate(x,y) = hIn(x,y);
 
         // Schedules
         Halide::Var t;
@@ -595,15 +625,17 @@ static struct : RTF::HalGen {
             dilate.fuse(xo,yo,t).parallel(t);
         } else if (target == ExecEngineConstants::GPU) {
             hTarget.set_feature(Halide::Target::CUDA);
-            hTarget.set_feature(Halide::Target::Debug);
-            hIn.set_device_dirty();
+            // hTarget.set_feature(Halide::Target::Debug);
+            hIn.set_host_dirty(); // Forcing copy from host to dev
             hOut.set_host_dirty();
+            hSE.set_host_dirty();
             dilate.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
         }
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][dilate] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_PREP][dilate] " << (st1-st0) << endl;
         #endif
         
         string st;
@@ -617,23 +649,21 @@ static struct : RTF::HalGen {
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][dilate] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_COMP][dilate] " << (st2-st1) << endl;
         #endif
 
         cout << "[dilate][" << st << "] Realizing..." << endl;
         dilate.realize(hOut);
-        // if (target == ExecEngineConstants::GPU)
-        hOut.copy_to_host();
-        cv::imwrite("dilateout.png", im_ios[1]);
+        if (target == ExecEngineConstants::GPU)
+            hOut.copy_to_host();
         cout << "[dilate][" << st << "] Done..." << endl;
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
         #endif
-
-        if (target == ExecEngineConstants::GPU)
-            exit(-1);
 
         return false;
     }
@@ -677,30 +707,51 @@ static struct : RTF::HalGen {
 
         // Schedules
         preFill.compute_root();
+        Halide::Target hTarget = Halide::get_host_target();
         Halide::Var t, xo, yo, xi, yi;
-        preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
-        preFill.fuse(xo,yo,t).parallel(t);
+        if (target == ExecEngineConstants::CPU) {
+            preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
+            preFill.fuse(xo,yo,t).parallel(t);
+        } else if (target == ExecEngineConstants::GPU) {
+            hTarget.set_feature(Halide::Target::CUDA);
+            // hTarget.set_feature(Halide::Target::Debug);
+            hRecon.set_host_dirty(); // Forcing copy from host to dev
+            hRC.set_host_dirty();
+            hOut.set_host_dirty();
+            preFill.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
+        }
 
         #ifdef PROFILING_STAGES
         long st1 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_PREP][pre_fill_holes] " << (st1-st0) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+             << "][STAGE_HAL_PREP][pre_fill_holes] " << (st1-st0) << endl;
         #endif
+
+        string st;
+        if (target == ExecEngineConstants::CPU)
+            st = "cpu";
+        else if (target == ExecEngineConstants::GPU)
+            st = "gpu";
         
-        cout << "[pre_fill_holes][cpu] Compiling..." << endl;
-        preFill.compile_jit();
+        cout << "[pre_fill_holes][" << st << "] Compiling..." << endl;
+        preFill.compile_jit(hTarget);
 
         #ifdef PROFILING_STAGES
         long st2 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_COMP][pre_fill_holes] " << (st2-st1) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+            << "][STAGE_HAL_COMP][pre_fill_holes] " << (st2-st1) << endl;
         #endif
 
-        cout << "[pre_fill_holes][cpu] Realizing..." << endl;
+        cout << "[pre_fill_holes][" << st << "] Realizing..." << endl;
         preFill.realize(hOut);
-        cout << "[pre_fill_holes][cpu] Done..." << endl;
+        if (target == ExecEngineConstants::GPU)
+            hOut.copy_to_host();
+        cout << "[pre_fill_holes][" << st << "] Done..." << endl;
 
         #ifdef PROFILING_STAGES
         long st3 = Util::ClockGetTime();
-        cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][pre_fill_holes] " << (st3-st2) << endl;
+        cout << "[" << target << "][PROFILING][" << tileId 
+            << "][STAGE_HAL_EXEC][pre_fill_holes] " << (st3-st2) << endl;
         #endif
 
         return false;
@@ -1114,7 +1165,7 @@ int main(int argc, char *argv[]) {
             ExecEngineConstants::CPU, i);
             // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
-        
+
         // rbc = get_rbc(input)
         // Added rtBackground for aborting signal
         RTF::AutoStage stage1({tCollImg->getRT(i).second, rtBackground, rtRBC}, 
@@ -1142,8 +1193,7 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&erode}, 
-            ExecEngineConstants::CPU, i);
-            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage3.after(&stage2);
         stage3.genStage(sysEnv);
         RTF::AutoStage stage4({rtEroded, rtRcOpen}, 
@@ -1151,8 +1201,7 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&dilate}, 
-            ExecEngineConstants::CPU, i);
-            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage4.after(&stage3);
         stage4.genStage(sysEnv);
 
@@ -1168,8 +1217,7 @@ int main(int argc, char *argv[]) {
         RTF::AutoStage stage6({rtRecon, rtRC, rtPreFill}, 
             {new ArgumentInt(G1), new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&pre_fill_holes}, 
-            ExecEngineConstants::CPU, i);
-            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage6.after(&stage5);
         stage6.genStage(sysEnv);
 
@@ -1181,8 +1229,7 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(se3raw, se3raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&dilate}, 
-            ExecEngineConstants::CPU, i);
-            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage7.after(&stage6);
         stage7.genStage(sysEnv);
         RTF::AutoStage stage8({rtPreFill2, rtBw1}, 
@@ -1190,8 +1237,7 @@ int main(int argc, char *argv[]) {
              new ArgumentIntArray(se3raw, se3raw_size),
              new ArgumentInt(i)}, 
             {tiles[i].height, tiles[i].width}, {&erode}, 
-            ExecEngineConstants::CPU, i);
-            // tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
         stage8.after(&stage7);
         stage8.genStage(sysEnv);
 
