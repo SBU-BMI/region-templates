@@ -543,6 +543,9 @@ static struct : RTF::HalGen {
     bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
 
+        // Force CPU for now
+        target = ExecEngineConstants::CPU;
+
         #ifdef PROFILING_STAGES
         long st0 = Util::ClockGetTime();
         #endif
@@ -593,6 +596,7 @@ static struct : RTF::HalGen {
         } else if (target == ExecEngineConstants::GPU) {
             hTarget.set_feature(Halide::Target::CUDA);
             hTarget.set_feature(Halide::Target::Debug);
+            hIn.set_device_dirty();
             hOut.set_host_dirty();
             dilate.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
         }
@@ -627,6 +631,9 @@ static struct : RTF::HalGen {
         long st3 = Util::ClockGetTime();
         cout << "[" << target << "][PROFILING][" << tileId << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
         #endif
+
+        if (target == ExecEngineConstants::GPU)
+            exit(-1);
 
         return false;
     }
@@ -912,7 +919,7 @@ int main(int argc, char *argv[]) {
     // Number of gpu threads
     int gpuThreads = 1;
     if (findArgPos("-g", argc, argv) != -1) {
-        cpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
+        gpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
     }
 
     // Number of expected dense tiles for irregular tiling

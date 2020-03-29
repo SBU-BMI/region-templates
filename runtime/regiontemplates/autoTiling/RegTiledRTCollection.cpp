@@ -114,33 +114,9 @@ void RegTiledRTCollection::customTiling() {
         std::list<cv::Rect_<int64_t>> rois;
 
         // Calculates the tiles sizes given the nTiles
-        float k;
-        if (this->nTiles > 1) {
-            // Finds the best fit for square tiles that match nTiles by the 
-            // equation:
-            //    nTiles = nx(number of divisions on x) * ny(same on y)
-            //    e.g., 6 tiles organized as a 2x3 grid has nx=2 and ny=3
-            // Assuming that nx = k and ny = nTiles/k (arbitrary k with 
-            // 1<=k<=nTiles) we must find k that minimizes the sum of all 
-            // perimeters of the generated tiles, thus making them square.
-            // Being Sc(sum of perimeters) = 2(tw+th)*(nx*ny), and taking 
-            // the first derivative Sc'=0 we have that the value of k for 
-            // Sc minimal is:
-            k = sqrt((float)this->nTiles*(float)h/(float)w);
-
-            // ... Actually, since nx and ny are floats, we won't use these 
-            // ... equations below.
-            // // As such, we can calculate the tiles sizes
-            // this->tw = min(floor((float)k*(float)w/(float)this->nTiles), 
-            //     (float)w);
-            // this->th = min(floor((float)h/k), (float)h);
-
-            // std::cout << "w: " << w << ", h: " << h << std::endl;
-            // std::cout << "k = " << k << ", sizes = " << this->tw 
-            //     << ", " << this->th << std::endl;
-            // std::cout << "nx: " << k << ", ny: " << nTiles/k << std::endl;
-        } else {
-            std::list<cv::Rect_<int64_t>> rois;
+        int64_t xTiles;
+        int64_t yTiles;
+        if (this->nTiles <= 1) {
             cv::Rect_<int64_t> r;
             r.x = 0;
             r.width = ratiow*w;
@@ -156,122 +132,8 @@ void RegTiledRTCollection::customTiling() {
             openslide_close(osr);
 
             return;
-        }
-
-        // Determine the number of tile levels to be had by getting the best
-        // possible approximation. Since nx and ny are floats, we must first
-        // round them. There are four rounding possibilities (the combinations 
-        // of floor and ceil for each coord). Each one is tested to find the 
-        // combination which results in the closest number of resulting tiles
-        // to nTiles. If there are two possibilities with the same number of 
-        // tiles, the one with the smallest perimeter is chosen.
-
-        int xTiles;
-        int yTiles;
-        int curNt;
-        int bestPrm;
-
-        // Get the info for the first combination
-        int xTilesTmp = floor(nTiles/k);
-        int yTilesTmp = floor(k);
-        int curNtTmp = xTilesTmp * yTilesTmp;
-        long curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-
-        // Set the first combination as the first best
-        xTiles = xTilesTmp;
-        yTiles = yTilesTmp;
-        curNt = curNtTmp;
-        bestPrm = curPrm;
-
-        // Check if the second combination is better
-        xTilesTmp = floor(nTiles/k);
-        yTilesTmp = ceil(k);
-        curNtTmp = xTilesTmp * yTilesTmp;
-        curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-        // If the number of tiles is better or if it is the same as the best, 
-        // but has better perimeter (less)
-        if (abs(curNtTmp-nTiles) < abs(curNt-nTiles) ||
-            (abs(curNtTmp-nTiles) == abs(curNt-nTiles) && curPrm < bestPrm) ) {
-            xTiles = xTilesTmp;
-            yTiles = yTilesTmp;
-            curNt = curNtTmp;
-            bestPrm = curPrm;
-        }
-
-        // Check if the third combination is better
-        xTilesTmp = ceil(nTiles/k);
-        yTilesTmp = floor(k);
-        curNtTmp = xTilesTmp * yTilesTmp;
-        curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-        // If the number of tiles is better or if it is the same as the best, 
-        // but has better perimeter (less)
-        if (abs(curNtTmp-nTiles) < abs(curNt-nTiles) ||
-            (abs(curNtTmp-nTiles) == abs(curNt-nTiles) && curPrm < bestPrm) ) {
-            xTiles = xTilesTmp;
-            yTiles = yTilesTmp;
-            curNt = curNtTmp;
-            bestPrm = curPrm;
-        }
-
-        // Check if the fourth combination is better
-        xTilesTmp = ceil(nTiles/k);
-        yTilesTmp = ceil(k);
-        curNtTmp = xTilesTmp * yTilesTmp;
-        curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-        // If the number of tiles is better or if it is the same as the best, 
-        // but has better perimeter (less)
-        if (abs(curNtTmp-nTiles) < abs(curNt-nTiles) ||
-            (abs(curNtTmp-nTiles) == abs(curNt-nTiles) && curPrm < bestPrm) ) {
-            xTiles = xTilesTmp;
-            yTiles = yTilesTmp;
-            curNt = curNtTmp;
-            bestPrm = curPrm;
-        }
-
-        // Updates the tile sizes for the best configuration
-        this->tw = floor(w/xTiles);
-        this->th = floor(h/yTiles);
-
-#ifdef DEBUG
-        std::cout << "Full size:" << w << "x" << h << std::endl;
-        std::cout << "xTiles:" << xTiles << std::endl;
-        std::cout << "yTiles:" << yTiles << std::endl;
-        std::cout << "border:" << this->border << std::endl;
-        std::cout << "tw:" << this->tw << std::endl;
-        std::cout << "th:" << this->th << std::endl;
-#endif
-
-        // Check whether the border can generate an Out of Bounds (OoB)
-        if (this->border >= this->tw || this->border >= this->th) {
-            std::cout << "[RegTiledRTCollection] border must be less than "
-                      << "the size of the tile: tw=" << this->tw
-                      << ", th=" << this->th << ", border" 
-                      << this->border << std::endl;
-            exit(-1);
-        }
-
-        // Create regular tiles, except the last line and column
-        for (int ti=0; ti<yTiles; ti++) {
-            for (int tj=0; tj<xTiles; tj++) {
-                // Set the x and y rect coordinates, checking for OoB
-                int tjTmp = tj==0? 0 : tj*this->tw-this->border;
-                int tiTmp = ti==0? 0 : ti*this->th-this->border;
-
-                // Set the width and height no OoB check is required since
-                // this->border must be less than this->tw and this->th
-                int tjjTmp = tj==(xTiles-1)? w-tjTmp : this->tw+this->border;
-                int tiiTmp = ti==(yTiles-1)? h-tiTmp : this->th+this->border;
-
-                // Create the roi for the current tile
-                cv::Rect_<int64_t> roi(
-                    tjTmp, tiTmp, tjjTmp, tiiTmp);
-                rois.push_back(roi);
-#ifdef DEBUG
-                std::cout << "creating regular roi " << roi.x << "+" 
-                          << roi.width << "x" << roi.y << "+" 
-                          << roi.height << std::endl;
-#endif
-            }
+        } else {
+            fixedGrid(this->nTiles, w, h, 0, 0, rois);
         }
 
 // #ifdef PROFILING

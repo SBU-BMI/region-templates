@@ -53,10 +53,13 @@ void HybridDenseTiledRTCollection::customTiling() {
         ratiow /= w;
         ratioh /= h;
 
+        // Output tiles
+        std::list<cv::Rect_<int64_t> > finalTiles;
+
         // Creates a list of a single full-image tile for dense tiling
-        std::list<rect_t> finalTiles;
+        std::list<rect_t> tiles;
         cv::Mat thMask = bgm->bgMask(maskMat);
-        finalTiles.push_back({0, 0, maskMat.cols, maskMat.rows});
+        tiles.push_back({0, 0, maskMat.cols, maskMat.rows});
         
         // Ensure that thMask is a binary mat
         thMask.convertTo(thMask, CV_8U);
@@ -64,13 +67,42 @@ void HybridDenseTiledRTCollection::customTiling() {
 
         // Performs actual dense tiling
         switch (this->tilingAlg) {
-            // case LIST_ALG_HALF:
+            case FIXED_GRID_TILING: {
+                std::cout << "[====================] Expected tiles: cpu " 
+                    << this->nCpuTiles << ", gpu " << this->nGpuTiles 
+                    << std::endl;
+
+                // Tile gpu subimage (top half)
+                long gw = h>w ? w : w/2;
+                long gmw = 0;
+                long gh = h>w ? h/2 : h;
+                long gmh = 0;
+                std::cout << "[====================] gpu tiles:" << std::endl;
+                fixedGrid(this->nGpuTiles, gw, gh, gmw, gmh, finalTiles);
+
+                // Tile cpu subimage (second half)
+                long cw  = h>w ? w : w/2;
+                long cmw = h>w ? 0 : w/2;
+                long ch  = h>w ? h/2 : h;
+                long cmh = h>w ? h/2 : 0;
+                std::cout << "[====================] cpu tiles:" << std::endl;
+                fixedGrid(this->nCpuTiles, cw, ch, cmw, cmh, finalTiles);
+
+                break;
+            }
             case LIST_ALG_EXPECT: {
                 std::cout << "[HybridDenseTiledRTCollection] Tiling for cpu="
                     << this->nCpuTiles << ":" << this->cpuPATS << ", gpu="
                     << this->nGpuTiles << ":" << this->gpuPATS << std::endl;
-                listCutting(thMask, finalTiles, this->nCpuTiles, this->nGpuTiles, 
+                listCutting(thMask, tiles, this->nCpuTiles, this->nGpuTiles, 
                     this->cpuPATS, this->gpuPATS, this->cfunc);
+
+                // Convert rect_t to cv::Rect_
+                for (std::list<rect_t>::iterator r=tiles.begin(); 
+                        r!=tiles.end(); r++) {
+                    finalTiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+                }
                 break;
             }
             default:
@@ -79,30 +111,24 @@ void HybridDenseTiledRTCollection::customTiling() {
                 exit(-1);
         }
 
-// #ifdef PROFILING
-//         // Gets std-dev of all tiles' sizes
-//         stddev(finalTiles, thMask, "ALL");
-// #endif
+        // // Convert rect_t to cv::Rect_ and add borders
+        // std::list<cv::Rect_<int64_t> > tiles;
+        // for (std::list<rect_t>::iterator r=tiles.begin(); 
+        //         r!=tiles.end(); r++) {
 
-        // Convert rect_t to cv::Rect_ and add borders
-        std::list<cv::Rect_<int64_t> > tiles;
-        for (std::list<rect_t>::iterator r=finalTiles.begin(); 
-                r!=finalTiles.end(); r++) {
+        //     r->xi = std::max(r->xi-this->border, (int64_t)0);
+        //     r->xo = std::min(r->xo+this->border, (int64_t)thMask.cols);
+        //     r->yi = std::max(r->yi-this->border, (int64_t)0);
+        //     r->yo = std::min(r->yo+this->border, (int64_t)thMask.rows);
 
-            r->xi = std::max(r->xi-this->border, (int64_t)0);
-            r->xo = std::min(r->xo+this->border, (int64_t)thMask.cols);
-            r->yi = std::max(r->yi-this->border, (int64_t)0);
-            r->yo = std::min(r->yo+this->border, (int64_t)thMask.rows);
-
-            tiles.push_back(cv::Rect_<int64_t>(
-                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
-
-#define DEBUG
-#ifdef DEBUG
-            cv::rectangle(thMask, cv::Point(r->xi,r->yi), 
-                cv::Point(r->xo,r->yo),(255,255,255),3);
-#endif
-        }
+        //     tiles.push_back(cv::Rect_<int64_t>(
+        //         r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+            
+        //     #ifdef DEBUG
+        //     cv::rectangle(thMask, cv::Point(r->xi,r->yi), 
+        //         cv::Point(r->xo,r->yo),(255,255,255),3);
+        //     #endif
+        // }
 
 #ifdef DEBUG
         cv::imwrite("./maskf.png", thMask);
@@ -110,7 +136,7 @@ void HybridDenseTiledRTCollection::customTiling() {
 
         // Actually tile the image given the list of ROIs
         int drId=0;
-        for (cv::Rect_<int64_t> tile : tiles) {
+        for (cv::Rect_<int64_t> tile : finalTiles) {
             // Creates the tile name for the original svs file, if lazy
             std::string path = this->tilesPath;
 

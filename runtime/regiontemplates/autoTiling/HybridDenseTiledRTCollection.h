@@ -13,6 +13,7 @@
 #include "costFuncs/BGMasker.h"
 #include "CostFunction.h"
 #include "tilingAlgs/tilingUtil.h"
+#include "tilingAlgs/fixedGrid.h"
 #include "tilingAlgs/listCutting.h"
 #include "tilingAlgs/kdTreeCutting.h"
 #include "tilingAlgs/quadTreeCutting.h"

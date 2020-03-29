@@ -29,7 +29,7 @@ set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp
     costFuncs/ThresholdBGCostFunction.cpp 
     svs/svsUtils.cpp tilingAlgs/tilingUtil.cpp tilingAlgs/denseFromBG.cpp 
     tilingAlgs/listCutting.cpp tilingAlgs/kdTreeCutting.cpp 
-    tilingAlgs/quadTreeCutting.cpp)
+    tilingAlgs/quadTreeCutting.cpp tilingAlgs/fixedGrid.cpp)
 
 # Creates autotiling lib
 set(libname autotiling)
