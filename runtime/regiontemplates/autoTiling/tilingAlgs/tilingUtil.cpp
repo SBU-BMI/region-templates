@@ -55,8 +55,8 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
     long cost2h = cfunc->cost(img, r.yi, r.yo, pivotx+1, r.xo);
     long areah;
 
-    std::cout << "lowerCost " << lowerCost << std::endl;
-    std::cout << "upperCost " << upperCost << std::endl;
+    // std::cout << "lowerCost " << lowerCost << std::endl;
+    // std::cout << "upperCost " << upperCost << std::endl;
 
     if (orient <= 0) {
 

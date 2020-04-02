@@ -102,13 +102,21 @@ void IrregTiledRTCollection::customTiling() {
             r->yi = std::max(r->yi-this->border, (int64_t)0);
             r->yo = std::min(r->yo+this->border, (int64_t)maskMat.rows);
 
+            // std::cout << r->xi << ":" << r->xo-r->xi+1 << ","
+            //     << r->yi << ":" << r->yo-r->yi+1 << std::endl;
+
             tiles.push_back(cv::Rect_<int64_t>(
-                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+                r->xi, r->yi, r->xo-r->xi+1, r->yo-r->yi+1));
         }
 
 #ifdef DEBUG
         cv::imwrite("./maskf.png", maskMat);
 #endif
+        // std::cout << "ratioh " << ratioh << std::endl;
+        // std::cout << "ratiow " << ratiow << std::endl;
+
+        // std::cout << "w0 " << w0 << std::endl;
+        // std::cout << "h0 " << h0 << std::endl;
 
         // Actually tile the image given the list of ROIs
         int drId=0;
@@ -117,23 +125,24 @@ void IrregTiledRTCollection::customTiling() {
             std::string path = this->tilesPath;
 
             // Converts the tile roi for the bigger image
-            // tile.x *= ratiow;
-            // tile.width *= ratiow;
-            // tile.y *= ratioh;
-            // tile.height *= ratioh;
+            tile.x *= ratiow;
+            tile.width *= ratiow;
+            tile.y *= ratioh;
+            tile.height *= ratioh;
 
-            tile.x = std::max((int64_t)floor(ratiow*tile.x), 
-                (int64_t)0);
-            if (ceil(tile.x+ratiow*tile.width) >= (int64_t)w0)
+            // std::cout << tile.x << ":" << tile.width << ","
+            //     << tile.y << ":" << tile.height << std::endl;
+
+            // tile.x = std::max((int64_t)floor(ratiow*(tile.x-1)+1), 
+            //     (int64_t)0);            
+            if (ceil(tile.x+tile.width) >= (int64_t)w0)
                 tile.width = (int64_t)(w0-tile.x);
-            else
-                tile.width = (int64_t)ceil(ratiow*tile.width);
-            tile.y = std::max((int64_t)floor(ratioh*tile.y), 
-                (int64_t)0);
-            if (ceil(tile.y+ratioh*tile.height) >= (int64_t)h0)
+            // tile.y = std::max((int64_t)floor(ratioh*tile.y), 
+            //     (int64_t)0);
+            if (ceil(tile.y+tile.height) >= (int64_t)h0)
                 tile.height = (int64_t)(h0-tile.y);
-            else
-                tile.height = (int64_t)ceil(ratioh*tile.height);
+            // else
+            //     tile.height = (int64_t)ceil(ratioh*tile.height);
 
             // Creates the dr as a svs data region for
             // lazy read/write of input file

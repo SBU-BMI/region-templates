@@ -114,8 +114,6 @@ void RegTiledRTCollection::customTiling() {
         std::list<cv::Rect_<int64_t>> rois;
 
         // Calculates the tiles sizes given the nTiles
-        int64_t xTiles;
-        int64_t yTiles;
         if (this->nTiles <= 1) {
             cv::Rect_<int64_t> r;
             r.x = 0;
