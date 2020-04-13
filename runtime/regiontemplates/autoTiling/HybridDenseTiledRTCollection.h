@@ -20,7 +20,6 @@
 
 class HybridDenseTiledRTCollection : public TiledRTCollection {
 private:
-    int border;
     int nCpuTiles; // Expected number of dense tiles by the end of te tiling
     int nGpuTiles; // Expected number of dense tiles by the end of te tiling
     float cpuPATS;
@@ -38,9 +37,9 @@ protected:
 
 public:
     HybridDenseTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int border, CostFunction* cfunc, BGMasker* bgm, 
-        TilerAlg_t tilingAlg=FIXED_GRID_TILING, int nCpuTiles=1, int nGpuTiles=1,
-        float cpuPATS=1.0, float gpuPATS=1.0);
+        std::string tilesPath, int64_t borders, CostFunction* cfunc, 
+        BGMasker* bgm, TilerAlg_t tilingAlg=FIXED_GRID_TILING, int nCpuTiles=1, 
+        int nGpuTiles=1, float cpuPATS=1.0, float gpuPATS=1.0);
 };
 
 #endif // HYBRID_DENSE_TILED_RT_COLLECTION_H_

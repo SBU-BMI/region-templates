@@ -18,7 +18,6 @@ class RegTiledRTCollection : public TiledRTCollection {
 private:
     int64_t tw;
     int64_t th;
-    int64_t border;
     int64_t nTiles;
 
 protected:
@@ -29,10 +28,10 @@ protected:
 
 public:
     RegTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t tw, int64_t th, int64_t border,
+        std::string tilesPath, int64_t tw, int64_t th, int64_t borders,
         CostFunction* cfunc);
     RegTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t nTiles, int64_t border,
+        std::string tilesPath, int64_t nTiles, int64_t borders,
         CostFunction* cfunc);
 };
 

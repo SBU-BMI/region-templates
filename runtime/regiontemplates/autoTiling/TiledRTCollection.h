@@ -5,6 +5,7 @@
 #include <list>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #include <opencv/cv.hpp>
 
@@ -25,6 +26,8 @@ private:
     bool tiled;
 
 protected:
+    int64_t borders;
+
     std::string name;
     std::string refDDRName;
     std::string tilesPath;
@@ -58,7 +61,7 @@ protected:
 
 public:
     TiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, CostFunction* cfunc);
+        std::string tilesPath, int64_t borders, CostFunction* cfunc);
     ~TiledRTCollection();
 
     void addImage(std::string path);

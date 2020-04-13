@@ -17,7 +17,6 @@
 
 class BGPreTiledRTCollection : public TiledRTCollection {
 private:
-    int border;
     BGMasker* bgm;
 
     std::list<rect_t> finalTiles;

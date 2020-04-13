@@ -19,7 +19,6 @@
 
 class IrregTiledRTCollection : public TiledRTCollection {
 private:
-    int border;
     int nTiles; // Expected number of dense tiles by the end of te tiling
     BGMasker* bgm;
 
@@ -34,8 +33,8 @@ protected:
 
 public:
     IrregTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int border, CostFunction* cfunc, BGMasker* bgm, 
-        TilerAlg_t tilingAlg=FIXED_GRID_TILING, int nTiles=0);
+        std::string tilesPath, int64_t borders, CostFunction* cfunc, 
+        BGMasker* bgm, TilerAlg_t tilingAlg=FIXED_GRID_TILING, int nTiles=0);
 };
 
 #endif

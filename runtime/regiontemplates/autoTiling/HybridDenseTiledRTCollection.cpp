@@ -1,12 +1,11 @@
 #include "HybridDenseTiledRTCollection.h"
 
 HybridDenseTiledRTCollection::HybridDenseTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int border, 
+    std::string refDDRName, std::string tilesPath, int64_t borders, 
     CostFunction* cfunc, BGMasker* bgm, TilerAlg_t tilingAlg, 
         int nCpuTiles, int nGpuTiles, float cpuPATS, float gpuPATS) 
-        : TiledRTCollection(name, refDDRName, tilesPath, cfunc) {
+        : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
 
-    this->border = border;
     this->bgm = bgm;
     this->nCpuTiles = nCpuTiles;
     this->nGpuTiles = nGpuTiles;

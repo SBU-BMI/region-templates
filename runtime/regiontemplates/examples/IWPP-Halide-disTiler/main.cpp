@@ -1090,7 +1090,7 @@ int main(int argc, char *argv[]) {
     TiledRTCollection* tCollImg;
     switch (tilingAlg) {
         case NO_TILING:
-            tCollImg = new TiledRTCollection("input", "input", Ipath, cfunc);
+            tCollImg = new TiledRTCollection("input", "input", Ipath, border, cfunc);
             break;
         case CPU_DENSE: {
             int nTiles = nTilesPerThread*cpuThreads;

@@ -3,9 +3,8 @@
 BGPreTiledRTCollection::BGPreTiledRTCollection(std::string name, 
     std::string refDDRName, std::string tilesPath, int border, 
     CostFunction* cfunc, BGMasker* bgm) 
-        : TiledRTCollection(name, refDDRName, tilesPath, cfunc) {
+        : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
 
-    this->border = border;
     this->bgm = bgm;
 }
 

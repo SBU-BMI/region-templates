@@ -4,13 +4,15 @@
 /****************************** Class methods ********************************/
 /*****************************************************************************/
 
-TiledRTCollection::TiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, CostFunction* cfunc) {
+TiledRTCollection::TiledRTCollection(std::string name, std::string refDDRName, 
+    std::string tilesPath, int64_t borders, CostFunction* cfunc) {
 
     this->tiled = false;
+    this->preTiled = false;
     this->name = name;
     this->refDDRName = refDDRName;
     this->tilesPath = tilesPath;
+    this->borders = borders;
     this->cfunc = cfunc;
 }
 
@@ -36,72 +38,7 @@ Target_t TiledRTCollection::getTileTarget(int id) {
 // Template method hook for a custom tiling method.
 // Defaults to returning the input images with a single
 //   tile containing the full image.
-void TiledRTCollection::customTiling() {
-    // Only a single name is required since there is only one tile
-    std::string drName = "t0";
-
-    // // Go through all images
-    // for (int i=0; i<this->initialPaths.size(); i++) {
-        
-    //     cv::Mat tile;
-    //     openslide_t* osr;
-
-    //     // Checks file extension
-    //     if (!isSVS(this->initialPaths[i])) {
-    //         tile = cv::imread(this->initialPaths[i]);
-    //     } else {
-    //         // Open svs image for tiling
-    //         int64_t w = -1;
-    //         int64_t h = -1;
-    //         int32_t osrMaxLevel = 0; // svs standard: max level = 0
-
-    //         osr = openslide_open(this->initialPaths[i].c_str());
-
-    //         // // get all levels info
-    //         // int levels = openslide_get_level_count(osr);
-    //         // std::cout << "=============levels " << levels << std::endl;
-    //         // for (int i=0; i<levels; i++) {
-    //         //     openslide_get_level_dimensions(osr, i, &w, &h);
-    //         //     std::cout << "level " << i << " " << w 
-    //         //               << "x" << h << std::endl;
-    //         // }
-
-    //         // Create the tile mat
-    //         openslide_get_level0_dimensions(osr, &w, &h);
-    //         cv::Rect_<int64_t> roi(0, 0, w, h);
-    //         osrRegionToCVMat(osr, roi, osrMaxLevel, tile);
-    //     }
-
-    //     // Create the full roi and add it to the roi's vector
-    //     cv::Rect_<int64_t> roi(0, 0, tile.cols, tile.rows);
-    //     cv::Rect_<int64_t> rois[] = {roi};
-    //     this->tiles.push_back(std::list<cv::Rect_<int64_t>>(rois, 
-    //         rois + sizeof(rois)/sizeof(cv::Rect_<int64_t>)));
-
-    //     // Create new RT tile from roi
-    //     DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-    //     ddr2d->setName(drName);
-    //     ddr2d->setId(this->refDDRName);
-    //     ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
-    //     ddr2d->setIsAppInput(true);
-    //     ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-    //     ddr2d->setInputFileName(this->initialPaths[i]);
-        
-    //     // Sets svs ddr parameters and closes svs image
-    //     if (isSVS(this->initialPaths[i])) {
-    //         ddr2d->setSvs();
-    //         ddr2d->setRoi(roi);
-    //         openslide_close(osr);
-    //     }
-
-    //     RegionTemplate* newRT = new RegionTemplate();
-    //     newRT->setName(this->name);
-    //     newRT->insertDataRegion(ddr2d);
-
-    //     this->rts.push_back(
-    //         std::pair<std::string, RegionTemplate*>(drName, newRT));
-    // }
-}
+void TiledRTCollection::customTiling() {}
 
 // Performs the autoTiler algorithm while updating the internal tiles 
 //   representation std::map<int, std::vector<cv::Rect_<int64_t>>>
@@ -162,7 +99,6 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     for (std::string img : this->initialPaths) {
         // Adds borders and creates DRs
         int drId=0;
-        // for (cv::Rect_<int64_t> tile : this->tiles[img]) {
         std::list<cv::Rect_<int64_t>>::iterator tileIt 
             = this->tiles[img].begin();
         for (; tileIt!=this->tiles[img].end(); tileIt++) {
@@ -177,7 +113,14 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
                 tileIt->height = (int64_t)(h0s[img]-tileIt->y);
 
             // Adds borders
-            // TODO
+            tileIt->x -= this->borders;
+            tileIt->x = std::max(0l, tileIt->x);
+            tileIt->y -= this->borders;
+            tileIt->y = std::max(0l, tileIt->y);
+            tileIt->width += this->borders;
+            tileIt->width = std::min(w0s[img], tileIt->width);
+            tileIt->height += this->borders;
+            tileIt->height = std::min(h0s[img], tileIt->height);
 
             // Creates the dr as a svs data region for
             // lazy read/write of input file
@@ -309,95 +252,12 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
 void TiledRTCollection::tileImages(
     std::vector<std::list<cv::Rect_<int64_t>>> tiles) {
 
-    // std::string cmd = "mkdir " + this->tilesPath + "/" + this->name;
-    // const int dir_err = system(cmd.c_str());
-    // if (dir_err == -1) {
-    //     std::cout << "Error creating directory. " << __FILE__ << ":" 
-    //         << __LINE__ << std::endl;
-    //     exit(1);
-    // }
-
-    // // A tiling process can only occur once
-    // if (this->tiled) {
-    //     std::cout << "RT collection already tiled. Cannot re-tile it. " 
-    //         << __FILE__ << ":" << __LINE__ << std::endl;
-    //     cleanup(this->tilesPath + "/" + name);
-    //     exit(-1);
-    //     // return;
-    // }
-
-    // // The number of internal masks' paths and input tilings must match
-    // if (tiles.size() != initialPaths.size()) {
-    //     std::cout << "Internal masks' paths and input tilings size mismatch. "
-    //         << "Expected "  << initialPaths.size() 
-    //         << " but got " << tiles.size()
-    //         << ". " << __FILE__ << ":" << __LINE__ << std::endl;
-    //     cleanup(this->tilesPath + "/" + name);
-    //     exit(-1);
-    //     // return;
-    // }
-
-    // // Iterate through all input images indices 
-    // for (int i=0; i<tiles.size(); i++) {
-    //     bool isSvs = isSVS(initialPaths[i]);
-
-    //     // Open image for tiling
-    //     openslide_t* osr;
-    //     int32_t osrMaxLevel = 0; // svs standard: max level = 0
-    //     cv::Mat mat;
-    //     if (isSvs) {
-    //         osr = openslide_open(initialPaths[i].c_str());
-    //     } else {
-    //         mat = cv::imread(initialPaths[i]);
-    //     }
-
-    //     // Go through all tiles
-    //     int j = 0;
-    //     for (cv::Rect_<int64_t> r : tiles[i]) {
-    //         // Create a tile file
-    //         cv::Mat tile;
-    //         if (isSvs) {
-    //             osrRegionToCVMat(osr, r, osrMaxLevel, tile);
-    //         } else {
-    //             tile = mat(r);
-    //         }
-    //         std::string path = this->tilesPath + name;
-    //         path += "/i" + to_string(i) + "t" + to_string(j) + TILE_EXT;
-    //         cv::imwrite(path, tile);
-
-    //         // Create new RT tile from ROI r
-    //         DenseDataRegion2D *ddr2d = new DenseDataRegion2D();
-    //         std::string drName = "t" + to_string(j);
-    //         ddr2d->setName(drName);
-    //         ddr2d->setId(refDDRName);
-    //         ddr2d->setInputType(DataSourceType::FILE_SYSTEM);
-    //         ddr2d->setIsAppInput(true);
-    //         ddr2d->setOutputType(DataSourceType::FILE_SYSTEM);
-    //         ddr2d->setInputFileName(path);
-    //         RegionTemplate* newRT = new RegionTemplate();
-    //         newRT->insertDataRegion(ddr2d);
-    //         newRT->setName(this->name);
-
-    //         this->rts.push_back(
-    //             std::pair<std::string, RegionTemplate*>(drName, newRT));
-
-    //         j++;
-    //     }
-
-    //     // Close .svs file
-    //     if (isSvs) {
-    //         openslide_close(osr);
-    //     }
-    // }
-
-    // this->tiled = true;
 }
 
 std::vector<std::list<cv::Rect_<int64_t>>> TiledRTCollection::getTiles() {
     if (!this->tiled) {
         std::cout << "Tiles not yet generated. " 
             << __FILE__ << ":" << __LINE__ << std::endl;
-        // cleanup(this->tilesPath + "/" + name);
         exit(-1);
     }
 
@@ -407,19 +267,4 @@ std::vector<std::list<cv::Rect_<int64_t>>> TiledRTCollection::getTiles() {
     }
 
     return tiles;
-}
-
-/*****************************************************************************/
-/***************************** Helper functions ******************************/
-/*****************************************************************************/
-
-// DEPRECATED
-void cleanup(std::string path) {
-    // std::string cmd = "rm -rf " + path;
-    // const int dir_err = system(cmd.c_str());
-    // if (dir_err == -1) {
-    //     std::cout << "Error cleaning up. " << __FILE__ 
-    //         << ":" << __LINE__ << std::endl;
-    //     exit(1);
-    // }
 }
