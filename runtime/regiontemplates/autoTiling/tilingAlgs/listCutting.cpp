@@ -72,20 +72,20 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
     setlocale(LC_NUMERIC, "pt_BR.utf-8");
     char cost[50];
-    sprintf(cost, "%'2f", cfunc->cost(img));
-    std::cout << "[listCutting] Image full cost: " << cost << std::endl;
-    sprintf(cost, "%'2f", gpuCost);
-    std::cout << "[listCutting] GPU tile expected cost: " << cost << std::endl;
-    sprintf(cost, "%'2f", cpuCost);
-    std::cout << "[listCutting] CPU tile expected cost: " << cost << std::endl;
+    // sprintf(cost, "%'2f", cfunc->cost(img));
+    // std::cout << "[listCutting] Image full cost: " << cost << std::endl;
+    // sprintf(cost, "%'2f", gpuCost);
+    // std::cout << "[listCutting] GPU tile expected cost: " << cost << std::endl;
+    // sprintf(cost, "%'2f", cpuCost);
+    // std::cout << "[listCutting] CPU tile expected cost: " << cost << std::endl;
 
     // Get gpu tiles
     for (int i=0; i<gpuCount; i++) {
         // Gets the first region (highest cost) 
         std::multiset<rect_t, rect_tCostFunct>::iterator dIt = sDense.begin();
 
-        sprintf(cost, "%'2f", cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo));
-        std::cout << "[listCutting] gpu init cost: " << cost << std::endl;
+        // sprintf(cost, "%'2f", cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo));
+        // std::cout << "[listCutting] gpu init cost: " << cost << std::endl;
 
         // Splits tile with highest cost, generating a two new tiles, being 
         // one of them with close to avgCost cost.
@@ -103,20 +103,20 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
         // Removes the first tile and insert the remaining large tile
         sDense.erase(dIt);
-        if (c1 < c2) {
+        if (c1 > c2) {
             sDense.insert(newt1);
             dense.push_back(newt2);
-            sprintf(cost, "%'2f", c2);
-            std::cout << "[listCutting] adding tile to gpu: " << cost << std::endl;
-            std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," 
-                << newt2.xi << ":" << newt2.xo << std::endl;
+            // sprintf(cost, "%'2f", c2);
+            // std::cout << "[listCutting] adding tile to gpu: " << cost << std::endl;
+            // std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," 
+            //     << newt2.xi << ":" << newt2.xo << std::endl;
         } else {
             sDense.insert(newt2);
             dense.push_back(newt1);
-            sprintf(cost, "%'2f", c1);
-            std::cout << "[listCutting] adding tile to gpu: " << cost << std::endl;
-            std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," 
-                << newt1.xi << ":" << newt1.xo << std::endl;
+            // sprintf(cost, "%'2f", c1);
+            // std::cout << "[listCutting] adding tile to gpu: " << cost << std::endl;
+            // std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," 
+            //     << newt1.xi << ":" << newt1.xo << std::endl;
         }
     }
 
@@ -124,13 +124,13 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
         // Gets the first region (highest cost) 
         std::multiset<rect_t, rect_tCostFunct>::iterator dIt = sDense.begin();
 
-        sprintf(cost, "%'2f", cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo));
-        std::cout << "[listCutting] cpu init cost: " << cost << std::endl;
+        // sprintf(cost, "%'2f", cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo));
+        // std::cout << "[listCutting] cpu init cost: " << cost << std::endl;
 
         // Splits tile with highest cost, generating a two new tiles, being 
         // one of them with close to avgCost cost.
         rect_t newt1, newt2;
-        if ((dIt->xo-dIt->xi) == 1 || (dIt->yo-dIt->yi) == 1) {
+        if ((dIt->xo-dIt->xi) <= 1 || (dIt->yo-dIt->yi) <= 1) {
             std::cout << "[listCutting] Tile too small to split."
                 << std::endl;
             exit(-1);
@@ -146,26 +146,26 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
         if (c1 > c2) {
             sDense.insert(newt1);
             dense.push_back(newt2);
-            sprintf(cost, "%'2f", c2);
-            std::cout << "[listCutting] adding tile to cpu: " << cost << std::endl;
-            std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," 
-                << newt2.xi << ":" << newt2.xo << std::endl;
+            // sprintf(cost, "%'2f", c2);
+            // std::cout << "[listCutting] adding tile to cpu: " << cost << std::endl;
+            // std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," 
+            //    << newt2.xi << ":" << newt2.xo << std::endl;
         } else {
             sDense.insert(newt2);
             dense.push_back(newt1);
-            sprintf(cost, "%'2f", c1);
-            std::cout << "[listCutting] adding tile to cpu: " << cost << std::endl;
-            std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," 
-                << newt1.xi << ":" << newt1.xo << std::endl;
+            // sprintf(cost, "%'2f", c1);
+            // std::cout << "[listCutting] adding tile to cpu: " << cost << std::endl;
+            // std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," 
+            //     << newt1.xi << ":" << newt1.xo << std::endl;
         }
     }
 
     // Moves regions to the output list
     for (rect_t r : sDense) {
-        sprintf(cost, "%'2f", cfunc->cost(img, r.yi, r.yo, r.xi, r.xo));
-        std::cout << "[listCutting] adding tile to cpu: " << cost <<std::endl;
-        std::cout << "\t" << r.yi << ":" << r.yo << "," 
-                << r.xi << ":" << r.xo << std::endl;
+        // sprintf(cost, "%'2f", cfunc->cost(img, r.yi, r.yo, r.xi, r.xo));
+        // std::cout << "[listCutting] adding tile to cpu: " << cost <<std::endl;
+        // std::cout << "\t" << r.yi << ":" << r.yo << "," 
+        //         << r.xi << ":" << r.xo << std::endl;
         dense.push_back(r);
     }
 }

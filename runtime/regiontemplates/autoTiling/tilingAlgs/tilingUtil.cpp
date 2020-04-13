@@ -5,7 +5,8 @@
 /*****************************************************************************/
 
 // prints the std dev of a tile inside an image. Used for profiling
-void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name, CostFunction* cfunc) {
+void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name, 
+        CostFunction* cfunc) {
     float mean = 0;
     for (rect_t r : rs)
         mean += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
@@ -77,6 +78,10 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
             else
                 pivotx += pivotxLen;
 
+            // Avoid zero area regions
+            if (pivotx-r.xi < 1 || r.xo-pivotx-1 < 1)
+                break;
+
             cost1h = cfunc->cost(img, r.yi, r.yo, r.xi, pivotx);
             cost2h = cfunc->cost(img, r.yi, r.yo, pivotx+1, r.xo);
         }
@@ -111,8 +116,12 @@ void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
             else
                 pivoty += pivotyLen;
 
+            // Avoid zero area regions
+            if (pivoty-r.yi < 1 || r.yo-pivoty-1 < 1)
+                break;
+
             cost1v = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
-            cost2v = cfunc->cost(img, pivoty+1, r.yo, r.xi, r.xo);
+            cost2v = cfunc->cost(img, std::max(0l, pivoty+1), r.yo, r.xi, r.xo);
         }
 
         // Calculate difference between areas of new tiles 1 and 2
