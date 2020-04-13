@@ -1,7 +1,7 @@
 #include "BGPreTiledRTCollection.h"
 
 BGPreTiledRTCollection::BGPreTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int border, 
+    std::string refDDRName, std::string tilesPath, int64_t borders, 
     CostFunction* cfunc, BGMasker* bgm) 
         : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
 
@@ -11,118 +11,65 @@ BGPreTiledRTCollection::BGPreTiledRTCollection(std::string name,
 // May break when using more than one input image since DR id is unique
 // only between input images.
 void BGPreTiledRTCollection::customTiling() {
-//     std::string drName;
-//     // Go through all images
-//     for (int i=0; i<this->initialPaths.size(); i++) {
-//         // Create the list of tiles for the current image
-//         std::list<cv::Rect_<int64_t>> rois;
+    std::string drName;
+    // Go through all images
+    for (std::string img : this->initialPaths) {
+        // Open image for tiling
+        int64_t w = -1;
+        int64_t h = -1;
+        openslide_t* osr;
+        int32_t osrMinLevel = -1;
+        cv::Mat maskMat;
 
-//         // Open image for tiling
-//         int64_t w = -1;
-//         int64_t h = -1;
-//         openslide_t* osr;
-//         int32_t osrMinLevel = -1;
-//         int32_t osrMaxLevel = 0; // svs standard: max level = 0
-//         float ratiow;
-//         float ratioh; 
-//         cv::Mat maskMat;
+        // Opens svs input file
+        osr = openslide_open(img.c_str());
 
-//         // Opens svs input file
-//         osr = openslide_open(this->initialPaths[i].c_str());
+        // Opens smallest image as a cv mat
+        osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+        openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
+        cv::Rect_<int64_t> roi(0, 0, w, h);
+        osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
 
-//         // Gets info of largest image
-//         openslide_get_level0_dimensions(osr, &w, &h);
-//         ratiow = w;
-//         ratioh = h;
+        // Close .svs file
+        openslide_close(osr);
 
-//         // Opens smallest image as a cv mat
-//         osrMinLevel = openslide_get_level_count(osr) - 1; // last level
-//         openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
-//         cv::Rect_<int64_t> roi(0, 0, w, h);
-//         osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
-
-//         // Calculates the ratio between largest and smallest 
-//         // images' dimensions for later conversion
-//         ratiow /= w;
-//         ratioh /= h;
-
-//         // Perfeorms the preTiling if required
-//         cv::Mat thMask = bgm->bgMask(maskMat);
+        // Gets threshold mask
+        cv::Mat thMask = bgm->bgMask(maskMat);
         
-//         tileDenseFromBG(thMask, this->denseTiles, this->finalTiles, &maskMat);
+        // Performs tiling
+        std::list<rect_t> denseTiles;
+        std::list<rect_t> bgTiles;
+        tileDenseFromBG(thMask, denseTiles, bgTiles, &maskMat);
 
-//         std::cout << "[BGPreTiledRTCollection] dense: " << this->denseTiles.size()
-//             << ", bg: " << this->finalTiles.size() << std::endl;
+        std::cout << "[BGPreTiledRTCollection] Dense tiles: " 
+            << denseTiles.size() << ", bg tiles: " 
+            << bgTiles.size() << std::endl;
 
-// // #ifdef PROFILING
-// //         // Gets std-dev of all tiles' sizes
-// //         stddev(this->finalTiles, thMask, "ALL");
-// // #endif
+        // Convert rect_t to cv::Rect_ and add to output lists
+        std::list<cv::Rect_<int64_t> > cvDenseTiles;
+        for (std::list<rect_t>::iterator r=denseTiles.begin(); 
+                r!=denseTiles.end(); r++) {
 
-//         // Convert rect_t to cv::Rect_ and add borders
-//         std::list<cv::Rect_<int64_t> > tiles;
-//         for (std::list<rect_t>::iterator r=this->finalTiles.begin(); 
-//                 r!=this->finalTiles.end(); r++) {
+            cvDenseTiles.push_back(cv::Rect_<int64_t>(
+                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+        }
+        this->denseTiles[img] = cvDenseTiles;
 
-//             r->xi = std::max(r->xi-this->border, (int64_t)0);
-//             r->xo = std::min(r->xo+this->border, (int64_t)thMask.cols);
-//             r->yi = std::max(r->yi-this->border, (int64_t)0);
-//             r->yo = std::min(r->yo+this->border, (int64_t)thMask.rows);
+        // Convert rect_t to cv::Rect_ and add to output lists
+        std::list<cv::Rect_<int64_t> > cvBgTiles;
+        for (std::list<rect_t>::iterator r=bgTiles.begin(); 
+                r!=bgTiles.end(); r++) {
 
-//             tiles.push_back(cv::Rect_<int64_t>(
-//                 r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+            cvBgTiles.push_back(cv::Rect_<int64_t>(
+                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+        }
+        this->bgTiles[img] = cvBgTiles;
 
-// #ifdef DEBUG
-//             cv::rectangle(maskMat, cv::Point(r->xi,r->yi), 
-//                 cv::Point(r->xo,r->yo),(0,0,0),3);
-// #endif
-//         }
-
-// // #ifdef DEBUG
-//         cv::imwrite("./maskf.png", maskMat);
-// // #endif
-
-//         // Actually tile the image given the list of ROIs
-//         int drId=0;
-//         for (cv::Rect_<int64_t> tile : tiles) {
-//             // Creates the tile name for the original svs file, if lazy
-//             std::string path = this->tilesPath;
-
-//             // Converts the tile roi for the bigger image
-//             tile.x *= ratiow;
-//             tile.width *= ratiow;
-//             tile.y *= ratioh;
-//             tile.height *= ratioh;
-
-//             // Creates the dr as a svs data region for
-//             // lazy read/write of input file
-//             DataRegion *dr = new DenseDataRegion2D();
-//             dr->setRoi(tile);
-//             dr->setSvs();
-
-//             // Create new RT tile from roi
-//             std::string drName = "t" + to_string(drId);
-//             dr->setName(drName);
-//             dr->setId(refDDRName);
-//             dr->setInputType(DataSourceType::FILE_SYSTEM);
-//             dr->setIsAppInput(true);
-//             dr->setOutputType(DataSourceType::FILE_SYSTEM);
-//             dr->setInputFileName(path);
-//             RegionTemplate* newRT = new RegionTemplate();
-//             newRT->insertDataRegion(dr);
-//             newRT->setName(name);
-
-//             // Add the tile and the RT to the internal containers
-//             rois.push_back(tile);
-//             this->rts.push_back(
-//                 std::pair<std::string, RegionTemplate*>(drName, newRT));
-//             drId++;
-//         }
-
-//         // Close .svs file
-//         openslide_close(osr);
-
-//         // Add the current image tiles to the tiles vector
-//         this->tiles.push_back(rois);
-//     }
+        // Add all tiles to final compiled list
+        this->tiles[img.c_str()] = std::list<cv::Rect_<int64_t>>();
+        this->tiles[img.c_str()].insert(this->tiles[img.c_str()].end(), 
+            cvDenseTiles.begin(), cvDenseTiles.end());
+        this->tiles[img.c_str()].insert(this->tiles[img.c_str()].end(), 
+            cvBgTiles.begin(), cvBgTiles.end());
+    }
 }

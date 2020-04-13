@@ -24,6 +24,7 @@ typedef int Target_t;
 class TiledRTCollection {
 private:
     bool tiled;
+    bool drGen;
 
 protected:
     int64_t borders;
@@ -34,7 +35,7 @@ protected:
     std::vector<std::string> initialPaths;
     // std::vector<std::list<cv::Rect_<int64_t> > > finalTiles;
     // vector<pair<DR name, actual RT object with a single DR>
-    std::vector<std::pair<std::string, RegionTemplate*> > rts;
+    std::vector<std::pair<std::string, RegionTemplate*>> rts;
     std::vector<Target_t> tileTarget; // used only for hybrid tiling
 
     // Cost function for profiling the final tiles generated
@@ -45,15 +46,9 @@ protected:
     // previous values.
     bool preTiled;
 
-    // Map of <InputImage,tiles>
-    std::map<std::string, std::list<cv::Rect_<int64_t> > > tiles;
+    // Map of <InputImageStr,TilesList>
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles;
 
-    // Map of dimensions for each image
-    std::map<std::string, int64_t> w0s;
-    std::map<std::string, int64_t> h0s;
-    std::map<std::string, int64_t> ratiows;
-    std::map<std::string, int64_t> ratiohs;
-    
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
     //   tile containing the full image.
@@ -71,7 +66,15 @@ public:
         return rts.size();
     }
 
+    // Can only be called once
     void tileImages(bool tilingOnly=false);
+
+    // Must be called only on the last level of the tiling pipeline
+    void generateDRs(bool tilingOnly=false);
+
+    // Can only be called once
+    void setPreTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
+    void addTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
 
     // tiling methods for mask tiling, based on a previous tiling
     void tileImages(std::vector<std::list<cv::Rect_<int64_t>>> tiles);

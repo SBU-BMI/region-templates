@@ -1120,17 +1120,20 @@ int main(int argc, char *argv[]) {
             break;
     }
 
-    // // if (preTile) {
-    //     cout << "[main] pre-tiling" << endl;
-    //     BGPreTiledRTCollection preTiler("input", "input", Ipath, 0, cfunc, bgm);
-    //     preTiler.addImage(Ipath);
-    //     preTiler.tileImages(tilingOnly);
-    //     cout << "[main] pre-tiling done" << endl;
-    //     // exit(0);
-    // // }
+    // if (preTile) {
+        cout << "[main] pre-tiling" << endl;
+        BGPreTiledRTCollection preTiler("input", "input", Ipath, border, cfunc, bgm);
+        preTiler.addImage(Ipath);
+        preTiler.tileImages(tilingOnly);
+        cout << "[main] pre-tiling done" << endl;
+        // exit(0);
+    // }
 
     tCollImg->addImage(Ipath);
+    tCollImg->setPreTiles(preTiler.getDense());
     tCollImg->tileImages(tilingOnly);
+    tCollImg->addTiles(preTiler.getBg());
+    tCollImg->generateDRs(tilingOnly);
 
 #ifdef PROFILING
     long tilingT2 = Util::ClockGetTime();

@@ -19,8 +19,8 @@ class BGPreTiledRTCollection : public TiledRTCollection {
 private:
     BGMasker* bgm;
 
-    std::list<rect_t> finalTiles;
-    std::list<rect_t> denseTiles;
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> denseTiles;
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> bgTiles;
 
 protected:
     // Template method hook for a custom tiling method.
@@ -30,7 +30,15 @@ protected:
 
 public:
     BGPreTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int border, CostFunction* cfunc, BGMasker* bgm);
+        std::string tilesPath, int64_t borders, 
+        CostFunction* cfunc, BGMasker* bgm);
+
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> getDense() {
+        return this->denseTiles;
+    };
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> getBg() {
+        return this->bgTiles;
+    };
 };
 
 #endif // BG_PRE_TILED_RT_COLLECTION_H_

@@ -334,7 +334,6 @@ void tileDenseFromBG(cv::Mat& mask, std::list<rect_t>& dense,
     // generate the list of dense areas
     std::list<rect_t> ovlpCand;
     int minArea = 500;
-    // int minArea = 0;
     for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
         // std::cout << "area: " 
         //    << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
