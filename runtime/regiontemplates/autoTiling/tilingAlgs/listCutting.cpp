@@ -61,9 +61,9 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
     int gpuCount, float cpuPats, float gpuPats, CostFunction* cfunc) {
 
     // Calculates the target average cost of a dense tile
-    long avgCost = 0;
+    long imgCost = 0;
     for (rect_t r : dense) {
-        avgCost += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
+        imgCost += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
     }
     double totCost = cpuCount * cpuPats + gpuCount * gpuPats;
     double cpuCost = imgCost * cpuPats/totCost;
