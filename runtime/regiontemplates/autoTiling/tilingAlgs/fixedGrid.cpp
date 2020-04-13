@@ -115,11 +115,11 @@ int fixedGrid(int64_t nTiles, int64_t w, int64_t h, int64_t mw, int64_t mh,
                 tjTmp, tiTmp, tjjTmp, tiiTmp);
             rois.push_back(roi);
 
-            // #ifdef DEBUG
+            #ifdef DEBUG
             std::cout << "creating regular roi " << roi.x << "+" 
                       << roi.width << "x" << roi.y << "+" 
                       << roi.height << std::endl;
-            // #endif
+            #endif
         }
     }
 }
