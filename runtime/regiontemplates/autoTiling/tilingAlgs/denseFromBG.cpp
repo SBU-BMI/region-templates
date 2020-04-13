@@ -333,19 +333,29 @@ void tileDenseFromBG(cv::Mat& mask, std::list<rect_t>& dense,
 
     // generate the list of dense areas
     std::list<rect_t> ovlpCand;
-    int minArea = 500;
+    float f = 0.01;
+    int minArea = mask.cols*mask.rows*f;
     for (int i=1; i<=maxLabel; i++) { // i=1 ignores background
         // std::cout << "area: " 
         //    << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
         // Ignores small areas
-        if (stats.at<int>(i, cv::CC_STAT_AREA) > minArea) {
+        if (stats.at<int>(i, cv::CC_STAT_AREA) > 500) {
             int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
             int yi = stats.at<int>(i, cv::CC_STAT_TOP);
             int xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
             int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
-            rect_t rr = {.xi=xi, .yi=yi, .xo=xi+xw, .yo=yi+yh};
-            ovlpCand.push_back(rr);
+            if (xw > 1 && yh > 1 && yh*xw > minArea) {
+                rect_t rr = {.xi=xi, .yi=yi, .xo=xi+xw, .yo=yi+yh};
+                ovlpCand.push_back(rr);
+            }
         }
+    }
+
+    // Checks if at least one dense region is existent
+    if (ovlpCand.size() == 0) {
+        std::cout << "[tileDenseFromBG] Bad background threshold parameters, "
+            << "no dense regions found" << std::endl;
+        exit(0);
     }
 
 #ifdef DEBUG

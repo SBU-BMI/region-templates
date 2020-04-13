@@ -1139,8 +1139,11 @@ int main(int argc, char *argv[]) {
         preTiler.tileImages(tilingOnly);
         cout << "[main] pre-tiling done" << endl;
         tCollImg->setPreTiles(preTiler.getDense());
-        if (preTilingOnly)
+        if (preTilingOnly) {
             preTiler.generateDRs(tilingOnly);
+            cout << "[main] pre-tiles generated" << endl;
+            tCollImg = &preTiler;
+        }
     }
 
     if (!preTilingOnly) {

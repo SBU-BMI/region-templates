@@ -96,6 +96,110 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
         exit(-1);
         // return;
     }
+    
+    // Creates a list of costs for each tile for each image
+    std::list<int64_t> costs;
+    // Creates a list of perimeters for each tile for each image
+    std::list<int64_t> perims;
+#define DEBUG
+    // create tiles image
+    if (tilingOnly) {
+        for (std::string img : this->initialPaths) {
+
+            cv::Mat baseImg;
+            if (isSVS(img)) {
+                openslide_t* osr = openslide_open(img.c_str());
+                int osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+                int64_t w = -1;
+                int64_t h = -1;
+                openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
+                cv::Rect_<int64_t> roi(0, 0, w, h);
+                osrRegionToCVMat(osr, roi, osrMinLevel, baseImg);
+            } else
+                baseImg = cv::imread(img);
+            
+            setlocale(LC_NUMERIC, "pt_BR.utf-8");
+            char cost[50];
+            sprintf(cost, "%'2f", this->cfunc->cost(baseImg));
+            std::cout << "[TiledRTCollection] image " << img 
+                << " size: " << baseImg.rows << "x" << baseImg.cols 
+                << " cost=" << cost << std::endl;
+
+            // get cost image
+            cv::Mat tiledImg;
+            tiledImg = this->cfunc->costImg(baseImg);
+            cv::cvtColor(tiledImg, tiledImg, cv::COLOR_GRAY2RGB);
+
+            // tiles files ids
+            int id=0;
+
+            // For each tile of the current image
+            for (cv::Rect_<int64_t> tile : this->tiles[img]) {
+                // Gets basic info from tile
+                int64_t tileCost = this->cfunc->cost(baseImg, tile);
+                costs.emplace_back(tileCost);
+                perims.emplace_back(2*tile.width + 2*tile.height);
+
+                // Print tile with readable unber format
+                setlocale(LC_NUMERIC, "pt_BR.utf-8");
+                char c_cost[50];
+                sprintf(c_cost, "%'2ld", tileCost);
+                std::cout << "\ttile " << tile.y << ":" << tile.height
+                    << "\t" << tile.x << ":" << tile.width << "\tcost: " 
+                    << c_cost << std::endl;
+
+
+                // Adds tile rectangle region to tiled image
+                cv::rectangle(tiledImg, 
+                    cv::Point(tile.x,tile.y), 
+                    cv::Point(tile.x+tile.width,
+                              tile.y+tile.height),
+                    (255,255,255),5);
+
+                // Add cost to image as text
+                cv::putText(tiledImg, 
+                    c_cost,
+                    cv::Point(tile.x+10, tile.y+tile.height/2),
+                    cv::FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 7);
+            }
+
+            #ifdef DEBUG
+            // remove "/"
+            int slLoc;
+            std::string outname = img;
+            while ((slLoc=outname.find("/")) != std::string::npos) {
+                outname.replace(slLoc, 1, "");
+            }
+            outname = "./tiled-" + outname + ".png";
+            cv::imwrite(outname, tiledImg);
+            #endif
+        }
+    }
+
+    // Calculates stddev of tiles cost
+    double mean = 0;
+    for (double c : costs)
+        mean += c;
+    mean /= costs.size();
+    double var = 0;
+    for (int64_t c : costs)
+        var += pow(c-mean, 2);
+    double stddev = sqrt(var/(costs.size()-1));
+    
+    // Make the results readable for humans...
+    setlocale(LC_NUMERIC, "pt_BR.utf-8");
+    char c_mean[150];
+    char c_stddev[150];
+    sprintf(c_mean, "%'2lf", mean);
+    sprintf(c_stddev, "%'2lf", stddev);
+    std::cout << "[PROFILING][AVERAGE] " << c_mean << std::endl;
+    std::cout << "[PROFILING][STDDEV] " << c_stddev << std::endl;
+
+    // Calculates the sum of perimeters
+    int64_t sumPerim = 0;
+    for (int64_t p : perims)
+        sumPerim += p;
+    std::cout << "[PROFILING][SUMOFPERIMS] " << sumPerim << std::endl;
 
     // Converts tiles sizes to the large image, adds borders and
     // creates DRs
@@ -171,104 +275,6 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             drId++;
         }
     }
-
-        // Creates a list of costs for each tile for each image
-    std::list<int64_t> costs;
-    // Creates a list of perimeters for each tile for each image
-    std::list<int64_t> perims;
-#define DEBUG
-    // create tiles image
-    if (tilingOnly) {
-        for (std::string img : this->initialPaths) {
-
-            cv::Mat baseImg;
-            if (isSVS(img))
-                osrFilenameToCVMat(img, baseImg);
-            else
-                baseImg = cv::imread(img);
-            
-            setlocale(LC_NUMERIC, "pt_BR.utf-8");
-            char cost[50];
-            sprintf(cost, "%'2f", this->cfunc->cost(baseImg));
-            std::cout << "[TiledRTCollection] image " << img 
-                << " size: " << baseImg.rows << "x" << baseImg.cols 
-                << " cost=" << cost << std::endl;
-
-            // get cost image
-            cv::Mat tiledImg;
-            tiledImg = this->cfunc->costImg(baseImg);
-            cv::cvtColor(tiledImg, tiledImg, cv::COLOR_GRAY2RGB);
-
-            // tiles files ids
-            int id=0;
-
-            // For each tile of the current image
-            for (cv::Rect_<int64_t> tile : this->tiles[img]) {
-                // Gets basic info from tile
-                int64_t tileCost = this->cfunc->cost(baseImg, tile);
-                costs.emplace_back(tileCost);
-                perims.emplace_back(2*tile.width + 2*tile.height);
-
-                // Print tile with readable unber format
-                setlocale(LC_NUMERIC, "pt_BR.utf-8");
-                char c_cost[50];
-                sprintf(c_cost, "%'2ld", tileCost);
-                std::cout << "\ttile " << tile.y << ":" << tile.height
-                    << "\t" << tile.x << ":" << tile.width << "\tcost: " 
-                    << c_cost << std::endl;
-
-
-                // Adds tile rectangle region to tiled image
-                cv::rectangle(tiledImg, 
-                    cv::Point(tile.x,tile.y), 
-                    cv::Point(tile.x+tile.width,
-                              tile.y+tile.height),
-                    (255,255,255),5);
-
-                // Add cost to image as text
-                cv::putText(tiledImg, 
-                    c_cost,
-                    cv::Point(tile.x+10, tile.y+tile.height/2),
-                    cv::FONT_HERSHEY_SIMPLEX, 3, (255,255,255), 7);
-            }
-
-            #ifdef DEBUG
-            // remove "/"
-            int slLoc;
-            std::string outname = img;
-            while ((slLoc=outname.find("/")) != std::string::npos) {
-                outname.replace(slLoc, 1, "");
-            }
-            outname = "./tiled-" + outname + ".png";
-            cv::imwrite(outname, tiledImg);
-            #endif
-        }
-    }
-
-    // Calculates stddev of tiles cost
-    double mean = 0;
-    for (double c : costs)
-        mean += c;
-    mean /= costs.size();
-    double var = 0;
-    for (int64_t c : costs)
-        var += pow(c-mean, 2);
-    double stddev = sqrt(var/(costs.size()-1));
-    
-    // Make the results readable for humans...
-    setlocale(LC_NUMERIC, "pt_BR.utf-8");
-    char c_mean[150];
-    char c_stddev[150];
-    sprintf(c_mean, "%'2lf", mean);
-    sprintf(c_stddev, "%'2lf", stddev);
-    std::cout << "[PROFILING][AVERAGE] " << c_mean << std::endl;
-    std::cout << "[PROFILING][STDDEV] " << c_stddev << std::endl;
-
-    // Calculates the sum of perimeters
-    int64_t sumPerim = 0;
-    for (int64_t p : perims)
-        sumPerim += p;
-    std::cout << "[PROFILING][SUMOFPERIMS] " << sumPerim << std::endl;
 
     this->drGen = true;
 }
