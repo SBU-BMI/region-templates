@@ -1019,6 +1019,17 @@ int main(int argc, char *argv[]) {
         tilingOnly = true;
     }
 
+    bool preTile = false;
+    if (findArgPos("-pt", argc, argv) != -1) {
+        preTile = true;
+    }
+
+    bool preTilingOnly = false;
+    if (findArgPos("-pto", argc, argv) != -1) {
+        preTile = true;
+        preTilingOnly = true;
+    }
+
     // iwpp parallelism option
     int iwppOp = CPU;
     if (findArgPos("-i", argc, argv) != -1) {
@@ -1120,20 +1131,25 @@ int main(int argc, char *argv[]) {
             break;
     }
 
-    // if (preTile) {
+    BGPreTiledRTCollection preTiler("input", "input", 
+            Ipath, border, cfunc, bgm);
+    if (preTile) {
         cout << "[main] pre-tiling" << endl;
-        BGPreTiledRTCollection preTiler("input", "input", Ipath, border, cfunc, bgm);
         preTiler.addImage(Ipath);
         preTiler.tileImages(tilingOnly);
         cout << "[main] pre-tiling done" << endl;
-        // exit(0);
-    // }
+        tCollImg->setPreTiles(preTiler.getDense());
+        if (preTilingOnly)
+            preTiler.generateDRs(tilingOnly);
+    }
 
-    tCollImg->addImage(Ipath);
-    tCollImg->setPreTiles(preTiler.getDense());
-    tCollImg->tileImages(tilingOnly);
-    tCollImg->addTiles(preTiler.getBg());
-    tCollImg->generateDRs(tilingOnly);
+    if (!preTilingOnly) {
+        tCollImg->addImage(Ipath);
+        tCollImg->tileImages(tilingOnly);
+        if (preTile)
+            tCollImg->addTiles(preTiler.getBg());
+        tCollImg->generateDRs(tilingOnly);
+    }
 
 #ifdef PROFILING
     long tilingT2 = Util::ClockGetTime();

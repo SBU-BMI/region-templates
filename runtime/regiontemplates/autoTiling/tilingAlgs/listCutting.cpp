@@ -4,7 +4,11 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense,
     int nTiles, TilerAlg_t type, CostFunction* cfunc) {
 
     // Calculates the target average cost of a dense tile
-    long avgCost = cfunc->cost(img)/nTiles;
+    long avgCost = 0;
+    for (rect_t r : dense) {
+        avgCost += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
+    }
+    avgCost /= nTiles;
 
     // Create a multiset of tiles ordered by the cost function. This is to 
     // avoid re-sorting of the dense list whilst enabling O(1) access
@@ -57,7 +61,10 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
     int gpuCount, float cpuPats, float gpuPats, CostFunction* cfunc) {
 
     // Calculates the target average cost of a dense tile
-    long imgCost = cfunc->cost(img);
+    long avgCost = 0;
+    for (rect_t r : dense) {
+        avgCost += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
+    }
     double totCost = cpuCount * cpuPats + gpuCount * gpuPats;
     double cpuCost = imgCost * cpuPats/totCost;
     double gpuCost = imgCost * gpuPats/totCost;

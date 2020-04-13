@@ -80,7 +80,7 @@ void RegTiledRTCollection::customTiling() {
             }
             this->tiles[img.c_str()] = curTiles;
         } else {
-            this->tiles[img.c_str()] = tileImg(this->nTiles, w, h, 0, 0);
+            this->tiles[img.c_str()] = tileImg(this->nTiles, 0, w, 0, h);
         }
     }
 }
