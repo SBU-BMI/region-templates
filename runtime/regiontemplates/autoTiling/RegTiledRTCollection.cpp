@@ -79,91 +79,91 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
 }
 
 void RegTiledRTCollection::customTiling() {
-    // Go through all images
-    for (int i=0; i<initialPaths.size(); i++) {
-        // Open image for tiling
-        int64_t w = -1;
-        int64_t h = -1;
-        openslide_t* osr;
-        int32_t osrMinLevel = -1;
-        int32_t osrMaxLevel = 0; // svs standard: max level = 0
-        float ratiow;
-        float ratioh; 
-        cv::Mat mat;
+//     // Go through all images
+//     for (int i=0; i<initialPaths.size(); i++) {
+//         // Open image for tiling
+//         int64_t w = -1;
+//         int64_t h = -1;
+//         openslide_t* osr;
+//         int32_t osrMinLevel = -1;
+//         int32_t osrMaxLevel = 0; // svs standard: max level = 0
+//         float ratiow;
+//         float ratioh; 
+//         cv::Mat mat;
 
-        // Opens svs input file
-        osr = openslide_open(initialPaths[i].c_str());
+//         // Opens svs input file
+//         osr = openslide_open(initialPaths[i].c_str());
 
-        // Gets info of largest image
-        openslide_get_level0_dimensions(osr, &w, &h);
-        ratiow = w;
-        ratioh = h;
+//         // Gets info of largest image
+//         openslide_get_level0_dimensions(osr, &w, &h);
+//         ratiow = w;
+//         ratioh = h;
 
-        // Opens smallest image as a cv mat
-        osrMinLevel = openslide_get_level_count(osr) - 1; // last level
-        openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
-        cv::Rect_<int64_t> roi(0, 0, w, h);
-        osrRegionToCVMat(osr, roi, osrMinLevel, mat);
+//         // Opens smallest image as a cv mat
+//         osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+//         openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
+//         cv::Rect_<int64_t> roi(0, 0, w, h);
+//         osrRegionToCVMat(osr, roi, osrMinLevel, mat);
 
-        // Calculates the ratio between largest and smallest 
-        // images' dimensions for later conversion
-        ratiow /= w;
-        ratioh /= h;
+//         // Calculates the ratio between largest and smallest 
+//         // images' dimensions for later conversion
+//         ratiow /= w;
+//         ratioh /= h;
 
-        // Create the list of tiles for the current image
-        std::list<cv::Rect_<int64_t>> rois;
+//         // Create the list of tiles for the current image
+//         std::list<cv::Rect_<int64_t>> rois;
 
-        // Calculates the tiles sizes given the nTiles
-        if (this->nTiles <= 1) {
-            cv::Rect_<int64_t> r;
-            r.x = 0;
-            r.width = ratiow*w;
-            r.y = 0;
-            r.height = ratioh*h;
+//         // Calculates the tiles sizes given the nTiles
+//         if (this->nTiles <= 1) {
+//             cv::Rect_<int64_t> r;
+//             r.x = 0;
+//             r.width = ratiow*w;
+//             r.y = 0;
+//             r.height = ratioh*h;
             
-            createTile(r, this->tilesPath, this->name, 0,
-                this->refDDRName, this->rts);
-            rois.push_back(r);
-            this->tiles.push_back(rois);
+//             createTile(r, this->tilesPath, this->name, 0,
+//                 this->refDDRName, this->rts);
+//             rois.push_back(r);
+//             this->tiles.push_back(rois);
 
-            // Close .svs file
-            openslide_close(osr);
+//             // Close .svs file
+//             openslide_close(osr);
 
-            return;
-        } else {
-            fixedGrid(this->nTiles, w, h, 0, 0, rois);
-        }
+//             return;
+//         } else {
+//             fixedGrid(this->nTiles, w, h, 0, 0, rois);
+//         }
 
-// #ifdef PROFILING
-//         // Gets std-dev of tiles' sizes
-//         stddev(rois, mat, "ALL");
+// // #ifdef PROFILING
+// //         // Gets std-dev of tiles' sizes
+// //         stddev(rois, mat, "ALL");
+// // #endif
+
+//         // Creates the actual tiles with the correct size
+//         int drId = 0;
+//         std::list<cv::Rect_<int64_t>> newRois;
+//         for (cv::Rect_<int64_t> r : rois) {
+//             cv::rectangle(mat, cv::Point(r.x,r.y),
+//                 cv::Point(r.x+r.width,r.y+r.height),
+//                 (0,0,0),3);
+//             r.x *= ratiow;
+//             r.width *= ratiow;
+//             r.y *= ratioh;
+//             r.height *= ratioh;
+
+//             newRois.push_back(r);
+//             createTile(r, this->tilesPath, this->name, drId++,
+//                 this->refDDRName, this->rts);
+//         }
+
+// #ifdef DEBUG
+//         cv::imwrite("./maskf.png", mat);
 // #endif
 
-        // Creates the actual tiles with the correct size
-        int drId = 0;
-        std::list<cv::Rect_<int64_t>> newRois;
-        for (cv::Rect_<int64_t> r : rois) {
-            cv::rectangle(mat, cv::Point(r.x,r.y),
-                cv::Point(r.x+r.width,r.y+r.height),
-                (0,0,0),3);
-            r.x *= ratiow;
-            r.width *= ratiow;
-            r.y *= ratioh;
-            r.height *= ratioh;
+//         // Close .svs file
+//         openslide_close(osr);
 
-            newRois.push_back(r);
-            createTile(r, this->tilesPath, this->name, drId++,
-                this->refDDRName, this->rts);
-        }
-
-#ifdef DEBUG
-        cv::imwrite("./maskf.png", mat);
-#endif
-
-        // Close .svs file
-        openslide_close(osr);
-
-        // Add the current image tiles to the tiles vector
-        this->tiles.push_back(newRois);
-    }
+//         // Add the current image tiles to the tiles vector
+//         this->tiles.push_back(newRois);
+//     }
 }

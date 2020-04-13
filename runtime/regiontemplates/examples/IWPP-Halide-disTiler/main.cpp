@@ -14,6 +14,7 @@
 #include "RegTiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
 #include "HybridDenseTiledRTCollection.h"
+#include "BGPreTiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
 
 #include "CostFunction.h"
@@ -1118,6 +1119,15 @@ int main(int argc, char *argv[]) {
         case HYBRID_RESSPLIT:
             break;
     }
+
+    // // if (preTile) {
+    //     cout << "[main] pre-tiling" << endl;
+    //     BGPreTiledRTCollection preTiler("input", "input", Ipath, 0, cfunc, bgm);
+    //     preTiler.addImage(Ipath);
+    //     preTiler.tileImages(tilingOnly);
+    //     cout << "[main] pre-tiling done" << endl;
+    //     // exit(0);
+    // // }
 
     tCollImg->addImage(Ipath);
     tCollImg->tileImages(tilingOnly);

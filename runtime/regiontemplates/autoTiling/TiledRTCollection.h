@@ -4,6 +4,7 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <map>
 
 #include <opencv/cv.hpp>
 
@@ -28,13 +29,27 @@ protected:
     std::string refDDRName;
     std::string tilesPath;
     std::vector<std::string> initialPaths;
-    std::vector<std::list<cv::Rect_<int64_t> > > tiles;
-    // vector<pair<DR name, actual RT object with the only DR>
+    // std::vector<std::list<cv::Rect_<int64_t> > > finalTiles;
+    // vector<pair<DR name, actual RT object with a single DR>
     std::vector<std::pair<std::string, RegionTemplate*> > rts;
     std::vector<Target_t> tileTarget; // used only for hybrid tiling
 
     // Cost function for profiling the final tiles generated
     CostFunction* cfunc;
+
+    // Flag to signal if the input images were pre-tiles.
+    // If so, dense tiling should begin from a filled 'tiles' with the
+    // previous values.
+    bool preTiled;
+
+    // Map of <InputImage,tiles>
+    std::map<std::string, std::list<cv::Rect_<int64_t> > > tiles;
+
+    // Map of dimensions for each image
+    std::map<std::string, int64_t> w0s;
+    std::map<std::string, int64_t> h0s;
+    std::map<std::string, int64_t> ratiows;
+    std::map<std::string, int64_t> ratiohs;
     
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
