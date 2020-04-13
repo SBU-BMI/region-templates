@@ -24,6 +24,27 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
     this->nTiles = nTiles;
 }
 
+std::list<cv::Rect_<int64_t>> tileImg (int nTiles, 
+    int64_t x, int64_t width, int64_t y, int64_t height) {
+
+    // Calculates the tiles sizes given the nTiles
+    std::list<cv::Rect_<int64_t>> curTiles;
+    if (nTiles <= 1) {
+        cv::Rect_<int64_t> r;
+        r.x = x;
+        r.width = width;
+        r.y = y;
+        r.height = height;
+        
+        // Adds single tile
+        curTiles.push_back(r);
+    } else {
+        fixedGrid(nTiles, width, height, x, y, curTiles);
+    }
+
+    return curTiles;
+}
+
 void RegTiledRTCollection::customTiling() {
     // Go through all images
     for (std::string img : this->initialPaths) {
@@ -46,21 +67,20 @@ void RegTiledRTCollection::customTiling() {
         // Close .svs file
         openslide_close(osr);
 
-        // Calculates the tiles sizes given the nTiles
-        std::list<cv::Rect_<int64_t>> curTiles;
-        if (this->nTiles <= 1) {
-            cv::Rect_<int64_t> r;
-            r.x = 0;
-            r.width = w;
-            r.y = 0;
-            r.height = h;
-            
-            // Adds single tile
-            curTiles.push_back(r);
-        } else {
-            fixedGrid(this->nTiles, w, h, 0, 0, curTiles);
-        }
+        if (this->preTiled) {
+            // Update the number of tiles to tiles per dense region
+            this->nTiles = ceil((float)this->nTiles / (float)this->tiles[img].size());
 
-        this->tiles[img.c_str()] = curTiles;
+            // Get each individual fixed grid
+            std::list<cv::Rect_<int64_t>> curTiles;
+            std::list<cv::Rect_<int64_t>> tmpTiles;
+            for (cv::Rect_<int64_t> r : this->tiles[img]) {
+                tmpTiles = tileImg(this->nTiles, r.x, r.width, r.y, r.height);
+                curTiles.insert(curTiles.end(), tmpTiles.begin(), tmpTiles.end());
+            }
+            this->tiles[img.c_str()] = curTiles;
+        } else {
+            this->tiles[img.c_str()] = tileImg(this->nTiles, w, h, 0, 0);
+        }
     }
 }
