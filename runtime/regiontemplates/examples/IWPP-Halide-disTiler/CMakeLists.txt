@@ -19,24 +19,24 @@ target_link_libraries(autostage runtimesystem)
 target_link_libraries(autostage regiontemplates)
 target_link_libraries(autostage Halide)
 
-# Creates lib of halide iwpp
-set(halideiwpp)
-add_library(halideiwpp SHARED HalideIwpp.cpp)
-target_link_libraries(halideiwpp runtimesystem)
-target_link_libraries(halideiwpp regiontemplates)
-target_link_libraries(halideiwpp Halide)
-target_link_libraries(halideiwpp ${OpenCV_LIBS})
+# # Creates lib of halide iwpp
+# set(halideiwpp)
+# add_library(halideiwpp SHARED HalideIwpp.cpp)
+# target_link_libraries(halideiwpp runtimesystem)
+# target_link_libraries(halideiwpp regiontemplates)
+# target_link_libraries(halideiwpp Halide)
+# target_link_libraries(halideiwpp ${OpenCV_LIBS})
 
 
 # Creates executable to be built from the files listed
-add_executable(iwpp main.cpp)
+add_executable(iwpp main.cpp pipeline1.cpp misc.cpp HalideIwpp.cpp)
 target_link_libraries(iwpp Halide)
 target_link_libraries(iwpp ${OpenCV_LIBS})
 target_link_libraries(iwpp -ljpeg)
 target_link_libraries(iwpp ${PNG_LIBRARY})
-target_link_libraries(iwpp autostage halideiwpp)
-# target_link_libraries(iwpp regiontemplates)
-# target_link_libraries(iwpp runtimesystem)
+target_link_libraries(iwpp regiontemplates)
+target_link_libraries(iwpp runtimesystem)
+target_link_libraries(iwpp autostage)
 
 # nscale dirs
 find_path(NSCALE_SRC_DIR REQUIRED)
