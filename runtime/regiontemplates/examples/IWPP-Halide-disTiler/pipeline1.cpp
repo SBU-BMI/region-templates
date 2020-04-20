@@ -1,10 +1,12 @@
 #include "pipeline1.h"
 
+#define PROFILING_STAGES
+
 // Only implemented for grayscale images
 // Only implemented for uint8_t images
 // Structuring element must have odd width and height
 void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut, 
-    Halide::Buffer<uint8_t> hSE, Target_t target) {
+    Halide::Buffer<uint8_t> hSE, Target_t target, int tileId) {
 
     #ifdef PROFILING_STAGES
     long st1 = Util::ClockGetTime();
@@ -13,7 +15,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     // basic assertions for that ensures that this will work
     assert(hSE.width()%2 != 0);
     assert(hSE.height()%2 != 0);
-    assert(im_ios[0].channels() == 1);
+    assert(hIn.get().dimensions() == 1);
 
     int seWidth = (hSE.width()-1)/2;
     int seHeight = (hSE.height()-1)/2;
@@ -59,7 +61,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 
     #ifdef PROFILING_STAGES
     long st2 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId 
+    cout << "[" << target << "][PROFILING][" << tileId
          << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
     #endif
 
@@ -71,7 +73,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 
     #ifdef PROFILING_STAGES
     long st3 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId 
+    cout << "[" << target << "][PROFILING][" << tileId
          << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
     #endif
 }
@@ -80,10 +82,10 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 // Only implemented for uint8_t images
 // Structuring element must have odd width and height
 void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut, 
-    Halide::Buffer<uint8_t> hSE, Target_t target) {
+    Halide::Buffer<uint8_t> hSE, Target_t target, int tileId) {
 
     #ifdef PROFILING_STAGES
-    long st1 = Util::ClockGetTime();
+    long st0 = Util::ClockGetTime();
     #endif
 
     // basic assertions for that ensures that this will work
@@ -107,7 +109,6 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     Halide::Expr yc = clamp(y, seHeight, hIn.height()-seHeight);
     Halide::RDom se(0, hSE.width()-1, 0, hSE.height()-1);
     dilate(x,y) = maximum(mask(xc,yc,se.x,se.y));
-    // dilate(x,y) = hIn(x,y);
 
     // Schedules
     Halide::Var t;
@@ -124,12 +125,6 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
         dilate.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
     }
 
-    #ifdef PROFILING_STAGES
-    long st1 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId 
-         << "][STAGE_HAL_PREP][dilate] " << (st1-st0) << endl;
-    #endif
-    
     string st;
     if (target == ExecEngineConstants::CPU)
         st = "cpu";
@@ -141,8 +136,8 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 
     #ifdef PROFILING_STAGES
     long st2 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId 
-         << "][STAGE_HAL_COMP][dilate] " << (st2-st1) << endl;
+    cout << "[" << target << "][PROFILING][" << tileId
+         << "][STAGE_HAL_COMP][dilate] " << (st2-st0) << endl;
     #endif
 
     cout << "[dilate][" << st << "] Realizing..." << endl;
@@ -153,26 +148,26 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 
     #ifdef PROFILING_STAGES
     long st3 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId 
+    cout << "[" << target << "][PROFILING][" << tileId
          << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
     #endif
 }
-
-
 
 bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target, 
              std::vector<ArgumentBase*>& params) {
 
     // === cv::Mat inputs/outputs =============================================
     // Wraps the input and output cv::mat's with halide buffers
-    Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&im_ios[0], "hIn");
-    cv::Mat cvRC(im_ios[1].rows, im_ios[1].cols, im_ios[1].type(), 0);
+    cv::Mat& cvIn = im_ios[0];
+    cv::Mat& cvOut = im_ios[1];
+    Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
+    cv::Mat cvRC(cvOut.rows, cvOut.cols, cvOut.type(), cv::Scalar::all(0));
     Halide::Buffer<uint8_t> hRC = mat2buf<uint8_t>(&cvRC, "hRC");
-    
-    // We swap these two outputs on functions with cannot be realized inplace
-    cv::Mat cvOut1(im_ios[1].rows, im_ios[1].cols, im_ios[1].type(), 0);
+
+    // We swap these two outputs on functions which cannot be realized inplace
+    cv::Mat cvOut1(cvOut.rows, cvOut.cols, cvOut.type(), cv::Scalar::all(0));
     Halide::Buffer<uint8_t> hOut1 = mat2buf<uint8_t>(&cvOut1, "hOut1");
-    Halide::Buffer<uint8_t> hOut2 = mat2buf<uint8_t>(&im_ios[1], "hOut2");
+    Halide::Buffer<uint8_t> hOut2 = mat2buf<uint8_t>(&cvOut, "hOut2");
 
     // === parameters =========================================================
     int tileId = ((ArgumentInt*)params[0])->getArgValue();
@@ -206,6 +201,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     }
     Halide::Buffer<uint8_t> hSE3 = mat2buf<uint8_t>(&cvSE3, "hSE3");   // dilate/erode 2
 
+    std::cout << "[pipeline1][" << tileId << "] Got all parameters" << std::endl;
+
     string st;
     if (target == ExecEngineConstants::CPU)
         st = "cpu";
@@ -221,13 +218,15 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         get_bg.compile_jit();
         get_bg.realize(hOut1);
     
-        int bgArea = cv::countNonZero(im_ios[1]);
-        float ratio = (float)bgArea / (float)(im_ios[1].size().area());
+        long bgArea = cv::countNonZero(cvOut1);
+        float ratio = (float)bgArea / (float)(cvOut1.size().area());
     
         // check if there is too much background
-        std::cout << "[get_background] ratio: " << ratio << std::endl;
+        std::cout << "[get_background][" << tileId << "] ratio: " 
+            << ratio << std::endl;
         if (ratio >= 0.9) {
-            std::cout << "[get_background] aborted!" << std::endl;
+            std::cout << "[get_background][" << tileId 
+                << "] aborted!" << std::endl;
             return true; // abort if more than 90% background
         }
     }
@@ -235,9 +234,9 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     // === invert =========================================================
     {
         if (channel == -1)
-            assert(im_ios[0].channels() == 1);
+            assert(cvIn.channels() == 1);
         else
-            assert(im_ios[0].channels() == 3);
+            assert(cvIn.channels() == 3);
 
         // Define halide stage
         Halide::Var x, y;
@@ -253,17 +252,17 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     }
 
     // === erode/dilate 1 =================================================
-    erode(hIn, hOut1, hSE19, target);
-    dilate(hOut1, hOut2, hSE19, target);
+    erode(hRC, hOut1, hSE19, target, tileId);
+    dilate(hOut1, hOut2, hSE19, target, tileId);
 
     // === imrecon ========================================================
-    loopedIwppRecon(target, cvRC, im_ios[1]);
+    loopedIwppRecon(target, cvRC, cvOut);
 
     // === preFill ========================================================
     {
         // sizes must be odd
-        assert(im_ios[0].channels() == 1);
-        assert(im_ios[1].channels() == 1);
+        assert(cvIn.channels() == 1);
+        assert(cvOut.channels() == 1);
 
         // Define halide stage
         Halide::Var x, y;
@@ -299,8 +298,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     }
 
     // === dilate/erode 2 =================================================
-    dilate(hOut1, hOut2, hSE3, target);
-    erode(hIn, hOut1, hSE3, target);
+    dilate(hOut2, hOut1, hSE3, target, tileId);
+    erode(hOut1, hOut2, hSE3, target, tileId);
 
     return false;
 }

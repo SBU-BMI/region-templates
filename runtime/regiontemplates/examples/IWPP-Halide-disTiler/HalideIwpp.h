@@ -1,7 +1,7 @@
 #ifndef HALIDE_IWPP_H_
 #define HALIDE_IWPP_H_ value
 
-// #define WITH_CUDA
+#include "misc.h"
 
 #include <iostream>
 
@@ -15,7 +15,6 @@
 
 #include "ExecEngineConstants.h"
 #include "Util.h"
-#include "misc.h"
 
 // Should use ExecEngineConstants::GPU ... 
 typedef int Target_t;

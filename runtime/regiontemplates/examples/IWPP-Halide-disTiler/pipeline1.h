@@ -1,6 +1,8 @@
 #ifndef PIPELINE_1_H_
 #define PIPELINE_1_H_
 
+#include "misc.h"
+
 #include "cv.hpp"
 #include "Halide.h"
 
@@ -8,7 +10,6 @@
 #include "ExecEngineConstants.h"
 #include "Util.h"
 
-#include "misc.h"
 #include "HalideIwpp.h"
 
 // Should use ExecEngineConstants::GPU ... 

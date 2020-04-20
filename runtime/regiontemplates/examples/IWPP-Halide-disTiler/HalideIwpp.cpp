@@ -21,7 +21,6 @@ Halide::Func halSum(Halide::Buffer<T>& JJ) {
     return pSum;
 }
 
-#define PROFILING_STAGES2
 int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
 
     Halide::Buffer<uint8_t> hI;
@@ -39,8 +38,8 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         hTtarget.set_feature(Halide::Target::CUDA);
 
         // Upload inputs to gpu memory
-        cvDevI.upload(*cvHostI);
-        cvDevJ.upload(*cvHostJ);
+        cvDevI.upload(cvHostI);
+        cvDevJ.upload(cvHostJ);
 
         // Create halide wrappers for the gpu mat's
         hI = gpuMat2buf<uint8_t>(cvDevI, hTtarget, "hI");

@@ -29,24 +29,24 @@ Halide::Buffer<T> mat2buf(cv::Mat* m, std::string name) {
     }
 }
 
-// This manual setup is required since GPU data may have a different
-// memory displacement than on host memory. Tldr, need to fix
-// the stride of Halide::Buffer for data already on GPU.
-template <typename T>
-Halide::Buffer<T> gpuMat2buf(cv::cuda::GpuMat& m, Halide::Target& t, 
-        std::string name) {
+// // This manual setup is required since GPU data may have a different
+// // memory displacement than on host memory. Tldr, need to fix
+// // the stride of Halide::Buffer for data already on GPU.
+// template <typename T>
+// Halide::Buffer<T> gpuMat2buf(cv::cuda::GpuMat& m, Halide::Target& t, 
+//         std::string name) {
 
-    //int extents[] = {m.cols, m.rows};
-    //int strides[] = {1, ((int)m.step)/((int)sizeof(T))};
-    //int mins[] = {0, 0};
-    buffer_t devB = {0, NULL, {m.cols, m.rows}, 
-                     {1, ((int)m.step)/((int)sizeof(T))}, 
-                     {0, 0}, sizeof(T)};
+//     //int extents[] = {m.cols, m.rows};
+//     //int strides[] = {1, ((int)m.step)/((int)sizeof(T))};
+//     //int mins[] = {0, 0};
+//     buffer_t devB = {0, NULL, {m.cols, m.rows}, 
+//                      {1, ((int)m.step)/((int)sizeof(T))}, 
+//                      {0, 0}, sizeof(T)};
 
     
-    Halide::Buffer<T> hDev = name.empty() ? 
-        Halide::Buffer<T>(devB) : Halide::Buffer<T>(devB, name);
-    hDev.device_wrap_native(Halide::DeviceAPI::CUDA, (intptr_t)m.data, t);
+//     Halide::Buffer<T> hDev = name.empty() ? 
+//         Halide::Buffer<T>(devB) : Halide::Buffer<T>(devB, name);
+//     hDev.device_wrap_native(Halide::DeviceAPI::CUDA, (intptr_t)m.data, t);
 
-    return hDev;
-}
+//     return hDev;
+// }
