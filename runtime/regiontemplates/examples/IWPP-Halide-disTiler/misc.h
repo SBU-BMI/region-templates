@@ -1,7 +1,7 @@
 #ifndef MISC_H_
 #define MISC_H_
 
-#define WITH_CUDA
+// #define WITH_CUDA
 
 #include "cv.hpp"
 #include "Halide.h"

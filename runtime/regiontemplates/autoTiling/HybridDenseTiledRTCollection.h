@@ -10,6 +10,7 @@
 #include "openslide.h"
 
 #include "TiledRTCollection.h"
+#include "TiledMatCollection.h"
 #include "costFuncs/BGMasker.h"
 #include "CostFunction.h"
 #include "tilingAlgs/tilingUtil.h"
@@ -18,7 +19,7 @@
 #include "tilingAlgs/kdTreeCutting.h"
 #include "tilingAlgs/quadTreeCutting.h"
 
-class HybridDenseTiledRTCollection : public TiledRTCollection {
+class HybridDenseTiledRTCollection : public TiledRTCollection, public TiledMatCollection {
 private:
     int nCpuTiles; // Expected number of dense tiles by the end of te tiling
     int nGpuTiles; // Expected number of dense tiles by the end of te tiling
@@ -35,6 +36,10 @@ protected:
     //   tile containing the full image.
     void customTiling();
 
+    // Performs the tiling using the current algorithm
+    // Also used for mat tiling, instead of tiling form the svs image
+    void tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles);
+    
 public:
     HybridDenseTiledRTCollection(std::string name, std::string refDDRName, 
         std::string tilesPath, int64_t borders, CostFunction* cfunc, 

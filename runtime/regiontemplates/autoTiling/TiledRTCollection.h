@@ -76,16 +76,8 @@ public:
     void setPreTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
     void addTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
 
-    // tiling methods for mask tiling, based on a previous tiling
-    void tileImages(std::vector<std::list<cv::Rect_<int64_t>>> tiles);
     std::vector<std::list<cv::Rect_<int64_t>>> getTiles();
 
 };
-
-/*****************************************************************************/
-/***************************** Helper functions ******************************/
-/*****************************************************************************/
-
-void cleanup(std::string path);
 
 #endif

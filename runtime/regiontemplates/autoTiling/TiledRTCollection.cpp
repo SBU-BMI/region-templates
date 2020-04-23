@@ -17,9 +17,7 @@ TiledRTCollection::TiledRTCollection(std::string name, std::string refDDRName,
     this->cfunc = cfunc;
 }
 
-TiledRTCollection::~TiledRTCollection() {
-    // cleanup(this->tilesPath + "/" + name);
-}
+TiledRTCollection::~TiledRTCollection() {}
 
 void TiledRTCollection::addImage(std::string path) {
     initialPaths.push_back(path);
@@ -48,9 +46,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     if (this->tiled) {
         std::cout << "RT collection already tiled. Cannot re-tile it. " 
             << __FILE__ << ":" << __LINE__ << std::endl;
-        // cleanup(this->tilesPath + "/" + name);
         exit(-1);
-        // return;
     }
 
     // Generate initial tile for each initial image if image 
@@ -92,9 +88,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
     if (this->drGen) {
         std::cout << "RT collection already generated. Cannot re-tile it. " 
             << __FILE__ << ":" << __LINE__ << std::endl;
-        // cleanup(this->tilesPath + "/" + name);
         exit(-1);
-        // return;
     }
     
     // Creates a list of costs for each tile for each image
@@ -286,9 +280,7 @@ void TiledRTCollection::setPreTiles(std::map<std::string,
     if (this->preTiled || this->tiled) {
         std::cout << "Can only set pre-tiles once and before tiling. " 
             << __FILE__ << ":" << __LINE__ << std::endl;
-        // cleanup(this->tilesPath + "/" + name);
         exit(-1);
-        // return;
     }
     this->preTiled = true;
     this->tiles = tiles;
@@ -301,13 +293,6 @@ void TiledRTCollection::addTiles(std::map<std::string,
         this->tiles[img].insert(this->tiles[img].end(), 
             newTiles[img].begin(), newTiles[img].end());
     }
-}
-
-// DEPRECATED
-// Performs the tiling using a previously tiled TRTC
-void TiledRTCollection::tileImages(
-    std::vector<std::list<cv::Rect_<int64_t>>> tiles) {
-
 }
 
 std::vector<std::list<cv::Rect_<int64_t>>> TiledRTCollection::getTiles() {

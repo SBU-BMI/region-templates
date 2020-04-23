@@ -10,6 +10,7 @@
 #include "openslide.h"
 
 #include "TiledRTCollection.h"
+#include "TiledMatCollection.h"
 #include "costFuncs/BGMasker.h"
 #include "CostFunction.h"
 #include "tilingAlgs/tilingUtil.h"
@@ -17,7 +18,7 @@
 #include "tilingAlgs/kdTreeCutting.h"
 #include "tilingAlgs/quadTreeCutting.h"
 
-class IrregTiledRTCollection : public TiledRTCollection {
+class IrregTiledRTCollection : public TiledRTCollection, public TiledMatCollection {
 private:
     int nTiles; // Expected number of dense tiles by the end of te tiling
     BGMasker* bgm;
@@ -30,6 +31,10 @@ protected:
     // Defaults to returning the input images with a single
     //   tile containing the full image.
     void customTiling();
+
+    // Performs the tiling using the current algorithm
+    // Also used for mat tiling, instead of tiling form the svs image
+    void tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles);
 
 public:
     IrregTiledRTCollection(std::string name, std::string refDDRName, 

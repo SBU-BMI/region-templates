@@ -67,20 +67,25 @@ void RegTiledRTCollection::customTiling() {
         // Close .svs file
         openslide_close(osr);
 
-        if (this->preTiled) {
-            // Update the number of tiles to tiles per dense region
-            this->nTiles = ceil((float)this->nTiles / (float)this->tiles[img].size());
-
-            // Get each individual fixed grid
-            std::list<cv::Rect_<int64_t>> curTiles;
-            std::list<cv::Rect_<int64_t>> tmpTiles;
-            for (cv::Rect_<int64_t> r : this->tiles[img]) {
-                tmpTiles = tileImg(this->nTiles, r.x, r.width, r.y, r.height);
-                curTiles.insert(curTiles.end(), tmpTiles.begin(), tmpTiles.end());
-            }
-            this->tiles[img.c_str()] = curTiles;
-        } else {
-            this->tiles[img.c_str()] = tileImg(this->nTiles, 0, w, 0, h);
-        }
+        this->tileMat(mat, this->tiles[img]);
     }
 }
+
+void RegTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) {
+    if (this->preTiled) {
+        // Update the number of tiles to tiles per dense region
+        this->nTiles = ceil((float)this->nTiles / (float)tiles.size());
+
+        // Get each individual fixed grid
+        std::list<cv::Rect_<int64_t>> curTiles;
+        std::list<cv::Rect_<int64_t>> tmpTiles;
+        for (cv::Rect_<int64_t> r : tiles) {
+            tmpTiles = tileImg(this->nTiles, r.x, r.width, r.y, r.height);
+            curTiles.insert(curTiles.end(), tmpTiles.begin(), tmpTiles.end());
+        }
+        tiles = curTiles;
+    } else {
+        tiles = tileImg(this->nTiles, 0, mat.cols, 0, mat.rows);
+    }
+}
+
