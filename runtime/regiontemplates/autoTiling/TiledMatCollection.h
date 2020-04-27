@@ -15,12 +15,10 @@
 #include "CostFunction.h"
 
 class TiledMatCollection {
-protected:
-    virtual void tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) = 0;
-
 public:
     TiledMatCollection() {};
 
+    virtual void tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) = 0;
     std::list<cv::Rect_<int64_t>> tileMat(cv::Mat& mat) {
         // Adds single tile with full image
         std::list<cv::Rect_<int64_t>> tiles;

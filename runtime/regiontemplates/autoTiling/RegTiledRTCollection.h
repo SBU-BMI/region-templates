@@ -27,11 +27,11 @@ protected:
     //   tile containing the full image.
     void customTiling();
 
+public:
     // Performs the tiling using the current algorithm
     // Also used for mat tiling, instead of tiling form the svs image
     void tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles);
 
-public:
     RegTiledRTCollection(std::string name, std::string refDDRName, 
         std::string tilesPath, int64_t tw, int64_t th, int64_t borders,
         CostFunction* cfunc);

@@ -40,6 +40,12 @@ void HybridDenseTiledRTCollection::customTiling() {
         openslide_close(osr);
 
         this->tileMat(maskMat, this->tiles[img]);
+
+        int drId = 0;
+        for (cv::Rect_<int64_t> tile : this->tiles[img]) {
+            this->tileTarget.push_back(drId<this->nGpuTiles ?
+                ExecEngineConstants::GPU : ExecEngineConstants::CPU);
+        }
     }
 }
 

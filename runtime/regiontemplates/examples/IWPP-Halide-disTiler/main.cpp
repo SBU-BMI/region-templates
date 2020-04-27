@@ -44,16 +44,16 @@ enum TilingAlgorithm_t {
 // Should use ExecEngineConstants::GPU ... 
 typedef int Target_t;
 inline Target_t tgt(TilingAlgorithm_t tilingAlg, Target_t target) {
-    switch (tilingAlg) {
-        case NO_TILING:
-        case CPU_DENSE:
-            return ExecEngineConstants::CPU;
-        case HYBRID_DENSE:
-        case HYBRID_PRETILER:
-        case HYBRID_RESSPLIT:
-            return target;
-    }
-    // return ExecEngineConstants::GPU;
+    // switch (tilingAlg) {
+    //     case NO_TILING:
+    //     case CPU_DENSE:
+    //         return ExecEngineConstants::CPU;
+    //     case HYBRID_DENSE:
+    //     case HYBRID_PRETILER:
+    //     case HYBRID_RESSPLIT:
+    //         return target;
+    // }
+    return ExecEngineConstants::ANY;
 }
 
 int findArgPos(std::string s, int argc, char** argv) {

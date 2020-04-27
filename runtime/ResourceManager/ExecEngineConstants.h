@@ -6,6 +6,7 @@ using namespace std;
 namespace ExecEngineConstants {
 	//! Defining what processor should be used when invoking the functions
 	static const int NUM_PROC_TYPES=3;
+	static const int ANY=0; // created for local-worker tiling
 	static const int CPU=1;
 	static const int GPU=2;
 	static const int MIC=3;

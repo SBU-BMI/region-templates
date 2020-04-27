@@ -15,7 +15,7 @@
 #include "tilingAlgs/tilingUtil.h"
 #include "tilingAlgs/denseFromBG.h"
 
-class BGPreTiledRTCollection : public TiledRTCollection {
+class BGPreTiledRTCollection : public TiledRTCollection, public TiledMatCollection {
 private:
     BGMasker* bgm;
 
@@ -27,8 +27,12 @@ protected:
     // Defaults to returning the input images with a single
     //   tile containing the full image.
     void customTiling();
-
+    
 public:
+    // Performs the tiling using the current algorithm
+    // Also used for mat tiling, instead of tiling form the svs image
+    void tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles);
+
     BGPreTiledRTCollection(std::string name, std::string refDDRName, 
         std::string tilesPath, int64_t borders, 
         CostFunction* cfunc, BGMasker* bgm);

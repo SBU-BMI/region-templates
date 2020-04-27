@@ -40,12 +40,59 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
         RTPipelineComponentBase::OUTPUT);
 };
 
+std::list<std::vector<DenseDataRegion2D*>> RTF::Internal::AutoStage::localTileDRs(
+    std::vector<DenseDataRegion2D*>& dr_ios) {
+
+    // Gets first DR for irregular tiling
+    cv::Mat* cvInitial = dr_ios[0]->getData();
+    TiledMatCollection* preTiler = new BGPreTiledRTCollection(
+        "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
+        Ipath, border, cfunc, bgm);
+    TiledRTCollection* tCollImg = new IrregTiledRTCollection(
+        "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
+        Ipath, border, cfunc, bgm, denseTilingAlg, nTiles);
+    
+    // Performs pre-tiling
+    preTiler->tileMat(*cvInitial);
+    
+    // Performs dense tiling
+    std::list<cv::Rect_<int64_t>>& tiles = ((BGPreTiledRTCollection*)preTiler)->getDense();
+    std::list<cv::Rect_<int64_t>>& bgTiles = ((BGPreTiledRTCollection*)preTiler)->getBg();
+    tCollImg->tileMat(*cvInitial, tiles);
+    tiles.insert(tiles.end(), bgTiles.begin(), bgTiles.end());
+
+    // Performs tiling for all DRs into cv::Mat
+    // std::vector<std::vector<cv::Mat>> cvTiles;
+    for (int d=0; d<dr_ios.size(); d++) {
+        cvTiles[d] = std::list<cv::Mat>();
+        int t=0;
+        for (cv::Rect_<int64_t> tile : tiles) {
+            cv::Mat* cvTile = new cv::Mat();
+            (*cvTile) = (*dr_ios[d]->getData())(tile).clone();
+
+
+        }
+    }
+
+    // Wraps tile mat into DRs
+    RegionTemplate* rtTile = this->getRegionTemplateInstance(
+        this->rts_names[this->rts_names.size()-1]);
+    DenseDataRegion2D *drOut = new DenseDataRegion2D();
+    drName = tileId==-1 ? rtTile->getName() : "t"+std::to_string(this->tileId);
+    drOut->setName(drName);
+    drOut->setId(rtTile->getName());
+    drOut->setData(*cvOut);
+    rtTile->insertDataRegion(drOut);
+
+    dr_ios.emplace_back(drOut, this->tileId);
+}
+
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
-#ifdef DEBUG
+    #ifdef DEBUG
     std::cout << "[Internal::AutoStage] running" << std::endl;
-#endif
+    #endif
     std::vector<DenseDataRegion2D*> dr_ios;
     std::string drName;
     for (int i=0; i<this->rts_names.size()-1; i++) {
@@ -71,10 +118,13 @@ int RTF::Internal::AutoStage::run() {
     drOut->setData(*cvOut);
     rtOut->insertDataRegion(drOut);
 
-    dr_ios.emplace_back(drOut);
-#ifdef DEBUG
+    dr_ios.emplace_back(drOut, this->tileId);
+    #ifdef DEBUG
     std::cout << "[Internal::AutoStage] creating task" << std::endl;
-#endif
+    #endif
+
+    // Perform local-worker tiling
+    std::list<std::vector<DenseDataRegion2D*>> tilesDRs = localTileDRs(dr_ios);
 
     // Assemble a schedule map with the local pointers for the halide functions
     std::map<Target_t, HalGen*> local_schedules;
@@ -82,70 +132,70 @@ int RTF::Internal::AutoStage::run() {
         local_schedules[s.first] = RTF::AutoStage::retrieveStage(s.second);
     }
 
-    // Anonymous class for implementing the current stage's task
-    struct _Task : public Task {
-        std::map<Target_t, HalGen*> schedules;
-        std::vector<DenseDataRegion2D*> dr_ios;
-        std::vector<ArgumentBase*> params;
-        
-        _Task(std::map<Target_t, HalGen*> schedules, 
-            std::vector<DenseDataRegion2D*>& dr_ios, 
-            std::vector<ArgumentBase*> params):
-        schedules(schedules), dr_ios(dr_ios), params(params) {};
+    for (std::vector<DenseDataRegion2D*> tileDRs : tilesDRs) {
+        // Anonymous class for implementing the current stage's task
+        struct _Task : public Task {
+            std::map<Target_t, HalGen*> schedules;
+            std::vector<DenseDataRegion2D*> dr_ios;
+            std::vector<ArgumentBase*> params;
+            
+            _Task(std::map<Target_t, HalGen*> schedules, 
+                std::vector<DenseDataRegion2D*>& dr_ios, 
+                std::vector<ArgumentBase*> params):
+            schedules(schedules), dr_ios(dr_ios), params(params) {};
 
-        bool run(int procType, int tid=0) {
-            // Generates the input/output list of cv::mat
-#ifdef DEBUG
-            std::cout << "[Internal::AutoStage::_Task] realizing " 
-                << schedules.begin()->second->getName() << std::endl;
-#endif
-            std::vector<cv::Mat> im_ios;
-            bool aborted = false;
-            for (int i=0; i<this->dr_ios.size(); i++) {
-                im_ios.emplace_back(cv::Mat(this->dr_ios[i]->getData()));
-                if (this->dr_ios[i]->aborted()) {
-                    aborted = true;
-                    break;
-                }
-            }
-
-            // Executes the halide stage if not aborted
-            if (!aborted)
-                aborted = schedules[procType]->realize(im_ios, procType, params);
-            if (aborted) {
-                std::string abortStr = "[Internal::AutoStage::_Task]";
-                abortStr += " Aborted exec of tiles with size ";
+            bool run(int procType, int tid=0) {
+                // Generates the input/output list of cv::mat
+                #ifdef DEBUG
+                std::cout << "[Internal::AutoStage::_Task] realizing " 
+                    << schedules.begin()->second->getName() << std::endl;
+                #endif
+                std::vector<cv::Mat> im_ios;
+                bool aborted = false;
                 for (int i=0; i<this->dr_ios.size(); i++) {
-                    // set abort flag for all further data regions
-                    this->dr_ios[i]->abort();
-
-                    abortStr += to_string(this->dr_ios[i]->getData().rows);
-                    abortStr += "x";
-                    abortStr += to_string(this->dr_ios[i]->getData().cols);
-                    abortStr += " ";
+                    im_ios.emplace_back(cv::Mat(this->dr_ios[i]->getData()));
+                    if (this->dr_ios[i]->aborted()) {
+                        aborted = true;
+                        break;
+                    }
                 }
-                std::cout << abortStr << std::endl;
+
+                // Executes the halide stage if not aborted
+                if (!aborted)
+                    aborted = schedules[procType]->realize(im_ios, procType, params);
+                if (aborted) {
+                    std::string abortStr = "[Internal::AutoStage::_Task]";
+                    abortStr += " Aborted exec of tiles with size ";
+                    for (int i=0; i<this->dr_ios.size(); i++) {
+                        // set abort flag for all further data regions
+                        this->dr_ios[i]->abort();
+
+                        abortStr += to_string(this->dr_ios[i]->getData().rows);
+                        abortStr += "x";
+                        abortStr += to_string(this->dr_ios[i]->getData().cols);
+                        abortStr += " ";
+                    }
+                    std::cout << abortStr << std::endl;
+                }
+
+                // Assigns the output mat to its DataRegion
+                #ifdef DEBUG
+                std::cout << "[Internal::AutoStage::_Task] realized " 
+                    << std::endl;
+                #endif
             }
+        }* currentTask = new _Task(local_schedules, tileDRs, this->getArguments());
 
-                
-
-            // Assigns the output mat to its DataRegion
-#ifdef DEBUG
-            std::cout << "[Internal::AutoStage::_Task] realized " 
-                << std::endl;
-#endif
+        // Set targets for this task
+        for (std::pair<Target_t, std::string> s : this->schedules) {
+            currentTask->addTaskTarget(s.first);
         }
-    }* currentTask = new _Task(local_schedules, dr_ios, this->getArguments());
 
-    // Set targets for this task
-    for (std::pair<Target_t, std::string> s : this->schedules) {
-        currentTask->addTaskTarget(s.first);
+        #ifdef DEBUG
+        std::cout << "[Internal::AutoStage] sending task for execution" << std::endl;
+        #endif
+        this->executeTask(currentTask);
     }
-
-#ifdef DEBUG
-    std::cout << "[Internal::AutoStage] sending task for execution" << std::endl;
-#endif
-    this->executeTask(currentTask);
 }
 
 RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {

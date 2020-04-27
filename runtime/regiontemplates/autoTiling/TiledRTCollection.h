@@ -33,10 +33,12 @@ protected:
     std::string refDDRName;
     std::string tilesPath;
     std::vector<std::string> initialPaths;
-    // std::vector<std::list<cv::Rect_<int64_t> > > finalTiles;
+    
     // vector<pair<DR name, actual RT object with a single DR>
     std::vector<std::pair<std::string, RegionTemplate*>> rts;
-    std::vector<Target_t> tileTarget; // used only for hybrid tiling
+
+    // used only for hybrid tiling
+    std::vector<Target_t> tileTarget;
 
     // Cost function for profiling the final tiles generated
     CostFunction* cfunc;

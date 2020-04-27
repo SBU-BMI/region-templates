@@ -33,43 +33,45 @@ void BGPreTiledRTCollection::customTiling() {
         // Close .svs file
         openslide_close(osr);
 
-        // Gets threshold mask
-        cv::Mat thMask = bgm->bgMask(maskMat);
-        
-        // Performs tiling
-        std::list<rect_t> denseTiles;
-        std::list<rect_t> bgTiles;
-        tileDenseFromBG(thMask, denseTiles, bgTiles, &maskMat);
-
-        std::cout << "[BGPreTiledRTCollection] Dense tiles: " 
-            << denseTiles.size() << ", bg tiles: " 
-            << bgTiles.size() << std::endl;
-
-        // Convert rect_t to cv::Rect_ and add to output lists
-        std::list<cv::Rect_<int64_t> > cvDenseTiles;
-        for (std::list<rect_t>::iterator r=denseTiles.begin(); 
-                r!=denseTiles.end(); r++) {
-
-            cvDenseTiles.push_back(cv::Rect_<int64_t>(
-                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
-        }
-        this->denseTiles[img] = cvDenseTiles;
-
-        // Convert rect_t to cv::Rect_ and add to output lists
-        std::list<cv::Rect_<int64_t> > cvBgTiles;
-        for (std::list<rect_t>::iterator r=bgTiles.begin(); 
-                r!=bgTiles.end(); r++) {
-
-            cvBgTiles.push_back(cv::Rect_<int64_t>(
-                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
-        }
-        this->bgTiles[img] = cvBgTiles;
-
-        // Add all tiles to final compiled list
-        this->tiles[img.c_str()] = std::list<cv::Rect_<int64_t>>();
-        this->tiles[img.c_str()].insert(this->tiles[img.c_str()].end(), 
-            cvDenseTiles.begin(), cvDenseTiles.end());
-        this->tiles[img.c_str()].insert(this->tiles[img.c_str()].end(), 
-            cvBgTiles.begin(), cvBgTiles.end());
+        this->tileMat(maskMat, this->tiles[img]);
     }
+}
+
+void BGPreTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) {
+    // Gets threshold mask
+    cv::Mat thMask = bgm->bgMask(mat);
+    
+    // Performs tiling
+    std::list<rect_t> denseTiles;
+    std::list<rect_t> bgTiles;
+    tileDenseFromBG(thMask, denseTiles, bgTiles, &mat);
+
+    std::cout << "[BGPreTiledRTCollection] Dense tiles: " 
+        << denseTiles.size() << ", bg tiles: " 
+        << bgTiles.size() << std::endl;
+
+    // Convert rect_t to cv::Rect_ and add to output lists
+    std::list<cv::Rect_<int64_t> > cvDenseTiles;
+    for (std::list<rect_t>::iterator r=denseTiles.begin(); 
+            r!=denseTiles.end(); r++) {
+
+        cvDenseTiles.push_back(cv::Rect_<int64_t>(
+            r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+    }
+    this->denseTiles[img] = cvDenseTiles;
+
+    // Convert rect_t to cv::Rect_ and add to output lists
+    std::list<cv::Rect_<int64_t> > cvBgTiles;
+    for (std::list<rect_t>::iterator r=bgTiles.begin(); 
+            r!=bgTiles.end(); r++) {
+
+        cvBgTiles.push_back(cv::Rect_<int64_t>(
+            r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+    }
+    this->bgTiles[img] = cvBgTiles;
+
+    // Add all tiles to final compiled list
+    tiles.clear();
+    tiles.insert(tiles.end(), cvDenseTiles.begin(), cvDenseTiles.end());
+    tiles.insert(tiles.end(), cvBgTiles.begin(), cvBgTiles.end());
 }
