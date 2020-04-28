@@ -48,17 +48,14 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>
     std::list<rect_t> bgTiles;
     tileDenseFromBG(thMask, denseTiles, bgTiles, &mat);
 
-    std::cout << "[BGPreTiledRTCollection] Dense tiles: " 
-        << denseTiles.size() << ", bg tiles: " 
-        << bgTiles.size() << std::endl;
-
     // Convert rect_t to cv::Rect_ and add to output lists
     std::list<cv::Rect_<int64_t> > cvDenseTiles;
     for (std::list<rect_t>::iterator r=denseTiles.begin(); 
             r!=denseTiles.end(); r++) {
 
-        cvDenseTiles.push_back(cv::Rect_<int64_t>(
-            r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+        if (r->xo-r->xi > 0 && r->yo-r->yi)
+            cvDenseTiles.push_back(cv::Rect_<int64_t>(
+                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
     }
     this->denseTiles[this->curImg] = cvDenseTiles;
 
@@ -67,10 +64,15 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>
     for (std::list<rect_t>::iterator r=bgTiles.begin(); 
             r!=bgTiles.end(); r++) {
 
-        cvBgTiles.push_back(cv::Rect_<int64_t>(
-            r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+        if (r->xo-r->xi > 0 && r->yo-r->yi)
+            cvBgTiles.push_back(cv::Rect_<int64_t>(
+                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
     }
     this->bgTiles[this->curImg] = cvBgTiles;
+
+    std::cout << "[BGPreTiledRTCollection] Dense tiles: " 
+        << cvDenseTiles.size() << ", bg tiles: " 
+        << cvBgTiles.size() << std::endl;
 
     // Add all tiles to final compiled list
     tiles.clear();

@@ -56,6 +56,7 @@ void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>>& tiles,
     cv::imwrite(name + ".png", img);
 }
 
+// #define DEBUG
 void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles, 
     std::vector<std::vector<DenseDataRegion2D*>>& allTiles) {
 
@@ -73,9 +74,9 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     rtCur = this->getRegionTemplateInstance(rtId);
 
     // Sets cost functions
-    int bgThr = 150;
-    int erode_param = 4;
-    int dilate_param = 2;
+    int bgThr = 200;
+    int erode_param = 12;
+    int dilate_param = 4;
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     CostFunction* cfunc = new ThresholdBGCostFunction(bgThr, 
         dilate_param, erode_param);
@@ -92,7 +93,6 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     
     // Performs pre-tiling
     std::list<cv::Rect_<int64_t>> tilesTmp = preTiler->tileMat(cvInitial);
-    // printTiled(cvInitial, tilesTmp, "preTiled");
 
     // Performs dense tiling
     tiles = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getDense().begin()->second;
@@ -152,7 +152,6 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     }
 }
 
-#define DEBUG
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
@@ -197,7 +196,7 @@ int RTF::Internal::AutoStage::run() {
 
     // Creates tasks for each tile
     std::list<int> tasksIds;
-    for (std::vector<DenseDataRegion2D*> tileDRs : tilesDRs) {
+    for (int i=0; i<tilesDRs.size(); i++) {
         // Anonymous class for implementing the current stage's task
         struct _Task : public Task {
             std::map<Target_t, HalGen*> schedules;
@@ -214,6 +213,9 @@ int RTF::Internal::AutoStage::run() {
                 #ifdef DEBUG
                 std::cout << "[Internal::AutoStage::_Task] realizing " 
                     << schedules.begin()->second->getName() << std::endl;
+                std::cout << "[Internal::AutoStage::_Task] img size: "
+                    << this->dr_ios[0]->getData().rows << " x "
+                    << this->dr_ios[0]->getData().cols << std::endl;
                 #endif
                 std::vector<cv::Mat> im_ios;
                 bool aborted = false;
@@ -249,7 +251,7 @@ int RTF::Internal::AutoStage::run() {
                     << std::endl;
                 #endif
             }
-        }* currentTask = new _Task(local_schedules, tileDRs, this->getArguments());
+        }* currentTask = new _Task(local_schedules, tilesDRs[i], this->getArguments());
 
         // Set targets for this task
         for (std::pair<Target_t, std::string> s : this->schedules) {
@@ -287,23 +289,9 @@ int RTF::Internal::AutoStage::run() {
             // Add each tile to output mat
             int i=0;
             for (cv::Rect_<int64_t> tile : this->tiles) {
-                std::cout << "[_TaskMerge] adding tile " << tile << std::endl;
-                std::cout << "[_TaskMerge] out size " << cvOut.cols 
-                    << " x " << cvOut.rows << ", c:" 
-                    << cvOut.channels() << std::endl;
                 cv::Mat cvCur = this->tileDRs[i]->getData();
-                std::cout << "[_TaskMerge] cur size " << cvCur.cols 
-                    << " x " << cvCur.rows << ", c:"
-                    << cvCur.channels() << std::endl;
-                if (!this->tileDRs[i]->aborted()) {
-                    try {
-                        cvCur.copyTo(cvOut(tile));
-                    } catch (const std::exception& ex) {
-                        std::cout << "error: " << ex.what() << std::endl;
-                        exit(-1);
-                    }
-                } else
-                    std::cout << "tile aborted" << std::endl;
+                if (!this->tileDRs[i]->aborted())
+                    cvCur.copyTo(cvOut(tile));
                 i++;
             }
         }

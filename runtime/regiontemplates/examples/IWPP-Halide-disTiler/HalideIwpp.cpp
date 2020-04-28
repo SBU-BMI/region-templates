@@ -191,7 +191,7 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         // Full iteration time
         st5 = Util::ClockGetTime();
         
-        //#ifdef IT_DEBUG
+        #ifdef IT_DEBUG
         cout << "[" << target << "][PROFILING] it: " << it << ", sum = " 
             << newSum << std::endl;
         cout << "[" << target << "][PROFILING][IWPP_PROP_TIME] " 
@@ -200,7 +200,7 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
             << (st5-st3) << endl;
         cout << "[" << target << "][PROFILING][IWPP_FULL_IT_TIME] " 
             << (st5-st2) << std::endl;
-        //#endif
+        #endif
 
     } while(newSum != oldSum);
 
