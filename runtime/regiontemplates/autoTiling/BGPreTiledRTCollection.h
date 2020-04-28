@@ -10,6 +10,7 @@
 #include "openslide.h"
 
 #include "TiledRTCollection.h"
+#include "TiledMatCollection.h"
 #include "costFuncs/BGMasker.h"
 #include "CostFunction.h"
 #include "tilingAlgs/tilingUtil.h"
@@ -21,6 +22,8 @@ private:
 
     std::map<std::string, std::list<cv::Rect_<int64_t>>> denseTiles;
     std::map<std::string, std::list<cv::Rect_<int64_t>>> bgTiles;
+
+    std::string curImg;
 
 protected:
     // Template method hook for a custom tiling method.

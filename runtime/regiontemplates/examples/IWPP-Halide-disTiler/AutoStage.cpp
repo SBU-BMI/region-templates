@@ -40,69 +40,126 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
         RTPipelineComponentBase::OUTPUT);
 };
 
-std::list<std::vector<DenseDataRegion2D*>> RTF::Internal::AutoStage::localTileDRs(
-    std::vector<DenseDataRegion2D*>& dr_ios) {
+void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>>& tiles, 
+    std::string name) {
 
-    // Gets first DR for irregular tiling
-    cv::Mat* cvInitial = dr_ios[0]->getData();
-    TiledMatCollection* preTiler = new BGPreTiledRTCollection(
-        "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
-        Ipath, border, cfunc, bgm);
-    TiledRTCollection* tCollImg = new IrregTiledRTCollection(
-        "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
-        Ipath, border, cfunc, bgm, denseTilingAlg, nTiles);
-    
-    // Performs pre-tiling
-    preTiler->tileMat(*cvInitial);
-    
-    // Performs dense tiling
-    std::list<cv::Rect_<int64_t>>& tiles = ((BGPreTiledRTCollection*)preTiler)->getDense();
-    std::list<cv::Rect_<int64_t>>& bgTiles = ((BGPreTiledRTCollection*)preTiler)->getBg();
-    tCollImg->tileMat(*cvInitial, tiles);
-    tiles.insert(tiles.end(), bgTiles.begin(), bgTiles.end());
-
-    // Performs tiling for all DRs into cv::Mat
-    // std::vector<std::vector<cv::Mat>> cvTiles;
-    for (int d=0; d<dr_ios.size(); d++) {
-        cvTiles[d] = std::list<cv::Mat>();
-        int t=0;
-        for (cv::Rect_<int64_t> tile : tiles) {
-            cv::Mat* cvTile = new cv::Mat();
-            (*cvTile) = (*dr_ios[d]->getData())(tile).clone();
-
-
-        }
+    // For each tile of the current image
+    cv::Mat img = tiledImg.clone();
+    for (cv::Rect_<int64_t> tile : tiles) {
+        // Adds tile rectangle region to tiled image
+        cv::rectangle(img, 
+            cv::Point(tile.x,tile.y), 
+            cv::Point(tile.x+tile.width,
+                      tile.y+tile.height),
+            (255,255,255),5);
     }
-
-    // Wraps tile mat into DRs
-    RegionTemplate* rtTile = this->getRegionTemplateInstance(
-        this->rts_names[this->rts_names.size()-1]);
-    DenseDataRegion2D *drOut = new DenseDataRegion2D();
-    drName = tileId==-1 ? rtTile->getName() : "t"+std::to_string(this->tileId);
-    drOut->setName(drName);
-    drOut->setId(rtTile->getName());
-    drOut->setData(*cvOut);
-    rtTile->insertDataRegion(drOut);
-
-    dr_ios.emplace_back(drOut, this->tileId);
+    cv::imwrite(name + ".png", img);
 }
 
+void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles, 
+    std::vector<std::vector<DenseDataRegion2D*>>& allTiles) {
+
+    std::string drName = "t"+std::to_string(this->tileId);
+    std::string rtId;
+    RegionTemplate* rtCur;
+    DenseDataRegion2D* drCur;
+
+    int border = 0;
+    TilerAlg_t denseTilingAlg = LIST_ALG_EXPECT;
+    int nTiles = 1;
+
+    // Gets RT for initial image
+    rtId = this->rts_names[0];
+    rtCur = this->getRegionTemplateInstance(rtId);
+
+    // Sets cost functions
+    int bgThr = 150;
+    int erode_param = 4;
+    int dilate_param = 2;
+    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    CostFunction* cfunc = new ThresholdBGCostFunction(bgThr, 
+        dilate_param, erode_param);
+    
+    // Gets first DR for irregular tiling
+    cv::Mat cvInitial = dynamic_cast<DenseDataRegion2D*>(
+        rtCur->getDataRegion(drName))->getData();
+    TiledMatCollection* preTiler = new BGPreTiledRTCollection(
+        "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
+        "", border, cfunc, bgm);
+    TiledMatCollection* tCollImg = new IrregTiledRTCollection(
+        "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
+        "", border, cfunc, bgm, denseTilingAlg, nTiles);
+    
+    // Performs pre-tiling
+    std::list<cv::Rect_<int64_t>> tilesTmp = preTiler->tileMat(cvInitial);
+    // printTiled(cvInitial, tilesTmp, "preTiled");
+
+    // Performs dense tiling
+    tiles = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getDense().begin()->second;
+    std::list<cv::Rect_<int64_t>> bgTiles 
+        = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getBg().begin()->second;
+    tCollImg->tileMat(cvInitial, tiles);
+    tiles.insert(tiles.end(), bgTiles.begin(), bgTiles.end());
+    // printTiled(cvInitial, tiles, "denseTiled");
+    std::cout << "[AutoStage] tiled local " << cvInitial.cols << " x " 
+        << cvInitial.rows << " => " << tiles.size() << std::endl;
+
+    // allTiles[i][j] => i: internal tile id, j: RT id (i.e., each input image)   
+    std::vector<DenseDataRegion2D*> _init(this->rts_names.size());
+    allTiles = std::vector<std::vector<DenseDataRegion2D*>>(tiles.size(), _init);
+
+    // Performs tiling of all RTs for DRs into the same RT
+    for (int i=0; i<this->rts_names.size(); i++) {
+        #ifdef DEBUG
+        std::cout << "[AutoStage] tiling RT: " << this->rts_names[i] << std::endl;
+        #endif
+        // Gets current RT
+        rtId = this->rts_names[i];
+        rtCur = this->getRegionTemplateInstance(rtId);
+        
+        // Gets current DR
+        drName = this->tileId==-1 ? rtCur->getName() : drName;
+        drCur = dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
+        #ifdef DEBUG
+        std::cout << "[AutoStage] tiling DR: " << drName << std::endl;
+        #endif
+
+        // Tiles current DR
+        int drNewId = 0;
+        for (cv::Rect_<int64_t> tile : tiles) {
+            #ifdef DEBUG
+            std::cout << "[AutoStage]\t tile: " << tile << std::endl;
+            #endif
+            
+            // Gets cv::Mat tile
+            cv::Mat* cvTile = new cv::Mat();
+            (*cvTile) = drCur->getData()(tile).clone();
+
+            // Wraps cv tile inside a DR and adds it to the current RT
+            DenseDataRegion2D *drNew = new DenseDataRegion2D();
+            std::string drNewName = drName + "st" + to_string(drNewId);
+            drNew->setName(drNewName);
+            drNew->setId(rtCur->getName());
+            drNew->setData(*cvTile);
+            rtCur->insertDataRegion(drNew);
+
+            // Adds new DR to output container
+            allTiles[drNewId++][i] = drNew;
+            #ifdef DEBUG
+            std::cout << "[AutoStage]\t Created tile: " << drNewName << std::endl;
+            #endif
+        }
+    }
+}
+
+#define DEBUG
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
     #ifdef DEBUG
     std::cout << "[Internal::AutoStage] running" << std::endl;
     #endif
-    std::vector<DenseDataRegion2D*> dr_ios;
     std::string drName;
-    for (int i=0; i<this->rts_names.size()-1; i++) {
-        RegionTemplate* rt = this->getRegionTemplateInstance(
-            this->rts_names[i]);
-        drName = tileId==-1 ? rt->getName() : "t"+std::to_string(this->tileId);
-        DenseDataRegion2D* dr = dynamic_cast<DenseDataRegion2D*>(
-            rt->getDataRegion(drName));
-        dr_ios.emplace_back(dr);
-    }
 
     // Output buffer must be pre-allocated for the halide pipeline
     cv::Mat* cvOut = new cv::Mat(this->out_shape[0], 
@@ -118,13 +175,15 @@ int RTF::Internal::AutoStage::run() {
     drOut->setData(*cvOut);
     rtOut->insertDataRegion(drOut);
 
-    dr_ios.emplace_back(drOut, this->tileId);
     #ifdef DEBUG
-    std::cout << "[Internal::AutoStage] creating task" << std::endl;
+    std::cout << "[Internal::AutoStage] local tiling" << std::endl;
     #endif
 
     // Perform local-worker tiling
-    std::list<std::vector<DenseDataRegion2D*>> tilesDRs = localTileDRs(dr_ios);
+    // tilesDRs[i][j] => i: internal tile id, j: RT id (i.e., each input image)   
+    std::vector<std::vector<DenseDataRegion2D*>> tilesDRs;
+    std::list<cv::Rect_<int64_t>> tiles;
+    localTileDRs(tiles, tilesDRs);
 
     // Assemble a schedule map with the local pointers for the halide functions
     std::map<Target_t, HalGen*> local_schedules;
@@ -132,6 +191,12 @@ int RTF::Internal::AutoStage::run() {
         local_schedules[s.first] = RTF::AutoStage::retrieveStage(s.second);
     }
 
+    #ifdef DEBUG
+    std::cout << "[Internal::AutoStage] creating tasks" << std::endl;
+    #endif
+
+    // Creates tasks for each tile
+    std::list<int> tasksIds;
     for (std::vector<DenseDataRegion2D*> tileDRs : tilesDRs) {
         // Anonymous class for implementing the current stage's task
         struct _Task : public Task {
@@ -195,7 +260,66 @@ int RTF::Internal::AutoStage::run() {
         std::cout << "[Internal::AutoStage] sending task for execution" << std::endl;
         #endif
         this->executeTask(currentTask);
+        tasksIds.emplace_back(currentTask->getId());
     }
+
+    // Gets tiles for output DR
+    int drOutIndex = tilesDRs[0].size()-1;
+    std::vector<DenseDataRegion2D*> outTileDRs(tiles.size());
+    for (int i=0; i<tiles.size(); i++)
+        outTileDRs[i] = tilesDRs[i][drOutIndex];
+
+    // Create a final task for merging the results
+    struct _TaskMerge : public Task {
+        DenseDataRegion2D* drOut;
+        std::vector<DenseDataRegion2D*> tileDRs;
+        std::list<cv::Rect_<int64_t>> tiles;
+        
+        _TaskMerge(DenseDataRegion2D* drOut, 
+        std::vector<DenseDataRegion2D*> tileDRs, 
+        std::list<cv::Rect_<int64_t>> tiles):
+        drOut(drOut), tileDRs(tileDRs), tiles(tiles) {};
+
+        bool run(int procType, int tid=0) {
+            // Gets output DR mat
+            cv::Mat cvOut = this->drOut->getData();
+
+            // Add each tile to output mat
+            int i=0;
+            for (cv::Rect_<int64_t> tile : this->tiles) {
+                std::cout << "[_TaskMerge] adding tile " << tile << std::endl;
+                std::cout << "[_TaskMerge] out size " << cvOut.cols 
+                    << " x " << cvOut.rows << ", c:" 
+                    << cvOut.channels() << std::endl;
+                cv::Mat cvCur = this->tileDRs[i]->getData();
+                std::cout << "[_TaskMerge] cur size " << cvCur.cols 
+                    << " x " << cvCur.rows << ", c:"
+                    << cvCur.channels() << std::endl;
+                if (!this->tileDRs[i]->aborted()) {
+                    try {
+                        cvCur.copyTo(cvOut(tile));
+                    } catch (const std::exception& ex) {
+                        std::cout << "error: " << ex.what() << std::endl;
+                        exit(-1);
+                    }
+                } else
+                    std::cout << "tile aborted" << std::endl;
+                i++;
+            }
+        }
+    }* currentTask = new _TaskMerge(drOut, outTileDRs, tiles);
+
+    // Adds dependencies for merging task
+    for (int tId : tasksIds) {
+        currentTask->addDependency(tId);
+    }
+
+    // Set targets for this task
+    for (std::pair<Target_t, std::string> s : this->schedules) {
+        currentTask->addTaskTarget(s.first);
+    }
+
+    this->executeTask(currentTask);
 }
 
 RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {

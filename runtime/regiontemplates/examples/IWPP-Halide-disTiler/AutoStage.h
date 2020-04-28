@@ -14,6 +14,14 @@
 #include "Argument.h"
 #include "ExecEngineConstants.h"
 
+// #include "tilingAlgs/tilingUtil.h"
+#include "TiledRTCollection.h"
+#include "TiledMatCollection.h"
+#include "BGPreTiledRTCollection.h"
+#include "IrregTiledRTCollection.h"
+#include "costFuncs/ThresholdBGCostFunction.h"
+#include "costFuncs/ThresholdBGMasker.h"
+
 namespace RTF {
 
 // Should use ExecEngineConstants::GPU ... 
@@ -32,6 +40,10 @@ struct HalGen {
 namespace Internal {
 
 class AutoStage : public RTPipelineComponentBase {
+private:
+    void localTileDRs(std::list<cv::Rect_<int64_t>>& tiles, 
+    std::vector<std::vector<DenseDataRegion2D*>>& allTiles);
+
 public:
     // Empty constructor for cloning and for the ComponentFactory 
     AutoStage() {

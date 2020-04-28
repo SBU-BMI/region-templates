@@ -6,6 +6,7 @@ BGPreTiledRTCollection::BGPreTiledRTCollection(std::string name,
         : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
 
     this->bgm = bgm;
+    this->curImg = "single";
 }
 
 // May break when using more than one input image since DR id is unique
@@ -33,6 +34,7 @@ void BGPreTiledRTCollection::customTiling() {
         // Close .svs file
         openslide_close(osr);
 
+        this->curImg = img;
         this->tileMat(maskMat, this->tiles[img]);
     }
 }
@@ -58,7 +60,7 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>
         cvDenseTiles.push_back(cv::Rect_<int64_t>(
             r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
     }
-    this->denseTiles[img] = cvDenseTiles;
+    this->denseTiles[this->curImg] = cvDenseTiles;
 
     // Convert rect_t to cv::Rect_ and add to output lists
     std::list<cv::Rect_<int64_t> > cvBgTiles;
@@ -68,7 +70,7 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>
         cvBgTiles.push_back(cv::Rect_<int64_t>(
             r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
     }
-    this->bgTiles[img] = cvBgTiles;
+    this->bgTiles[this->curImg] = cvBgTiles;
 
     // Add all tiles to final compiled list
     tiles.clear();
