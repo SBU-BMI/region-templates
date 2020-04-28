@@ -98,7 +98,8 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     tiles = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getDense().begin()->second;
     std::list<cv::Rect_<int64_t>> bgTiles 
         = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getBg().begin()->second;
-    tCollImg->tileMat(cvInitial, tiles);
+    if (tiles.size() > 0)
+        tCollImg->tileMat(cvInitial, tiles);
     tiles.insert(tiles.end(), bgTiles.begin(), bgTiles.end());
     // printTiled(cvInitial, tiles, "denseTiled");
     std::cout << "[AutoStage] tiled local " << cvInitial.cols << " x " 

@@ -355,7 +355,7 @@ void tileDenseFromBG(cv::Mat& mask, std::list<rect_t>& dense,
     if (ovlpCand.size() == 0) {
         std::cout << "[tileDenseFromBG] Bad background threshold parameters, "
             << "no dense regions found" << std::endl;
-        exit(0);
+        // exit(0);
     }
 
 #ifdef DEBUG
