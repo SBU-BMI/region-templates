@@ -91,19 +91,20 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
         "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
         "", border, cfunc, bgm, denseTilingAlg, nTiles);
     
-    // Performs pre-tiling
-    std::list<cv::Rect_<int64_t>> tilesTmp = preTiler->tileMat(cvInitial);
+    // // Performs pre-tiling
+    // preTiler->tileMat(cvInitial);
 
-    // Performs dense tiling
-    tiles = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getDense().begin()->second;
-    std::list<cv::Rect_<int64_t>> bgTiles 
-        = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getBg().begin()->second;
-    if (tiles.size() > 0)
-        tCollImg->tileMat(cvInitial, tiles);
-    tiles.insert(tiles.end(), bgTiles.begin(), bgTiles.end());
-    // printTiled(cvInitial, tiles, "denseTiled");
-    std::cout << "[AutoStage] tiled local " << cvInitial.cols << " x " 
-        << cvInitial.rows << " => " << tiles.size() << std::endl;
+    // // Performs dense tiling
+    // tiles = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getDense().begin()->second;
+    // std::list<cv::Rect_<int64_t>> bgTiles 
+    //     = dynamic_cast<BGPreTiledRTCollection*>(preTiler)->getBg().begin()->second;
+    // if (tiles.size() > 0)
+    //     tCollImg->tileMat(cvInitial, tiles);
+    // tiles.insert(tiles.end(), bgTiles.begin(), bgTiles.end());
+    // // printTiled(cvInitial, tiles, "denseTiled");
+    // std::cout << "[AutoStage] tiled local " << cvInitial.cols << " x " 
+    //     << cvInitial.rows << " => " << tiles.size() << std::endl;
+    tiles.emplace_back(cv::Rect_<int64_t>(0, 0, cvInitial.cols, cvInitial.rows));
 
     // allTiles[i][j] => i: internal tile id, j: RT id (i.e., each input image)   
     std::vector<DenseDataRegion2D*> _init(this->rts_names.size());
