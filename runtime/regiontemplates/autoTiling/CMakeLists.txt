@@ -22,7 +22,7 @@ include_directories(${PNG_INCLUDE_DIR})
 # Source files
 set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp 
     IrregTiledRTCollection.cpp BGPreTiledRTCollection.cpp 
-    HybridDenseTiledRTCollection.cpp 
+    HybridDenseTiledRTCollection.cpp costFuncs/MultiObjCostFunction.cpp
     CostFunction.cpp costFuncs/OracleCostFunction.cpp 
     costFuncs/PropagateDistCostFunction.cpp
     costFuncs/ThresholdBGMasker.cpp costFuncs/ColorThresholdBGMasker.cpp 

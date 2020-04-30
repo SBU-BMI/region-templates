@@ -23,6 +23,7 @@
 #include "costFuncs/ThresholdBGCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PropagateDistCostFunction.h"
+#include "costFuncs/MultiObjCostFunction.h"
 
 #include "HalideIwpp.h"
 #include "pipeline1.h"
@@ -39,6 +40,11 @@ enum TilingAlgorithm_t {
     HYBRID_DENSE,
     HYBRID_PRETILER,
     HYBRID_RESSPLIT,
+};
+
+enum CostFunction_t {
+    THRS,
+    VM_THRS_AREA,
 };
 
 // Should use ExecEngineConstants::GPU ... 
@@ -109,6 +115,13 @@ int main(int argc, char *argv[]) {
         cout << "\t\t5: HBAL_TRIE_QUAD_TREE_ALG" << endl;
         cout << "\t\t6: CBAL_TRIE_QUAD_TREE_ALG" << endl;
         cout << "\t\t7: CBAL_POINT_QUAD_TREE_ALG" << endl;
+
+        cout << "\t-f <cost function>" << endl;
+        cout << "\t\tValues (default=0):" << endl;
+        cout << "\t\t0: THRS" << endl;
+        cout << "\t\t1: VM_THRS_AREA" << endl;
+
+        cout << "\t-m <execBias>/<readBias> (default=1/10)" << endl;
         
         exit(0);
     }
@@ -184,6 +197,23 @@ int main(int argc, char *argv[]) {
         preTilingOnly = true;
     }
 
+    // Cost function used for tiling 
+    CostFunction_t costFunc = THRS;
+    if (findArgPos("-f", argc, argv) != -1) {
+        costFunc = static_cast<CostFunction_t>(
+            atoi(argv[findArgPos("-f", argc, argv)+1]));
+    }
+
+    // Pre-tiler parameters
+    float execBias = 1;
+    float readBias = 10;
+    if (findArgPos("-m", argc, argv) != -1) {
+        std::string params = argv[findArgPos("-m", argc, argv)+1];
+        std::size_t l = params.find_last_of("/");
+        execBias = atof(params.substr(0, l).c_str());
+        readBias = atof(params.substr(l+1).c_str());
+    }
+
     float cpuPats = 1.0;
     float gpuPats = 1.7;
 
@@ -243,8 +273,23 @@ int main(int argc, char *argv[]) {
     long tilingT1 = Util::ClockGetTime();
 #endif
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    CostFunction* cfunc;
+    switch (costFunc) {
+        case THRS:
+            cfunc = new ThresholdBGCostFunction(
+                bgThr, dilate_param, erode_param);
+            break;
+        case VM_THRS_AREA:
+            cfunc = new MultiObjCostFunction(bgThr, dilate_param, 
+                erode_param, execBias, readBias);
+            break;
+        default:
+            std::cout << "[main] Bad cost function." << std::endl;
+            exit(0);
+    }
     // CostFunction* cfunc = new PropagateDistCostFunction(bgThr, erode_param, dilate_param);
-    CostFunction* cfunc = new ThresholdBGCostFunction(bgThr, dilate_param, erode_param);
+    // float execBias = 1;
+    // float readBias = 100;
     
     TiledRTCollection* tCollImg;
     switch (tilingAlg) {

@@ -1,4 +1,6 @@
 #include "TiledRTCollection.h"
+#include "costFuncs/ThresholdBGCostFunction.h"
+#include "costFuncs/MultiObjCostFunction.h"
 
 /*****************************************************************************/
 /****************************** Class methods ********************************/
@@ -130,7 +132,8 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : this->tiles[img]) {
                 // Gets basic info from tile
-                int64_t tileCost = this->cfunc->cost(baseImg, tile);
+                int64_t tileCost = ThresholdBGCostFunction((ThresholdBGMasker*)((MultiObjCostFunction*)this->cfunc)->bgm).CostFunction::cost(baseImg, tile);
+                // int64_t tileCost = this->cfunc->cost(baseImg, tile);
                 costs.emplace_back(tileCost);
                 perims.emplace_back(2*tile.width + 2*tile.height);
 
@@ -138,8 +141,10 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 setlocale(LC_NUMERIC, "pt_BR.utf-8");
                 char c_cost[50];
                 sprintf(c_cost, "%'2ld", tileCost);
-                std::cout << "\ttile " << tile.y << ":" << tile.height
-                    << "\t" << tile.x << ":" << tile.width << "\tcost: " 
+                // std::cout << "\ttile " << tile.y << ":" << tile.height
+                //     << "\t" << tile.x << ":" << tile.width << "\tcost: " 
+                //     << c_cost << std::endl;
+                std::cout << "\ttile a" << (tile.height*tile.width) << "\tc" 
                     << c_cost << std::endl;
 
 
