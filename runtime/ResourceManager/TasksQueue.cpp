@@ -318,7 +318,7 @@ Task* TasksQueueHalide::getTask(int availableCpus, int availableGpus) {
 
 	// Attempt to get a cpu task if (i) there were no available gpu threads
 	// or (ii) there were no gpu tasks on the queue
-	if (availableGpus>0 && retTask==NULL) {
+	if (availableCpus>0 && retTask==NULL) {
 		taskI = this->tasksPerTarget[ExecEngineConstants::CPU].begin();
 		if (taskI != this->tasksPerTarget[ExecEngineConstants::CPU].end()) {
 			retTask = this->allTasksQueue[*taskI];

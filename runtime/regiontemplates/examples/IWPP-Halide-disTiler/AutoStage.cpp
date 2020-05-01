@@ -86,7 +86,7 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
         rtCur->getDataRegion(drName))->getData();
     TiledMatCollection* preTiler = new BGPreTiledRTCollection(
         "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
-        "", border, cfunc, bgm);
+        "", border, true, cfunc, bgm);
     TiledMatCollection* tCollImg = new IrregTiledRTCollection(
         "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
         "", border, cfunc, bgm, denseTilingAlg, nTiles);

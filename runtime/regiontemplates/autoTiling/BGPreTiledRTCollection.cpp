@@ -2,11 +2,12 @@
 
 BGPreTiledRTCollection::BGPreTiledRTCollection(std::string name, 
     std::string refDDRName, std::string tilesPath, int64_t borders, 
-    CostFunction* cfunc, BGMasker* bgm) 
+    bool sortBG, CostFunction* cfunc, BGMasker* bgm) 
         : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
 
     this->bgm = bgm;
     this->curImg = "single";
+    this->sortBG = sortBG;
 }
 
 // May break when using more than one input image since DR id is unique
@@ -39,6 +40,12 @@ void BGPreTiledRTCollection::customTiling() {
     }
 }
 
+struct sortbyArea {
+    bool operator () (const cv::Rect_<int64_t>& l, const cv::Rect_<int64_t>& r) {
+        return l.width*l.height > r.width*r.height;
+    }
+};
+
 void BGPreTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) {
     // Gets threshold mask
     cv::Mat thMask = bgm->bgMask(mat);
@@ -68,6 +75,10 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>
             cvBgTiles.push_back(cv::Rect_<int64_t>(
                 r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
     }
+    // Sort bg tiles by size, i.e., load cost
+    if (this->sortBG)
+        cvBgTiles.sort([](const cv::Rect_<int64_t>& l, const cv::Rect_<int64_t>& r) {
+            return l.width*l.height > r.width*r.height;});
     this->bgTiles[this->curImg] = cvBgTiles;
 
     std::cout << "[BGPreTiledRTCollection] Dense tiles: " 

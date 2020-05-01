@@ -24,6 +24,7 @@
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PropagateDistCostFunction.h"
 #include "costFuncs/MultiObjCostFunction.h"
+#include "costFuncs/AreaCostFunction.h"
 
 #include "HalideIwpp.h"
 #include "pipeline1.h"
@@ -122,6 +123,8 @@ int main(int argc, char *argv[]) {
         cout << "\t\t1: VM_THRS_AREA" << endl;
 
         cout << "\t-m <execBias>/<readBias> (default=1/10)" << endl;
+        cout << "\t-tb (tile background tiles with area cost function)" << endl;
+        cout << "\t-xb (sort background tiles with area cost function)" << endl;
         
         exit(0);
     }
@@ -214,6 +217,18 @@ int main(int argc, char *argv[]) {
         readBias = atof(params.substr(l+1).c_str());
     }
 
+    // Tile background tiles from pre-tiler
+    bool tileBG = false;
+    if (findArgPos("-tb", argc, argv) != -1) {
+        tileBG = true;
+    }
+
+    // Sort background tiles from pre-tiler
+    bool sortBG = false;
+    if (findArgPos("-xb", argc, argv) != -1) {
+        sortBG = true;
+    }
+
     float cpuPats = 1.0;
     float gpuPats = 1.7;
 
@@ -291,25 +306,31 @@ int main(int argc, char *argv[]) {
     // float execBias = 1;
     // float readBias = 100;
     
-    TiledRTCollection* tCollImg;
+    TiledRTCollection* tCollImg1;
+    TiledRTCollection* tCollImg2;
     switch (tilingAlg) {
         case NO_TILING:
-            tCollImg = new TiledRTCollection("input", "input", Ipath, border, cfunc);
+            tCollImg1 = new TiledRTCollection("input", "input", Ipath, border, cfunc);
             break;
         case CPU_DENSE: {
             int nTiles = nTilesPerThread*cpuThreads;
             if (denseTilingAlg == FIXED_GRID_TILING) {
-                tCollImg = new RegTiledRTCollection("input", 
+                tCollImg1 = new RegTiledRTCollection("input", 
                     "input", Ipath, nTiles, border, cfunc);
+                tCollImg2 = new RegTiledRTCollection("input", 
+                    "input", Ipath, nTiles, border, new AreaCostFunction());
             } else {
-                tCollImg = new IrregTiledRTCollection("input", 
+                tCollImg1 = new IrregTiledRTCollection("input", 
                     "input", Ipath, border, cfunc, bgm, 
+                    denseTilingAlg, nTiles);
+                tCollImg2 = new IrregTiledRTCollection("input", 
+                    "input", Ipath, border, new AreaCostFunction(), bgm, 
                     denseTilingAlg, nTiles);
             }
             break;
         }
         case HYBRID_DENSE:
-            tCollImg = new HybridDenseTiledRTCollection(
+            tCollImg1 = new HybridDenseTiledRTCollection(
                 "input", "input", Ipath, border, cfunc, bgm, denseTilingAlg, 
                 nTilesPerThread*cpuThreads, nTilesPerThread*gpuThreads,
                 cpuPats, gpuPats);
@@ -325,32 +346,40 @@ int main(int argc, char *argv[]) {
     }
 
     BGPreTiledRTCollection preTiler("input", "input", 
-            Ipath, border, cfunc, bgm);
+            Ipath, border, sortBG, cfunc, bgm);
     if (preTile) {
         cout << "[main] pre-tiling" << endl;
         preTiler.addImage(Ipath);
         preTiler.tileImages(tilingOnly);
         cout << "[main] pre-tiling done" << endl;
-        tCollImg->setPreTiles(preTiler.getDense());
+        tCollImg1->setPreTiles(preTiler.getDense());
+        tCollImg2->setPreTiles(preTiler.getBg());
         if (preTilingOnly) {
             preTiler.generateDRs(tilingOnly);
             cout << "[main] pre-tiles generated" << endl;
-            tCollImg = &preTiler;
+            tCollImg1 = &preTiler;
         }
     }
 
     if (!preTilingOnly) {
-        tCollImg->addImage(Ipath);
-        tCollImg->tileImages(tilingOnly);
-        if (preTile)
-            tCollImg->addTiles(preTiler.getBg());
-        tCollImg->generateDRs(tilingOnly);
+        tCollImg1->addImage(Ipath);
+        tCollImg1->tileImages(tilingOnly);
+        if (preTile) {
+            if (tileBG) {
+                cout << "[main] tiling BG" << endl;
+                tCollImg2->addImage(Ipath);
+                tCollImg2->tileImages(tilingOnly);
+                tCollImg1->addTiles(tCollImg2->getTilesBase());
+            } else
+                tCollImg1->addTiles(preTiler.getBg());
+        }
+        tCollImg1->generateDRs(tilingOnly);
     }
 
 #ifdef PROFILING
     long tilingT2 = Util::ClockGetTime();
     cout << "[PROFILING][TILING_TIME] " << (tilingT2-tilingT1) << endl;
-    cout << "[PROFILING][TILES] " << tCollImg->getNumRTs() << endl;
+    cout << "[PROFILING][TILES] " << tCollImg1->getNumRTs() << endl;
 #endif
 
     if (tilingOnly) {
@@ -362,7 +391,7 @@ int main(int argc, char *argv[]) {
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
     std::vector<cv::Rect_<int>> tiles;
-    std::list<cv::Rect_<int64_t>> l = tCollImg->getTiles()[0];
+    std::list<cv::Rect_<int64_t>> l = tCollImg1->getTiles()[0];
     for (cv::Rect_<int64_t> tile : l) {
         // std::cout << tile.x << ":" << tile.width << "," 
         //     << tile.y << ":" << tile.height << std::endl;
@@ -371,8 +400,8 @@ int main(int argc, char *argv[]) {
 
     RegionTemplate* rtOut = newRT("rtOut");
 
-    for (int i=0; i<tCollImg->getNumRTs(); i++) {
-        RTF::AutoStage stage0({tCollImg->getRT(i).second, rtOut}, 
+    for (int i=0; i<tCollImg1->getNumRTs(); i++) {
+        RTF::AutoStage stage0({tCollImg1->getRT(i).second, rtOut}, 
             {new ArgumentInt(i), 
              new ArgumentInt(blue), new ArgumentInt(green), new ArgumentInt(red), 
              new ArgumentInt(0),
@@ -380,14 +409,14 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(G1),
              new ArgumentInt(se3raw_width), new ArgumentIntArray(se3raw, se3raw_size)}, 
             {tiles[i].height, tiles[i].width}, {&pipeline1_s}, 
-            tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+            tgt(tilingAlg, tCollImg1->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
 
         // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
         //     {new ArgumentInt(0), new ArgumentInt(0), 
         //      new ArgumentInt(i), new ArgumentInt(iwppOp)}, 
         //     {tiles[i].height, tiles[i].width}, {&imreconstruct}, 
-        //     tgt(tilingAlg, tCollImg->getTileTarget(i)), i);
+        //     tgt(tilingAlg, tCollImg1->getTileTarget(i)), i);
         // stage5.after(&stage4);
         // stage5.genStage(sysEnv);
     }

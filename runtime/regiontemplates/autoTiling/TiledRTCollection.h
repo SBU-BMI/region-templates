@@ -79,6 +79,9 @@ public:
     void addTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
 
     std::vector<std::list<cv::Rect_<int64_t>>> getTiles();
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> getTilesBase() {
+        return tiles;
+    };
 
 };
 
