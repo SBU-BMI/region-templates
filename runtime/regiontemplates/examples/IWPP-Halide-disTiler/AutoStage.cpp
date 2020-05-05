@@ -84,8 +84,8 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     
     // Gets first DR for irregular tiling
     long stageTime0 = Util::ClockGetTime();
-    cv::Mat cvInitial = dynamic_cast<DenseDataRegion2D*>(
-        rtCur->getDataRegion(drName))->getData();
+    drCur = dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
+    cv::Mat cvInitial = drCur->getData();
     TiledMatCollection* preTiler = new BGPreTiledRTCollection(
         "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
         "", border, true, cfunc, bgm);
@@ -125,9 +125,11 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
         rtId = this->rts_names[i];
         rtCur = this->getRegionTemplateInstance(rtId);
         
-        // Gets current DR
+        // Gets current DR. Uses initial DR for i=0 to avoid opening it twice
         drName = this->tileId==-1 ? rtCur->getName() : drName;
-        drCur = dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
+        if (i>0) {
+            drCur = dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
+        }
         #ifdef DEBUG
         std::cout << "[AutoStage] tiling DR: " << drName << std::endl;
         #endif

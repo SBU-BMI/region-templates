@@ -173,12 +173,15 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 					openslide_t* svsFile = c->getSvsPointer(
 						inDr->getInputFileName());
 
+    				long time0 = Util::ClockGetTime();
 					// Extracts the roi of the svs file into chunkData
 					int32_t maxLevel = 0; // svs standard: maxlevel = 0
 					osrRegionToCVMat(svsFile, inDr->roi, maxLevel, 
 						chunkData);
+    				long time1 = Util::ClockGetTime();
 					dr2D->setData(chunkData);
-					std::cout << "[DataRegionFactory] read SVS file" << std::endl;
+					std::cout << "[DataRegionFactory] read SVS file " 
+						<< (time1-time0) << std::endl;
 				} else {
 					std::cout << "[DataRegionFactory] cache is null" << std::endl;
 					exit(10);

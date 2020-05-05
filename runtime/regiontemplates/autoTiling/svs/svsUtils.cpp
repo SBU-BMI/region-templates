@@ -67,6 +67,11 @@ void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r,
 
     delete[] osrRegion;
 
+    #ifdef PROFILING
+    long t5 = Util::ClockGetTime();
+    std::cout << "[osrRegionToCVMat] tmp delete: " << (t5-t4) << std::endl;
+    #endif
+
     return;
 }
 
