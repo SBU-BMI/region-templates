@@ -16,13 +16,13 @@ Cache::~Cache() {
 	for(int i = 0; i < this->cacheLayers.size(); i++){
 		std::cout << "Cache: "<< i << "  hit: "<< this->hit[i] << " miss: "<< this->miss[i] <<std::endl;
 	}
-	std::cout << "Cache. Worker " <<this->getWorkerId() << " read time:" << this->readTime << " stage time: "<< this->stagingTime <<std::endl;
-	std::cout << "Input misses: " << this->inputMiss << " read time: " << this->inputReadTime << std::endl;
+	std::cout << "[Cache] Worker " <<this->getWorkerId() << " read time:" << this->readTime << " stage time: "<< this->stagingTime <<std::endl;
+	std::cout << "[Cache] Input misses: " << this->inputMiss << " read time: " << this->inputReadTime << std::endl;
 
 
 	int i = this->cacheLayers.size();
 	while(this->cacheLayers.size()>0){
-		std::cout << "Deleting level: " << i << std::endl;
+		std::cout << "[Cache] Deleting level: " << i << std::endl;
 		i--;
 		CacheComponent *comp = this->cacheLayers.back();
 		delete comp;
@@ -64,7 +64,7 @@ Cache::Cache(std::string confFile) {
 
 
 	if(this->getFirstGlobalCacheLevel() == -1){
-		std::cout << "WARNNING: no global cache LAYER" << std::endl;
+		std::cout << "[Cache] WARNNING: no global cache LAYER" << std::endl;
 	}
 	this->setWorkerId(-1);
 }
@@ -75,14 +75,18 @@ void Cache::parseConfFile(std::string confFile) {
 		// mapping of level to cache component
 		std::map<int, CacheComponent*> parserAux;
 
+		#ifdef CACHE_VERBOSE
 		std::cout << "Cache infra configuration:" << std::endl;
+		#endif
 		cv::FileNode cacheConf = fs["CacheConfig"];
 
 //		std::cout << "nodeSize: "<< cacheConf.size() << std::endl;
 		cv::FileNodeIterator it = cacheConf.begin(), itEnd = cacheConf.end();
 		int idx = 0;
 		for(; it != itEnd; it++){
+			#ifdef CACHE_VERBOSE
 			std::cout << "type="<< (std::string)(*it)["type"] << " capacity="<< (int)(*it)["capacity"] << " path=" << (std::string)(*it)["path"] << " device="<< (std::string)(*it)["device"] << " level="<< (int)(*it)["level"]<< " policy="<< (std::string)(*it)["policy"]<< std::endl;
+			#endif
 			std::string type_str = (std::string)(*it)["type"];
 			int aux = (int)(*it)["capacity"];
 			long capacity = aux;
@@ -101,7 +105,7 @@ void Cache::parseConfFile(std::string confFile) {
 				if(type_str.compare("GLOBAL") == 0){
 					type = Cache::GLOBAL;
 				}else{
-					std::cout << "Unknown cache type: "<< type_str << ". It Should be either: LOCAL or GLOBAL."<< std::endl;
+					std::cout << "[Cache] Unknown cache type: "<< type_str << ". It Should be either: LOCAL or GLOBAL."<< std::endl;
 					exit(1);
 				}
 			}
@@ -115,7 +119,7 @@ void Cache::parseConfFile(std::string confFile) {
 					if(device_str.compare("HDD") == 0){
 						device = Cache::HDD;
 					}else{
-						std::cout << "Unknown device : "<< device_str << ". It Should be either: RAM, SSD or HDD."<< std::endl;
+						std::cout << "[Cache] Unknown device : "<< device_str << ". It Should be either: RAM, SSD or HDD."<< std::endl;
 						exit(1);
 					}
 				}
@@ -126,7 +130,7 @@ void Cache::parseConfFile(std::string confFile) {
 				if(replacementPolicy_str.compare("LRU") == 0){
 					replacementPolicy = Cache::LRU;
 				}else{
-					std::cout << "Unknown storage replacement policy : "<< replacementPolicy_str << ". It Should be either: FIFO or LRU."<< std::endl;
+					std::cout << "[Cache] Unknown storage replacement policy : "<< replacementPolicy_str << ". It Should be either: FIFO or LRU."<< std::endl;
 					exit(1);
 				}
 			}
@@ -142,12 +146,12 @@ void Cache::parseConfFile(std::string confFile) {
 			if(it != parserAux.end()){
 				this->cacheLayers.push_back(it->second);
 			}else{
-				std::cout << "Cache layers must start from 1 and have increments of 1. Could not find cache layer: "<< i << std::endl;
+				std::cout << "[Cache] Layers must start from 1 and have increments of 1. Could not find cache layer: "<< i << std::endl;
 				exit(1);
 			}
 		}
 	}else{
-		std::cout << "Could not find Cache config file (rtconf.xml)" << std::endl;
+		std::cout << "[Cache] Could not find Cache config file (rtconf.xml)" << std::endl;
 		exit(1);
 	}
 	return;
@@ -166,7 +170,9 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 		i = dataRegion->getStorageLevel()-1;
 		// check if level specified is valid
 		if(i >= this->cacheLayers.size() || dataRegion->getDataSize() > this->cacheLayers[i]->getCapacity()){
+			#ifdef CACHE_VERBOSE
 			std::cout << "User specified storage level: "<< i <<" that does not exists or has not enough space to store data region"<<std::endl;
+			#endif
 			i = -1;
 		}
 	}
@@ -216,9 +222,9 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 //	std::cout << "Insert: level:"<<i<< " "<<dataRegion->getName()<< " "<< dataRegion->getId() << " size:"<<
 //			dataRegion->getDataSize()<< " version: "<< dataRegion->getVersion() <<" empty? "<< dataRegion->empty()<< " capacity:"<<this->cacheLayers[i]->getCapacity()<<" used: "<<
 //			this->cacheLayers[i]->getCapacityUsed()<<std::endl;
-#ifdef DEBUG
+	#ifdef DEBUG
 	std::cout <<"FirstGlobal: "<< this->getFirstGlobalCacheLevel() << std::endl;
-#endif
+	#endif
 	if(this->cacheLayers[i]->getType() == Cache::GLOBAL){
 		this->cacheLayers[i]->unlock();
 
@@ -229,18 +235,18 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 		//i++;
 
 		while(i < this->getFirstGlobalCacheLevel()){
-#ifdef DEBUG
+			#ifdef DEBUG
 			std::cout << "InsertLevel: "<< i<< std::endl;
-#endif
+			#endif
 			this->cacheLayers[i]->insertDR(rtName, rtId, dataRegion, copyData);
 			i++;
 		}
 
 		// write through: write to a global storage as well. If it's cache on read, then data is already on global
 		if(!isCacheOnRead){
-#ifdef DEBUG			
+			#ifdef DEBUG
 			std::cout << "InsertLevel: "<< i<< std::endl;
-#endif
+			#endif
 			this->cacheLayers[this->getFirstGlobalCacheLevel()]->insertDR(rtName, rtId, dataRegion, copyData);
 		}
 	}
@@ -379,7 +385,7 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, DataRegion* dr, b
 						break;
 					}
 					default:
-						std::cout << "Unknown data region type" << std::endl;
+						std::cout << "[Cache] Unknown data region type" << std::endl;
 						exit(1);
 						break;
 				} 
@@ -387,7 +393,9 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, DataRegion* dr, b
 				DataRegionFactory::readDDR2DFS(dr, &retValue, -1, "", false, this);
 
 				if(retValue->empty()){
-					std::cout << "Empty input DR: " << retValue->getName() << " "<< retValue->getTimestamp() << " "<< retValue->getVersion() << std::endl;
+					#ifdef CACHE_VERBOSE
+					std::cout << "[Cache] Empty input DR: " << retValue->getName() << " "<< retValue->getTimestamp() << " "<< retValue->getVersion() << std::endl;
+					#endif
 					delete retValue;
 					retValue = NULL;
 					usleep(1000);
@@ -396,9 +404,9 @@ DataRegion *Cache::getDR(std::string rtName, std::string rtId, DataRegion* dr, b
 					// time elapsed in read operation
 					this->inputReadTime += Util::ClockGetTime() - init;
 					this->inputMiss++;
-#ifdef DEBUG
-					std::cout << "inputMiss:" << this->inputMiss << " read time: " << this->inputReadTime << std::endl;
-#endif
+					#ifdef DEBUG
+					std::cout << "[Cache] inputMiss:" << this->inputMiss << " read time: " << this->inputReadTime << std::endl;
+					#endif
 					pthread_mutex_unlock(&this->cacheInstLock);
 
 				}
@@ -471,8 +479,9 @@ bool Cache::move2Global(std::string rtName, std::string rtId, std::string drName
 	}
 	assert(fromLevel >= 0 && fromLevel < this->cacheLayers.size());
 
-
-	std::cout << "move2Global" << drName << ":"<< drId << ":"<< timestamp << ":"<< version << std::endl;
+	#ifdef CACHE_VERBOSE
+	std::cout << "[Cache] move2Global" << drName << ":"<< drId << ":"<< timestamp << ":"<< version << std::endl;
+	#endif
 	DataRegion* auxDR2Move = NULL;
 	// loop through cache layers and try to find the data region.
 	for(int i = fromLevel; i < this->cacheLayers.size(); i++){
@@ -490,7 +499,9 @@ bool Cache::move2Global(std::string rtName, std::string rtId, std::string drName
 		//auxDR2Move = this->cacheLayers[i]->getAndDelete(rtName, rtId, drName, drId, timestamp, version);
 
 		if(auxDR2Move != NULL){
-			std::cout << "move2Global: insert["<<i<<"]:" << rtName <<":" << rtId << std::endl;
+			#ifdef CACHE_VERBOSE
+			std::cout << "[Cache] move2Global: insert["<<i<<"]:" << rtName <<":" << rtId << std::endl;
+			#endif
 			// try to insert into the first level with global context and so on.
 			this->insertDR(rtName, rtId, auxDR2Move, true, this->getFirstGlobalCacheLevel());
 			delete auxDR2Move;

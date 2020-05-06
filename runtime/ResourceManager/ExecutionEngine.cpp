@@ -8,7 +8,7 @@
 #include "ExecutionEngine.h"
 //pthread_mutex_t ExecutionEngine::dependencyMapLock = PTHREAD_MUTEX_INITIALIZER;
 
-ExecutionEngine::ExecutionEngine(int cpuThreads, int gpuThreads, int queueType, bool dataLocalityAware, bool prefetching) {
+ExecutionEngine::ExecutionEngine(int cpuThreads, int gpuThreads, int wid, int queueType, bool dataLocalityAware, bool prefetching) {
 	schedType = queueType;
 	// if(queueType ==ExecEngineConstants::FCFS_QUEUE){
 	// 	tasksQueue = new TasksQueueFCFS(cpuThreads, gpuThreads);
@@ -17,7 +17,7 @@ ExecutionEngine::ExecutionEngine(int cpuThreads, int gpuThreads, int queueType, 
 	// }
 	tasksQueue = new TasksQueueHalide(cpuThreads, gpuThreads);
 	threadPool = new ThreadPool(tasksQueue, this);
-	threadPool->createThreadPool(cpuThreads, NULL, gpuThreads, NULL, dataLocalityAware, prefetching);
+	threadPool->createThreadPool(cpuThreads, NULL, gpuThreads, NULL, dataLocalityAware, prefetching, wid);
 
 	this->trackDependencies = new TrackDependencies();
 }

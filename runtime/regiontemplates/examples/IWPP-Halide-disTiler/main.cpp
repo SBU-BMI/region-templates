@@ -74,7 +74,7 @@ static struct : RTF::HalGen {
     std::string getName() {return "pipeline1";}
     bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
-        std::cout << "[main] starting pipeline1" << std::endl;
+        std::cout << "[pipeline1] executing pipeline" << std::endl;
         pipeline1(im_ios, target, params);
     }
 } pipeline1_s;
@@ -84,28 +84,36 @@ int main(int argc, char *argv[]) {
     // Manages inputs
     if (argc < 2) {
         cout << "Usage: ./iwpp <I image> [ARGS]" << endl;
+        cout << "Executing tiling pipeline PT -> EL-TH on dense, EL-A-half "
+             << "or EL-A-fold on BG" << endl;
+        cout << "Tiles sorted as: Dense, BG" << endl << endl;
+
+        cout << "=== General options:" << endl;
         cout << "\t-c <number of cpu threads per node "
              << "(default=1)>" << endl;
         cout << "\t-g <number of gpu threads per node "
              << "(default=0)>" << endl;
-        cout << "\t-t <Number of tiles per resource thread "
-             << " to be generated (default=1)>" << endl;
+        cout << "\t-t <Number of tiles to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
         cout << "\t-p <bgThr>/<erode>/<dilate> (default=150/4/2)" << endl;
         cout << "\t-to (tiling only: generate tile images "
              << "without executing)" << endl;
+        cout << "\t-nt (execute full image without tiling, overriding "
+             << "any other tiling parameter)" << endl;
 
-        cout << "\t-pt (with pre-tiler)" << endl;
-        cout << "\t-pto (with pre-tiler only, i.e., no dense)" << endl;
+        cout << "=== Pre-tiler (PT) options:" << endl;
+        cout << "\t-npt (without pre-tiler)" << endl;
+        // cout << "\t-pto (with pre-tiler only, i.e., no dense)" << endl;
 
-        cout << "\t-a <tiling algorithm>" << endl;
-        cout << "\t\tValues (default=0):" << endl;
-        cout << "\t\t0: No tiling (supports non-svs images)" << endl;
-        cout << "\t\t1: CPU-only dense tiling" << endl;
-        cout << "\t\t2: Hybrid dense tiling" << endl;
-        cout << "\t\t3: Pre-tiler hybrid tiling" << endl;
-        cout << "\t\t4: Res-split hybrid tiling" << endl;
-
+        // cout << "\t-a <tiling algorithm>" << endl;
+        // cout << "\t\tValues (default=0):" << endl;
+        // cout << "\t\t0: No tiling (supports non-svs images)" << endl;
+        // cout << "\t\t1: CPU-only dense tiling" << endl;
+        // cout << "\t\t2: Hybrid dense tiling" << endl;
+        // cout << "\t\t3: Pre-tiler hybrid tiling" << endl;
+        // cout << "\t\t4: Res-split hybrid tiling" << endl;
+        
+        cout << "=== Dense tiling options:" << endl;
         cout << "\t-d <dense tiling algorithm>" << endl;
         cout << "\t\tValues (default=0):" << endl;
         cout << "\t\t0: FIXED_GRID_TILING" << endl;
@@ -117,14 +125,21 @@ int main(int argc, char *argv[]) {
         cout << "\t\t6: CBAL_TRIE_QUAD_TREE_ALG" << endl;
         cout << "\t\t7: CBAL_POINT_QUAD_TREE_ALG" << endl;
 
-        cout << "\t-f <cost function>" << endl;
-        cout << "\t\tValues (default=0):" << endl;
-        cout << "\t\t0: THRS" << endl;
-        cout << "\t\t1: VM_THRS_AREA" << endl;
+        // cout << "\t-f <dense cost function>" << endl;
+        // cout << "\t\tValues (default=0):" << endl;
+        // cout << "\t\t0: THRS" << endl;
+        // cout << "\t\t1: MV_THRS_AREA" << endl;
 
-        cout << "\t-m <execBias>/<readBias> (default=1/10)" << endl;
-        cout << "\t-tb (tile background tiles with area cost function)" << endl;
-        cout << "\t-xb (sort background tiles with area cost function)" << endl;
+        cout << "=== Background tiling (BG) options:" << endl;
+        cout << "\t-k <background tiling algorithm>" << endl;
+        cout << "\t\tValues (default=2):" << endl;
+        cout << "\t\t2: LIST_ALG_EXPECT" << endl;
+        cout << "\t\t1: LIST_ALG_HALF" << endl;
+        
+        // cout << "\t-xb (sort background tiles with area cost function)" << endl;
+
+        // cout << "\t-m <execBias>/<readBias> (default=1/10)" << endl;
+        // cout << "\t-tb (tile background tiles with area cost function)" << endl;
         
         exit(0);
     }
@@ -145,12 +160,17 @@ int main(int argc, char *argv[]) {
     }
 
     // Number of expected dense tiles for irregular tiling
-    int nTilesPerThread = 1;
+    int nTiles = 1;
     if (findArgPos("-t", argc, argv) != -1) {
-        nTilesPerThread = atoi(argv[findArgPos("-t", argc, argv)+1]);
+        nTiles = atoi(argv[findArgPos("-t", argc, argv)+1]);
     }
 
-    // Pre-tiler parameters
+    int border = 0;
+    if (findArgPos("-b", argc, argv) != -1) {
+        border = atoi(argv[findArgPos("-b", argc, argv)+1]);
+    }
+
+    // Threshold cost function parameters
     int bgThr = 150;
     int erode_param = 4;
     int dilate_param = 2;
@@ -164,11 +184,22 @@ int main(int argc, char *argv[]) {
         bgThr = atoi(params.substr(0, l).c_str());
     }
 
-    // Full tiling algorithm
-    TilingAlgorithm_t tilingAlg = NO_TILING;
-    if (findArgPos("-a", argc, argv) != -1) {
-        tilingAlg = static_cast<TilingAlgorithm_t>(
-            atoi(argv[findArgPos("-a", argc, argv)+1]));
+    // Tiling only
+    bool tilingOnly = false;
+    if (findArgPos("-to", argc, argv) != -1) {
+        tilingOnly = true;
+    }
+
+    // No tiling execution
+    bool noTiling = false;
+    if (findArgPos("-nt", argc, argv) != -1) {
+        noTiling = true;
+    }
+
+    // No pre-tiling execution
+    bool preTiling = true;
+    if (findArgPos("-npt", argc, argv) != -1) {
+        preTiling = false;
     }
 
     // Dense tiling algorithm
@@ -178,59 +209,18 @@ int main(int argc, char *argv[]) {
             atoi(argv[findArgPos("-d", argc, argv)+1]));
     }
 
-    int border = 0;
-    if (findArgPos("-b", argc, argv) != -1) {
-        border = atoi(argv[findArgPos("-b", argc, argv)+1]);
+    // Dense tiling algorithm
+    TilerAlg_t bgTilingAlg = LIST_ALG_EXPECT;
+    if (findArgPos("-k", argc, argv) != -1) {
+        bgTilingAlg = static_cast<TilerAlg_t>(
+            atoi(argv[findArgPos("-k", argc, argv)+1]));
     }
 
-    // Tiling only
-    bool tilingOnly = false;
-    if (findArgPos("-to", argc, argv) != -1) {
-        tilingOnly = true;
+    if (noTiling && tilingOnly) {
+        cout << "Options 'tiling-only' and 'no tiling' "
+             << "are mutually exclusive" << endl;
+        exit(0);
     }
-
-    bool preTile = false;
-    if (findArgPos("-pt", argc, argv) != -1) {
-        preTile = true;
-    }
-
-    bool preTilingOnly = false;
-    if (findArgPos("-pto", argc, argv) != -1) {
-        preTile = true;
-        preTilingOnly = true;
-    }
-
-    // Cost function used for tiling 
-    CostFunction_t costFunc = THRS;
-    if (findArgPos("-f", argc, argv) != -1) {
-        costFunc = static_cast<CostFunction_t>(
-            atoi(argv[findArgPos("-f", argc, argv)+1]));
-    }
-
-    // Pre-tiler parameters
-    float execBias = 1;
-    float readBias = 10;
-    if (findArgPos("-m", argc, argv) != -1) {
-        std::string params = argv[findArgPos("-m", argc, argv)+1];
-        std::size_t l = params.find_last_of("/");
-        execBias = atof(params.substr(0, l).c_str());
-        readBias = atof(params.substr(l+1).c_str());
-    }
-
-    // Tile background tiles from pre-tiler
-    bool tileBG = false;
-    if (findArgPos("-tb", argc, argv) != -1) {
-        tileBG = true;
-    }
-
-    // Sort background tiles from pre-tiler
-    bool sortBG = false;
-    if (findArgPos("-xb", argc, argv) != -1) {
-        sortBG = true;
-    }
-
-    float cpuPats = 1.0;
-    float gpuPats = 1.7;
 
 #ifdef PROFILING
     long fullExecT1 = Util::ClockGetTime();
@@ -283,125 +273,80 @@ int main(int argc, char *argv[]) {
         1, 1, 1, 
         1, 1, 1};
     
-    // Creates the inputs using RT's autoTiler
-#ifdef PROFILING
+    #ifdef PROFILING
     long tilingT1 = Util::ClockGetTime();
-#endif
-    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    CostFunction* cfunc;
-    switch (costFunc) {
-        case THRS:
-            cfunc = new ThresholdBGCostFunction(
-                bgThr, dilate_param, erode_param);
-            break;
-        case VM_THRS_AREA:
-            cfunc = new MultiObjCostFunction(bgThr, dilate_param, 
-                erode_param, execBias, readBias);
-            break;
-        default:
-            std::cout << "[main] Bad cost function." << std::endl;
-            exit(0);
-    }
-    // CostFunction* cfunc = new PropagateDistCostFunction(bgThr, erode_param, dilate_param);
-    // float execBias = 1;
-    // float readBias = 100;
-    
-    TiledRTCollection* tCollImg1;
-    TiledRTCollection* tCollImg2;
-    switch (tilingAlg) {
-        case NO_TILING:
-            tCollImg1 = new TiledRTCollection("input", "input", Ipath, border, cfunc);
-            break;
-        case CPU_DENSE: {
-            int nTiles = nTilesPerThread*cpuThreads;
-            if (denseTilingAlg == FIXED_GRID_TILING) {
-                tCollImg1 = new RegTiledRTCollection("input", 
-                    "input", Ipath, nTiles, border, cfunc);
-                tCollImg2 = new RegTiledRTCollection("input", 
-                    "input", Ipath, nTiles, border, new AreaCostFunction());
-            } else {
-                tCollImg1 = new IrregTiledRTCollection("input", 
-                    "input", Ipath, border, cfunc, bgm, 
-                    denseTilingAlg, nTiles);
-                tCollImg2 = new IrregTiledRTCollection("input", 
-                    "input", Ipath, border, new AreaCostFunction(), bgm, 
-                    denseTilingAlg, nTiles);
-            }
-            break;
-        }
-        case HYBRID_DENSE:
-            tCollImg1 = new HybridDenseTiledRTCollection(
-                "input", "input", Ipath, border, cfunc, bgm, denseTilingAlg, 
-                nTilesPerThread*cpuThreads, nTilesPerThread*gpuThreads,
-                cpuPats, gpuPats);
-            break;
-        case HYBRID_PRETILER:
-            // HybridTiledRTCollection ht = new HybridTiledRTCollection(
-            //     "input", "input", Ipath, {borderL1, borderL2}, 
-            //     {cfuncR1, cfuncR2}, preTilerAlg, {tilerAlgR1, tilerAlgR2}, 
-            //     {nTilesR1, nTilesR2});
-            break;
-        case HYBRID_RESSPLIT:
-            break;
-    }
+    #endif
 
-    BGPreTiledRTCollection preTiler("input", "input", 
-            Ipath, border, sortBG, cfunc, bgm);
-    if (preTile) {
-        cout << "[main] pre-tiling" << endl;
+    // Tilers
+    TiledRTCollection* denseTiler;
+    TiledRTCollection* bgTiler;
+
+    // Tiling cost functions
+    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    CostFunction* denseCostFunc = new ThresholdBGCostFunction(
+        static_cast<ThresholdBGMasker*>(bgm));
+    CostFunction* bgCostFunc = new AreaCostFunction();
+
+    // Creates dense tiling collection
+    if (noTiling)
+        denseTiler = new TiledRTCollection("input", 
+            "input", Ipath, border, denseCostFunc);
+    else if (denseTilingAlg == FIXED_GRID_TILING)
+        denseTiler = new RegTiledRTCollection("input", 
+            "input", Ipath, nTiles, border, denseCostFunc);
+    else
+        denseTiler = new IrregTiledRTCollection("input", 
+            "input", Ipath, border, denseCostFunc, bgm, 
+            denseTilingAlg, nTiles);
+
+    // Creates BG tiling collection
+    bgTiler = new IrregTiledRTCollection("input", "input", Ipath, 
+        border, bgCostFunc, bgm, bgTilingAlg, nTiles);
+
+    // Performs pre-tiling, if required
+    if (preTiling && !noTiling) {
+        BGPreTiledRTCollection preTiler("input", "input", 
+            Ipath, border, denseCostFunc, bgm);
+
+        // Performs actual tiling
         preTiler.addImage(Ipath);
         preTiler.tileImages(tilingOnly);
-        cout << "[main] pre-tiling done" << endl;
-        tCollImg1->setPreTiles(preTiler.getDense());
-        tCollImg2->setPreTiles(preTiler.getBg());
-        if (preTilingOnly) {
-            preTiler.generateDRs(tilingOnly);
-            cout << "[main] pre-tiles generated" << endl;
-            tCollImg1 = &preTiler;
-        }
+
+        // Send outputs to next step of tiling
+        denseTiler->setPreTiles(preTiler.getDense());
+        bgTiler->setPreTiles(preTiler.getBg());
     }
 
-    if (!preTilingOnly) {
-        tCollImg1->addImage(Ipath);
-        tCollImg1->tileImages(tilingOnly);
-        if (preTile) {
-            if (tileBG) {
-                cout << "[main] tiling BG" << endl;
-                tCollImg2->addImage(Ipath);
-                tCollImg2->tileImages(tilingOnly);
-                tCollImg1->addTiles(tCollImg2->getTilesBase());
-            } else
-                tCollImg1->addTiles(preTiler.getBg());
-        }
-        tCollImg1->generateDRs(tilingOnly);
+    // Performs dense tiling
+    denseTiler->addImage(Ipath);
+    denseTiler->tileImages(tilingOnly);
+
+    // Performs BG tiling and adds results to dense
+    if (preTiling && !noTiling) {
+        bgTiler->addImage(Ipath);
+        bgTiler->tileImages(tilingOnly);
+        denseTiler->addTiles(bgTiler->getTilesBase());
     }
 
-#ifdef PROFILING
-    long tilingT2 = Util::ClockGetTime();
-    cout << "[PROFILING][TILING_TIME] " << (tilingT2-tilingT1) << endl;
-    cout << "[PROFILING][TILES] " << tCollImg1->getNumRTs() << endl;
-#endif
-
-    if (tilingOnly) {
-        sysEnv.startupExecution();
-        sysEnv.finalizeSystem();
-        return 0;
-    }
-
-    // Create an instance of the two stages for each image tile pair
-    // and also send them for execution
+    // Generates tiles and converts it to vector
+    denseTiler->generateDRs(tilingOnly);
     std::vector<cv::Rect_<int>> tiles;
-    std::list<cv::Rect_<int64_t>> l = tCollImg1->getTiles()[0];
+    std::list<cv::Rect_<int64_t>> l = denseTiler->getTiles()[0];
     for (cv::Rect_<int64_t> tile : l) {
         // std::cout << tile.x << ":" << tile.width << "," 
         //     << tile.y << ":" << tile.height << std::endl;
         tiles.emplace_back(tile);
     }
 
-    RegionTemplate* rtOut = newRT("rtOut");
+    #ifdef PROFILING
+    long tilingT2 = Util::ClockGetTime();
+    #endif
 
-    for (int i=0; i<tCollImg1->getNumRTs(); i++) {
-        RTF::AutoStage stage0({tCollImg1->getRT(i).second, rtOut}, 
+    // Create an instance of the two stages for each image tile pair
+    // and also send them for execution
+    RegionTemplate* rtOut = newRT("rtOut");
+    for (int i=0; i<denseTiler->getNumRTs(); i++) {
+        RTF::AutoStage stage0({denseTiler->getRT(i).second, rtOut}, 
             {new ArgumentInt(i), 
              new ArgumentInt(blue), new ArgumentInt(green), new ArgumentInt(red), 
              new ArgumentInt(0),
@@ -409,14 +354,15 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(G1),
              new ArgumentInt(se3raw_width), new ArgumentIntArray(se3raw, se3raw_size)}, 
             {tiles[i].height, tiles[i].width}, {&pipeline1_s}, 
-            tgt(tilingAlg, tCollImg1->getTileTarget(i)), i);
+            denseTiler->getTileTarget(i), i);
+            // tgt(tilingAlg, denseTiler->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
 
         // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
         //     {new ArgumentInt(0), new ArgumentInt(0), 
         //      new ArgumentInt(i), new ArgumentInt(iwppOp)}, 
         //     {tiles[i].height, tiles[i].width}, {&imreconstruct}, 
-        //     tgt(tilingAlg, tCollImg1->getTileTarget(i)), i);
+        //     tgt(tilingAlg, denseTiler->getTileTarget(i)), i);
         // stage5.after(&stage4);
         // stage5.genStage(sysEnv);
     }
@@ -424,10 +370,12 @@ int main(int argc, char *argv[]) {
     sysEnv.startupExecution();
     sysEnv.finalizeSystem();
 
-#ifdef PROFILING
+    #ifdef PROFILING
     long fullExecT2 = Util::ClockGetTime();
+    cout << "[PROFILING][TILES] " << tiles.size() << endl;
+    cout << "[PROFILING][TILING_TIME] " << (tilingT2-tilingT1) << endl;
     cout << "[PROFILING][FULL_TIME] " << (fullExecT2-fullExecT1) << endl;
-#endif
+    #endif
 
     return 0;
 }

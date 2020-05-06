@@ -88,14 +88,14 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     cv::Mat cvInitial = drCur->getData();
     TiledMatCollection* preTiler = new BGPreTiledRTCollection(
         "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
-        "", border, true, cfunc, bgm);
+        "", border, cfunc, bgm);
     TiledMatCollection* tCollImg = new IrregTiledRTCollection(
         "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
         "", border, cfunc, bgm, denseTilingAlg, nTiles);
     
     long stageTime1 = Util::ClockGetTime();
-    std::cout << "[PROFILING_SINGLE][STAGE][TILER] " << cvInitial.rows << "x" 
-        << cvInitial.cols << " " << (stageTime1-stageTime0) << std::endl;
+    // std::cout << "[PROFILING_SINGLE][STAGE][TILER] " << cvInitial.rows << "x" 
+    //     << cvInitial.cols << " " << (stageTime1-stageTime0) << std::endl;
 
     // // Performs pre-tiling
     // preTiler->tileMat(cvInitial);
@@ -162,8 +162,8 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     }
     
     long stageTime9 = Util::ClockGetTime();
-    std::cout << "[PROFILING_SINGLE][STAGE][DR_GEN] " << cvInitial.rows << "x" 
-        << cvInitial.cols << " " << (stageTime9-stageTime1) << std::endl;
+    // std::cout << "[PROFILING_SINGLE][STAGE][DR_GEN] " << cvInitial.rows << "x" 
+    //     << cvInitial.cols << " " << (stageTime9-stageTime1) << std::endl;
 }
 
 int RTF::Internal::AutoStage::run() {
@@ -191,9 +191,9 @@ int RTF::Internal::AutoStage::run() {
     rtOut->insertDataRegion(drOut);
 
     long stageTime1 = Util::ClockGetTime();
-    std::cout << "[PROFILING_SINGLE][STAGE][OUT_GEN] " << this->out_shape[0] 
-        << "x" << this->out_shape[1] << " " 
-        << (stageTime1-stageTime0) << std::endl;
+    // std::cout << "[PROFILING_SINGLE][STAGE][OUT_GEN] " << this->out_shape[0] 
+    //     << "x" << this->out_shape[1] << " " 
+    //     << (stageTime1-stageTime0) << std::endl;
 
     #ifdef DEBUG
     std::cout << "[Internal::AutoStage] local tiling" << std::endl;
@@ -206,8 +206,8 @@ int RTF::Internal::AutoStage::run() {
     localTileDRs(tiles, tilesDRs);
 
     long stageTime2 = Util::ClockGetTime();
-    std::cout << "[PROFILING_SINGLE][STAGE][TILE] " << this->out_shape[0] << "x" 
-        << this->out_shape[1] << " " << (stageTime2-stageTime1) << std::endl;
+    // std::cout << "[PROFILING_SINGLE][STAGE][TILE] " << this->out_shape[0] << "x" 
+    //     << this->out_shape[1] << " " << (stageTime2-stageTime1) << std::endl;
 
     // Assemble a schedule map with the local pointers for the halide functions
     std::map<Target_t, HalGen*> local_schedules;
@@ -268,7 +268,9 @@ int RTF::Internal::AutoStage::run() {
                         abortStr += to_string(this->dr_ios[i]->getData().cols);
                         abortStr += " ";
                     }
+                    #ifdef DEBUG
                     std::cout << abortStr << std::endl;
+                    #endif
                 }
 
                 // Assigns the output mat to its DataRegion
@@ -278,10 +280,10 @@ int RTF::Internal::AutoStage::run() {
                 #endif
 
                 long taskTime1 = Util::ClockGetTime();
-                std::cout << "[PROFILING_SINGLE][TASK] " 
-                    << this->dr_ios[0]->getData().rows << "x" 
-                    << this->dr_ios[0]->getData().cols << " " 
-                    << (taskTime1-taskTime0) << std::endl;
+                // std::cout << "[PROFILING_SINGLE][TASK] " 
+                //     << this->dr_ios[0]->getData().rows << "x" 
+                //     << this->dr_ios[0]->getData().cols << " " 
+                //     << (taskTime1-taskTime0) << std::endl;
             }
         }* currentTask = new _Task(local_schedules, tilesDRs[i], this->getArguments());
 
@@ -317,6 +319,9 @@ int RTF::Internal::AutoStage::run() {
         bool run(int procType, int tid=0) {
             long taskTime0 = Util::ClockGetTime();
 
+            std::cout << "[_TaskMerge] merging " << this->tiles.size() 
+                << " tiles" << std::endl;
+
             // Gets output DR mat
             cv::Mat cvOut = this->drOut->getData();
 
@@ -330,9 +335,9 @@ int RTF::Internal::AutoStage::run() {
             }
             long taskTime1 = Util::ClockGetTime();
 
-            std::cout << "[PROFILING_SINGLE][MERGE] " << cvOut.rows
-                << "x" << cvOut.cols << " " << (taskTime1-taskTime0) 
-                << std::endl;
+            // std::cout << "[PROFILING_SINGLE][MERGE] " << cvOut.rows
+            //     << "x" << cvOut.cols << " " << (taskTime1-taskTime0) 
+            //     << std::endl;
         }
     }* currentTask = new _TaskMerge(drOut, outTileDRs, tiles);
 
@@ -350,8 +355,8 @@ int RTF::Internal::AutoStage::run() {
 
     long stageTime9 = Util::ClockGetTime();
 
-    std::cout << "[PROFILING_SINGLE][STAGE] " << this->out_shape[0] << "x" 
-        << this->out_shape[1] << " " << (stageTime9-stageTime0) << std::endl;
+    // std::cout << "[PROFILING_SINGLE][STAGE] " << this->out_shape[0] << "x" 
+    //     << this->out_shape[1] << " " << (stageTime9-stageTime0) << std::endl;
 }
 
 RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {

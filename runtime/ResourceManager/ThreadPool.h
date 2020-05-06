@@ -33,6 +33,7 @@ class Task;
 
 struct threadData{
 	int tid;
+	int wid;
 	int procType;
 	void *threadPoolPtr;
 };
@@ -93,7 +94,7 @@ public:
 	virtual ~ThreadPool();
 
 	// Create threads and assign them to appropriate devices
-	bool createThreadPool(int cpuThreads=1, int *cpuThreadsCoreMapping=NULL, int gpuThreads=0, int *gpuThreadsCoreMapping=NULL, bool dataLocalityAware=false, bool prefetching=false);
+	bool createThreadPool(int cpuThreads=1, int *cpuThreadsCoreMapping=NULL, int gpuThreads=0, int *gpuThreadsCoreMapping=NULL, bool dataLocalityAware=false, bool prefetching=false, int wid=-1);
 
 	// Startup computation, so far, even if thread pool was created, the threads are awaiting for the
 	// execution to be initialized. Make sure the thread poll was created before calling init execution.
@@ -101,7 +102,7 @@ public:
 
 //	void *getGPUTempData(int tid);
 	// main computation loop, where threads are kept busy computing tasks
-	void processTasks(int procType, int tid);
+	void processTasks(int procType, int wid, int tid);
 
 	void finishExecWaitEnd();
 

@@ -233,7 +233,7 @@ bool CacheComponent::insertDR(std::string rtName, std::string rtId, DataRegion* 
 //		}
 	}
 
-	std::cout << "Inserting DR: " << dataRegion->getName() << " id: "<< dataRegion->getId() <<" "<< dataRegion->getTimestamp() << " "<<dataRegion->getVersion()<< std::endl;
+	std::cout << "[CacheComponent] Inserting DR: " << dataRegion->getName() << " id: "<< dataRegion->getId() <<" "<< dataRegion->getTimestamp() << " "<<dataRegion->getVersion()<< std::endl;
 
 
 	return true;

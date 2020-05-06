@@ -147,7 +147,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 
 	if(drType == -1) return false; // means not an input and no lock file found
 
-	std::cout << "[DataRegionFactory] trying to read" << std::endl;
+	// std::cout << "[DataRegionFactory] trying to read" << std::endl;
 
 	switch(drType){
 		case DataRegionType::DENSE_REGION_2D: {
@@ -180,8 +180,8 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 						chunkData);
     				long time1 = Util::ClockGetTime();
 					dr2D->setData(chunkData);
-					std::cout << "[DataRegionFactory] read SVS file " 
-						<< (time1-time0) << std::endl;
+					// std::cout << "[DataRegionFactory] read SVS file " 
+					// 	<< (time1-time0) << std::endl;
 				} else {
 					std::cout << "[DataRegionFactory] cache is null" << std::endl;
 					exit(10);
@@ -232,7 +232,9 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 					//############### Binary Image ###############
 					chunkData = cv::imread(inputFile, -1); // read image
 					if (chunkData.empty()) {
+						#ifdef DEBUG
 						std::cout << "Failed to read as image:" << inputFile << std::endl;
+						#endif
 
 						// Check if the file actually exists
 						// Prevents segfault when trying to read the

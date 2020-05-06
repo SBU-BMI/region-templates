@@ -30,6 +30,7 @@ void *callThread(void *arg){
 	ThreadPool *tp = (ThreadPool *)((threadData*) arg)->threadPoolPtr;
 	int procType = (int)((threadData*) arg)->procType;
 	int tid = (int)((threadData*) arg)->tid;
+	int wid = (int)((threadData*) arg)->wid;
 
 	// If threads is managing GPU, than init adequate device
 	if(procType == 2){
@@ -86,7 +87,7 @@ void *callThread(void *arg){
 
 	}
 
-	tp->processTasks(procType, tid);
+	tp->processTasks(procType, wid, tid);
 	free(arg);
 	pthread_exit(NULL);
 }
@@ -139,7 +140,7 @@ ThreadPool::~ThreadPool() {
 //	//return this->gpuTempData[tid];
 //}
 
-bool ThreadPool::createThreadPool(int cpuThreads, int *cpuThreadsCoreMapping, int gpuThreads, int *gpuThreadsCoreMapping, bool dataLocalityAware, bool prefetching)
+bool ThreadPool::createThreadPool(int cpuThreads, int *cpuThreadsCoreMapping, int gpuThreads, int *gpuThreadsCoreMapping, bool dataLocalityAware, bool prefetching, int wid)
 {
 
 //	this->gpuTempDataSize = gpuTempDataSize;
@@ -156,6 +157,7 @@ bool ThreadPool::createThreadPool(int cpuThreads, int *cpuThreadsCoreMapping, in
 		for (int i = 0; i < cpuThreads; i++ ){
 			threadData *arg = (threadData *) malloc(sizeof(threadData));
 			arg->tid = i;
+			arg->wid = wid;
 			arg->procType = ExecEngineConstants::CPU;
 			arg->threadPoolPtr = this;
 			int ret = pthread_create(&(CPUWorkerThreads[arg->tid]), NULL, callThread, (void *)arg);
@@ -273,7 +275,7 @@ void ThreadPool::preassignmentSelectiveDownload(Task* task, Task* preAssigned, c
 }
 #endif
 
-void ThreadPool::processTasks(int procType, int tid)
+void ThreadPool::processTasks(int procType, int wid, int tid)
 {
 
 #ifdef PROFILING
@@ -304,7 +306,9 @@ void ThreadPool::processTasks(int procType, int tid)
 	//sem_post(&createdThreads);
 	pthread_mutex_unlock(&createdThreads);
 
-	printf("procType:%d  tid:%d waiting init of execution\n", procType, tid);
+	// printf("procType:%d  tid:%d waiting init of execution\n", procType, tid);
+	std::cout << "[ThreadPool][W" << wid << "][T" << tid << "][type"
+		<< procType << "] Waiting init of execution" << std::endl;
 	pthread_mutex_lock(&initExecutionMutex);
 	pthread_mutex_unlock(&initExecutionMutex);
 
@@ -381,7 +385,9 @@ void ThreadPool::processTasks(int procType, int tid)
 				// All tasks ready to execute are finished, but there still existing tasks pending due unsolved dependencies
 				continue;
 			}else{
-				printf("procType:%d  tid:%d Task NULL #t_pending=%d\n", procType, tid, this->execEngine->getCountTasksPending());
+				std::cout << "[ThreadPool][W" << wid << "][T" << tid << "][type"
+					<< procType << "] Task NULL #t_pending=" 
+					<< this->execEngine->getCountTasksPending() << std::endl;
 				break;
 			}
 		}else{
@@ -443,11 +449,9 @@ void ThreadPool::processTasks(int procType, int tid)
 #endif
 
 		try{
-#ifdef PROFILING
-			std::cout << "[T" << thisThreadId << "] Executing, task.id: "<< curTask->getId() << std::endl;
-#else
-			std::cout << "Executing, task.id: "<< curTask->getId() << std::endl;
-#endif
+			std::cout << "[ThreadPool][W" << wid << "][T" << tid << "][type"
+				<< procType << "] Executing, task.id: " 
+				<< curTask->getId() << std::endl;
 			curTask->run(procType, tid);
 
 			if(curTask->getStatus() != ExecEngineConstants::ACTIVE){
@@ -568,7 +572,7 @@ void ThreadPool::processTasks(int procType, int tid)
 #ifdef PROFILING
 	int mpi_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-	cout << "[PROFILING][TASK_EXEC][R" << mpi_rank << "][T" 
+	cout << "[PROFILING][TASK_EXEC][W" << mpi_rank << "][type" 
 		 << procType << "] " << sumOfExecTimes << endl;
 #endif
 

@@ -132,8 +132,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : this->tiles[img]) {
                 // Gets basic info from tile
-                int64_t tileCost = ThresholdBGCostFunction((ThresholdBGMasker*)((MultiObjCostFunction*)this->cfunc)->bgm).CostFunction::cost(baseImg, tile);
-                // int64_t tileCost = this->cfunc->cost(baseImg, tile);
+                int64_t tileCost = this->cfunc->cost(baseImg, tile);
                 costs.emplace_back(tileCost);
                 perims.emplace_back(2*tile.width + 2*tile.height);
 
@@ -202,78 +201,79 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
     // Converts tiles sizes to the large image, adds borders and
     // creates DRs
-    for (std::string img : this->initialPaths) {
-        // Open image
-        openslide_t* osr;
-        osr = openslide_open(img.c_str());
+    if (!tilingOnly)
+        for (std::string img : this->initialPaths) {
+            // Open image
+            openslide_t* osr;
+            osr = openslide_open(img.c_str());
 
-        // Gets info of largest image
-        int64_t w, h;
-        openslide_get_level0_dimensions(osr, &w, &h);
-        int64_t w0 = w;
-        int64_t h0 = h;
-        float ratiow = w;
-        float ratioh = h;
+            // Gets info of largest image
+            int64_t w, h;
+            openslide_get_level0_dimensions(osr, &w, &h);
+            int64_t w0 = w;
+            int64_t h0 = h;
+            float ratiow = w;
+            float ratioh = h;
 
-        // Gets dimensions of smallest slide image
-        int osrMinLevel = openslide_get_level_count(osr) - 1; // last lvl
-        openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
-        cv::Rect_<int64_t> roi(0, 0, w, h);
+            // Gets dimensions of smallest slide image
+            int osrMinLevel = openslide_get_level_count(osr) - 1; // last lvl
+            openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
+            cv::Rect_<int64_t> roi(0, 0, w, h);
 
-        // Calculates the ratio between largest and smallest 
-        // images' dimensions for later conversion
-        ratiow /= w;
-        ratioh /= h;
+            // Calculates the ratio between largest and smallest 
+            // images' dimensions for later conversion
+            ratiow /= w;
+            ratioh /= h;
 
-        // Adds borders and creates DRs
-        int drId=0;
-        std::list<cv::Rect_<int64_t>>::iterator tileIt 
-            = this->tiles[img].begin();
-        for (; tileIt!=this->tiles[img].end(); tileIt++) {
-            // Converts the tile roi for the large image size
-            tileIt->x *= ratiow;
-            tileIt->width *= ratiow;
-            tileIt->y *= ratioh;
-            tileIt->height *= ratioh;
-            if (ceil(tileIt->x+tileIt->width) >= (int64_t)w0)
-                tileIt->width = (int64_t)(w0-tileIt->x);
-            if (ceil(tileIt->y+tileIt->height) >= (int64_t)h0)
-                tileIt->height = (int64_t)(h0-tileIt->y);
+            // Adds borders and creates DRs
+            int drId=0;
+            std::list<cv::Rect_<int64_t>>::iterator tileIt 
+                = this->tiles[img].begin();
+            for (; tileIt!=this->tiles[img].end(); tileIt++) {
+                // Converts the tile roi for the large image size
+                tileIt->x *= ratiow;
+                tileIt->width *= ratiow;
+                tileIt->y *= ratioh;
+                tileIt->height *= ratioh;
+                if (ceil(tileIt->x+tileIt->width) >= (int64_t)w0)
+                    tileIt->width = (int64_t)(w0-tileIt->x);
+                if (ceil(tileIt->y+tileIt->height) >= (int64_t)h0)
+                    tileIt->height = (int64_t)(h0-tileIt->y);
 
-            // Adds borders
-            tileIt->x -= this->borders;
-            tileIt->x = std::max(0l, tileIt->x);
-            tileIt->y -= this->borders;
-            tileIt->y = std::max(0l, tileIt->y);
-            tileIt->width += this->borders;
-            tileIt->width = std::min(w0, tileIt->width);
-            tileIt->height += this->borders;
-            tileIt->height = std::min(h0, tileIt->height);
+                // Adds borders
+                tileIt->x -= this->borders;
+                tileIt->x = std::max(0l, tileIt->x);
+                tileIt->y -= this->borders;
+                tileIt->y = std::max(0l, tileIt->y);
+                tileIt->width += this->borders;
+                tileIt->width = std::min(w0, tileIt->width);
+                tileIt->height += this->borders;
+                tileIt->height = std::min(h0, tileIt->height);
 
-            // Creates the dr as a svs data region for
-            // lazy read/write of input file
-            DataRegion *dr = new DenseDataRegion2D();
-            dr->setRoi(*tileIt);
-            dr->setSvs();
+                // Creates the dr as a svs data region for
+                // lazy read/write of input file
+                DataRegion *dr = new DenseDataRegion2D();
+                dr->setRoi(*tileIt);
+                dr->setSvs();
 
-            // Create new RT tile from roi
-            std::string drName = "t" + to_string(drId);
-            dr->setName(drName);
-            dr->setId(this->refDDRName);
-            dr->setInputType(DataSourceType::FILE_SYSTEM);
-            dr->setIsAppInput(true);
-            dr->setOutputType(DataSourceType::FILE_SYSTEM);
-            dr->setInputFileName(this->tilesPath);
-            RegionTemplate* newRT = new RegionTemplate();
-            newRT->insertDataRegion(dr);
-            newRT->setName(this->name);
+                // Create new RT tile from roi
+                std::string drName = "t" + to_string(drId);
+                dr->setName(drName);
+                dr->setId(this->refDDRName);
+                dr->setInputType(DataSourceType::FILE_SYSTEM);
+                dr->setIsAppInput(true);
+                dr->setOutputType(DataSourceType::FILE_SYSTEM);
+                dr->setInputFileName(this->tilesPath);
+                RegionTemplate* newRT = new RegionTemplate();
+                newRT->insertDataRegion(dr);
+                newRT->setName(this->name);
 
-            // Add the tile and the RT to the internal containers
-            this->rts.push_back(
-                std::pair<std::string, RegionTemplate*>(drName, newRT));
-            drId++;
+                // Add the tile and the RT to the internal containers
+                this->rts.push_back(
+                    std::pair<std::string, RegionTemplate*>(drName, newRT));
+                drId++;
+            }
         }
-    }
 
     this->drGen = true;
 }

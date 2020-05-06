@@ -76,7 +76,7 @@ private:
 	friend class ThreadPool;
 
 public:
-	ExecutionEngine(int cpuThreads, int gpuThreads, int queueType=ExecEngineConstants::FCFS_QUEUE, bool dataLocalityAware=false, bool prefetching=false);
+	ExecutionEngine(int cpuThreads, int gpuThreads, int wid, int queueType=ExecEngineConstants::FCFS_QUEUE, bool dataLocalityAware=false, bool prefetching=false);
 	virtual ~ExecutionEngine();
 
 	// Dispatches a given task for execution within the Resource Manager

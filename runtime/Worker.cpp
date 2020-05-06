@@ -17,7 +17,7 @@ Worker::Worker(const int manager_rank, const int rank, const int max_active_comp
 	this->setMaxActiveComponentInstances(max_active_components);
 	this->setActiveComponentInstances(0);
 	// Create a local Resource Manager
-	this->setResourceManager(new ExecutionEngine(CPUCores, GPUs, schedType, dataLocalityAware, prefetching));
+	this->setResourceManager(new ExecutionEngine(CPUCores, GPUs, rank, schedType, dataLocalityAware, prefetching));
 
 	// Computing threads startup consuming tasks
 	this->getResourceManager()->startupExecution();
@@ -235,21 +235,29 @@ int Worker::getRank() const
 
 // Allocate a thread given a task's target list
 void Worker::allocateThreadType(std::list<int> targets) {
-	std::cout << "allocating on worker with " << targets.size() << std::endl;
+	#ifdef WORKER_VERBOSE
+	std::cout << "[Worker] allocating on worker with " << targets.size() << std::endl;
+	#endif
 	
 	for (int target : targets) {
 		if (target == ExecEngineConstants::CPU && this->availableCpuThreads > 0) {
 			this->availableCpuThreads--;
-			std::cout << "allocating cpu on worker" << std::endl;
+			#ifdef WORKER_VERBOSE
+			std::cout << "[Worker] allocating cpu on worker" << std::endl;
+			#endif
 			return;
 		}
 		if (target == ExecEngineConstants::GPU && this->availableGpuThreads > 0) {
 			this->availableGpuThreads--;
-			std::cout << "allocating gpu on worker" << std::endl;
+			#ifdef WORKER_VERBOSE
+			std::cout << "[Worker] allocating gpu on worker" << std::endl;
+			#endif
 			return;
 		}
 	}
-	std::cout << "worker didn't allocate anything" << std::endl;
+	#ifdef WORKER_VERBOSE
+	std::cout << "[Worker] Didn't allocate anything" << std::endl;
+	#endif
 
 }
 
@@ -285,7 +293,7 @@ void Worker::workerProcess()
 	hostname[1023] = '\0';
 	gethostname(hostname, 1023);
 
-    std::cout << "Worker: " << this->getRank() << " ready. Hostname: "<<hostname << " num_procs: "<< comm_size << std::endl;
+    std::cout << "[Worker][W" << this->getRank() << "] ready. Hostname: "<<hostname << " num_procs: "<< comm_size << std::endl;
 
 	// Flag that control the execution loop, and is updated from messages sent by the Manager
 	char flag = MessageTag::MANAGER_READY;
@@ -363,7 +371,7 @@ void Worker::workerProcess()
 
 
 				}else{
-					std::cout << "Error: Failed to load PipelineComponent!"<<std::endl;
+					std::cout << "[Worker] Error: Failed to load PipelineComponent!"<<std::endl;
 				}
 
 				#ifdef PROFILING
@@ -412,7 +420,7 @@ void Worker::workerProcess()
 	}
 
 #ifdef PROFILING
-    std::cout << "[PROFILING][WORKER_PREP_TIME][R" << this->rank << "] " 
+    std::cout << "[PROFILING][WORKER_PREP_TIME][W" << this->rank << "] " 
     	<< this->workerPrepareTime << std::endl;
 #endif
 

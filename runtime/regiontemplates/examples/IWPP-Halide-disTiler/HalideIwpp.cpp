@@ -100,14 +100,14 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         #ifdef WITH_CUDA
         hTarget.set_feature(Halide::Target::CUDA);
 
-        std::cout << "[" << target << "][IWPP] With CUDA" << std::endl;
+        // std::cout << "[" << target << "][IWPP] With CUDA" << std::endl;
 
         int expected = 1664; // GTX 970
         int minYScanlines = sqrt(h*w/expected) * 0.85;
         int minXsize = minYScanlines; // for reordering
         int threadsSize = 32; // for no reordering
-        std::cout << "[" << target << "][IWPP] Tile size: " 
-            << minYScanlines << std::endl;
+        // std::cout << "[" << target << "][IWPP] Tile size: " 
+        //     << minYScanlines << std::endl;
         
         // Schedules Raster
         rasterx.gpu_blocks(y).gpu_threads(x);
@@ -119,7 +119,6 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines, 
             Halide::TailStrategy::GuardWithIf);
 
-        std::cout << "[" << target << "][IWPP] With reorder" << std::endl;
         rasterx.update(0).split(prop.x, rxo, rxi, minXsize, 
             Halide::TailStrategy::GuardWithIf);
         rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
@@ -215,14 +214,14 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
     // Final iwpp time
     long st6 = Util::ClockGetTime();
 
-    std::cout << "[" << target << "][PROFILING][IWPP] iterations: " 
-        << it << std::endl;
-    std::cout << "[" << target << "][PROFILING][IWPP_COMP] " 
-        << (st1-st0) << std::endl;
-    std::cout << "[" << target << "][PROFILING][IWPP_EXEC] " 
-        << (st6-st1) << std::endl;
-    std::cout << "[" << target << "][PROFILING][IWPP_FULL] " 
-        << (st6-st0) << std::endl;
+    // std::cout << "[" << target << "][PROFILING][IWPP] iterations: " 
+    //     << it << std::endl;
+    // std::cout << "[" << target << "][PROFILING][IWPP_COMP] " 
+    //     << (st1-st0) << std::endl;
+    // std::cout << "[" << target << "][PROFILING][IWPP_EXEC] " 
+    //     << (st6-st1) << std::endl;
+    // std::cout << "[" << target << "][PROFILING][IWPP_FULL] " 
+    //     << (st6-st0) << std::endl;
 
     return 0;
 }

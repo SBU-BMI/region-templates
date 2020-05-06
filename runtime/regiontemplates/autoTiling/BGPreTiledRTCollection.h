@@ -26,8 +26,6 @@ private:
 
     std::string curImg;
 
-    bool sortBG;
-
 protected:
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
@@ -40,8 +38,8 @@ public:
     void tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles);
 
     BGPreTiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t borders, bool sortBG, 
-        CostFunction* cfunc, BGMasker* bgm);
+        std::string tilesPath, int64_t borders, CostFunction* cfunc, 
+        BGMasker* bgm);
 
     std::map<std::string, std::list<cv::Rect_<int64_t>>> getDense() {
         return this->denseTiles;

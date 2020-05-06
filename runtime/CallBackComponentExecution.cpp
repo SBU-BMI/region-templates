@@ -94,7 +94,9 @@ bool CallBackComponentExecution::run(int procType, int tid)
 		// Add id of the associated component to the list of components computed
 		curWorker->addComputedComponent(compDataToManager);
 	}
+	#ifdef DEBUG
 	std::cout << "Worker: CallBack: Component id="<< this->getComponentId() << " finished!" <<std::endl;
+	#endif
 
 	return true;
 }
