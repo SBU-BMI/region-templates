@@ -299,30 +299,32 @@ int main(int argc, char *argv[]) {
             "input", Ipath, border, denseCostFunc, bgm, 
             denseTilingAlg, nTiles);
 
-    // Creates BG tiling collection
-    bgTiler = new IrregTiledRTCollection("input", "input", Ipath, 
-        border, bgCostFunc, bgm, bgTilingAlg, nTiles);
-
     // Performs pre-tiling, if required
+    BGPreTiledRTCollection preTiler("input", "input", 
+        Ipath, border, denseCostFunc, bgm);
     if (preTiling && !noTiling) {
-        BGPreTiledRTCollection preTiler("input", "input", 
-            Ipath, border, denseCostFunc, bgm);
-
         // Performs actual tiling
         preTiler.addImage(Ipath);
         preTiler.tileImages(tilingOnly);
 
-        // Send outputs to next step of tiling
+        // Send outputs to dense tiling
         denseTiler->setPreTiles(preTiler.getDense());
-        bgTiler->setPreTiles(preTiler.getBg());
     }
 
     // Performs dense tiling
     denseTiler->addImage(Ipath);
     denseTiler->tileImages(tilingOnly);
 
-    // Performs BG tiling and adds results to dense
+    // BG tiling
     if (preTiling && !noTiling) {
+        // Calculates the number of expected tiles as a multiple of nTiles
+        int bgTilesExpected = (std::floor(preTiler.getBgSize()/nTiles)+1)*nTiles;
+        bgTiler = new IrregTiledRTCollection("input", "input", Ipath, 
+            border, bgCostFunc, bgm, bgTilingAlg, bgTilesExpected);
+
+        bgTiler->setPreTiles(preTiler.getBg());
+
+        // Performs BG tiling and adds results to dense
         bgTiler->addImage(Ipath);
         bgTiler->tileImages(tilingOnly);
         denseTiler->addTiles(bgTiler->getTilesBase());

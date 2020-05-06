@@ -47,6 +47,12 @@ public:
     std::map<std::string, std::list<cv::Rect_<int64_t>>> getBg() {
         return this->bgTiles;
     };
+    long getBgSize() {
+        long size = 0;
+        for (std::pair<std::string, std::list<cv::Rect_<int64_t>>> p : this->bgTiles)
+            size += p.second.size();
+        return size;
+    }
 };
 
 #endif // BG_PRE_TILED_RT_COLLECTION_H_
