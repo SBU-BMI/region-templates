@@ -45,7 +45,7 @@ enum TilingAlgorithm_t {
 
 enum CostFunction_t {
     THRS,
-    VM_THRS_AREA,
+    MV_THRS_AREA,
 };
 
 // Should use ExecEngineConstants::GPU ... 
@@ -125,10 +125,12 @@ int main(int argc, char *argv[]) {
         cout << "\t\t6: CBAL_TRIE_QUAD_TREE_ALG" << endl;
         cout << "\t\t7: CBAL_POINT_QUAD_TREE_ALG" << endl;
 
-        // cout << "\t-f <dense cost function>" << endl;
-        // cout << "\t\tValues (default=0):" << endl;
-        // cout << "\t\t0: THRS" << endl;
-        // cout << "\t\t1: MV_THRS_AREA" << endl;
+        cout << "\t-f <dense cost function>" << endl;
+        cout << "\t\tValues (default=0):" << endl;
+        cout << "\t\t0: THRS" << endl;
+        cout << "\t\t1: MV_THRS_AREA" << endl;
+
+        cout << "\t-m <execBias>/<loadBias> (default=1/100)" << endl;
 
         cout << "=== Background tiling (BG) options:" << endl;
         cout << "\t-k <background tiling algorithm>" << endl;
@@ -138,7 +140,6 @@ int main(int argc, char *argv[]) {
         
         // cout << "\t-xb (sort background tiles with area cost function)" << endl;
 
-        // cout << "\t-m <execBias>/<readBias> (default=1/10)" << endl;
         // cout << "\t-tb (tile background tiles with area cost function)" << endl;
         
         exit(0);
@@ -210,6 +211,23 @@ int main(int argc, char *argv[]) {
     }
 
     // Dense tiling algorithm
+    CostFunction_t denseCostf = THRS;
+    if (findArgPos("-f", argc, argv) != -1) {
+        denseCostf = static_cast<CostFunction_t>(
+            atoi(argv[findArgPos("-f", argc, argv)+1]));
+    }
+
+    // Threshold cost function parameters
+    int execBias = 1;
+    int loadBias = 100;
+    if (findArgPos("-m", argc, argv) != -1) {
+        std::string params = argv[findArgPos("-m", argc, argv)+1];
+        std::size_t l = params.find_last_of("/");
+        execBias = atoi(params.substr(0, l).c_str());
+        loadBias = atoi(params.substr(l+1).c_str());
+    }
+
+    // BG tiling algorithm
     TilerAlg_t bgTilingAlg = LIST_ALG_EXPECT;
     if (findArgPos("-k", argc, argv) != -1) {
         bgTilingAlg = static_cast<TilerAlg_t>(
@@ -283,8 +301,13 @@ int main(int argc, char *argv[]) {
 
     // Tiling cost functions
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    CostFunction* denseCostFunc = new ThresholdBGCostFunction(
-        static_cast<ThresholdBGMasker*>(bgm));
+    CostFunction* denseCostFunc;
+    if (denseCostf == THRS)
+        denseCostFunc = new ThresholdBGCostFunction(
+            static_cast<ThresholdBGMasker*>(bgm));
+    else
+        denseCostFunc = new MultiObjCostFunction(
+            static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
     CostFunction* bgCostFunc = new AreaCostFunction();
 
     // Creates dense tiling collection
