@@ -213,6 +213,8 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             // Gets info of largest image
             int64_t w, h;
             openslide_get_level0_dimensions(osr, &w, &h);
+            std::cout << "[TiledRTCollection] Full image size: " 
+                << h << "x" << w << std::endl;
             int64_t w0 = w;
             int64_t h0 = h;
             float ratiow = w;
