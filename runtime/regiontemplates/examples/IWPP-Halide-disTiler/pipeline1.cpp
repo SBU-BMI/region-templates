@@ -1,6 +1,6 @@
 #include "pipeline1.h"
 
-// #define PROFILING_STAGES
+#define PROFILING_STAGES
 
 // Only implemented for grayscale images
 // Only implemented for uint8_t images

@@ -59,5 +59,5 @@ void IwppParallelRecon::realize(cv::Mat* cvI, cv::Mat* cvJ) {
         // cv::imwrite("out.png", *cvJ);
     } while(newSum != oldSum);
 
-    // cout << "[IwppParallelRecon] Done in " << it << " iterations" << endl;
+    cout << "[IwppParallelRecon] Done in " << it << " iterations" << endl;
 }
