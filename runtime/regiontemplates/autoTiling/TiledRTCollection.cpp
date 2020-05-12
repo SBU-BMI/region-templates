@@ -108,6 +108,9 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 int osrMinLevel = openslide_get_level_count(osr) - 1; // last level
                 int64_t w = -1;
                 int64_t h = -1;
+                openslide_get_level0_dimensions(osr, &w, &h);
+                std::cout << "[TiledRTCollection] Full image size: " 
+                    << h << "x" << w << std::endl;
                 openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
                 cv::Rect_<int64_t> roi(0, 0, w, h);
                 osrRegionToCVMat(osr, roi, osrMinLevel, baseImg);
