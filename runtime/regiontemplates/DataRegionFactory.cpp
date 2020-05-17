@@ -174,6 +174,8 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 						inDr->getInputFileName());
 
     				long time0 = Util::ClockGetTime();
+					std::cout << "[DataRegionFactory] reading SVS file" << std::endl; 
+
 					// Extracts the roi of the svs file into chunkData
 					int32_t maxLevel = 0; // svs standard: maxlevel = 0
 					osrRegionToCVMat(svsFile, inDr->roi, maxLevel, 

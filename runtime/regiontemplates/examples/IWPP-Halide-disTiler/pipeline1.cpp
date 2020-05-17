@@ -2,6 +2,8 @@
 
 #define PROFILING_STAGES
 
+#define LARGEB
+
 // Only implemented for grayscale images
 // Only implemented for uint8_t images
 // Structuring element must have odd width and height
@@ -38,6 +40,9 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     // Schedules
     Halide::Var t;
     Halide::Target hTarget = Halide::get_host_target();
+    #ifdef LARGEB
+    hTarget.set_feature(Halide::Target::LargeBuffers);
+    #endif
     if (target == ExecEngineConstants::CPU) {
         erode.tile(x, y, xo, yo, xi, yi, 16, 16);
         erode.fuse(xo,yo,t).parallel(t);
@@ -113,6 +118,9 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     // Schedules
     Halide::Var t;
     Halide::Target hTarget = Halide::get_host_target();
+    #ifdef LARGEB
+    hTarget.set_feature(Halide::Target::LargeBuffers);
+    #endif
     if (target == ExecEngineConstants::CPU) {
         dilate.tile(x, y, xo, yo, xi, yi, 16, 16);
         dilate.fuse(xo,yo,t).parallel(t);
@@ -277,6 +285,9 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         // Schedules
         preFill.compute_root();
         Halide::Target hTarget = Halide::get_host_target();
+        #ifdef LARGEB
+        hTarget.set_feature(Halide::Target::LargeBuffers);
+        #endif
         Halide::Var t, xo, yo, xi, yi;
         if (target == ExecEngineConstants::CPU) {
             preFill.tile(x, y, xo, yo, xi, yi, 16, 16);

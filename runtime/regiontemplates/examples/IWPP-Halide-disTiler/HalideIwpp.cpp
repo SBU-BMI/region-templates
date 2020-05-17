@@ -214,14 +214,14 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
     // Final iwpp time
     long st6 = Util::ClockGetTime();
 
-    // std::cout << "[" << target << "][PROFILING][IWPP] iterations: " 
-    //     << it << std::endl;
-    // std::cout << "[" << target << "][PROFILING][IWPP_COMP] " 
-    //     << (st1-st0) << std::endl;
-    // std::cout << "[" << target << "][PROFILING][IWPP_EXEC] " 
-    //     << (st6-st1) << std::endl;
-    // std::cout << "[" << target << "][PROFILING][IWPP_FULL] " 
-    //     << (st6-st0) << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP] iterations: " 
+        << it << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP_COMP] " 
+        << (st1-st0) << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP_EXEC] " 
+        << (st6-st1) << std::endl;
+    std::cout << "[" << target << "][PROFILING][IWPP_FULL] " 
+        << (st6-st0) << std::endl;
 
     return 0;
 }
