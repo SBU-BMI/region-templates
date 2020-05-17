@@ -1,5 +1,7 @@
 #include "HalideIwpp.h"
 
+#define LARGEB
+
 template <typename T>
 Halide::Func halSum(Halide::Buffer<T>& JJ) {
 
@@ -81,6 +83,9 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
 
     // Scheduling variables
     Halide::Target hTarget = Halide::get_host_target();
+    #ifdef LARGEB
+    hTarget.set_feature(Halide::Target::LargeBuffers);
+    #endif
     Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
     
     if (target == ExecEngineConstants::CPU) {

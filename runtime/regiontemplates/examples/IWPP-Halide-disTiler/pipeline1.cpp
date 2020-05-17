@@ -214,6 +214,11 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         st = "cpu";
     else if (target == ExecEngineConstants::GPU)
         st = "gpu";
+
+    Halide::Target hTarget = Halide::get_host_target();
+    #ifdef LARGEB
+    hTarget.set_feature(Halide::Target::LargeBuffers);
+    #endif
     
     // === get-background =================================================
     {
@@ -221,7 +226,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         Halide::Func get_bg;
         get_bg(x,y) = 255 * Halide::cast<uint8_t>(
             (hIn(x,y,0) > blue) & (hIn(x,y,1) > green) & (hIn(x,y,2) > red));
-        get_bg.compile_jit();
+        get_bg.compile_jit(hTarget);
         get_bg.realize(hOut1);
     
         long bgArea = cv::countNonZero(cvOut1);
@@ -253,7 +258,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         else
             invert(x,y) = std::numeric_limits<uint8_t>::max()-hIn(x,y,channel);
 
-        invert.compile_jit();
+        invert.compile_jit(hTarget);
         invert.realize(hRC);
     }
 
@@ -284,10 +289,6 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
         // Schedules
         preFill.compute_root();
-        Halide::Target hTarget = Halide::get_host_target();
-        #ifdef LARGEB
-        hTarget.set_feature(Halide::Target::LargeBuffers);
-        #endif
         Halide::Var t, xo, yo, xi, yi;
         if (target == ExecEngineConstants::CPU) {
             preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
