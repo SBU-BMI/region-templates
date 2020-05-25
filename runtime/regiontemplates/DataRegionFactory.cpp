@@ -182,8 +182,8 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 						chunkData);
     				long time1 = Util::ClockGetTime();
 					dr2D->setData(chunkData);
-					std::cout << "[DataRegionFactory] read SVS file " 
-						<< (time1-time0) << std::endl;
+					std::cout << "[DataRegionFactory] read SVS file in " 
+						<< (time1-time0) << " ms" << std::endl;
 				} else {
 					std::cout << "[DataRegionFactory] cache is null" << std::endl;
 					exit(10);

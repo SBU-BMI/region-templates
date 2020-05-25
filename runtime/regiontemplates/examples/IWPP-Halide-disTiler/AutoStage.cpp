@@ -112,15 +112,20 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     //     << cvInitial.rows << " => " << tiles.size() << std::endl;
     tiles.emplace_back(cv::Rect_<int64_t>(0, 0, cvInitial.cols, cvInitial.rows));
 
+    delete bgm;
+    delete cfunc;
+    // delete preTiler;
+    // delete tCollImg;
+
     // allTiles[i][j] => i: internal tile id, j: RT id (i.e., each input image)   
     std::vector<DenseDataRegion2D*> _init(this->rts_names.size());
     allTiles = std::vector<std::vector<DenseDataRegion2D*>>(tiles.size(), _init);
 
     // Performs tiling of all RTs for DRs into the same RT
     for (int i=0; i<this->rts_names.size(); i++) {
-        #ifdef DEBUG
-        std::cout << "[AutoStage] tiling RT: " << this->rts_names[i] << std::endl;
-        #endif
+        // #ifdef DEBUG
+        std::cout << "=========[AutoStage] tiling RT: " << this->rts_names[i] << std::endl;
+        // #endif
         // Gets current RT
         rtId = this->rts_names[i];
         rtCur = this->getRegionTemplateInstance(rtId);
@@ -129,10 +134,11 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
         drName = this->tileId==-1 ? rtCur->getName() : drName;
         if (i>0) {
             drCur = dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
+            std::cout << "========================" << std::endl;
         }
-        #ifdef DEBUG
-        std::cout << "[AutoStage] tiling DR: " << drName << std::endl;
-        #endif
+        // #ifdef DEBUG
+        std::cout << "=========[AutoStage] tiling DR: " << drName << std::endl;
+        // #endif
 
         // Tiles current DR
         int drNewId = 0;
@@ -140,17 +146,13 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
             #ifdef DEBUG
             std::cout << "[AutoStage]\t tile: " << tile << std::endl;
             #endif
-            
-            // Gets cv::Mat tile
-            cv::Mat* cvTile = new cv::Mat();
-            (*cvTile) = drCur->getData()(tile).clone();
 
             // Wraps cv tile inside a DR and adds it to the current RT
             DenseDataRegion2D *drNew = new DenseDataRegion2D();
             std::string drNewName = drName + "st" + to_string(drNewId);
             drNew->setName(drNewName);
             drNew->setId(rtCur->getName());
-            drNew->setData(*cvTile);
+            drNew->setData(drCur->getData()(tile));
             rtCur->insertDataRegion(drNew);
 
             // Adds new DR to output container
@@ -176,10 +178,6 @@ int RTF::Internal::AutoStage::run() {
 
     long stageTime0 = Util::ClockGetTime();
 
-    // Output buffer must be pre-allocated for the halide pipeline
-    cv::Mat* cvOut = new cv::Mat(this->out_shape[0], 
-        this->out_shape[1], CV_8U);
-
     // Assign output mat to the correct output RT
     RegionTemplate* rtOut = this->getRegionTemplateInstance(
         this->rts_names[this->rts_names.size()-1]);
@@ -187,7 +185,7 @@ int RTF::Internal::AutoStage::run() {
     drName = tileId==-1 ? rtOut->getName() : "t"+std::to_string(this->tileId);
     drOut->setName(drName);
     drOut->setId(rtOut->getName());
-    drOut->setData(*cvOut);
+    drOut->setData(cv::Mat(this->out_shape[0], this->out_shape[1], CV_8U));
     rtOut->insertDataRegion(drOut);
 
     long stageTime1 = Util::ClockGetTime();

@@ -24,10 +24,10 @@ RegionTemplate::~RegionTemplate() {
 		// Iterate in the list of data regions with same name
 		std::list<DataRegion*>::iterator listIt = (*it).second.begin();
 
-	//	std::cout << "~RegionTemplate: " << this->getName() << " nDataRegions: " << this->getNumDataRegions() << std::endl;
+		std::cout << "===============~RegionTemplate: " << this->getName() << " nDataRegions: " << this->getNumDataRegions() << std::endl;
 
 		while( listIt != (*it).second.end() ){		
-		//	std::cout << "deleting region:"<< (*listIt)->getName() <<std::endl;
+			std::cout << "deleting region:"<< (*listIt)->getName() <<std::endl;
 			// delete each item in the current list
 			DataRegion *dr = (*listIt);
 			delete (dr);
