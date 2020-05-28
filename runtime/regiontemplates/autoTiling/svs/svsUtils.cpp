@@ -14,6 +14,8 @@ void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r,
 
     #ifdef PROFILING_SVS
     long t1 = Util::ClockGetTime();
+    std::cout << "[osrRegionToCVMat] svs tile: " << r.height 
+        << "x" << r.width << std::endl;
     #endif
 
     uint32_t* osrRegion = new uint32_t[r.width * r.height];

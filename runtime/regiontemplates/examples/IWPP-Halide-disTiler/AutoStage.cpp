@@ -168,6 +168,7 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     //     << cvInitial.cols << " " << (stageTime9-stageTime1) << std::endl;
 }
 
+#define DEBUG
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs

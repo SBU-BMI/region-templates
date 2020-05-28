@@ -80,7 +80,7 @@ void Cache::parseConfFile(std::string confFile) {
 		#endif
 		cv::FileNode cacheConf = fs["CacheConfig"];
 
-//		std::cout << "nodeSize: "<< cacheConf.size() << std::endl;
+		// std::cout << "nodeSize: "<< cacheConf.size() << std::endl;
 		cv::FileNodeIterator it = cacheConf.begin(), itEnd = cacheConf.end();
 		int idx = 0;
 		for(; it != itEnd; it++){
@@ -159,7 +159,7 @@ void Cache::parseConfFile(std::string confFile) {
 
 
 int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion, bool copyData, int startLayer, bool isCacheOnRead) {
-//	std::cout << "Cache insertDR:" << dataRegion->getName() << std::endl;
+	// std::cout << "Cache insertDR:" << dataRegion->getName() << std::endl;
 	int insertedLevel = 0;
 	long long init = Util::ClockGetTime();
 
@@ -219,9 +219,9 @@ int Cache::insertDR(std::string rtName, std::string rtId, DataRegion* dataRegion
 	dataRegion->setCacheType(this->cacheLayers[i]->getType());
 	dataRegion->setWorkerId(this->getWorkerId());
 	insertedLevel = i;
-//	std::cout << "Insert: level:"<<i<< " "<<dataRegion->getName()<< " "<< dataRegion->getId() << " size:"<<
-//			dataRegion->getDataSize()<< " version: "<< dataRegion->getVersion() <<" empty? "<< dataRegion->empty()<< " capacity:"<<this->cacheLayers[i]->getCapacity()<<" used: "<<
-//			this->cacheLayers[i]->getCapacityUsed()<<std::endl;
+	// std::cout << "Insert: level:"<<i<< " "<<dataRegion->getName()<< " "<< dataRegion->getId() << " size:"<<
+	// 		dataRegion->getDataSize()<< " version: "<< dataRegion->getVersion() <<" empty? "<< dataRegion->empty()<< " capacity:"<<this->cacheLayers[i]->getCapacity()<<" used: "<<
+	// 		this->cacheLayers[i]->getCapacityUsed()<<std::endl;
 	#ifdef DEBUG
 	std::cout <<"FirstGlobal: "<< this->getFirstGlobalCacheLevel() << std::endl;
 	#endif
