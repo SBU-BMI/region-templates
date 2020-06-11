@@ -266,9 +266,9 @@ int RTF::Internal::AutoStage::run() {
                         abortStr += to_string(this->dr_ios[i]->getData().cols);
                         abortStr += " ";
                     }
-                    #ifdef DEBUG
+                    // #ifdef DEBUG
                     std::cout << abortStr << std::endl;
-                    #endif
+                    // #endif
                 }
 
                 // Assigns the output mat to its DataRegion

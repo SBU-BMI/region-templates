@@ -17,7 +17,6 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     // basic assertions for that ensures that this will work
     assert(hSE.width()%2 != 0);
     assert(hSE.height()%2 != 0);
-//    assert(hIn.get().dimensions() == 1);
 
     int seWidth = (hSE.width()-1)/2;
     int seHeight = (hSE.height()-1)/2;
@@ -96,7 +95,6 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     // basic assertions for that ensures that this will work
     assert(hSE.width()%2 != 0);
     assert(hSE.height()%2 != 0);
-//    assert(im_ios[0].channels() == 1);
 
     int seWidth = (hSE.width()-1)/2;
     int seHeight = (hSE.height()-1)/2;
