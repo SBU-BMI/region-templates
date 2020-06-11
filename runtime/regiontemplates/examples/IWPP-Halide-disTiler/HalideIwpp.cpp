@@ -18,6 +18,13 @@ Halide::Func halSum(Halide::Buffer<T>& JJ) {
     pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
     pSum.update(0).vectorize(rxi).parallel(rxo);
 
+    // Compile
+    Halide::Target hTarget = Halide::get_host_target();
+    #ifdef LARGEB
+    hTarget.set_feature(Halide::Target::LargeBuffers);
+    #endif
+    pSum.compile_jit(hTarget);
+
     // pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML);
 
     return pSum;
