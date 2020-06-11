@@ -123,9 +123,9 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
 
     // Performs tiling of all RTs for DRs into the same RT
     for (int i=0; i<this->rts_names.size(); i++) {
-        // #ifdef DEBUG
+        #ifdef DEBUG
         std::cout << "=========[AutoStage] tiling RT: " << this->rts_names[i] << std::endl;
-        // #endif
+        #endif
         // Gets current RT
         rtId = this->rts_names[i];
         rtCur = this->getRegionTemplateInstance(rtId);
@@ -134,11 +134,10 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
         drName = this->tileId==-1 ? rtCur->getName() : drName;
         if (i>0) {
             drCur = dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
-            std::cout << "========================" << std::endl;
         }
-        // #ifdef DEBUG
+        #ifdef DEBUG
         std::cout << "=========[AutoStage] tiling DR: " << drName << std::endl;
-        // #endif
+        #endif
 
         // Tiles current DR
         int drNewId = 0;
