@@ -37,8 +37,6 @@ void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r,
 
     cv::cvtColor(rgbaTile, thisTile, CV_RGBA2RGB);
 
-    cv::imwrite("conv.png", thisTile);
-
     #ifdef PROFILING_SVS
     long t4 = Util::ClockGetTime();
     std::cout << "[osrRegionToCVMat] cv mat convert/update: " << (t4-t3) << std::endl;
