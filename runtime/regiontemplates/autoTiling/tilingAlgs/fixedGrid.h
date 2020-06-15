@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <list>
+#include <algorithm>
 
 #include <opencv/cv.hpp>
 

@@ -1,87 +1,127 @@
 #include "fixedGrid.h"
 
+// Brute force algorithm
+std::vector<int> factorize(int n) {
+
+    // Using an array for improving access/insert time
+    int c=0;
+    int fsTmp[(int)ceil(sqrt(n))];
+    // fsTmp[c++] = 1;
+
+    // Gets all factors 2
+    while (n % 2 == 0) {
+        fsTmp[c++] = 2;
+        n/=2;
+    }  
+  
+    // Tries all odd numbers after removing 2's factors
+    for (int i=3; i <= sqrt(n); i+=2) {
+        // Check for divisible
+        while (n%i == 0) {
+            fsTmp[c++] = i;
+            n/=i;
+        }
+    }
+  
+    // Checks if the last number is a prime
+    if (n > 2)
+        fsTmp[c++] = n;
+
+    // Converts array to compact vector
+    std::vector<int> fs(fsTmp, fsTmp+c);
+
+    return fs;
+}  
+
+// int gcd(int a, int b) {
+//     int remainder;
+//     while (b != 0) {
+//         remainder = a % b;
+//         a = b;
+//         b = remainder;
+//     }
+//     return a;
+// }
+
+// Pollard's rho based algorithm
+// std::vector<int> factorize(int n) {
+//     int c;
+//     int size;
+//     int xFix = 2;
+//     long x = 2;
+//     std::vector<int> factors;
+//     int factor;
+
+//     while (n != 1) {
+//         size = 2;
+//         do {
+//             c = size;
+//             do {
+//                 x = (x*x+1) % n;
+//                 factor = gcd(abs(x - xFix), n);
+//                 std::cout << "n-f-x: " << n 
+//                     << "-" << factor << "-" << x << std::endl;
+//             } while (c>0 && factor==1);
+//             size *= 2;
+//             xFix = x;
+//         } while (factor==1);
+
+//         factors.emplace_back(factor);
+
+//         // If found, add factor to vector
+//         if (factor != n) {
+//             std::cout << "factor found: " << factor << std::endl;
+//             n = n/factor;
+//         } else {
+//             std::cout << "last factor found: " << factor << std::endl;
+//             break;
+//         }
+//     }
+
+//     return factors;
+// }
+
+void intv(std::vector<int>& fs, std::vector<int>& out, int prev, int s, int ii) {
+    int f=1;
+    if (s > 0) {
+        for (int i=ii; i<fs.size(); i++) {
+            // std::cout << "[" << s << "]" << (prev*fs[i]) << std::endl;
+            out.emplace_back(prev*fs[i]);
+            intv(fs, out, prev*fs[i], s-1, i+1);
+        }
+    }
+}
+
+int64_t perim(int xt, int yt, int64_t w, int64_t h) {
+    return 2*xt*h + 2*yt*w;
+}
+
 int fixedGrid(int64_t nTiles, int64_t w, int64_t h, int64_t mw, int64_t mh, 
         std::list<cv::Rect_<int64_t>>& rois) {
-    // Finds the best fit for square tiles that match nTiles by the 
-    // equation:
-    //    nTiles = nx(number of divisions on x) * ny(same on y)
-    //    e.g., 6 tiles organized as a 2x3 grid has nx=2 and ny=3
-    // Assuming that nx = k and ny = nTiles/k (arbitrary k with 
-    // 1<=k<=nTiles) we must find k that minimizes the sum of all 
-    // perimeters of the generated tiles, thus making them square.
-    // Being Sc(sum of perimeters) = 2(tw+th)*(nx*ny), and taking 
-    // the first derivative Sc'=0 we have that the value of k for 
-    // Sc minimal is:
-    float k = sqrt((float)nTiles*(float)h/(float)w);
+    
+    // Gets full factorization of nTiles
+    std::vector<int> fs = factorize(nTiles);
 
-    // Determine the number of tile levels to be had by getting the best
-    // possible approximation. Since nx and ny are floats, we must first
-    // round them. There are four rounding possibilities (the combinations 
-    // of floor and ceil for each coord). Each one is tested to find the 
-    // combination which results in the closest number of resulting tiles
-    // to nTiles. If there are two possibilities with the same number of 
-    // tiles, the one with the smallest perimeter is chosen.
-
-    int64_t curNt;
-    int64_t bestPrm;
-
-    // Get the info for the first combination
-    int64_t xTiles;
-    int64_t yTiles;
-    int64_t xTilesTmp = floor(nTiles/k);
-    int64_t yTilesTmp = floor(k);
-    int64_t curNtTmp = xTilesTmp * yTilesTmp;
-    int64_t curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-
-    // Set the first combination as the first best
-    xTiles = xTilesTmp;
-    yTiles = yTilesTmp;
-    curNt = curNtTmp;
-    bestPrm = curPrm;
-
-    // Check if the second combination is better
-    xTilesTmp = floor(nTiles/k);
-    yTilesTmp = ceil(k);
-    curNtTmp = xTilesTmp * yTilesTmp;
-    curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-    // If the number of tiles is better or if it is the same as the best, 
-    // but has better perimeter (less)
-    if (abs(curNtTmp-nTiles) < abs(curNt-nTiles) ||
-        (abs(curNtTmp-nTiles) == abs(curNt-nTiles) && curPrm < bestPrm) ) {
-        xTiles = xTilesTmp;
-        yTiles = yTilesTmp;
-        curNt = curNtTmp;
-        bestPrm = curPrm;
-    }
-
-    // Check if the third combination is better
-    xTilesTmp = ceil(nTiles/k);
-    yTilesTmp = floor(k);
-    curNtTmp = xTilesTmp * yTilesTmp;
-    curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-    // If the number of tiles is better or if it is the same as the best, 
-    // but has better perimeter (less)
-    if (abs(curNtTmp-nTiles) < abs(curNt-nTiles) ||
-        (abs(curNtTmp-nTiles) == abs(curNt-nTiles) && curPrm < bestPrm) ) {
-        xTiles = xTilesTmp;
-        yTiles = yTilesTmp;
-        curNt = curNtTmp;
-        bestPrm = curPrm;
-    }
-
-    // Check if the fourth combination is better
-    xTilesTmp = ceil(nTiles/k);
-    yTilesTmp = ceil(k);
-    curNtTmp = xTilesTmp * yTilesTmp;
-    curPrm = 2*xTilesTmp*h + 2*yTilesTmp*w;
-    // If the number of tiles is better or if it is the same as the best, 
-    // but has better perimeter (less)
-    if (abs(curNtTmp-nTiles) < abs(curNt-nTiles) ||
-        (abs(curNtTmp-nTiles) == abs(curNt-nTiles) && curPrm < bestPrm) ) {
-        xTiles = xTilesTmp;
-        yTiles = yTilesTmp;
-        curNt = curNtTmp;
-        bestPrm = curPrm;
+    // Gets all sorted combinations of 2 products which results in nTiles
+    std::vector<int> out;
+    intv(fs, out, 1, fs.size()-1, 0);
+    out.emplace_back(1);
+    out.emplace_back(nTiles);
+    std::sort(out.begin(), out.end());
+    
+    // Finds best possible combination
+    int64_t xTiles = 1;
+    int64_t yTiles = nTiles;
+    int64_t newPerim;
+    int64_t bestPerim = perim(xTiles, yTiles, w, h);
+    for (int i=1; i<out.size(); i++) {
+        while(out[i]==out[i-1]) i++;
+        newPerim = perim(out[i], nTiles/out[i], w, h);
+        if (newPerim < bestPerim) {
+            xTiles = out[i];
+            yTiles = nTiles/out[i];
+            bestPerim = newPerim;
+        }
     }
 
     // Updates the tile sizes for the best configuration
