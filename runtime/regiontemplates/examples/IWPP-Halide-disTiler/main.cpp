@@ -35,12 +35,10 @@ using std::endl;
 #define PROFILING
 #define PROFILING_STAGES
 
-enum TilingAlgorithm_t {
-    NO_TILING,
-    CPU_DENSE,
-    HYBRID_DENSE,
-    HYBRID_PRETILER,
-    HYBRID_RESSPLIT,
+enum HybridExec_t {
+    CPU_ONLY,
+    GPU_ONLY,
+    HYBRID,
 };
 
 enum CostFunction_t {
@@ -50,17 +48,16 @@ enum CostFunction_t {
 
 // Should use ExecEngineConstants::GPU ... 
 typedef int Target_t;
-inline Target_t tgt(TilingAlgorithm_t tilingAlg, Target_t target) {
-    switch (tilingAlg) {
-        case NO_TILING:
-        case CPU_DENSE:
+
+inline Target_t tgt(HybridExec_t exec, Target_t target) {
+    switch (exec) {
+        case CPU_ONLY:
             return ExecEngineConstants::CPU;
-        case HYBRID_DENSE:
-        case HYBRID_PRETILER:
-        case HYBRID_RESSPLIT:
+        case GPU_ONLY:
+            return ExecEngineConstants::GPU;
+        case HYBRID:
             return target;
     }
-    // return ExecEngineConstants::ANY;
 }
 
 int findArgPos(std::string s, int argc, char** argv) {
@@ -91,8 +88,8 @@ int main(int argc, char *argv[]) {
         cout << "=== General options:" << endl;
         cout << "\t-c <number of cpu threads per node "
              << "(default=1)>" << endl;
-        cout << "\t-g <number of gpu threads per node "
-             << "(default=0)>" << endl;
+        // cout << "\t-g <number of gpu threads per node "
+        //      << "(default=0)>" << endl;
         cout << "\t-t <Number of tiles to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
         cout << "\t-p <bgThr>/<erode>/<dilate> (default=150/4/2)" << endl;
@@ -101,18 +98,18 @@ int main(int argc, char *argv[]) {
         cout << "\t-nt (execute full image without tiling, overriding "
              << "any other tiling parameter)" << endl;
 
-        cout << "=== Pre-tiler (PT) options:" << endl;
-        cout << "\t-npt (without pre-tiler)" << endl;
-        // cout << "\t-pto (with pre-tiler only, i.e., no dense)" << endl;
-
-        // cout << "\t-a <tiling algorithm>" << endl;
-        // cout << "\t\tValues (default=0):" << endl;
-        // cout << "\t\t0: No tiling (supports non-svs images)" << endl;
-        // cout << "\t\t1: CPU-only dense tiling" << endl;
-        // cout << "\t\t2: Hybrid dense tiling" << endl;
+        cout << "=== Hybrid execution options:" << endl;
+        cout << "\t-a <execution option>" << endl;
+        cout << "\t\tValues (default=0):" << endl;
+        cout << "\t\t0: CPU-only execution" << endl;
+        cout << "\t\t1: GPU-only execution" << endl;
+        cout << "\t\t2: Hybrid execution" << endl;
         // cout << "\t\t3: Pre-tiler hybrid tiling" << endl;
         // cout << "\t\t4: Res-split hybrid tiling" << endl;
-        
+
+        cout << "=== Pre-tiler (PT) options:" << endl;
+        cout << "\t-npt (without pre-tiler)" << endl;
+
         cout << "=== Dense tiling options:" << endl;
         cout << "\t-d <dense tiling algorithm>" << endl;
         cout << "\t\tValues (default=0):" << endl;
@@ -148,17 +145,17 @@ int main(int argc, char *argv[]) {
     // Input images
     std::string Ipath = std::string(argv[1]);
 
-    // Number of cpu threads
-    int cpuThreads = 1;
-    if (findArgPos("-c", argc, argv) != -1) {
-        cpuThreads = atoi(argv[findArgPos("-c", argc, argv)+1]);
-    }
+    // // Number of cpu threads
+    // int cpuThreads = 1;
+    // if (findArgPos("-c", argc, argv) != -1) {
+    //     cpuThreads = atoi(argv[findArgPos("-c", argc, argv)+1]);
+    // }
 
-    // Number of gpu threads
-    int gpuThreads = 1;
-    if (findArgPos("-g", argc, argv) != -1) {
-        gpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
-    }
+    // // Number of gpu threads
+    // int gpuThreads = 1;
+    // if (findArgPos("-g", argc, argv) != -1) {
+    //     gpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
+    // }
 
     // Number of expected dense tiles for irregular tiling
     int nTiles = 1;
@@ -195,6 +192,13 @@ int main(int argc, char *argv[]) {
     bool noTiling = false;
     if (findArgPos("-nt", argc, argv) != -1) {
         noTiling = true;
+    }
+
+    // Dense tiling algorithm
+    HybridExec_t hybridExec = CPU_ONLY;
+    if (findArgPos("-a", argc, argv) != -1) {
+        hybridExec = static_cast<HybridExec_t>(
+            atoi(argv[findArgPos("-a", argc, argv)+1]));
     }
 
     // No pre-tiling execution
@@ -380,8 +384,8 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(G1),
              new ArgumentInt(se3raw_width), new ArgumentIntArray(se3raw, se3raw_size)}, 
             {tiles[i].height, tiles[i].width}, {&pipeline1_s}, 
-            denseTiler->getTileTarget(i), i);
-            // tgt(tilingAlg, denseTiler->getTileTarget(i)), i);
+            // denseTiler->getTileTarget(i), i);
+            tgt(hybridExec, denseTiler->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
 
         // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 

@@ -207,16 +207,20 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     }
     Halide::Buffer<uint8_t> hSE3 = mat2buf<uint8_t>(&cvSE3, "hSE3");   // dilate/erode 2
 
-    string st;
-    if (target == ExecEngineConstants::CPU)
-        st = "cpu";
-    else if (target == ExecEngineConstants::GPU)
-        st = "gpu";
-
     Halide::Target hTarget = Halide::get_host_target();
     #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
     #endif
+    
+    string st;
+    if (target == ExecEngineConstants::CPU) {
+        st = "cpu";
+        cout << "=================== target: CPU" << target << endl;
+    } else if (target == ExecEngineConstants::GPU) {
+        st = "gpu";
+        // hTarget.set_feature(Halide::Target::CUDA);
+        cout << "=================== target: GPU" << target << endl;
+    }
     
     // === get-background =================================================
     {
