@@ -33,54 +33,6 @@ std::vector<int> factorize(int n) {
     return fs;
 }  
 
-// int gcd(int a, int b) {
-//     int remainder;
-//     while (b != 0) {
-//         remainder = a % b;
-//         a = b;
-//         b = remainder;
-//     }
-//     return a;
-// }
-
-// Pollard's rho based algorithm
-// std::vector<int> factorize(int n) {
-//     int c;
-//     int size;
-//     int xFix = 2;
-//     long x = 2;
-//     std::vector<int> factors;
-//     int factor;
-
-//     while (n != 1) {
-//         size = 2;
-//         do {
-//             c = size;
-//             do {
-//                 x = (x*x+1) % n;
-//                 factor = gcd(abs(x - xFix), n);
-//                 std::cout << "n-f-x: " << n 
-//                     << "-" << factor << "-" << x << std::endl;
-//             } while (c>0 && factor==1);
-//             size *= 2;
-//             xFix = x;
-//         } while (factor==1);
-
-//         factors.emplace_back(factor);
-
-//         // If found, add factor to vector
-//         if (factor != n) {
-//             std::cout << "factor found: " << factor << std::endl;
-//             n = n/factor;
-//         } else {
-//             std::cout << "last factor found: " << factor << std::endl;
-//             break;
-//         }
-//     }
-
-//     return factors;
-// }
-
 void intv(std::vector<int>& fs, std::vector<int>& out, int prev, int s, int ii) {
     int f=1;
     if (s > 0) {

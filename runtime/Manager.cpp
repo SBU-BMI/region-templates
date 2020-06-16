@@ -83,7 +83,7 @@ int Manager::finalizeExecution()
 		if (flag) {
 			// where is it coming from
 			worker_id=status.MPI_SOURCE;
-			MPI_Recv(&ready, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world, MPI_STATUS_IGNORE);
+			MPI_Recv(&ready, 3, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world, MPI_STATUS_IGNORE);
 
 			if (worker_id == manager_rank) continue;
 
@@ -299,8 +299,11 @@ void Manager::manager_process()
 						// if data reuse is not enabled or did not find a component to reuse data, try to get any.
 						if(compToExecute == NULL){
 							// select next component instantiation should be dispatched for execution
-							if (this->halideQueue)
+							if (this->halideQueue) {
+								std::cout << "--------------------[Manager] getting task with avCPU=" 
+									<< available_cpus << ", avGPU=" << available_gpus << std::endl;
 								compToExecute = (PipelineComponentBase*)componentsToExecute->getTask(available_cpus, available_gpus);
+							}
 							else
 								compToExecute = (PipelineComponentBase*)componentsToExecute->getTask();
 							if (compToExecute == NULL) {

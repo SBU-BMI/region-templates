@@ -51,7 +51,7 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat,
     tileDenseFromBG(thMask, denseTiles, bgTiles, &mat);
 
     // Convert rect_t to cv::Rect_ and add to output lists
-    std::list<cv::Rect_<int64_t> > cvDenseTiles;
+    std::list<cv::Rect_<int64_t>> cvDenseTiles;
     for (std::list<rect_t>::iterator r=denseTiles.begin(); 
             r!=denseTiles.end(); r++) {
 
@@ -62,7 +62,7 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat,
     this->denseTiles[this->curImg] = cvDenseTiles;
 
     // Convert rect_t to cv::Rect_ and add to output lists
-    std::list<cv::Rect_<int64_t> > cvBgTiles;
+    std::list<cv::Rect_<int64_t>> cvBgTiles;
     for (std::list<rect_t>::iterator r=bgTiles.begin(); 
             r!=bgTiles.end(); r++) {
 

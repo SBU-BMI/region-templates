@@ -56,6 +56,7 @@ inline Target_t tgt(HybridExec_t exec, Target_t target) {
         case GPU_ONLY:
             return ExecEngineConstants::GPU;
         case HYBRID:
+            // return ExecEngineConstants::BOTH;
             return target;
     }
 }
@@ -145,17 +146,17 @@ int main(int argc, char *argv[]) {
     // Input images
     std::string Ipath = std::string(argv[1]);
 
-    // // Number of cpu threads
-    // int cpuThreads = 1;
-    // if (findArgPos("-c", argc, argv) != -1) {
-    //     cpuThreads = atoi(argv[findArgPos("-c", argc, argv)+1]);
-    // }
+    // Number of cpu threads
+    int cpuThreads = 0;
+    if (findArgPos("-c", argc, argv) != -1) {
+        cpuThreads = atoi(argv[findArgPos("-c", argc, argv)+1]);
+    }
 
-    // // Number of gpu threads
-    // int gpuThreads = 1;
-    // if (findArgPos("-g", argc, argv) != -1) {
-    //     gpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
-    // }
+    // Number of gpu threads
+    int gpuThreads = 0;
+    if (findArgPos("-g", argc, argv) != -1) {
+        gpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
+    }
 
     // Number of expected dense tiles for irregular tiling
     int nTiles = 1;
@@ -244,6 +245,31 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
+    // Asserts logical setups:
+    // 1. Hybrid execution must have "-h"
+    // 2. CPU_ONLY execution cannot have gpu threads
+    // 3. GPU_ONLY execution cannot have cpu threads
+
+    switch (hybridExec) {
+        case CPU_ONLY:
+            argv[findArgPos("-g", argc, argv)+1] = "0";
+            cout << "[main] WARNING: GPU threads not created "
+                << "due to CPU_ONLY execution." << endl;
+            break;
+        case GPU_ONLY:
+            argv[findArgPos("-c", argc, argv)+1] = "0";
+            cout << "[main] WARNING: CPU threads not created "
+                << "due to GPU_ONLY execution." << endl;
+            break;
+        case HYBRID:
+            if (findArgPos("-h", argc, argv) == -1) {
+                cout << "[main] Hybrid execution must be with halide queue. "
+                    << "Please run with -h." << endl;
+                exit(0);
+            }
+            break;
+    }
+
 #ifdef PROFILING
     long fullExecT1 = Util::ClockGetTime();
 #endif
@@ -314,17 +340,26 @@ int main(int argc, char *argv[]) {
             static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
     CostFunction* bgCostFunc = new AreaCostFunction();
 
-    // Creates dense tiling collection
-    if (noTiling)
-        denseTiler = new TiledRTCollection("input", 
-            "input", Ipath, border, denseCostFunc);
-    else if (denseTilingAlg == FIXED_GRID_TILING)
-        denseTiler = new RegTiledRTCollection("input", 
-            "input", Ipath, nTiles, border, denseCostFunc);
-    else
-        denseTiler = new IrregTiledRTCollection("input", 
-            "input", Ipath, border, denseCostFunc, bgm, 
-            denseTilingAlg, nTiles);
+    // Verifies for hybrid execution
+    if (hybridExec == HYBRID) {
+        float cpuPATS=1.0;
+        float gpuPATS=1.0;
+        denseTiler = new HybridDenseTiledRTCollection(
+            "input", "input", Ipath, border, denseCostFunc, bgm, 
+            denseTilingAlg, nTiles, nTiles, cpuPATS, gpuPATS);
+    } else {
+        // Creates dense tiling collection
+        if (noTiling)
+            denseTiler = new TiledRTCollection("input", 
+                "input", Ipath, border, denseCostFunc);
+        else if (denseTilingAlg == FIXED_GRID_TILING)
+            denseTiler = new RegTiledRTCollection("input", 
+                "input", Ipath, nTiles, border, denseCostFunc);
+        else
+            denseTiler = new IrregTiledRTCollection("input", 
+                "input", Ipath, border, denseCostFunc, bgm, 
+                denseTilingAlg, nTiles);
+    }
 
     // Performs pre-tiling, if required
     BGPreTiledRTCollection preTiler("input", "input", 

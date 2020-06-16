@@ -162,6 +162,16 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target, 
              std::vector<ArgumentBase*>& params) {
 
+    string st;
+    if (target == ExecEngineConstants::CPU) {
+        st = "cpu";
+        cout << "++++++++++++++++++++++++ target: CPU" << target << endl;
+    } else if (target == ExecEngineConstants::GPU) {
+        st = "gpu";
+        // hTarget.set_feature(Halide::Target::CUDA);
+        cout << "++++++++++++++++++++++++ target: GPU" << target << endl;
+    }
+
     // === cv::Mat inputs/outputs =============================================
     // Wraps the input and output cv::mat's with halide buffers
     cv::Mat& cvIn = im_ios[0];
@@ -211,16 +221,6 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
     #endif
-    
-    string st;
-    if (target == ExecEngineConstants::CPU) {
-        st = "cpu";
-        cout << "=================== target: CPU" << target << endl;
-    } else if (target == ExecEngineConstants::GPU) {
-        st = "gpu";
-        // hTarget.set_feature(Halide::Target::CUDA);
-        cout << "=================== target: GPU" << target << endl;
-    }
     
     // === get-background =================================================
     {

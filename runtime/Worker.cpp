@@ -233,6 +233,7 @@ int Worker::getRank() const
     return rank;
 }
 
+#define WORKER_VERBOSE
 // Allocate a thread given a task's target list
 void Worker::allocateThreadType(std::list<int> targets) {
 	#ifdef WORKER_VERBOSE
@@ -243,22 +244,24 @@ void Worker::allocateThreadType(std::list<int> targets) {
 		if (target == ExecEngineConstants::CPU && this->availableCpuThreads > 0) {
 			this->availableCpuThreads--;
 			#ifdef WORKER_VERBOSE
-			std::cout << "[Worker] allocating cpu on worker" << std::endl;
+			std::cout << "==================[Worker] allocating cpu on worker" << std::endl;
 			#endif
 			return;
 		}
 		if (target == ExecEngineConstants::GPU && this->availableGpuThreads > 0) {
 			this->availableGpuThreads--;
 			#ifdef WORKER_VERBOSE
-			std::cout << "[Worker] allocating gpu on worker" << std::endl;
+			std::cout << "==================[Worker] allocating gpu on worker" << std::endl;
 			#endif
 			return;
 		}
 	}
 	#ifdef WORKER_VERBOSE
-	std::cout << "[Worker] Didn't allocate anything" << std::endl;
+	std::cout << "==================[Worker] Didn't allocate anything: avCPU=" 
+		<< this->availableCpuThreads << ", avGPU=" 
+		<< this->availableGpuThreads << std::endl;
 	#endif
-
+	exit(-1);
 }
 
 void Worker::deallocateThreadType(int target) {
@@ -305,12 +308,12 @@ void Worker::workerProcess()
 
 		// tell the manager - ready
 		// Also states the type of thread (CPU or GPU or ...) this is
-		char ready[2];
+		char ready[3];
 		ready[0] = MessageTag::WORKER_READY;
 		ready[1] = this->availableCpuThreads;
 		ready[2] = this->availableGpuThreads;
 		// tell the manager - ready
-        MPI_Send(&MessageTag::WORKER_READY, 1, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL, this->comm_world);
+        MPI_Send(&ready, 3, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL, this->comm_world);
 
         // get the manager status
         MPI_Recv(&flag, 1, MPI_CHAR, this->getManagerRank(), MessageTag::TAG_CONTROL, this->comm_world, MPI_STATUS_IGNORE);
@@ -362,6 +365,7 @@ void Worker::workerProcess()
 
 					// Execute component function that instantiates tasks within the execution engine
 					pc->run();
+		std::cout << "===================[Worker] sent for execution" <<std::endl;
 
 					// Stop transaction: defines the end of the transaction associated to the current component
 					this->getResourceManager()->endTransaction();

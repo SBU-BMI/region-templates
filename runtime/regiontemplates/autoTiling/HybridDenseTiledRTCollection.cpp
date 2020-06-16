@@ -45,6 +45,7 @@ void HybridDenseTiledRTCollection::customTiling() {
         for (cv::Rect_<int64_t> tile : this->tiles[img]) {
             this->tileTarget.push_back(drId<this->nGpuTiles ?
                 ExecEngineConstants::GPU : ExecEngineConstants::CPU);
+            drId++;
         }
     }
 }
@@ -73,6 +74,7 @@ void HybridDenseTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int
                     << " cannot be used with pre-tiling." << std::endl;
                 exit(0);
             }
+            tiles.clear();
 
             // Percentage of gpu tile
             float f = 0.5;
@@ -105,13 +107,14 @@ void HybridDenseTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int
             // Converts the initial tiles list to rect_t
             std::list<rect_t> tmpTtiles;
             for (cv::Rect_<int64_t> r : tiles) {
-                rect_t rt = {r.x, r.y, r.x+r.width-1, r.y+r.height-1};
+                rect_t rt = {r.x, r.y, r.x+r.width, r.y+r.height};
                 tmpTtiles.push_back(rt);
             }
 
             // Performs tiling
             listCutting(thMask, tmpTtiles, this->nCpuTiles, this->nGpuTiles, 
                 this->cpuPATS, this->gpuPATS, this->cfunc);
+            tiles.clear();
 
             // Convert rect_t to cv::Rect_
             for (std::list<rect_t>::iterator r=tmpTtiles.begin(); 
@@ -122,8 +125,9 @@ void HybridDenseTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int
             break;
         }
         default:
-            std::cout << "[HybridDenseTiledRTCollection] Invalid dense " 
+            std::cout << "[HDT] Invalid dense " 
                 << "tiling algorithm." << std::endl;
             exit(-1);
     }
+    std::cout << "[HDT] Tiles: " << tiles.size() << std::endl;
 }
