@@ -174,7 +174,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 						inDr->getInputFileName());
 
     				long time0 = Util::ClockGetTime();
-					std::cout << "[DataRegionFactory] reading SVS file" << std::endl; 
+					// std::cout << "[DataRegionFactory] reading SVS file" << std::endl; 
 
 					// Extracts the roi of the svs file into chunkData
 					int32_t maxLevel = 0; // svs standard: maxlevel = 0
@@ -186,7 +186,7 @@ bool DataRegionFactory::readDDR2DFS(DataRegion* inDr, DataRegion **dataRegion, i
 						<< (time1-time0) << " ms" << std::endl;
 				} else {
 					std::cout << "[DataRegionFactory] cache is null" << std::endl;
-					exit(10);
+					exit(-1);
 				}
 
 				(*dataRegion) = (DataRegion *) dr2D;

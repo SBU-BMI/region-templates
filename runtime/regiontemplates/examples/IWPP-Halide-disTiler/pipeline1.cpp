@@ -1,6 +1,6 @@
 #include "pipeline1.h"
 
-#define PROFILING_STAGES
+// #define PROFILING_STAGES
 
 #define LARGEB
 
@@ -10,9 +10,9 @@
 void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut, 
     Halide::Buffer<uint8_t> hSE, Target_t target, int tileId) {
 
-    #ifdef PROFILING_STAGES
+    // #ifdef PROFILING_STAGES
     long st1 = Util::ClockGetTime();
-    #endif
+    // #endif
 
     // basic assertions for that ensures that this will work
     assert(hSE.width()%2 != 0);
@@ -65,7 +65,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 
     #ifdef PROFILING_STAGES
     long st2 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId
+    cout << "[" << st << "][PROFILING][" << tileId
          << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
     #endif
 
@@ -75,11 +75,12 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
         hOut.copy_to_host();
     // cout << "[erode][" << st << "] Done..." << endl;
 
-    #ifdef PROFILING_STAGES
+    // #ifdef PROFILING_STAGES
     long st3 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId
-         << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
-    #endif
+    cout << "[pipeline1][" << st << "][PROFILING][" << tileId
+         << "][STAGE_HAL_EXEC][erode] " << (st3-st1) << endl;
+         // << "][STAGE_HAL_EXEC][erode] " << (st3-st2) << endl;
+    // #endif
 }
 
 // Only implemented for grayscale images
@@ -88,9 +89,9 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut, 
     Halide::Buffer<uint8_t> hSE, Target_t target, int tileId) {
 
-    #ifdef PROFILING_STAGES
+    // #ifdef PROFILING_STAGES
     long st0 = Util::ClockGetTime();
-    #endif
+    // #endif
 
     // basic assertions for that ensures that this will work
     assert(hSE.width()%2 != 0);
@@ -137,40 +138,28 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     else if (target == ExecEngineConstants::GPU)
         st = "gpu";
 
-    // cout << "[dilate][" << st << "] Compiling..." << endl;
     dilate.compile_jit(hTarget);
 
     #ifdef PROFILING_STAGES
     long st2 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId
+    cout << "[" << st << "][PROFILING][" << tileId
          << "][STAGE_HAL_COMP][dilate] " << (st2-st0) << endl;
     #endif
 
-    // cout << "[dilate][" << st << "] Realizing..." << endl;
     dilate.realize(hOut);
     if (target == ExecEngineConstants::GPU)
         hOut.copy_to_host();
-    // cout << "[dilate][" << st << "] Done..." << endl;
 
-    #ifdef PROFILING_STAGES
+    // #ifdef PROFILING_STAGES
     long st3 = Util::ClockGetTime();
-    cout << "[" << target << "][PROFILING][" << tileId
-         << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
-    #endif
+    cout << "[pipeline1][" << st << "][PROFILING][" << tileId
+         << "][STAGE_HAL_EXEC][dilate] " << (st3-st0) << endl;
+         // << "][STAGE_HAL_EXEC][dilate] " << (st3-st2) << endl;
+    // #endif
 }
 
 bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target, 
              std::vector<ArgumentBase*>& params) {
-
-    string st;
-    if (target == ExecEngineConstants::CPU) {
-        st = "cpu";
-        cout << "++++++++++++++++++++++++ target: CPU" << target << endl;
-    } else if (target == ExecEngineConstants::GPU) {
-        st = "gpu";
-        // hTarget.set_feature(Halide::Target::CUDA);
-        cout << "++++++++++++++++++++++++ target: GPU" << target << endl;
-    }
 
     // === cv::Mat inputs/outputs =============================================
     // Wraps the input and output cv::mat's with halide buffers
@@ -221,6 +210,18 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
     #endif
+
+
+    string st;
+    if (target == ExecEngineConstants::CPU) {
+        st = "cpu";
+    } else if (target == ExecEngineConstants::GPU) {
+        st = "gpu";
+        // hTarget.set_feature(Halide::Target::CUDA);
+    }
+
+    std::cout << "[pipeline1][" << st << "][tile" << tileId 
+        << "] Executing" << std::endl;
     
     // === get-background =================================================
     {
@@ -238,7 +239,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         // std::cout << "[get_background][" << tileId << "] ratio: " 
         //     << ratio << std::endl;
         if (ratio >= 0.9) {
-            std::cout << "[pipeline1][tile" << tileId 
+            std::cout << "[pipeline1][" << st << "][tile" << tileId 
                 << "] aborted!" << std::endl;
             return true; // abort if more than 90% background
         }
@@ -308,6 +309,9 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     // === dilate/erode 2 =================================================
     dilate(hOut2, hOut1, hSE3, target, tileId);
     erode(hOut1, hOut2, hSE3, target, tileId);
+
+    std::cout << "[pipeline1][" << st << "][tile" << tileId 
+        << "] Done" << std::endl;
 
     return false;
 }

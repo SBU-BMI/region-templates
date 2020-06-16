@@ -29,7 +29,8 @@ Worker::Worker(const int manager_rank, const int rank, const int max_active_comp
 	this->cache = new Cache("rtconf.xml");
 	this->cache->setWorkerId(this->rank);
 	this->cache->setCacheOnRead(cacheOnRead);
-	std::cout << " Worker: "<< rank << " cacheOnRead: "<< this->cache->isCacheOnRead() << std::endl;
+	std::cout << "[Worker][W"<< rank << "] CacheOnRead: "
+		<< this->cache->isCacheOnRead() << std::endl;
 #endif
 
 #ifdef PROFILING
@@ -233,7 +234,7 @@ int Worker::getRank() const
     return rank;
 }
 
-#define WORKER_VERBOSE
+// #define WORKER_VERBOSE
 // Allocate a thread given a task's target list
 void Worker::allocateThreadType(std::list<int> targets) {
 	#ifdef WORKER_VERBOSE
@@ -244,20 +245,20 @@ void Worker::allocateThreadType(std::list<int> targets) {
 		if (target == ExecEngineConstants::CPU && this->availableCpuThreads > 0) {
 			this->availableCpuThreads--;
 			#ifdef WORKER_VERBOSE
-			std::cout << "==================[Worker] allocating cpu on worker" << std::endl;
+			std::cout << "[Worker] allocating cpu on worker" << std::endl;
 			#endif
 			return;
 		}
 		if (target == ExecEngineConstants::GPU && this->availableGpuThreads > 0) {
 			this->availableGpuThreads--;
 			#ifdef WORKER_VERBOSE
-			std::cout << "==================[Worker] allocating gpu on worker" << std::endl;
+			std::cout << "[Worker] allocating gpu on worker" << std::endl;
 			#endif
 			return;
 		}
 	}
 	#ifdef WORKER_VERBOSE
-	std::cout << "==================[Worker] Didn't allocate anything: avCPU=" 
+	std::cout << "[Worker] Didn't allocate anything: avCPU=" 
 		<< this->availableCpuThreads << ", avGPU=" 
 		<< this->availableGpuThreads << std::endl;
 	#endif
@@ -296,7 +297,8 @@ void Worker::workerProcess()
 	hostname[1023] = '\0';
 	gethostname(hostname, 1023);
 
-    std::cout << "[Worker][W" << this->getRank() << "] ready. Hostname: "<<hostname << " num_procs: "<< comm_size << std::endl;
+    std::cout << "[Worker][W" << this->getRank() << "] ready. Hostname: " 
+    	<< hostname << ", number of workers: " << comm_size << std::endl;
 
 	// Flag that control the execution loop, and is updated from messages sent by the Manager
 	char flag = MessageTag::MANAGER_READY;
@@ -365,7 +367,6 @@ void Worker::workerProcess()
 
 					// Execute component function that instantiates tasks within the execution engine
 					pc->run();
-		std::cout << "===================[Worker] sent for execution" <<std::endl;
 
 					// Stop transaction: defines the end of the transaction associated to the current component
 					this->getResourceManager()->endTransaction();
@@ -387,7 +388,8 @@ void Worker::workerProcess()
 			}
 			case MessageTag::MANAGER_FINISHED:
 			{
-				std::cout << "Manager finished execution. Worker id="<< this->getRank() <<std::endl;
+				std::cout << "[Worker][W" << this->getRank() 
+					<< "] Manager finished execution." <<std::endl;
 				break;
 			}
 			case MessageTag::MANAGER_WORK_QUEUE_EMPTY:

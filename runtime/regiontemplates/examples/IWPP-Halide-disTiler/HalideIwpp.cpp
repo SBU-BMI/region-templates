@@ -38,10 +38,13 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
     cv::cuda::GpuMat cvDevI, cvDevJ;
     #endif // if WITH_CUDA
 
+    string st;
     if (target == ExecEngineConstants::CPU) {
+        st = "cpu";
         hI = mat2buf<uint8_t>(&cvHostI, "hI");
         hJ = mat2buf<uint8_t>(&cvHostJ, "hJ");
     } else if (target == ExecEngineConstants::GPU) {
+        st = "gpu";
         #ifdef WITH_CUDA
         Halide::Target hTtarget = Halide::get_host_target();
         hTtarget.set_feature(Halide::Target::CUDA);
@@ -112,13 +115,13 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         #ifdef WITH_CUDA
         hTarget.set_feature(Halide::Target::CUDA);
 
-        // std::cout << "[" << target << "][IWPP] With CUDA" << std::endl;
+        // std::cout << "[" << st << "][IWPP] With CUDA" << std::endl;
 
         int expected = 1664; // GTX 970
         int minYScanlines = sqrt(h*w/expected) * 0.85;
         int minXsize = minYScanlines; // for reordering
         int threadsSize = 32; // for no reordering
-        // std::cout << "[" << target << "][IWPP] Tile size: " 
+        // std::cout << "[" << st << "][IWPP] Tile size: " 
         //     << minYScanlines << std::endl;
         
         // Schedules Raster
@@ -203,13 +206,13 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         st5 = Util::ClockGetTime();
         
         #ifdef IT_DEBUG
-        cout << "[" << target << "][PROFILING] it: " << it << ", sum = " 
+        cout << "[" << st << "][PROFILING] it: " << it << ", sum = " 
             << newSum << std::endl;
-        cout << "[" << target << "][PROFILING][IWPP_PROP_TIME] " 
+        cout << "[" << st << "][PROFILING][IWPP_PROP_TIME] " 
             << (st3-st2) << endl;
-        cout << "[" << target << "][PROFILING][IWPP_SUM_TIME] " 
+        cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " 
             << (st5-st3) << endl;
-        cout << "[" << target << "][PROFILING][IWPP_FULL_IT_TIME] " 
+        cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " 
             << (st5-st2) << std::endl;
         #endif
 
@@ -226,14 +229,14 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
     // Final iwpp time
     long st6 = Util::ClockGetTime();
 
-    std::cout << "[" << target << "][PROFILING][IWPP] iterations: " 
-        << it << std::endl;
-    std::cout << "[" << target << "][PROFILING][IWPP_COMP] " 
-        << (st1-st0) << std::endl;
-    std::cout << "[" << target << "][PROFILING][IWPP_EXEC] " 
-        << (st6-st1) << std::endl;
-    std::cout << "[" << target << "][PROFILING][IWPP_FULL] " 
-        << (st6-st0) << std::endl;
+    std::cout << "[IWPP][" << st << "][PROFILING] " << it 
+        << " iterations in " << (st6-st0) << " ms" << std::endl;
+    // std::cout << "[" << st << "][PROFILING][IWPP_COMP] " 
+    //     << (st1-st0) << std::endl;
+    // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] " 
+    //     << (st6-st1) << std::endl;
+    // std::cout << "[" << st << "][PROFILING][IWPP_FULL] " 
+    //     << (st6-st0) << std::endl;
 
     return 0;
 }

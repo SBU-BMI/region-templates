@@ -56,7 +56,6 @@ void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>>& tiles,
     cv::imwrite(name + ".png", img);
 }
 
-// #define DEBUG
 void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles, 
     std::vector<std::vector<DenseDataRegion2D*>>& allTiles) {
 
@@ -167,7 +166,6 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     //     << cvInitial.cols << " " << (stageTime9-stageTime1) << std::endl;
 }
 
-#define DEBUG
 int RTF::Internal::AutoStage::run() {
     // Assemble input/output cv::Mat list for execution
     // Starts with the inputs
@@ -266,9 +264,9 @@ int RTF::Internal::AutoStage::run() {
                         abortStr += to_string(this->dr_ios[i]->getData().cols);
                         abortStr += " ";
                     }
-                    // #ifdef DEBUG
+                    #ifdef DEBUG
                     std::cout << abortStr << std::endl;
-                    // #endif
+                    #endif
                 }
 
                 // Assigns the output mat to its DataRegion

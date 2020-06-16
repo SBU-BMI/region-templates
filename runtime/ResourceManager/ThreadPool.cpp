@@ -308,8 +308,8 @@ void ThreadPool::processTasks(int procType, int wid, int tid)
 	pthread_mutex_unlock(&createdThreads);
 
 	// printf("procType:%d  tid:%d waiting init of execution\n", procType, tid);
-	std::cout << "[ThreadPool][W" << wid << "][T" << tid << "][type"
-		<< procType << "] Waiting init of execution" << std::endl;
+	// std::cout << "[ThreadPool][W" << wid << "][T" << tid << "][type"
+	// 	<< procType << "] Waiting init of execution" << std::endl;
 	pthread_mutex_lock(&initExecutionMutex);
 	pthread_mutex_unlock(&initExecutionMutex);
 
@@ -386,9 +386,9 @@ void ThreadPool::processTasks(int procType, int wid, int tid)
 				// All tasks ready to execute are finished, but there still existing tasks pending due unsolved dependencies
 				continue;
 			}else{
-				std::cout << "[ThreadPool][W" << wid << "][T" << tid << "][type"
-					<< procType << "] Task NULL #t_pending=" 
-					<< this->execEngine->getCountTasksPending() << std::endl;
+				// std::cout << "[ThreadPool][W" << wid << "][T" << tid << "][type"
+				// 	<< procType << "] Task NULL #t_pending=" 
+				// 	<< this->execEngine->getCountTasksPending() << std::endl;
 				break;
 			}
 		}else{

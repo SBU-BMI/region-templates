@@ -71,7 +71,6 @@ static struct : RTF::HalGen {
     std::string getName() {return "pipeline1";}
     bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
-        std::cout << "[pipeline1] executing pipeline" << std::endl;
         pipeline1(im_ios, target, params);
     }
 } pipeline1_s;

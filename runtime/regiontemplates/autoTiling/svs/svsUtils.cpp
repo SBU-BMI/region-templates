@@ -6,7 +6,7 @@ bool isSVS(std::string path) {
     return path.substr(l).compare(".svs") == 0;
 }
 
-#define PROFILING_SVS
+// #define PROFILING_SVS
 
 // Extracts a roi from osr described by r, outputting it into thisTile
 void osrRegionToCVMat(openslide_t* osr, cv::Rect_<int64_t> r, 

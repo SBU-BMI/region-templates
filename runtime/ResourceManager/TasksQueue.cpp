@@ -226,7 +226,6 @@ void TasksQueue::releaseThreads(int numThreads)
 /*****************************************************************************/
 /******************************* Halide Queue ********************************/
 /*****************************************************************************/
-#define DEBUG
 bool TasksQueueHalide::insertTask(Task *task) {
 	pthread_mutex_lock(&queueLock);
 

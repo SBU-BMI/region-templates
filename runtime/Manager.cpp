@@ -90,7 +90,8 @@ int Manager::finalizeExecution()
 			if(ready == MessageTag::WORKER_READY) {
 				if(finished[worker_id] == false){
 					MPI_Send(&MessageTag::MANAGER_FINISHED, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
-					printf("manager signal finished worker: %d manager_rank: %d\n", worker_id, manager_rank);
+					std::cout << "[Manager] Sent 'finished' signal to worker " 
+						<< worker_id << std::endl;
 					--active_workers;
 					finished[worker_id] = true;
 				}
@@ -300,8 +301,11 @@ void Manager::manager_process()
 						if(compToExecute == NULL){
 							// select next component instantiation should be dispatched for execution
 							if (this->halideQueue) {
-								std::cout << "--------------------[Manager] getting task with avCPU=" 
-									<< available_cpus << ", avGPU=" << available_gpus << std::endl;
+								#ifdef DEBUG
+								std::cout << "[Manager] getting task with avCPU=" 
+									<< available_cpus << ", avGPU=" 
+									<< available_gpus << std::endl;
+								#endif
 								compToExecute = (PipelineComponentBase*)componentsToExecute->getTask(available_cpus, available_gpus);
 							}
 							else
@@ -317,9 +321,11 @@ void Manager::manager_process()
 						}
 						// tell worker that manager is ready
 						MPI_Send(&MessageTag::MANAGER_READY, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
-#ifdef DEBUG
+						
+						#ifdef DEBUG
 						std::cout << "Manager: before sending, size: "<< this->componentsToExecute->getSize() << std::endl;
-#endif
+						#endif
+
 						this->sendComponentInfoToWorker(worker_id, compToExecute);
 
 						this->insertActiveComponent(compToExecute);
