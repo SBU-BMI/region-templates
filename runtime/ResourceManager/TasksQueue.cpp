@@ -267,7 +267,7 @@ bool TasksQueueHalide::insertTask(Task *task) {
 	return true;
 }
 
-// Used by the Manager
+// Used by the Workers
 Task *TasksQueueHalide::getTask(int target) {
 	Task *retTask = NULL;
 	sem_wait(&tasksToBeProcessed);
@@ -302,7 +302,7 @@ Task *TasksQueueHalide::getTask(int target) {
 
 // Returns an executable task given the available resources
 // Returns NULL if there are no executable tasks
-// Used by the Workers
+// Used by the Manager
 Task* TasksQueueHalide::getTask(int availableCpus, int availableGpus) {
 	Task *retTask = NULL;
 	sem_wait(&tasksToBeProcessed);
@@ -330,6 +330,10 @@ Task* TasksQueueHalide::getTask(int availableCpus, int availableGpus) {
 			this->tasksPerTarget[ExecEngineConstants::CPU].erase(taskI);
 		}
 	}
+
+	// Add to semaphore since no task was successfully retrieved
+	if (retTask == NULL)
+		sem_post(&tasksToBeProcessed);
 
 	pthread_mutex_unlock(&queueLock);
 

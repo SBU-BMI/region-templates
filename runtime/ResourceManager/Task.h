@@ -133,6 +133,7 @@ class Task {
 		void setTaskType(int taskType);
 		list<int> getTaskTargets() const;
 		void addTaskTarget(int taskTarget);
+		void addTaskTarget(std::list<int> ts);
 		void anyTarget();
 		bool isCallBackDepsReady() const;
 		void setCallBackDepsReady(bool callBackDepsReady);

@@ -309,7 +309,7 @@ void Manager::manager_process()
 							if (compToExecute == NULL) {
 								// Tell worker that manager don't have a task for it. 
 								// Nothing else to do at this moment. Should ask again.
-								MPI_Send(&MessageTag::MANAGER_READY, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
+								MPI_Send(&MessageTag::MANAGER_WORK_QUEUE_EMPTY, 1, MPI_CHAR, worker_id, MessageTag::TAG_CONTROL, this->comm_world);
 								break;
 							}
 

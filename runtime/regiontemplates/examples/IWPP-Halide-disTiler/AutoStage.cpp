@@ -346,7 +346,8 @@ int RTF::Internal::AutoStage::run() {
 
     // Scheduling for anything outside CPU do not make sense, since
     // we are only joining the images together.
-    currentTask->addTaskTarget(ExecEngineConstants::CPU);
+    currentTask->addTaskTarget(this->schedules.begin()->first);
+    // currentTask->addTaskTarget(ExecEngineConstants::CPU);
 
     this->executeTask(currentTask);
 

@@ -195,9 +195,8 @@ void Task::addTaskTarget(int taskTarget) {
     this->taskTargets.emplace_back(taskTarget);
 }
 
-void Task::anyTarget() {
-	this->taskTargets.emplace_back(ExecEngineConstants::CPU);
-	this->taskTargets.emplace_back(ExecEngineConstants::GPU);
+void Task::addTaskTarget(std::list<int> ts) {
+	this->taskTargets.insert(this->taskTargets.end(), ts.begin(), ts.end());
 }
 
 int Task::getId() const
