@@ -226,7 +226,7 @@ void TasksQueue::releaseThreads(int numThreads)
 /*****************************************************************************/
 /******************************* Halide Queue ********************************/
 /*****************************************************************************/
-
+#define DEBUG
 bool TasksQueueHalide::insertTask(Task *task) {
 	pthread_mutex_lock(&queueLock);
 
@@ -238,7 +238,8 @@ bool TasksQueueHalide::insertTask(Task *task) {
 	// targets.
 	bool executable = false;
 #ifdef DEBUG
-	std::cout << "[TasksQueueHalide] Inserting task " << task->getId() << " into queue with targets ";
+	std::cout << "[TasksQueueHalide] Inserting task " << task->getId() 
+		<< " into queue with targets ";
 #endif
 	for (int target : task->getTaskTargets()) {
 		this->tasksPerTarget[target].push_back(task->getId());
@@ -266,13 +267,15 @@ bool TasksQueueHalide::insertTask(Task *task) {
 	return true;
 }
 
+// Used by the Manager
 Task *TasksQueueHalide::getTask(int target) {
 	Task *retTask = NULL;
 	sem_wait(&tasksToBeProcessed);
 	pthread_mutex_lock(&queueLock);
 
 #ifdef DEBUG
-	std::cout << "[TasksQueueHalide] Getting task of target " << target << std::endl;
+	std::cout << "[TasksQueueHalide] Getting task of target " 
+		<< target << std::endl;
 #endif
 
 	// Only returns a task if there is one
@@ -291,7 +294,7 @@ Task *TasksQueueHalide::getTask(int target) {
 	pthread_mutex_unlock(&queueLock);
 
 #ifdef DEBUG
-	std::cout << "[TasksQueueHalide] Returning tasks " << retTask << std::endl;
+	std::cout << "[TasksQueueHalide] Returning task " << retTask << std::endl;
 #endif
 
 	return retTask;
@@ -299,6 +302,7 @@ Task *TasksQueueHalide::getTask(int target) {
 
 // Returns an executable task given the available resources
 // Returns NULL if there are no executable tasks
+// Used by the Workers
 Task* TasksQueueHalide::getTask(int availableCpus, int availableGpus) {
 	Task *retTask = NULL;
 	sem_wait(&tasksToBeProcessed);
@@ -328,6 +332,7 @@ Task* TasksQueueHalide::getTask(int availableCpus, int availableGpus) {
 	}
 
 	pthread_mutex_unlock(&queueLock);
+
 	return retTask;
 }
 

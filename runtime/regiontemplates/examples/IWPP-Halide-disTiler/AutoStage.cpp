@@ -344,10 +344,9 @@ int RTF::Internal::AutoStage::run() {
         currentTask->addDependency(tId);
     }
 
-    // Set targets for this task
-    for (std::pair<Target_t, std::string> s : this->schedules) {
-        currentTask->addTaskTarget(s.first);
-    }
+    // Scheduling for anything outside CPU do not make sense, since
+    // we are only joining the images together.
+    currentTask->addTaskTarget(ExecEngineConstants::CPU);
 
     this->executeTask(currentTask);
 

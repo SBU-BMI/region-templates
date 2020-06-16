@@ -178,6 +178,7 @@ bool ThreadPool::createThreadPool(int cpuThreads, int *cpuThreadsCoreMapping, in
 		for (int i = 0; i < gpuThreads; i++ ){
 			threadData *arg = (threadData *) malloc(sizeof(threadData));
 			arg->tid = i;
+			arg->wid = wid;
 			arg->procType = ExecEngineConstants::GPU;
 			arg->threadPoolPtr = this;
 			int ret = pthread_create(&(GPUWorkerThreads[arg->tid]), NULL, callThread, (void *)arg);

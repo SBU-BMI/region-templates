@@ -77,10 +77,15 @@ public:
     // Can only be called once
     void setPreTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
     void addTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
+    void addTargets(std::vector<Target_t> targets);
 
     std::vector<std::list<cv::Rect_<int64_t>>> getTiles();
     std::map<std::string, std::list<cv::Rect_<int64_t>>> getTilesBase() {
         return tiles;
+    };
+
+    std::vector<Target_t> getTargetsBase() {
+        return tileTarget;
     };
 
 };

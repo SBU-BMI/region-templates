@@ -305,6 +305,10 @@ void TiledRTCollection::addTiles(std::map<std::string,
     }
 }
 
+void TiledRTCollection::addTargets(std::vector<Target_t> ts) {
+    this->tileTarget.insert(this->tileTarget.end(), ts.begin(), ts.end());
+}
+
 std::vector<std::list<cv::Rect_<int64_t>>> TiledRTCollection::getTiles() {
     if (!this->tiled) {
         std::cout << "Tiles not yet generated. " 

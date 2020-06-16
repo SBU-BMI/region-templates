@@ -56,7 +56,6 @@ inline Target_t tgt(HybridExec_t exec, Target_t target) {
         case GPU_ONLY:
             return ExecEngineConstants::GPU;
         case HYBRID:
-            // return ExecEngineConstants::BOTH;
             return target;
     }
 }
@@ -105,8 +104,8 @@ int main(int argc, char *argv[]) {
         cout << "\t\t0: CPU-only execution" << endl;
         cout << "\t\t1: GPU-only execution" << endl;
         cout << "\t\t2: Hybrid execution" << endl;
-        // cout << "\t\t3: Pre-tiler hybrid tiling" << endl;
-        // cout << "\t\t4: Res-split hybrid tiling" << endl;
+        
+        cout << "\t-gp (float value of PATS: gpu/cpu)" << endl;
 
         cout << "=== Pre-tiler (PT) options:" << endl;
         cout << "\t-npt (without pre-tiler)" << endl;
@@ -200,6 +199,12 @@ int main(int argc, char *argv[]) {
     if (findArgPos("-a", argc, argv) != -1) {
         hybridExec = static_cast<HybridExec_t>(
             atoi(argv[findArgPos("-a", argc, argv)+1]));
+    }
+
+    // // Dense tiling algorithm
+    float gpc = 1;
+    if (findArgPos("-gp", argc, argv) != -1) {
+        gpc = atof(argv[findArgPos("-gp", argc, argv)+1]);
     }
 
     // No pre-tiling execution
@@ -342,8 +347,8 @@ int main(int argc, char *argv[]) {
 
     // Verifies for hybrid execution
     if (hybridExec == HYBRID) {
-        float cpuPATS=1.0;
-        float gpuPATS=1.0;
+        float cpuPATS=1;
+        float gpuPATS=gpc;
         denseTiler = new HybridDenseTiledRTCollection(
             "input", "input", Ipath, border, denseCostFunc, bgm, 
             denseTilingAlg, nTiles, nTiles, cpuPATS, gpuPATS);
@@ -381,8 +386,14 @@ int main(int argc, char *argv[]) {
     if (preTiling && !noTiling) {
         // Calculates the number of expected tiles as a multiple of nTiles
         int bgTilesExpected = (std::floor(preTiler.getBgSize()/nTiles)+1)*nTiles;
-        bgTiler = new IrregTiledRTCollection("input", "input", Ipath, 
-            border, bgCostFunc, bgm, bgTilingAlg, bgTilesExpected);
+        if (hybridExec == HYBRID) {
+            bgTiler = new HybridDenseTiledRTCollection(
+                "input", "input", Ipath, border, bgCostFunc, bgm, 
+                bgTilingAlg, bgTilesExpected/2, bgTilesExpected/2, 1, 1);
+        } else  {
+            bgTiler = new IrregTiledRTCollection("input", "input", Ipath, 
+                border, bgCostFunc, bgm, bgTilingAlg, bgTilesExpected);
+        }
 
         bgTiler->setPreTiles(preTiler.getBg());
 
@@ -390,6 +401,7 @@ int main(int argc, char *argv[]) {
         bgTiler->addImage(Ipath);
         bgTiler->tileImages(tilingOnly);
         denseTiler->addTiles(bgTiler->getTilesBase());
+        denseTiler->addTargets(bgTiler->getTargetsBase());
     }
 
     // Generates tiles and converts it to vector

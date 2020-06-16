@@ -352,7 +352,7 @@ void Worker::workerProcess()
 
 
 					CallBackComponentExecution *callBackTask = new CallBackComponentExecution(pc, this);
-					callBackTask->anyTarget();
+					callBackTask->addTaskTarget(ExecEngineConstants::CPU);
 					if(ioTaskId != -1){
 						callBackTask->addDependency(ioTaskId);
 					}
