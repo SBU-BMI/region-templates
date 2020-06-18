@@ -24,10 +24,16 @@ template <typename T>
 inline Halide::Buffer<T> gpuMat2buf(cv::cuda::GpuMat& m, Halide::Target& t, 
         std::string name="unnamed") {
 
+    // buffer_t devB = {0, NULL, {m.cols, m.rows}, 
+    //                  {1, ((int)m.step)/((int)sizeof(T))}, 
+    //                  {0, 0}, sizeof(T)};
+
     buffer_t devB = {0, NULL, {m.cols, m.rows}, 
-                     {1, ((int)m.step)/((int)sizeof(T))}, 
+                     {1, m.cols}, 
                      {0, 0}, sizeof(T)};
 
+    std::cout << "[" << name << "]: " << m.cols << "x" << m.rows 
+        << " - " << m.step << std::endl;
     
     Halide::Buffer<T> hDev = name.empty() ? 
         Halide::Buffer<T>(devB) : Halide::Buffer<T>(devB, name);

@@ -3,7 +3,7 @@
 #define LARGEB
 
 template <typename T>
-Halide::Func halSum(Halide::Buffer<T>& JJ) {
+Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target) {
 
     // Performs parallel sum on the coordinate with the highest value
     Halide::RDom r({{0,JJ.width()},{0,JJ.height()}}, "r");
@@ -23,6 +23,11 @@ Halide::Func halSum(Halide::Buffer<T>& JJ) {
     #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
     #endif
+
+    if (target == ExecEngineConstants::GPU) {
+        hTarget.set_feature(Halide::Target::CUDA);
+    }
+
     pSum.compile_jit(hTarget);
 
     // pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML);
@@ -30,37 +35,10 @@ Halide::Func halSum(Halide::Buffer<T>& JJ) {
     return pSum;
 }
 
-int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
-
-    Halide::Buffer<uint8_t> hI;
-    Halide::Buffer<uint8_t> hJ;
-    #ifdef WITH_CUDA
-    cv::cuda::GpuMat cvDevI, cvDevJ;
-    #endif // if WITH_CUDA
-
-    string st;
-    if (target == ExecEngineConstants::CPU) {
-        st = "cpu";
-        hI = mat2buf<uint8_t>(&cvHostI, "hI");
-        hJ = mat2buf<uint8_t>(&cvHostJ, "hJ");
-    } else if (target == ExecEngineConstants::GPU) {
-        st = "gpu";
-        #ifdef WITH_CUDA
-        Halide::Target hTtarget = Halide::get_host_target();
-        hTtarget.set_feature(Halide::Target::CUDA);
-
-        // Upload inputs to gpu memory
-        cvDevI.upload(cvHostI);
-        cvDevJ.upload(cvHostJ);
-
-        // Create halide wrappers for the gpu mat's
-        hI = gpuMat2buf<uint8_t>(cvDevI, hTtarget, "hI");
-        hJ = gpuMat2buf<uint8_t>(cvDevJ, hTtarget, "hJ1");
-        #else // if not WITH_CUDA
-        std::cout << "No cuda support" << std::endl;
-        exit(-1);
-        #endif // if WITH_CUDA
-    }
+// It is assumed that the data is already on the proper device/host
+// Returns the number of iterations
+int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI, 
+    Halide::Buffer<uint8_t>& hJ) {
 
     // Initial time
     long st0, st1, st2, st3, st4, st5;
@@ -98,7 +76,9 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
     #endif
     Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
     
+    string st;
     if (target == ExecEngineConstants::CPU) {
+        st = "cpu";
         int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
         // Schedules Raster
         rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
@@ -113,6 +93,7 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         arasterx.update(0).parallel(ryo);
     } else if (target == ExecEngineConstants::GPU) {
         #ifdef WITH_CUDA
+        st = "gpu";
         hTarget.set_feature(Halide::Target::CUDA);
 
         // std::cout << "[" << st << "][IWPP] With CUDA" << std::endl;
@@ -149,6 +130,9 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         #endif // if WITH_CUDA
     }
 
+    hTarget.set_feature(Halide::Target::Debug);
+
+
     rasterx.compile_jit(hTarget);
     arasterx.compile_jit(hTarget);
 
@@ -161,13 +145,17 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
     // Sum structures
     unsigned long oldSum = 0;
     unsigned long newSum = 0;
-    Halide::Func lsum = halSum(hJ);
+    Halide::Func lsum = halSum(hJ, target);
     long* dLineSum = new long[w];
     Halide::Buffer<long> hLineSum = Halide::Buffer<long>(dLineSum, w, "hLineSum");
+    hLineSum.set_host_dirty();
 
     // Iterate Raster/Anti-Raster until stability
     unsigned long it = 0;
     do {
+        cout << "[" << st << "][PROFILING] it: " << it << ", sum = " 
+            << newSum << std::endl;
+
         // Initial iteration time
         st2 = Util::ClockGetTime();
 
@@ -185,10 +173,13 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
         // Raster/Anti-raster time
         st3 = Util::ClockGetTime();
 
+        cout << "[" << st << "][PROFILING][IWPP_PROP_TIME] " 
+            << (st3-st2) << endl;
+
         it++;
         oldSum = newSum;
 
-        if (target == ExecEngineConstants::CPU) {
+        // if (target == ExecEngineConstants::CPU) {
             // Performs parallel sum of the matrix across x, then sequentially
             // sums the result
             lsum.realize(hLineSum);
@@ -196,47 +187,99 @@ int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
             newSum = 0;
             for (int i=0; i<w; i++)
                 newSum += dLineSum[i];
-        } else if (target == ExecEngineConstants::GPU) {
-            #ifdef WITH_CUDA
-            newSum = cv::cuda::sum(cvDevJ)[0];
-            #endif // if WITH_CUDA
-        }
+        // } else if (target == ExecEngineConstants::GPU) {
+        //     #ifdef WITH_CUDA
+        //     newSum = cv::cuda::sum(*cvDevJ)[0];
+        //     #endif // if WITH_CUDA
+        // }
 
         // Full iteration time
         st5 = Util::ClockGetTime();
         
-        #ifdef IT_DEBUG
-        cout << "[" << st << "][PROFILING] it: " << it << ", sum = " 
-            << newSum << std::endl;
-        cout << "[" << st << "][PROFILING][IWPP_PROP_TIME] " 
-            << (st3-st2) << endl;
+        // #ifdef IT_DEBUG
         cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " 
             << (st5-st3) << endl;
         cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " 
             << (st5-st2) << std::endl;
-        #endif
+        // #endif
 
     } while(newSum != oldSum);
 
     delete[] dLineSum;
 
-    #ifdef WITH_CUDA
-    // Copy result to output
-    if (target == ExecEngineConstants::GPU)
-        cvDevJ.download(cvHostJ);
-    #endif // if WITH_CUDA
+    // // Final iwpp time
+    // long st6 = Util::ClockGetTime();
 
-    // Final iwpp time
-    long st6 = Util::ClockGetTime();
+    // std::cout << "[IWPP][" << st << "][PROFILING] " << it 
+    //     << " iterations in " << (st6-st0) << " ms" << std::endl;
+    // // std::cout << "[" << st << "][PROFILING][IWPP_COMP] " 
+    // //     << (st1-st0) << std::endl;
+    // // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] " 
+    // //     << (st6-st1) << std::endl;
+    // // std::cout << "[" << st << "][PROFILING][IWPP_FULL] " 
+    // //     << (st6-st0) << std::endl;
 
-    std::cout << "[IWPP][" << st << "][PROFILING] " << it 
-        << " iterations in " << (st6-st0) << " ms" << std::endl;
-    // std::cout << "[" << st << "][PROFILING][IWPP_COMP] " 
-    //     << (st1-st0) << std::endl;
-    // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] " 
-    //     << (st6-st1) << std::endl;
-    // std::cout << "[" << st << "][PROFILING][IWPP_FULL] " 
-    //     << (st6-st0) << std::endl;
-
-    return 0;
+    return it;
 }
+
+// int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
+
+//     Halide::Buffer<uint8_t> hI;
+//     Halide::Buffer<uint8_t> hJ;
+//     #ifdef WITH_CUDA
+//     cv::cuda::GpuMat cvDevI;
+//     cv::cuda::GpuMat* cvDevJ=NULL;
+//     #endif // if WITH_CUDA
+
+//     // Initial time
+//     long st0, st1, st2, st3, st4, st5;
+//     long sti0, sti1, sti2;
+//     st0 = Util::ClockGetTime();
+
+//     string st;
+//     if (target == ExecEngineConstants::CPU) {
+//         st = "cpu";
+//         hI = mat2buf<uint8_t>(&cvHostI, "hI");
+//         hJ = mat2buf<uint8_t>(&cvHostJ, "hJ");
+//     } else if (target == ExecEngineConstants::GPU) {
+//         st = "gpu";
+//         #ifdef WITH_CUDA
+//         Halide::Target hTtarget = Halide::get_host_target();
+//         hTtarget.set_feature(Halide::Target::CUDA);
+
+//         // Upload inputs to gpu memory
+//         cvDevI.upload(cvHostI);
+//         cvDevJ = new cv::cuda::GpuMat();
+//         cvDevJ->upload(cvHostJ);
+
+//         // Create halide wrappers for the gpu mat's
+//         hI = gpuMat2buf<uint8_t>(cvDevI, hTtarget, "hI");
+//         hJ = gpuMat2buf<uint8_t>(*cvDevJ, hTtarget, "hJ1");
+//         #else // if not WITH_CUDA
+//         std::cout << "No cuda support" << std::endl;
+//         exit(-1);
+//         #endif // if WITH_CUDA
+//     }
+
+//     int it = loopedIwppRecon(target, hI, hJ, cvDevJ);
+
+//     #ifdef WITH_CUDA
+//     // Copy result to output
+//     if (target == ExecEngineConstants::GPU)
+//         cvDevJ->download(cvHostJ);
+//     #endif // if WITH_CUDA
+
+//     // Final iwpp time
+//     long st6 = Util::ClockGetTime();
+
+//     std::cout << "[IWPP][" << st << "][PROFILING] " << it 
+//         << " iterations in " << (st6-st0) << " ms" << std::endl;
+//     // std::cout << "[" << st << "][PROFILING][IWPP_COMP] " 
+//     //     << (st1-st0) << std::endl;
+//     // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] " 
+//     //     << (st6-st1) << std::endl;
+//     // std::cout << "[" << st << "][PROFILING][IWPP_FULL] " 
+//     //     << (st6-st0) << std::endl;
+
+//     return 0;
+// }

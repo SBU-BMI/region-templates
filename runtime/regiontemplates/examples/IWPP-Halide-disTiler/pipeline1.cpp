@@ -14,7 +14,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     long st1 = Util::ClockGetTime();
     // #endif
 
-    // basic assertions for that ensures that this will work
+    // basic assertions that ensures that this will work
     assert(hSE.width()%2 != 0);
     assert(hSE.height()%2 != 0);
 
@@ -47,10 +47,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
         erode.fuse(xo,yo,t).parallel(t);
     } else if (target == ExecEngineConstants::GPU) {
         hTarget.set_feature(Halide::Target::CUDA);
-        // hTarget.set_feature(Halide::Target::Debug);
-        hIn.set_host_dirty(); // Forcing copy from host to dev
-        hOut.set_host_dirty();
-        hSE.set_host_dirty();
+        hTarget.set_feature(Halide::Target::Debug);
         erode.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
     }
 
@@ -60,7 +57,6 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     else if (target == ExecEngineConstants::GPU)
         st = "gpu";
     
-    // cout << "[erode][" << st << "] Compiling..." << endl;
     erode.compile_jit(hTarget);
 
     #ifdef PROFILING_STAGES
@@ -69,11 +65,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
          << "][STAGE_HAL_COMP][erode] " << (st2-st1) << endl;
     #endif
 
-    // cout << "[erode][" << st << "] Realizing..." << endl;
     erode.realize(hOut);
-    if (target == ExecEngineConstants::GPU)
-        hOut.copy_to_host();
-    // cout << "[erode][" << st << "] Done..." << endl;
 
     // #ifdef PROFILING_STAGES
     long st3 = Util::ClockGetTime();
@@ -93,7 +85,7 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     long st0 = Util::ClockGetTime();
     // #endif
 
-    // basic assertions for that ensures that this will work
+    // basic assertions that ensures that this will work
     assert(hSE.width()%2 != 0);
     assert(hSE.height()%2 != 0);
 
@@ -125,10 +117,7 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
         dilate.fuse(xo,yo,t).parallel(t);
     } else if (target == ExecEngineConstants::GPU) {
         hTarget.set_feature(Halide::Target::CUDA);
-        // hTarget.set_feature(Halide::Target::Debug);
-        hIn.set_host_dirty(); // Forcing copy from host to dev
-        hOut.set_host_dirty();
-        hSE.set_host_dirty();
+        hTarget.set_feature(Halide::Target::Debug);
         dilate.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
     }
 
@@ -147,8 +136,6 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     #endif
 
     dilate.realize(hOut);
-    if (target == ExecEngineConstants::GPU)
-        hOut.copy_to_host();
 
     // #ifdef PROFILING_STAGES
     long st3 = Util::ClockGetTime();
@@ -160,19 +147,6 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 
 bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target, 
              std::vector<ArgumentBase*>& params) {
-
-    // === cv::Mat inputs/outputs =============================================
-    // Wraps the input and output cv::mat's with halide buffers
-    cv::Mat& cvIn = im_ios[0];
-    cv::Mat& cvOut = im_ios[1];
-    Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvIn, "hIn");
-    cv::Mat cvRC(cvOut.rows, cvOut.cols, cvOut.type(), cv::Scalar::all(0));
-    Halide::Buffer<uint8_t> hRC = mat2buf<uint8_t>(&cvRC, "hRC");
-
-    // We swap these two outputs on functions which cannot be realized inplace
-    cv::Mat cvOut1(cvOut.rows, cvOut.cols, cvOut.type(), cv::Scalar::all(0));
-    Halide::Buffer<uint8_t> hOut1 = mat2buf<uint8_t>(&cvOut1, "hOut1");
-    Halide::Buffer<uint8_t> hOut2 = mat2buf<uint8_t>(&cvOut, "hOut2");
 
     // === parameters =========================================================
     int tileId = ((ArgumentInt*)params[0])->getArgValue();
@@ -186,42 +160,66 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
     int disk19raw_width = ((ArgumentInt*)params[5])->getArgValue(); // erode/dilate 1
     int* disk19raw = ((ArgumentIntArray*)params[6])->getArgValue(); // erode/dilate 1
-    cv::Mat cvSE19(disk19raw_width, disk19raw_width, CV_8U);
-    for (int i=0; i<cvSE19.cols; i++) {
-        for (int j=0; j<cvSE19.rows; j++) {
-            cvSE19.at<uint8_t>(i,j) = disk19raw[i+j*disk19raw_width];
+    cv::Mat cvHostSE19(disk19raw_width, disk19raw_width, CV_8U);
+    for (int i=0; i<cvHostSE19.cols; i++) {
+        for (int j=0; j<cvHostSE19.rows; j++) {
+            cvHostSE19.at<uint8_t>(i,j) = disk19raw[i+j*disk19raw_width];
         }
     }
-    Halide::Buffer<uint8_t> hSE19 = mat2buf<uint8_t>(&cvSE19, "hSE19"); // erode/dilate 1
 
     int G1 = ((ArgumentInt*)params[7])->getArgValue(); // preFill
 
     int disk3raw_width = ((ArgumentInt*)params[8])->getArgValue(); // dilate/erode 2
     int* disk3raw = ((ArgumentIntArray*)params[9])->getArgValue(); // dilate/erode 2
-    cv::Mat cvSE3(disk3raw_width, disk3raw_width, CV_8U);
-    for (int i=0; i<cvSE3.cols; i++) {
-        for (int j=0; j<cvSE3.rows; j++) {
-            cvSE3.at<uint8_t>(i,j) = disk3raw[i+j*disk3raw_width];
+    cv::Mat cvHostSE3(disk3raw_width, disk3raw_width, CV_8U);
+    for (int i=0; i<cvHostSE3.cols; i++) {
+        for (int j=0; j<cvHostSE3.rows; j++) {
+            cvHostSE3.at<uint8_t>(i,j) = disk3raw[i+j*disk3raw_width];
         }
     }
-    Halide::Buffer<uint8_t> hSE3 = mat2buf<uint8_t>(&cvSE3, "hSE3");   // dilate/erode 2
 
+    // === cv::Mat inputs/outputs =============================================
+    // Wraps the input and output cv::mat's with halide buffers
+    cv::Mat& cvHostIn = im_ios[0];
+    cv::Mat& cvHostOut2 = im_ios[1];
+    cv::Mat cvHostRC(cvHostOut2.size(), cvHostOut2.type(), cv::Scalar::all(0));
+    cv::Mat cvHostOut1(cvHostOut2.size(), cvHostOut2.type(), cv::Scalar::all(0));
+
+    // === Halide::Target setup ===============================================
     Halide::Target hTarget = Halide::get_host_target();
     #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
     #endif
 
-
+    // === Halide::Buffer inputs/outputs ======================================
     string st;
     if (target == ExecEngineConstants::CPU) {
         st = "cpu";
     } else if (target == ExecEngineConstants::GPU) {
         st = "gpu";
-        // hTarget.set_feature(Halide::Target::CUDA);
+        #ifndef WITH_CUDA
+        std::cout << "[pipeline1] Attempted to execute GPU pipeline "
+            << "without CUDA support." << std::endl;
+        exit(-1);
+        #endif
     }
+
+    // Temporary buffers
+    Halide::Buffer<uint8_t> hIn = mat2buf<uint8_t>(&cvHostIn, "hIn");
+    Halide::Buffer<uint8_t> hRC = mat2buf<uint8_t>(&cvHostRC, "hRC");
+
+    // Disk mats for erosion/dilation
+    Halide::Buffer<uint8_t> hSE19 = mat2buf<uint8_t>(&cvHostSE19, "hSE19");
+    Halide::Buffer<uint8_t> hSE3 = mat2buf<uint8_t>(&cvHostSE3, "hSE3");
+
+    // We swap these two outputs on functions which cannot be realized inplace
+    Halide::Buffer<uint8_t> hOut1 = mat2buf<uint8_t>(&cvHostOut1, "hOut1");
+    Halide::Buffer<uint8_t> hOut2 = mat2buf<uint8_t>(&cvHostOut2, "hOut2");
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
         << "] Executing" << std::endl;
+
+    Halide::Var t, xo, yo, xi, yi;
     
     // === get-background =================================================
     {
@@ -232,12 +230,13 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         get_bg.compile_jit(hTarget);
         get_bg.realize(hOut1);
     
-        long bgArea = cv::countNonZero(cvOut1);
-        float ratio = (float)bgArea / (float)(cvOut1.size().area());
+        long bgArea = -1;
+        bgArea = cv::countNonZero(cvHostOut1);
+        float ratio = (float)bgArea / (float)(cvHostOut1.size().area());
     
         // check if there is too much background
-        // std::cout << "[get_background][" << tileId << "] ratio: " 
-        //     << ratio << std::endl;
+        std::cout << "[get_background][" << tileId << "] ratio: " 
+            << ratio << std::endl;
         if (ratio >= 0.9) {
             std::cout << "[pipeline1][" << st << "][tile" << tileId 
                 << "] aborted!" << std::endl;
@@ -248,9 +247,9 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     // === invert =========================================================
     {
         if (channel == -1)
-            assert(cvIn.channels() == 1);
+            assert(cvHostIn.channels() == 1);
         else
-            assert(cvIn.channels() == 3);
+            assert(cvHostIn.channels() == 3);
 
         // Define halide stage
         Halide::Var x, y;
@@ -263,14 +262,24 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
         invert.compile_jit(hTarget);
         invert.realize(hRC);
+
+        if (target == ExecEngineConstants::GPU) {
+            hTarget.set_feature(Halide::Target::CUDA);
+        }
     }
 
+
     // === erode/dilate 1 =================================================
+    hRC.set_host_dirty();
+    hOut1.set_host_dirty();
+    hOut2.set_host_dirty();
+    hSE19.set_host_dirty();
+
     erode(hRC, hOut1, hSE19, target, tileId);
     dilate(hOut1, hOut2, hSE19, target, tileId);
 
     // === imrecon ========================================================
-    loopedIwppRecon(target, cvRC, cvOut);
+    loopedIwppRecon(target, hRC, hOut2);
 
     // === preFill ========================================================
     {
@@ -288,27 +297,26 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
         // Schedules
         preFill.compute_root();
-        Halide::Var t, xo, yo, xi, yi;
         if (target == ExecEngineConstants::CPU) {
             preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
             preFill.fuse(xo,yo,t).parallel(t);
         } else if (target == ExecEngineConstants::GPU) {
             hTarget.set_feature(Halide::Target::CUDA);
-            // hTarget.set_feature(Halide::Target::Debug);
-            hOut2.set_host_dirty(); // Forcing copy from host to dev
-            hRC.set_host_dirty();
+            hTarget.set_feature(Halide::Target::Debug);
             preFill.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
         }
         
         preFill.compile_jit(hTarget);
         preFill.realize(hOut2);
-        if (target == ExecEngineConstants::GPU)
-            hOut2.copy_to_host();
     }
 
     // === dilate/erode 2 =================================================
+    hSE3.set_host_dirty();
     dilate(hOut2, hOut1, hSE3, target, tileId);
     erode(hOut1, hOut2, hSE3, target, tileId);
+
+    if (target == ExecEngineConstants::GPU)
+        hOut1.copy_to_host();
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
         << "] Done" << std::endl;
