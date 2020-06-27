@@ -104,7 +104,9 @@ int main(int argc, char *argv[]) {
         cout << "\t\t1: GPU-only execution" << endl;
         cout << "\t\t2: Hybrid execution" << endl;
         
-        cout << "\t-gp (float value of PATS: gpu/cpu)" << endl;
+        cout << "\t-gp <float value of PATS: gpu/cpu (default=0)>" << endl;
+        
+        cout << "\t-gn <gpu tiler multiplier (default=1)>" << endl;
 
         cout << "=== Pre-tiler (PT) options:" << endl;
         cout << "\t-npt (without pre-tiler)" << endl;
@@ -200,10 +202,16 @@ int main(int argc, char *argv[]) {
             atoi(argv[findArgPos("-a", argc, argv)+1]));
     }
 
-    // // Dense tiling algorithm
+    // GPU PATS parameter
     float gpc = 1;
     if (findArgPos("-gp", argc, argv) != -1) {
         gpc = atof(argv[findArgPos("-gp", argc, argv)+1]);
+    }
+
+    // GPU tiles multiplier
+    float gn = 1;
+    if (findArgPos("-gn", argc, argv) != -1) {
+        gn = atoi(argv[findArgPos("-gn", argc, argv)+1]);
     }
 
     // No pre-tiling execution
@@ -256,12 +264,12 @@ int main(int argc, char *argv[]) {
 
     switch (hybridExec) {
         case CPU_ONLY:
-            argv[findArgPos("-g", argc, argv)+1] = "0";
+            argv[findArgPos("-g", argc, argv)+1][0] = '0';
             cout << "[main] WARNING: GPU threads not created "
                 << "due to CPU_ONLY execution." << endl;
             break;
         case GPU_ONLY:
-            argv[findArgPos("-c", argc, argv)+1] = "0";
+            argv[findArgPos("-c", argc, argv)+1][0] = '0';
             cout << "[main] WARNING: CPU threads not created "
                 << "due to GPU_ONLY execution." << endl;
             break;
@@ -344,13 +352,18 @@ int main(int argc, char *argv[]) {
             static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
     CostFunction* bgCostFunc = new AreaCostFunction();
 
+    // Create extra tiles for gpu
+    if (hybridExec == GPU_ONLY) {
+        nTiles *= gn;
+    }
+
     // Verifies for hybrid execution
     if (hybridExec == HYBRID) {
         float cpuPATS=1;
         float gpuPATS=gpc;
         denseTiler = new HybridDenseTiledRTCollection(
             "input", "input", Ipath, border, denseCostFunc, bgm, 
-            denseTilingAlg, nTiles, nTiles, cpuPATS, gpuPATS);
+            denseTilingAlg, nTiles, nTiles*gn, cpuPATS, gpuPATS);
     } else {
         // Creates dense tiling collection
         if (noTiling)
@@ -388,7 +401,10 @@ int main(int argc, char *argv[]) {
         if (hybridExec == HYBRID) {
             bgTiler = new HybridDenseTiledRTCollection(
                 "input", "input", Ipath, border, bgCostFunc, bgm, 
-                bgTilingAlg, bgTilesExpected/2, bgTilesExpected/2, 1, 1);
+                bgTilingAlg, bgTilesExpected, 0, 1, 1);
+            // bgTiler = new HybridDenseTiledRTCollection(
+            //     "input", "input", Ipath, border, bgCostFunc, bgm, 
+            //     bgTilingAlg, bgTilesExpected/2, bgTilesExpected/2, 1, 1);
         } else  {
             bgTiler = new IrregTiledRTCollection("input", "input", Ipath, 
                 border, bgCostFunc, bgm, bgTilingAlg, bgTilesExpected);
