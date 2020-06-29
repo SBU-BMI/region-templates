@@ -217,7 +217,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     Halide::Buffer<uint8_t> hOut2 = mat2buf<uint8_t>(&cvHostOut2, "hOut2");
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
-        << "] Executing" << std::endl;
+        << "] Executing " << Util::ClockGetTime() << std::endl;
 
     Halide::Var t, xo, yo, xi, yi;
     
@@ -243,6 +243,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
                 << "] aborted!" << std::endl;
             return true; // abort if more than 90% background
         }
+	std::cout << "[pipeline1][" << st << "][tile" << tileId
+            << "] get_bg done " << Util::ClockGetTime() << std::endl;
     }
 
     // === invert =========================================================
@@ -267,6 +269,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         if (target == ExecEngineConstants::GPU) {
             hTarget.set_feature(Halide::Target::CUDA);
         }
+	std::cout << "[pipeline1][" << st << "][tile" << tileId
+            << "] invert done " << Util::ClockGetTime() << std::endl;
     }
 
 
@@ -277,10 +281,16 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     hSE19.set_host_dirty();
 
     erode(hRC, hOut1, hSE19, target, tileId);
+    std::cout << "[pipeline1][" << st << "][tile" << tileId
+        << "] erode done " << Util::ClockGetTime() << std::endl;
     dilate(hOut1, hOut2, hSE19, target, tileId);
+    std::cout << "[pipeline1][" << st << "][tile" << tileId
+        << "] dilate done " << Util::ClockGetTime() << std::endl;
 
     // === imrecon ========================================================
     loopedIwppRecon(target, hRC, hOut2);
+    std::cout << "[pipeline1][" << st << "][tile" << tileId
+        << "] Executing " << Util::ClockGetTime() << std::endl;
 
     // === preFill ========================================================
     {
@@ -309,18 +319,25 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         
         preFill.compile_jit(hTarget);
         preFill.realize(hOut2);
+
+	std::cout << "[pipeline1][" << st << "][tile" << tileId
+            << "] prefill done " << Util::ClockGetTime() << std::endl;
     }
 
     // === dilate/erode 2 =================================================
     hSE3.set_host_dirty();
     dilate(hOut2, hOut1, hSE3, target, tileId);
+    std::cout << "[pipeline1][" << st << "][tile" << tileId
+        << "] dilate2 done " << Util::ClockGetTime() << std::endl;
     erode(hOut1, hOut2, hSE3, target, tileId);
+    std::cout << "[pipeline1][" << st << "][tile" << tileId
+        << "] erode2 done " << Util::ClockGetTime() << std::endl;
 
     if (target == ExecEngineConstants::GPU)
         hOut1.copy_to_host();
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
-        << "] Done" << std::endl;
+        << "] Done " << Util::ClockGetTime() << std::endl;
 
     return false;
 }

@@ -153,8 +153,8 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     // Iterate Raster/Anti-Raster until stability
     unsigned long it = 0;
     do {
-        cout << "[" << st << "][PROFILING] it: " << it << ", sum = " 
-            << newSum << std::endl;
+        //cout << "[" << st << "][PROFILING] it: " << it << ", sum = " 
+          //  << newSum << std::endl;
 
         // Initial iteration time
         st2 = Util::ClockGetTime();
@@ -173,8 +173,8 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         // Raster/Anti-raster time
         st3 = Util::ClockGetTime();
 
-        cout << "[" << st << "][PROFILING][IWPP_PROP_TIME] " 
-            << (st3-st2) << endl;
+        //cout << "[" << st << "][PROFILING][IWPP_PROP_TIME] " 
+          //  << (st3-st2) << endl;
 
         it++;
         oldSum = newSum;
@@ -196,12 +196,12 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         // Full iteration time
         st5 = Util::ClockGetTime();
         
-        // #ifdef IT_DEBUG
+        #ifdef IT_DEBUG
         cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " 
             << (st5-st3) << endl;
         cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " 
             << (st5-st2) << std::endl;
-        // #endif
+        #endif
 
     } while(newSum != oldSum);
 

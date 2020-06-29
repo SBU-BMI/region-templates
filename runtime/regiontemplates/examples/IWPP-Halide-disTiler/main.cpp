@@ -104,9 +104,9 @@ int main(int argc, char *argv[]) {
         cout << "\t\t1: GPU-only execution" << endl;
         cout << "\t\t2: Hybrid execution" << endl;
         
-        cout << "\t-gp <float value of PATS: gpu/cpu (default=0)>" << endl;
+        cout << "\t--gp <float value of PATS: gpu/cpu (default=0)>" << endl;
         
-        cout << "\t-gn <gpu tiler multiplier (default=1)>" << endl;
+        cout << "\t--gn <gpu tiler multiplier (default=1)>" << endl;
 
         cout << "=== Pre-tiler (PT) options:" << endl;
         cout << "\t-npt (without pre-tiler)" << endl;
@@ -204,14 +204,14 @@ int main(int argc, char *argv[]) {
 
     // GPU PATS parameter
     float gpc = 1;
-    if (findArgPos("-gp", argc, argv) != -1) {
-        gpc = atof(argv[findArgPos("-gp", argc, argv)+1]);
+    if (findArgPos("--gp", argc, argv) != -1) {
+        gpc = atof(argv[findArgPos("--gp", argc, argv)+1]);
     }
 
     // GPU tiles multiplier
     float gn = 1;
-    if (findArgPos("-gn", argc, argv) != -1) {
-        gn = atoi(argv[findArgPos("-gn", argc, argv)+1]);
+    if (findArgPos("--gn", argc, argv) != -1) {
+        gn = atoi(argv[findArgPos("--gn", argc, argv)+1]);
     }
 
     // No pre-tiling execution
