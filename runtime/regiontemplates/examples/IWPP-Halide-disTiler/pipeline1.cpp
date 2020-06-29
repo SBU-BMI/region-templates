@@ -232,9 +232,10 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     
         long bgArea = -1;
         bgArea = cv::countNonZero(cvHostOut1);
-        float ratio = (float)bgArea / (float)(cvHostOut1.size().area());
+        float ratio = (float)bgArea / (float)(cvHostOut1.rows*cvHostOut1.cols);
     
         // check if there is too much background
+        std::cout << "bgArea: " << bgArea << ", cvSize: " << cvHostOut1.size() << ", cvArea: " << cvHostOut1.size().area() << std::endl;
         std::cout << "[get_background][" << tileId << "] ratio: " 
             << ratio << std::endl;
         if (ratio >= 0.9) {
