@@ -77,7 +77,8 @@ void HybridDenseTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int
             tiles.clear();
 
             // Percentage of gpu tile
-            float f = 0.5;
+            float f = this->gpuPATS/(this->gpuPATS+this->cpuPATS);
+            //f=0.5;
 
             // Tile gpu subimage (top half)
             long gw = h>w ? w : w*f;
