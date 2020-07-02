@@ -8,7 +8,7 @@
 // Only implemented for uint8_t images
 // Structuring element must have odd width and height
 void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut, 
-    Halide::Buffer<uint8_t> hSE, Target_t target, int tileId) {
+    Halide::Buffer<uint8_t> hSE, Target_t target, int tileId, int noSched) {
 
     // #ifdef PROFILING_STAGES
     long st1 = Util::ClockGetTime();
@@ -42,7 +42,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
     #endif
-    if (target == ExecEngineConstants::CPU) {
+    if (target == ExecEngineConstants::CPU && noSched==0) {
         erode.tile(x, y, xo, yo, xi, yi, 16, 16);
         erode.fuse(xo,yo,t).parallel(t);
     } else if (target == ExecEngineConstants::GPU) {
@@ -79,7 +79,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 // Only implemented for uint8_t images
 // Structuring element must have odd width and height
 void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut, 
-    Halide::Buffer<uint8_t> hSE, Target_t target, int tileId) {
+    Halide::Buffer<uint8_t> hSE, Target_t target, int tileId, int noSched) {
 
     // #ifdef PROFILING_STAGES
     long st0 = Util::ClockGetTime();
@@ -112,7 +112,7 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
     #endif
-    if (target == ExecEngineConstants::CPU) {
+    if (target == ExecEngineConstants::CPU && noSched==0) {
         dilate.tile(x, y, xo, yo, xi, yi, 16, 16);
         dilate.fuse(xo,yo,t).parallel(t);
     } else if (target == ExecEngineConstants::GPU) {
@@ -178,6 +178,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         }
     }
 
+    int noSched = ((ArgumentInt*)params[10])->getArgValue(); // halide no sched
+
     // === cv::Mat inputs/outputs =============================================
     // Wraps the input and output cv::mat's with halide buffers
     cv::Mat& cvHostIn = im_ios[0];
@@ -202,6 +204,11 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             << "without CUDA support." << std::endl;
         exit(-1);
         #endif
+        if (noSched == 1) {
+            std::cout << "[pipeline1] Attempted to execute GPU pipeline "
+                << "without halide scheduling (--nhs)." << std::endl;
+            exit(-1);
+        }
     }
 
     // Temporary buffers
@@ -280,15 +287,15 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     hOut2.set_host_dirty();
     hSE19.set_host_dirty();
 
-    erode(hRC, hOut1, hSE19, target, tileId);
+    erode(hRC, hOut1, hSE19, target, tileId, noSched);
     std::cout << "[pipeline1][" << st << "][tile" << tileId
         << "] erode done " << Util::ClockGetTime() << std::endl;
-    dilate(hOut1, hOut2, hSE19, target, tileId);
+    dilate(hOut1, hOut2, hSE19, target, tileId, noSched);
     std::cout << "[pipeline1][" << st << "][tile" << tileId
         << "] dilate done " << Util::ClockGetTime() << std::endl;
 
     // === imrecon ========================================================
-    loopedIwppRecon(target, hRC, hOut2);
+    loopedIwppRecon(target, hRC, hOut2, noSched);
     std::cout << "[pipeline1][" << st << "][tile" << tileId
         << "] Executing " << Util::ClockGetTime() << std::endl;
 
@@ -308,7 +315,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
         // Schedules
         preFill.compute_root();
-        if (target == ExecEngineConstants::CPU) {
+        if (target == ExecEngineConstants::CPU && noSched==0) {
             preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
             preFill.fuse(xo,yo,t).parallel(t);
         } else if (target == ExecEngineConstants::GPU) {
@@ -326,10 +333,10 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
     // === dilate/erode 2 =================================================
     hSE3.set_host_dirty();
-    dilate(hOut2, hOut1, hSE3, target, tileId);
+    dilate(hOut2, hOut1, hSE3, target, tileId, noSched);
     std::cout << "[pipeline1][" << st << "][tile" << tileId
         << "] dilate2 done " << Util::ClockGetTime() << std::endl;
-    erode(hOut1, hOut2, hSE3, target, tileId);
+    erode(hOut1, hOut2, hSE3, target, tileId, noSched);
     std::cout << "[pipeline1][" << st << "][tile" << tileId
         << "] erode2 done " << Util::ClockGetTime() << std::endl;
 

@@ -38,7 +38,7 @@ Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target) {
 // It is assumed that the data is already on the proper device/host
 // Returns the number of iterations
 int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI, 
-    Halide::Buffer<uint8_t>& hJ) {
+    Halide::Buffer<uint8_t>& hJ, int noSched) {
 
     // Initial time
     long st0, st1, st2, st3, st4, st5;
@@ -77,7 +77,7 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
     
     string st;
-    if (target == ExecEngineConstants::CPU) {
+    if (target == ExecEngineConstants::CPU && noSched==0) {
         st = "cpu";
         int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
         // Schedules Raster

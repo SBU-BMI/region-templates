@@ -87,8 +87,8 @@ int main(int argc, char *argv[]) {
         cout << "=== General options:" << endl;
         cout << "\t-c <number of cpu threads per node "
              << "(default=1)>" << endl;
-        // cout << "\t-g <number of gpu threads per node "
-        //      << "(default=0)>" << endl;
+        cout << "\t-g <number of gpu threads per node "
+             << "(default=0)>" << endl;
         cout << "\t-t <Number of tiles to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
         cout << "\t-p <bgThr>/<erode>/<dilate> (default=150/4/2)" << endl;
@@ -96,6 +96,8 @@ int main(int argc, char *argv[]) {
              << "without executing)" << endl;
         cout << "\t-nt (execute full image without tiling, overriding "
              << "any other tiling parameter)" << endl;
+        cout << "\t--nhs (no halide scheduling: pipeline will execute "
+             << " serially when selected)" << endl;
 
         cout << "=== Hybrid execution options:" << endl;
         cout << "\t-a <execution option>" << endl;
@@ -193,6 +195,11 @@ int main(int argc, char *argv[]) {
     bool noTiling = false;
     if (findArgPos("-nt", argc, argv) != -1) {
         noTiling = true;
+    }
+
+    int halNoSched = 0;
+    if (findArgPos("--nhs", argc, argv) != -1) {
+        halNoSched = 1;
     }
 
     // Dense tiling algorithm
@@ -444,7 +451,8 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(0),
              new ArgumentInt(disk19raw_width), new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(G1),
-             new ArgumentInt(se3raw_width), new ArgumentIntArray(se3raw, se3raw_size)}, 
+             new ArgumentInt(se3raw_width), new ArgumentIntArray(se3raw, se3raw_size),
+             new ArgumentInt(halNoSched)}, 
             {tiles[i].height, tiles[i].width}, {&pipeline1_s}, 
             // denseTiler->getTileTarget(i), i);
             tgt(hybridExec, denseTiler->getTileTarget(i)), i);
