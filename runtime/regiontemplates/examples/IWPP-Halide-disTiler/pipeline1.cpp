@@ -145,6 +145,39 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     // #endif
 }
 
+template <typename T>
+Halide::Func halCountNonZero(Halide::Buffer<T>& JJ, Target_t target) {
+
+    // Performs parallel sum on the coordinate with the highest value
+    Halide::RDom r({{0,JJ.width()},{0,JJ.height()}}, "r");
+    Halide::Var x("x");
+    Halide::Func cnz("cnz");
+    cnz(x) = Halide::cast<long>(0);
+    cnz(r.x) += Halide::cast<long>(Halide::select(JJ(r.x,r.y)>0, 1, 0));
+
+    // Schedule
+    Halide::RVar rxo, rxi;
+    Halide::Var xo, xi;
+    cnz.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
+    cnz.update(0).vectorize(rxi).parallel(rxo);
+
+    // Compile
+    Halide::Target hTarget = Halide::get_host_target();
+    #ifdef LARGEB
+    hTarget.set_feature(Halide::Target::LargeBuffers);
+    #endif
+
+    if (target == ExecEngineConstants::GPU) {
+        hTarget.set_feature(Halide::Target::CUDA);
+    }
+
+    cnz.compile_jit(hTarget);
+
+    // cnz.compile_to_lowered_stmt("cnz.html", {}, Halide::HTML);
+
+    return cnz;
+}
+
 bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target, 
              std::vector<ArgumentBase*>& params) {
 
@@ -237,12 +270,24 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         get_bg.compile_jit(hTarget);
         get_bg.realize(hOut1);
     
-        long bgArea = -1;
-        bgArea = cv::countNonZero(cvHostOut1);
+        long bgArea = 0;
+        // bgArea = cv::countNonZero(cvHostOut1); // returns int: can overflow
+        
+        // Performs countNonZero with long return
+        Halide::Func lcnz = halCountNonZero(hOut1, target);
+        long* dLineCount = new long[hOut1.width()];
+        Halide::Buffer<long> hLineCount = Halide::Buffer<long>(
+            dLineCount, hOut1.width(), "hLineCount");
+        hLineCount.set_host_dirty();
+        lcnz.realize(hLineCount);
+        for (int i=0; i<hOut1.width(); i++)
+            bgArea += dLineCount[i];
+
         float ratio = (float)bgArea / (float)(cvHostOut1.rows*cvHostOut1.cols);
     
         // check if there is too much background
-        std::cout << "bgArea: " << bgArea << ", cvSize: " << cvHostOut1.size() << ", cvArea: " << cvHostOut1.size().area() << std::endl;
+        std::cout << "bgArea: " << bgArea << ", cvSize: " << cvHostOut1.size() 
+            << ", cvArea: " << cvHostOut1.size().area() << std::endl;
         std::cout << "[get_background][" << tileId << "] ratio: " 
             << ratio << std::endl;
         if (ratio >= 0.9) {
