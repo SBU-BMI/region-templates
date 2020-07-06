@@ -98,8 +98,12 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
 
         // std::cout << "[" << st << "][IWPP] With CUDA" << std::endl;
 
-        int expected = 1664; // GTX 970
-        int minYScanlines = sqrt(h*w/expected) * 0.85;
+        float expected = 1664; // GTX 970
+        // Performs long area multiplication, avoiding overflow
+        long area = (long)(h)*(long)(w);
+        // minYScanlines must be int for Halide::split()
+        int minYScanlines = (float)(area) / expected;
+        minYScanlines = sqrt(minYScanlines) * 0.85;
         int minXsize = minYScanlines; // for reordering
         int threadsSize = 32; // for no reordering
         // std::cout << "[" << st << "][IWPP] Tile size: " 
