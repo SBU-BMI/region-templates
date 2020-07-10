@@ -98,6 +98,9 @@ int main(int argc, char *argv[]) {
              << "any other tiling parameter)" << endl;
         cout << "\t--nhs (no halide scheduling: pipeline will execute "
              << " serially when selected)" << endl;
+        cout << "\t--nic (no halide scheduling: pipeline will execute "
+             << " serially when selected)" << endl;
+
 
         cout << "=== Hybrid execution options:" << endl;
         cout << "\t-a <execution option>" << endl;
@@ -200,6 +203,11 @@ int main(int argc, char *argv[]) {
     int halNoSched = 0;
     if (findArgPos("--nhs", argc, argv) != -1) {
         halNoSched = 1;
+    }
+
+    int noIrregularComp = 0;
+    if (findArgPos("--nic", argc, argv) != -1) {
+        noIrregularComp = 1;
     }
 
     // Dense tiling algorithm
@@ -452,7 +460,8 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(disk19raw_width), new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(G1),
              new ArgumentInt(se3raw_width), new ArgumentIntArray(se3raw, se3raw_size),
-             new ArgumentInt(halNoSched)}, 
+             new ArgumentInt(halNoSched), 
+             new ArgumentInt(noIrregularComp)}, 
             {tiles[i].height, tiles[i].width}, {&pipeline1_s}, 
             // denseTiler->getTileTarget(i), i);
             tgt(hybridExec, denseTiler->getTileTarget(i)), i);
