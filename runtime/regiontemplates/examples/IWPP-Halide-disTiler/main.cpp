@@ -67,23 +67,20 @@ int findArgPos(std::string s, int argc, char** argv) {
     return -1;
 }
 
-// Only used for hybrid testing
-pthread_barrier_t barrier;
-
 static struct : RTF::HalGen {
     std::string getName() {return "pipeline1";}
     bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
                  std::vector<ArgumentBase*>& params) {
-        cout << "[pipeline1_s] waiting " << Util::ClockGetTime() << endl;;
-        pthread_barrier_wait (&barrier);
-        cout << "[pipeline1_s] begin " << Util::ClockGetTime() << endl;;
         pipeline1(im_ios, target, params);
-        cout << "[pipeline1_s] end " << Util::ClockGetTime() << endl;;
     }
 } pipeline1_s;
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
 
 int main(int argc, char *argv[]) {
+    
+    SysEnv sysEnv;
+    sysEnv.startupSystem(argc, argv, "libautostage.so");
+
     // Manages inputs
     if (argc < 2) {
         cout << "Usage: ./iwpp <I image> [ARGS]" << endl;
@@ -452,12 +449,6 @@ int main(int argc, char *argv[]) {
     #ifdef PROFILING
     long tilingT2 = Util::ClockGetTime();
     #endif
-
-    cout << "[main] barrier count: " << l.size() << endl;
-    pthread_barrier_init (&barrier, NULL, l.size());
-
-    SysEnv sysEnv;
-    sysEnv.startupSystem(argc, argv, "libautostage.so");
 
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution

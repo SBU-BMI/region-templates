@@ -4,6 +4,11 @@
 
 #define LARGEB
 
+// Only used for hybrid testing
+static pthread_barrier_t barrier;
+static bool barried = false;
+static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
 // Only implemented for grayscale images
 // Only implemented for uint8_t images
 // Structuring element must have odd width and height
@@ -261,6 +266,17 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         << "] Executing " << Util::ClockGetTime() << std::endl;
 
     Halide::Var t, xo, yo, xi, yi;
+
+    pthread_mutex_lock(&m);
+    if (!barried) {
+        barried=true;
+        pthread_barrier_init (&barrier, NULL, 2);
+    }
+    pthread_mutex_unlock(&m);
+
+    cout << "[pipeline1] waiting " << Util::ClockGetTime() << endl;
+    pthread_barrier_wait (&barrier);
+    cout << "[pipeline1] begin " << Util::ClockGetTime() << endl;
     
     // === get-background =================================================
     {
@@ -393,6 +409,9 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
         << "] Done " << Util::ClockGetTime() << std::endl;
+
+    cout << "[pipeline1_s] end " << Util::ClockGetTime() << endl;
+
 
     return false;
 }
