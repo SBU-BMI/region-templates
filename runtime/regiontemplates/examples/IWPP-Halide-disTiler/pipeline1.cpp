@@ -4,10 +4,10 @@
 
 #define LARGEB
 
-// Only used for hybrid testing
-static pthread_barrier_t barrier;
-static bool barried = false;
-static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+// // Only used for hybrid testing
+// static pthread_barrier_t barrier;
+// static bool barried = false;
+// static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
 // Only implemented for grayscale images
 // Only implemented for uint8_t images
@@ -267,16 +267,16 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
     Halide::Var t, xo, yo, xi, yi;
 
-    pthread_mutex_lock(&m);
-    if (!barried) {
-        barried=true;
-        pthread_barrier_init (&barrier, NULL, 2);
-    }
-    pthread_mutex_unlock(&m);
+    // pthread_mutex_lock(&m);
+    // if (!barried) {
+    //     barried=true;
+    //     pthread_barrier_init (&barrier, NULL, 2);
+    // }
+    // pthread_mutex_unlock(&m);
 
-    cout << "[pipeline1] waiting " << Util::ClockGetTime() << endl;
-    pthread_barrier_wait (&barrier);
-    cout << "[pipeline1] begin " << Util::ClockGetTime() << endl;
+    // cout << "[pipeline1] waiting " << Util::ClockGetTime() << endl;
+    // pthread_barrier_wait (&barrier);
+    // cout << "[pipeline1] begin " << Util::ClockGetTime() << endl;
     
     // === get-background =================================================
     {
@@ -332,19 +332,19 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         else
             invert(x,y) = std::numeric_limits<uint8_t>::max()-hIn(x,y,channel);
 
-        invert.compile_jit(hTarget);
-        invert.realize(hRC);
-
         if (target == ExecEngineConstants::GPU) {
             hTarget.set_feature(Halide::Target::CUDA);
         }
+        
+        hRC.set_host_dirty();
+        invert.compile_jit(hTarget);
+        invert.realize(hRC);
+
     std::cout << "[pipeline1][" << st << "][tile" << tileId
             << "] invert done " << Util::ClockGetTime() << std::endl;
     }
 
-
     // === erode/dilate 1 =================================================
-    hRC.set_host_dirty();
     hOut1.set_host_dirty();
     hOut2.set_host_dirty();
     hSE19.set_host_dirty();
@@ -410,7 +410,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
         << "] Done " << Util::ClockGetTime() << std::endl;
 
-    cout << "[pipeline1_s] end " << Util::ClockGetTime() << endl;
+    // cout << "[pipeline1_s] end " << Util::ClockGetTime() << endl;
 
 
     return false;

@@ -77,9 +77,6 @@ static struct : RTF::HalGen {
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
 
 int main(int argc, char *argv[]) {
-    
-    SysEnv sysEnv;
-    sysEnv.startupSystem(argc, argv, "libautostage.so");
 
     // Manages inputs
     if (argc < 2) {
@@ -113,7 +110,7 @@ int main(int argc, char *argv[]) {
         cout << "\t\t1: GPU-only execution" << endl;
         cout << "\t\t2: Hybrid execution" << endl;
         
-        cout << "\t--gp <float value of PATS: gpu/cpu (default=0)>" << endl;
+        cout << "\t--gp <float value of PATS: gpu/cpu (default=1)>" << endl;
         
         cout << "\t--gn <gpu tiler multiplier (default=1)>" << endl;
 
@@ -151,6 +148,9 @@ int main(int argc, char *argv[]) {
         
         exit(0);
     }
+
+    SysEnv sysEnv;
+    sysEnv.startupSystem(argc, argv, "libautostage.so");
 
     // Input images
     std::string Ipath = std::string(argv[1]);
