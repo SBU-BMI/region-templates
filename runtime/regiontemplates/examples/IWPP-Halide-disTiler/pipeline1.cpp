@@ -263,7 +263,10 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     Halide::Buffer<uint8_t> hOut2 = mat2buf<uint8_t>(&cvHostOut2, "hOut2");
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
-        << "] Executing " << Util::ClockGetTime() << std::endl;
+        << "] " << Util::ClockGetTime() << " size: " 
+        << cvHostOut1.size() << std::endl;
+    std::cout << "[pipeline1][" << st << "][tile" << tileId 
+        << "] " << Util::ClockGetTime() << " Executing" << std::endl;
 
     Halide::Var t, xo, yo, xi, yi;
 
@@ -303,7 +306,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         float ratio = (float)bgArea / (float)(cvHostOut1.rows*cvHostOut1.cols);
     
         // check if there is too much background
-        std::cout << "bgArea: " << bgArea << ", cvSize: " << cvHostOut1.size() 
+        std::cout << "[pipeline1] tile " << tileId << " bgArea: " << bgArea 
+            << ", cvSize: " << cvHostOut1.size() 
             << ", cvArea: " << cvHostOut1.size().area() << std::endl;
         std::cout << "[get_background][" << tileId << "] ratio: " 
             << ratio << std::endl;
@@ -313,7 +317,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             return true; // abort if more than 90% background
         }
     std::cout << "[pipeline1][" << st << "][tile" << tileId
-            << "] get_bg done " << Util::ClockGetTime() << std::endl;
+            << "] " << Util::ClockGetTime() << " get_bg done" << std::endl;
     }
 
     // === invert =========================================================
@@ -341,7 +345,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         invert.realize(hRC);
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId
-            << "] invert done " << Util::ClockGetTime() << std::endl;
+            << "] " << Util::ClockGetTime() << " invert done" << std::endl;
     }
 
     // === erode/dilate 1 =================================================
@@ -351,16 +355,16 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
     erode(hRC, hOut1, hSE19, target, tileId, noSched);
     std::cout << "[pipeline1][" << st << "][tile" << tileId
-        << "] erode done " << Util::ClockGetTime() << std::endl;
+        << "] " << Util::ClockGetTime() << " erode done" << std::endl;
     dilate(hOut1, hOut2, hSE19, target, tileId, noSched);
     std::cout << "[pipeline1][" << st << "][tile" << tileId
-        << "] dilate done " << Util::ClockGetTime() << std::endl;
+        << "] " << Util::ClockGetTime() << " dilate done" << std::endl;
 
     if (noIWPP == 0) {
         // === imrecon ========================================================
         loopedIwppRecon(target, hRC, hOut2, noSched);
         std::cout << "[pipeline1][" << st << "][tile" << tileId
-            << "] Executing " << Util::ClockGetTime() << std::endl;
+            << "] " << Util::ClockGetTime() << " iwpp done" << std::endl;
 
         // === preFill ========================================================
         {
@@ -391,24 +395,25 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             preFill.realize(hOut2);
 
         std::cout << "[pipeline1][" << st << "][tile" << tileId
-                << "] prefill done " << Util::ClockGetTime() << std::endl;
+                << "] " << Util::ClockGetTime() << " prefill done" << std::endl;
         }
 
         // === dilate/erode 2 =================================================
         hSE3.set_host_dirty();
         dilate(hOut2, hOut1, hSE3, target, tileId, noSched);
         std::cout << "[pipeline1][" << st << "][tile" << tileId
-            << "] dilate2 done " << Util::ClockGetTime() << std::endl;
+            << "] " << Util::ClockGetTime() << " dilate2 done" << std::endl;
         erode(hOut1, hOut2, hSE3, target, tileId, noSched);
         std::cout << "[pipeline1][" << st << "][tile" << tileId
-            << "] erode2 done " << Util::ClockGetTime() << std::endl;
+            << "] " << Util::ClockGetTime() << " erode2 done" << std::endl;
+
     }
 
     if (target == ExecEngineConstants::GPU)
         hOut1.copy_to_host();
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId 
-        << "] Done " << Util::ClockGetTime() << std::endl;
+        << "] " << Util::ClockGetTime() << " Done" << std::endl;
 
     // cout << "[pipeline1_s] end " << Util::ClockGetTime() << endl;
 
