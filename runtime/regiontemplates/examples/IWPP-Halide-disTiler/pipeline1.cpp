@@ -49,7 +49,8 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     #endif
     if (target == ExecEngineConstants::CPU && noSched==0) {
         erode.tile(x, y, xo, yo, xi, yi, 16, 16);
-        erode.fuse(xo,yo,t).parallel(t);
+        //erode.fuse(xo,yo,t).parallel(t);
+        erode.parallel(yo);
     } else if (target == ExecEngineConstants::GPU) {
         hTarget.set_feature(Halide::Target::CUDA);
         hTarget.set_feature(Halide::Target::Debug);
@@ -119,7 +120,8 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     #endif
     if (target == ExecEngineConstants::CPU && noSched==0) {
         dilate.tile(x, y, xo, yo, xi, yi, 16, 16);
-        dilate.fuse(xo,yo,t).parallel(t);
+        //dilate.fuse(xo,yo,t).parallel(t);
+        dilate.parallel(yo);
     } else if (target == ExecEngineConstants::GPU) {
         hTarget.set_feature(Halide::Target::CUDA);
         hTarget.set_feature(Halide::Target::Debug);
@@ -300,7 +302,10 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         for (int i=0; i<hOut1.width(); i++)
             bgArea += dLineCount[i];
 
-        float ratio = (float)bgArea / (float)(cvHostOut1.rows*cvHostOut1.cols);
+        float ratio = ((long)cvHostOut1.rows) * ((long)cvHostOut1.cols);
+        std::cout << "[pipeline1] ratio1: " << ratio << std::endl;
+        ratio = bgArea / ratio;
+        std::cout << "[pipeline1] ratio2: " << ratio << std::endl;
     
         // check if there is too much background
         std::cout << "bgArea: " << bgArea << ", cvSize: " << cvHostOut1.size() 
@@ -369,6 +374,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             Halide::Func preFill;
 
             preFill(x,y) = 255*Halide::cast<uint8_t>((hRC(x,y) - hOut2(x,y)) > G1);
+            //preFill(x,y) = select((hRC(x,y) - hOut2(x,y)) > G1, Halide::cast<uint8_t>(255), Halide::cast<uint8_t>(0));
 
             // Set the borders as -inf (i.e., 0);
             preFill(x,0) = Halide::cast<uint8_t>(0);
@@ -380,7 +386,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             preFill.compute_root();
             if (target == ExecEngineConstants::CPU && noSched==0) {
                 preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
-                preFill.fuse(xo,yo,t).parallel(t);
+                //preFill.fuse(xo,yo,t).parallel(t);
+                preFill.parallel(yo);
             } else if (target == ExecEngineConstants::GPU) {
                 hTarget.set_feature(Halide::Target::CUDA);
                 hTarget.set_feature(Halide::Target::Debug);
