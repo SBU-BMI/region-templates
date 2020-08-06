@@ -62,8 +62,12 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
         st = "cpu";
     else if (target == ExecEngineConstants::GPU)
         st = "gpu";
-    
+
+    long ct1 = Util::ClockGetTime();    
     erode.compile_jit(hTarget);
+    long ct2 = Util::ClockGetTime();    
+    std::cout << "[pipeline1] compiled erode in " << (ct2-ct1) << " ms" << std::endl;
+
 
     #ifdef PROFILING_STAGES
     long st2 = Util::ClockGetTime();
@@ -134,7 +138,10 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     else if (target == ExecEngineConstants::GPU)
         st = "gpu";
 
+    long ct1 = Util::ClockGetTime();    
     dilate.compile_jit(hTarget);
+    long ct2 = Util::ClockGetTime();    
+    std::cout << "[pipeline1] compiled dilate in " << (ct2-ct1) << " ms" << std::endl;
 
     #ifdef PROFILING_STAGES
     long st2 = Util::ClockGetTime();
@@ -286,7 +293,10 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         Halide::Func get_bg;
         get_bg(x,y) = 255 * Halide::cast<uint8_t>(
             (hIn(x,y,0) > blue) & (hIn(x,y,1) > green) & (hIn(x,y,2) > red));
+        long ct1 = Util::ClockGetTime();
         get_bg.compile_jit(hTarget);
+        long ct2 = Util::ClockGetTime();
+        std::cout << "[pipeline1] compiled getbg in " << (ct2-ct1) << " ms" << std::endl;        
         get_bg.realize(hOut1);
     
         long bgArea = 0;
@@ -298,6 +308,11 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         Halide::Buffer<long> hLineCount = Halide::Buffer<long>(
             dLineCount, hOut1.width(), "hLineCount");
         hLineCount.set_host_dirty();
+        long ct3 = Util::ClockGetTime();
+        lcnz.compile_jit(hTarget);
+        long ct4 = Util::ClockGetTime();
+        std::cout << "[pipeline1] compiled contNZ in " << (ct4-ct3) << " ms" << std::endl;
+
         lcnz.realize(hLineCount);
         for (int i=0; i<hOut1.width(); i++)
             bgArea += dLineCount[i];
@@ -342,7 +357,11 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         }
         
         hRC.set_host_dirty();
+        long ct5 = Util::ClockGetTime();
         invert.compile_jit(hTarget);
+        long ct6 = Util::ClockGetTime();
+        std::cout << "[pipeline1] compiled invert in " << (ct6-ct5) << " ms" << std::endl;
+
         invert.realize(hRC);
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId
@@ -365,7 +384,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         // === imrecon ========================================================
         loopedIwppRecon(target, hRC, hOut2, noSched);
         std::cout << "[pipeline1][" << st << "][tile" << tileId
-            << "] Executing " << Util::ClockGetTime() << std::endl;
+            << "] IWPP " << Util::ClockGetTime() << std::endl;
 
         // === preFill ========================================================
         {
@@ -393,8 +412,12 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
                 hTarget.set_feature(Halide::Target::Debug);
                 preFill.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
             }
-            
+
+            long ct7 = Util::ClockGetTime();            
             preFill.compile_jit(hTarget);
+            long ct8 = Util::ClockGetTime();
+            std::cout << "[pipeline1] compiled prefill in " << (ct8-ct7) << " ms" << std::endl;
+
             preFill.realize(hOut2);
 
         std::cout << "[pipeline1][" << st << "][tile" << tileId
