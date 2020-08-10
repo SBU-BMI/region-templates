@@ -40,6 +40,8 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
         RTPipelineComponentBase::OUTPUT);
 };
 
+#define DEBUG
+
 void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>>& tiles, 
     std::string name) {
 
@@ -72,6 +74,7 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     // Gets RT for initial image
     rtId = this->rts_names[0];
     rtCur = this->getRegionTemplateInstance(rtId);
+std::cout << "===========1======= " << drName << std::endl;
 
     // Sets cost functions
     int bgThr = 200;
@@ -91,7 +94,8 @@ void RTF::Internal::AutoStage::localTileDRs(std::list<cv::Rect_<int64_t>>& tiles
     TiledMatCollection* tCollImg = new IrregTiledRTCollection(
         "local"+std::to_string(this->tileId), "local"+std::to_string(this->tileId), 
         "", border, cfunc, bgm, denseTilingAlg, nTiles);
-    
+    std::cout << "======2============" << std::endl;
+
     long stageTime1 = Util::ClockGetTime();
     // std::cout << "[PROFILING_SINGLE][STAGE][TILER] " << cvInitial.rows << "x" 
     //     << cvInitial.cols << " " << (stageTime1-stageTime0) << std::endl;
@@ -201,6 +205,8 @@ int RTF::Internal::AutoStage::run() {
     std::list<cv::Rect_<int64_t>> tiles;
     localTileDRs(tiles, tilesDRs);
 
+std::cout << "[here] 2" << std::endl;
+
     long stageTime2 = Util::ClockGetTime();
     // std::cout << "[PROFILING_SINGLE][STAGE][TILE] " << this->out_shape[0] << "x" 
     //     << this->out_shape[1] << " " << (stageTime2-stageTime1) << std::endl;
@@ -208,6 +214,7 @@ int RTF::Internal::AutoStage::run() {
     // Assemble a schedule map with the local pointers for the halide functions
     std::map<Target_t, HalGen*> local_schedules;
     for (std::pair<Target_t, std::string> s : this->schedules) {
+	std::cout << "[tmp] s: " << s.second << std::endl;
         local_schedules[s.first] = RTF::AutoStage::retrieveStage(s.second);
     }
 

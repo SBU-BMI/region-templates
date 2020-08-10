@@ -374,6 +374,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Verifies for hybrid execution
+int nnTiles = 16; //USED FOR A SINGLE TEST - DELETE LATER
     if (hybridExec == HYBRID) {
         float cpuPATS=1;
         float gpuPATS=gpc;
@@ -387,7 +388,7 @@ int main(int argc, char *argv[]) {
                 "input", Ipath, border, denseCostFunc);
         else if (denseTilingAlg == FIXED_GRID_TILING)
             denseTiler = new RegTiledRTCollection("input", 
-                "input", Ipath, nTiles, border, denseCostFunc);
+                "input", Ipath, nnTiles, border, denseCostFunc);
         else
             denseTiler = new IrregTiledRTCollection("input", 
                 "input", Ipath, border, denseCostFunc, bgm, 
@@ -453,9 +454,16 @@ int main(int argc, char *argv[]) {
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
     RegionTemplate* rtOut = newRT("rtOut");
-    for (int i=0; i<denseTiler->getNumRTs(); i++) {
-        RTF::AutoStage stage0({denseTiler->getRT(i).second, rtOut}, 
-            {new ArgumentInt(i), 
+    //for (int i=0; i<denseTiler->getNumRTs(); i++) {
+    for (int ii=0; ii<nTiles; ii++) {
+        int i=7; // Fix tile for RTF test - DELETE LATER
+	RegionTemplate* rtIi = new RegionTemplate;
+	char b[denseTiler->getRT(i).second->size()];
+	denseTiler->getRT(i).second->serialize(b);
+        rtIi->deserialize(b);
+        rtIi->setId(std::to_string(ii));
+        RTF::AutoStage stage0({rtIi, rtOut}, 
+            {new ArgumentInt(ii), 
              new ArgumentInt(blue), new ArgumentInt(green), new ArgumentInt(red), 
              new ArgumentInt(0),
              new ArgumentInt(disk19raw_width), new ArgumentIntArray(disk19raw, disk19raw_size),
@@ -465,7 +473,7 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(noIrregularComp)}, 
             {tiles[i].height, tiles[i].width}, {&pipeline1_s}, 
             // denseTiler->getTileTarget(i), i);
-            tgt(hybridExec, denseTiler->getTileTarget(i)), i);
+            tgt(hybridExec, denseTiler->getTileTarget(i)), ii);
         stage0.genStage(sysEnv);
 
         // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
