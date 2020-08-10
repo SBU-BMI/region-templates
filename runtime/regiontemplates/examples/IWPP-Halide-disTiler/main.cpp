@@ -1,30 +1,30 @@
-#include <iostream>
 #include <stdio.h>
+#include <iostream>
 
-#include "cv.hpp"
 #include "Halide.h"
+#include "cv.hpp"
 
 #include "AutoStage.h"
+#include "ExecEngineConstants.h"
 #include "IwppRecon.h"
 #include "RegionTemplate.h"
-#include "ExecEngineConstants.h"
 #include "Util.h"
 
-#include "TiledRTCollection.h"
-#include "RegTiledRTCollection.h"
-#include "IrregTiledRTCollection.h"
-#include "HybridDenseTiledRTCollection.h"
 #include "BGPreTiledRTCollection.h"
+#include "HybridDenseTiledRTCollection.h"
+#include "IrregTiledRTCollection.h"
+#include "RegTiledRTCollection.h"
+#include "TiledRTCollection.h"
 #include "costFuncs/BGMasker.h"
 
 #include "CostFunction.h"
-#include "costFuncs/ThresholdBGMasker.h"
+#include "costFuncs/AreaCostFunction.h"
 #include "costFuncs/ColorThresholdBGMasker.h"
-#include "costFuncs/ThresholdBGCostFunction.h"
+#include "costFuncs/MultiObjCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PropagateDistCostFunction.h"
-#include "costFuncs/MultiObjCostFunction.h"
-#include "costFuncs/AreaCostFunction.h"
+#include "costFuncs/ThresholdBGCostFunction.h"
+#include "costFuncs/ThresholdBGMasker.h"
 
 #include "HalideIwpp.h"
 #include "pipeline1.h"
@@ -46,7 +46,7 @@ enum CostFunction_t {
     MV_THRS_AREA,
 };
 
-// Should use ExecEngineConstants::GPU ... 
+// Should use ExecEngineConstants::GPU ...
 typedef int Target_t;
 
 inline Target_t tgt(HybridExec_t exec, Target_t target) {
@@ -61,23 +61,21 @@ inline Target_t tgt(HybridExec_t exec, Target_t target) {
 }
 
 int findArgPos(std::string s, int argc, char** argv) {
-    for (int i=1; i<argc; i++)
-        if (std::string(argv[i]).compare(s)==0)
-            return i;
+    for (int i = 1; i < argc; i++)
+        if (std::string(argv[i]).compare(s) == 0) return i;
     return -1;
 }
 
 static struct : RTF::HalGen {
-    std::string getName() {return "pipeline1";}
-    bool realize(std::vector<cv::Mat>& im_ios, Target_t target, 
+    std::string getName() { return "pipeline1"; }
+    bool realize(std::vector<cv::Mat>& im_ios, Target_t target,
                  std::vector<ArgumentBase*>& params) {
         pipeline1(im_ios, target, params);
     }
 } pipeline1_s;
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
 
-int main(int argc, char *argv[]) {
-
+int main(int argc, char* argv[]) {
     // Manages inputs
     if (argc < 2) {
         cout << "Usage: ./iwpp <I image> [ARGS]" << endl;
@@ -102,16 +100,15 @@ int main(int argc, char *argv[]) {
         cout << "\t--nic (no halide scheduling: pipeline will execute "
              << " serially when selected)" << endl;
 
-
         cout << "=== Hybrid execution options:" << endl;
         cout << "\t-a <execution option>" << endl;
         cout << "\t\tValues (default=0):" << endl;
         cout << "\t\t0: CPU-only execution" << endl;
         cout << "\t\t1: GPU-only execution" << endl;
         cout << "\t\t2: Hybrid execution" << endl;
-        
+
         cout << "\t--gp <float value of PATS: gpu/cpu (default=1)>" << endl;
-        
+
         cout << "\t--gn <gpu tiler multiplier (default=1)>" << endl;
 
         cout << "=== Pre-tiler (PT) options:" << endl;
@@ -141,11 +138,13 @@ int main(int argc, char *argv[]) {
         cout << "\t\tValues (default=2):" << endl;
         cout << "\t\t2: LIST_ALG_EXPECT" << endl;
         cout << "\t\t1: LIST_ALG_HALF" << endl;
-        
-        // cout << "\t-xb (sort background tiles with area cost function)" << endl;
 
-        // cout << "\t-tb (tile background tiles with area cost function)" << endl;
-        
+        // cout << "\t-xb (sort background tiles with area cost function)" <<
+        // endl;
+
+        // cout << "\t-tb (tile background tiles with area cost function)" <<
+        // endl;
+
         exit(0);
     }
 
@@ -158,24 +157,24 @@ int main(int argc, char *argv[]) {
     // Number of cpu threads
     int cpuThreads = 0;
     if (findArgPos("-c", argc, argv) != -1) {
-        cpuThreads = atoi(argv[findArgPos("-c", argc, argv)+1]);
+        cpuThreads = atoi(argv[findArgPos("-c", argc, argv) + 1]);
     }
 
     // Number of gpu threads
     int gpuThreads = 0;
     if (findArgPos("-g", argc, argv) != -1) {
-        gpuThreads = atoi(argv[findArgPos("-g", argc, argv)+1]);
+        gpuThreads = atoi(argv[findArgPos("-g", argc, argv) + 1]);
     }
 
     // Number of expected dense tiles for irregular tiling
     int nTiles = 1;
     if (findArgPos("-t", argc, argv) != -1) {
-        nTiles = atoi(argv[findArgPos("-t", argc, argv)+1]);
+        nTiles = atoi(argv[findArgPos("-t", argc, argv) + 1]);
     }
 
     int border = 0;
     if (findArgPos("-b", argc, argv) != -1) {
-        border = atoi(argv[findArgPos("-b", argc, argv)+1]);
+        border = atoi(argv[findArgPos("-b", argc, argv) + 1]);
     }
 
     // Threshold cost function parameters
@@ -183,12 +182,12 @@ int main(int argc, char *argv[]) {
     int erode_param = 4;
     int dilate_param = 2;
     if (findArgPos("-p", argc, argv) != -1) {
-        std::string params = argv[findArgPos("-p", argc, argv)+1];
+        std::string params = argv[findArgPos("-p", argc, argv) + 1];
         std::size_t l = params.find_last_of("/");
-        dilate_param = atoi(params.substr(l+1).c_str());
+        dilate_param = atoi(params.substr(l + 1).c_str());
         params = params.substr(0, l);
         l = params.find_last_of("/");
-        erode_param = atoi(params.substr(l+1).c_str());
+        erode_param = atoi(params.substr(l + 1).c_str());
         bgThr = atoi(params.substr(0, l).c_str());
     }
 
@@ -218,19 +217,19 @@ int main(int argc, char *argv[]) {
     HybridExec_t hybridExec = CPU_ONLY;
     if (findArgPos("-a", argc, argv) != -1) {
         hybridExec = static_cast<HybridExec_t>(
-            atoi(argv[findArgPos("-a", argc, argv)+1]));
+            atoi(argv[findArgPos("-a", argc, argv) + 1]));
     }
 
     // GPU PATS parameter
     float gpc = 1;
     if (findArgPos("--gp", argc, argv) != -1) {
-        gpc = atof(argv[findArgPos("--gp", argc, argv)+1]);
+        gpc = atof(argv[findArgPos("--gp", argc, argv) + 1]);
     }
 
     // GPU tiles multiplier
     float gn = 1;
     if (findArgPos("--gn", argc, argv) != -1) {
-        gn = atoi(argv[findArgPos("--gn", argc, argv)+1]);
+        gn = atoi(argv[findArgPos("--gn", argc, argv) + 1]);
     }
 
     // No pre-tiling execution
@@ -243,31 +242,31 @@ int main(int argc, char *argv[]) {
     TilerAlg_t denseTilingAlg = FIXED_GRID_TILING;
     if (findArgPos("-d", argc, argv) != -1) {
         denseTilingAlg = static_cast<TilerAlg_t>(
-            atoi(argv[findArgPos("-d", argc, argv)+1]));
+            atoi(argv[findArgPos("-d", argc, argv) + 1]));
     }
 
     // Dense tiling algorithm
     CostFunction_t denseCostf = THRS;
     if (findArgPos("-f", argc, argv) != -1) {
         denseCostf = static_cast<CostFunction_t>(
-            atoi(argv[findArgPos("-f", argc, argv)+1]));
+            atoi(argv[findArgPos("-f", argc, argv) + 1]));
     }
 
     // Threshold cost function parameters
     int execBias = 1;
     int loadBias = 100;
     if (findArgPos("-m", argc, argv) != -1) {
-        std::string params = argv[findArgPos("-m", argc, argv)+1];
+        std::string params = argv[findArgPos("-m", argc, argv) + 1];
         std::size_t l = params.find_last_of("/");
         execBias = atoi(params.substr(0, l).c_str());
-        loadBias = atoi(params.substr(l+1).c_str());
+        loadBias = atoi(params.substr(l + 1).c_str());
     }
 
     // BG tiling algorithm
     TilerAlg_t bgTilingAlg = LIST_ALG_EXPECT;
     if (findArgPos("-k", argc, argv) != -1) {
         bgTilingAlg = static_cast<TilerAlg_t>(
-            atoi(argv[findArgPos("-k", argc, argv)+1]));
+            atoi(argv[findArgPos("-k", argc, argv) + 1]));
     }
 
     if (noTiling && tilingOnly) {
@@ -283,19 +282,19 @@ int main(int argc, char *argv[]) {
 
     switch (hybridExec) {
         case CPU_ONLY:
-            argv[findArgPos("-g", argc, argv)+1][0] = '0';
+            argv[findArgPos("-g", argc, argv) + 1][0] = '0';
             cout << "[main] WARNING: GPU threads not created "
-                << "due to CPU_ONLY execution." << endl;
+                 << "due to CPU_ONLY execution." << endl;
             break;
         case GPU_ONLY:
-            argv[findArgPos("-c", argc, argv)+1][0] = '0';
+            argv[findArgPos("-c", argc, argv) + 1][0] = '0';
             cout << "[main] WARNING: CPU threads not created "
-                << "due to GPU_ONLY execution." << endl;
+                 << "due to GPU_ONLY execution." << endl;
             break;
         case HYBRID:
             if (findArgPos("-h", argc, argv) == -1) {
                 cout << "[main] Hybrid execution must be with halide queue. "
-                    << "Please run with -h." << endl;
+                     << "Please run with -h." << endl;
                 exit(0);
             }
             break;
@@ -319,39 +318,33 @@ int main(int argc, char *argv[]) {
     int reconConnectivity = 4;
     // 19x19
     int disk19raw_width = 19;
-    int disk19raw_size = disk19raw_width*disk19raw_width;
+    int disk19raw_size = disk19raw_width * disk19raw_width;
     int disk19raw[disk19raw_size] = {
-        0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
-        0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-        0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-        0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
-        0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-        0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
-    
+        0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+        0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
+
     // 3x3
     int se3raw_width = 3;
-    int se3raw_size = se3raw_width*se3raw_width;
-    int se3raw[se3raw_size] = {
-        1, 1, 1,
-        1, 1, 1, 
-        1, 1, 1};
-    
-    #ifdef PROFILING
+    int se3raw_size = se3raw_width * se3raw_width;
+    int se3raw[se3raw_size] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+#ifdef PROFILING
     long tilingT1 = Util::ClockGetTime();
-    #endif
+#endif
 
     // Tilers
     TiledRTCollection* denseTiler;
@@ -361,8 +354,8 @@ int main(int argc, char *argv[]) {
     BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     CostFunction* denseCostFunc;
     if (denseCostf == THRS)
-        denseCostFunc = new ThresholdBGCostFunction(
-            static_cast<ThresholdBGMasker*>(bgm));
+        denseCostFunc =
+            new ThresholdBGCostFunction(static_cast<ThresholdBGMasker*>(bgm));
     else
         denseCostFunc = new MultiObjCostFunction(
             static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
@@ -374,30 +367,30 @@ int main(int argc, char *argv[]) {
     }
 
     // Verifies for hybrid execution
-int nnTiles = 16; //USED FOR A SINGLE TEST - DELETE LATER
+    int nnTiles = 64;  // USED FOR A SINGLE TEST - DELETE LATER
     if (hybridExec == HYBRID) {
-        float cpuPATS=1;
-        float gpuPATS=gpc;
+        float cpuPATS = 1;
+        float gpuPATS = gpc;
         denseTiler = new HybridDenseTiledRTCollection(
-            "input", "input", Ipath, border, denseCostFunc, bgm, 
-            denseTilingAlg, nTiles, nTiles*gn, cpuPATS, gpuPATS);
+            "input", "input", Ipath, border, denseCostFunc, bgm, denseTilingAlg,
+            nTiles, nTiles * gn, cpuPATS, gpuPATS);
     } else {
         // Creates dense tiling collection
         if (noTiling)
-            denseTiler = new TiledRTCollection("input", 
-                "input", Ipath, border, denseCostFunc);
+            denseTiler = new TiledRTCollection("input", "input", Ipath, border,
+                                               denseCostFunc);
         else if (denseTilingAlg == FIXED_GRID_TILING)
-            denseTiler = new RegTiledRTCollection("input", 
-                "input", Ipath, nnTiles, border, denseCostFunc);
+            denseTiler = new RegTiledRTCollection(
+                "input", "input", Ipath, nnTiles, border, denseCostFunc);
         else
-            denseTiler = new IrregTiledRTCollection("input", 
-                "input", Ipath, border, denseCostFunc, bgm, 
-                denseTilingAlg, nTiles);
+            denseTiler = new IrregTiledRTCollection("input", "input", Ipath,
+                                                    border, denseCostFunc, bgm,
+                                                    denseTilingAlg, nTiles);
     }
 
     // Performs pre-tiling, if required
-    BGPreTiledRTCollection preTiler("input", "input", 
-        Ipath, border, denseCostFunc, bgm);
+    BGPreTiledRTCollection preTiler("input", "input", Ipath, border,
+                                    denseCostFunc, bgm);
     if (preTiling && !noTiling) {
         // Performs actual tiling
         preTiler.addImage(Ipath);
@@ -414,17 +407,19 @@ int nnTiles = 16; //USED FOR A SINGLE TEST - DELETE LATER
     // BG tiling
     if (preTiling && !noTiling) {
         // Calculates the number of expected tiles as a multiple of nTiles
-        int bgTilesExpected = (std::floor(preTiler.getBgSize()/nTiles)+1)*nTiles;
+        int bgTilesExpected =
+            (std::floor(preTiler.getBgSize() / nTiles) + 1) * nTiles;
         if (hybridExec == HYBRID) {
             bgTiler = new HybridDenseTiledRTCollection(
-                "input", "input", Ipath, border, bgCostFunc, bgm, 
-                bgTilingAlg, bgTilesExpected, 0, 1, 1);
+                "input", "input", Ipath, border, bgCostFunc, bgm, bgTilingAlg,
+                bgTilesExpected, 0, 1, 1);
             // bgTiler = new HybridDenseTiledRTCollection(
-            //     "input", "input", Ipath, border, bgCostFunc, bgm, 
+            //     "input", "input", Ipath, border, bgCostFunc, bgm,
             //     bgTilingAlg, bgTilesExpected/2, bgTilesExpected/2, 1, 1);
-        } else  {
-            bgTiler = new IrregTiledRTCollection("input", "input", Ipath, 
-                border, bgCostFunc, bgm, bgTilingAlg, bgTilesExpected);
+        } else {
+            bgTiler = new IrregTiledRTCollection("input", "input", Ipath,
+                                                 border, bgCostFunc, bgm,
+                                                 bgTilingAlg, bgTilesExpected);
         }
 
         bgTiler->setPreTiles(preTiler.getBg());
@@ -442,44 +437,40 @@ int nnTiles = 16; //USED FOR A SINGLE TEST - DELETE LATER
     std::list<cv::Rect_<int64_t>> l = denseTiler->getTiles()[0];
     cout << "[main] Tiles generated: " << l.size() << endl;
     for (cv::Rect_<int64_t> tile : l) {
-        // std::cout << tile.x << ":" << tile.width << "," 
-        //     << tile.y << ":" << tile.height << std::endl;
+        // std::cout << tile.x << ":" << tile.width << "," << tile.y << ":"
+        //           << tile.height << std::endl;
         tiles.emplace_back(tile);
     }
 
-    #ifdef PROFILING
+#ifdef PROFILING
     long tilingT2 = Util::ClockGetTime();
-    #endif
+#endif
 
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
     RegionTemplate* rtOut = newRT("rtOut");
-    //for (int i=0; i<denseTiler->getNumRTs(); i++) {
-    for (int ii=0; ii<nTiles; ii++) {
-        int i=7; // Fix tile for RTF test - DELETE LATER
-	RegionTemplate* rtIi = new RegionTemplate;
-	char b[denseTiler->getRT(i).second->size()];
-	denseTiler->getRT(i).second->serialize(b);
-        rtIi->deserialize(b);
-        rtIi->setId(std::to_string(ii));
-        RTF::AutoStage stage0({rtIi, rtOut}, 
-            {new ArgumentInt(ii), 
-             new ArgumentInt(blue), new ArgumentInt(green), new ArgumentInt(red), 
-             new ArgumentInt(0),
-             new ArgumentInt(disk19raw_width), new ArgumentIntArray(disk19raw, disk19raw_size),
-             new ArgumentInt(G1),
-             new ArgumentInt(se3raw_width), new ArgumentIntArray(se3raw, se3raw_size),
-             new ArgumentInt(halNoSched), 
-             new ArgumentInt(noIrregularComp)}, 
-            {tiles[i].height, tiles[i].width}, {&pipeline1_s}, 
+    // for (int i=0; i<denseTiler->getNumRTs(); i++) {
+    int init = 0;
+    int ii = 33;
+    for (int i = init; i < init + nTiles; i++) {
+        RTF::AutoStage stage0(
+            {denseTiler->getRT(i).second, rtOut},
+            {new ArgumentInt(i), new ArgumentInt(blue), new ArgumentInt(green),
+             new ArgumentInt(red), new ArgumentInt(0),
+             new ArgumentInt(disk19raw_width),
+             new ArgumentIntArray(disk19raw, disk19raw_size),
+             new ArgumentInt(G1), new ArgumentInt(se3raw_width),
+             new ArgumentIntArray(se3raw, se3raw_size),
+             new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp)},
+            {tiles[ii].height, tiles[ii].width}, {&pipeline1_s},
             // denseTiler->getTileTarget(i), i);
-            tgt(hybridExec, denseTiler->getTileTarget(i)), ii);
+            tgt(hybridExec, denseTiler->getTileTarget(ii)), i);
         stage0.genStage(sysEnv);
 
-        // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon}, 
-        //     {new ArgumentInt(0), new ArgumentInt(0), 
-        //      new ArgumentInt(i), new ArgumentInt(iwppOp)}, 
-        //     {tiles[i].height, tiles[i].width}, {&imreconstruct}, 
+        // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon},
+        //     {new ArgumentInt(0), new ArgumentInt(0),
+        //      new ArgumentInt(i), new ArgumentInt(iwppOp)},
+        //     {tiles[i].height, tiles[i].width}, {&imreconstruct},
         //     tgt(tilingAlg, denseTiler->getTileTarget(i)), i);
         // stage5.after(&stage4);
         // stage5.genStage(sysEnv);
@@ -488,12 +479,12 @@ int nnTiles = 16; //USED FOR A SINGLE TEST - DELETE LATER
     sysEnv.startupExecution();
     sysEnv.finalizeSystem();
 
-    #ifdef PROFILING
+#ifdef PROFILING
     long fullExecT2 = Util::ClockGetTime();
     cout << "[PROFILING][TILES] " << tiles.size() << endl;
-    cout << "[PROFILING][TILING_TIME] " << (tilingT2-tilingT1) << endl;
-    cout << "[PROFILING][FULL_TIME] " << (fullExecT2-fullExecT1) << endl;
-    #endif
+    cout << "[PROFILING][TILING_TIME] " << (tilingT2 - tilingT1) << endl;
+    cout << "[PROFILING][FULL_TIME] " << (fullExecT2 - fullExecT1) << endl;
+#endif
 
     return 0;
 }
