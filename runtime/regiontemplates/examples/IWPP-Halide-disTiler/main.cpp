@@ -148,9 +148,6 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
-    SysEnv sysEnv;
-    sysEnv.startupSystem(argc, argv, "libautostage.so");
-
     // Input images
     std::string Ipath = std::string(argv[1]);
 
@@ -300,6 +297,9 @@ int main(int argc, char* argv[]) {
             break;
     }
 
+    SysEnv sysEnv;
+    sysEnv.startupSystem(argc, argv, "libautostage.so");
+
 #ifdef PROFILING
     long fullExecT1 = Util::ClockGetTime();
 #endif
@@ -367,7 +367,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Verifies for hybrid execution
-    int nnTiles = 64;  // USED FOR A SINGLE TEST - DELETE LATER
+    //int nnTiles = 64;  // USED FOR A SINGLE TEST - DELETE LATER
     if (hybridExec == HYBRID) {
         float cpuPATS = 1;
         float gpuPATS = gpc;
@@ -381,7 +381,7 @@ int main(int argc, char* argv[]) {
                                                denseCostFunc);
         else if (denseTilingAlg == FIXED_GRID_TILING)
             denseTiler = new RegTiledRTCollection(
-                "input", "input", Ipath, nnTiles, border, denseCostFunc);
+                "input", "input", Ipath, nTiles, border, denseCostFunc);
         else
             denseTiler = new IrregTiledRTCollection("input", "input", Ipath,
                                                     border, denseCostFunc, bgm,
@@ -449,10 +449,10 @@ int main(int argc, char* argv[]) {
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
     RegionTemplate* rtOut = newRT("rtOut");
-    // for (int i=0; i<denseTiler->getNumRTs(); i++) {
-    int init = 0;
-    int ii = 33;
-    for (int i = init; i < init + nTiles; i++) {
+    for (int i=0; i<denseTiler->getNumRTs(); i++) {
+    //int init = 0;
+    //int ii = 33;
+    //for (int i = init; i < init + nTiles; i++) {
         RTF::AutoStage stage0(
             {denseTiler->getRT(i).second, rtOut},
             {new ArgumentInt(i), new ArgumentInt(blue), new ArgumentInt(green),
@@ -462,9 +462,9 @@ int main(int argc, char* argv[]) {
              new ArgumentInt(G1), new ArgumentInt(se3raw_width),
              new ArgumentIntArray(se3raw, se3raw_size),
              new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp)},
-            {tiles[ii].height, tiles[ii].width}, {&pipeline1_s},
+            {tiles[i].height, tiles[i].width}, {&pipeline1_s},
             // denseTiler->getTileTarget(i), i);
-            tgt(hybridExec, denseTiler->getTileTarget(ii)), i);
+            tgt(hybridExec, denseTiler->getTileTarget(i)), i);
         stage0.genStage(sysEnv);
 
         // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon},

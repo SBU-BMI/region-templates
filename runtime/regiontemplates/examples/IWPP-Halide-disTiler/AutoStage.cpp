@@ -54,7 +54,7 @@ void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>>& tiles,
     }
     cv::imwrite(name + ".png", img);
 }
-
+//#define DEBUG
 void RTF::Internal::AutoStage::localTileDRs(
     std::list<cv::Rect_<int64_t>>& tiles,
     std::vector<std::vector<DenseDataRegion2D*>>& allTiles) {
