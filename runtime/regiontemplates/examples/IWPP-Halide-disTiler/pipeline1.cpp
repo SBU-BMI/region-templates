@@ -14,7 +14,7 @@
 // Structuring element must have odd width and height
 void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
            Halide::Buffer<uint8_t> hSE, Target_t target, int tileId,
-           int noSched) {
+           int noSched, int gpuId = -1) {
     // #ifdef PROFILING_STAGES
     long st1 = Util::ClockGetTime();
     // #endif
@@ -76,6 +76,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
          << "][STAGE_HAL_COMP][erode] " << (st2 - st1) << endl;
 #endif
 
+    if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
     erode.realize(hOut);
 
     // #ifdef PROFILING_STAGES
@@ -91,7 +92,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 // Structuring element must have odd width and height
 void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
             Halide::Buffer<uint8_t> hSE, Target_t target, int tileId,
-            int noSched) {
+            int noSched, int gpuId = -1) {
     // #ifdef PROFILING_STAGES
     long st0 = Util::ClockGetTime();
     // #endif
@@ -151,6 +152,7 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
          << "][STAGE_HAL_COMP][dilate] " << (st2 - st0) << endl;
 #endif
 
+    if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
     dilate.realize(hOut);
 
     // #ifdef PROFILING_STAGES
@@ -295,7 +297,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     // pthread_barrier_wait (&barrier);
     // cout << "[pipeline1] begin " << Util::ClockGetTime() << endl;
 
-    // === get-background =================================================
+    // === get-background =====================================================
     {
         Halide::Var x, y, c;
         Halide::Func get_bg;
@@ -347,7 +349,14 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
                   << Util::ClockGetTime() << " get_bg done" << std::endl;
     }
 
-    // === invert =========================================================
+    // Get GPU id for multi-gpu execution
+    int gpuId = -1;
+    if (target == ExecEngineConstants::GPU) {
+	multi_gpu::setGpuCount(2);
+        gpuId = multi_gpu::getUniqueGpuId();
+    }
+
+    // === invert =============================================================
     {
         if (channel == -1)
             assert(cvHostIn.channels() == 1);
@@ -375,29 +384,31 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         std::cout << "[pipeline1] compiled invert in " << (ct6 - ct5) << " ms"
                   << std::endl;
 
+        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
         invert.realize(hRC);
 
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " invert done" << std::endl;
     }
 
-    // === erode/dilate 1 =================================================
+    // === erode/dilate 1 =====================================================
     hOut1.set_host_dirty();
     hOut2.set_host_dirty();
     hSE19.set_host_dirty();
 
-    erode(hRC, hOut1, hSE19, target, tileId, noSched);
+    erode(hRC, hOut1, hSE19, target, tileId, noSched, gpuId);
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " erode done" << std::endl;
-    dilate(hOut1, hOut2, hSE19, target, tileId, noSched);
+    dilate(hOut1, hOut2, hSE19, target, tileId, noSched, gpuId);
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " dilate done" << std::endl;
 
     if (noIWPP == 0) {
         // === imrecon ========================================================
-        loopedIwppRecon(target, hRC, hOut2, noSched);
-        std::cout << "[pipeline1][" << st << "][tile" << tileId << "] IWPP "
-                  << Util::ClockGetTime() << std::endl;
+        int its = loopedIwppRecon(target, hRC, hOut2, noSched, gpuId);
+        std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
+                  << Util::ClockGetTime() << " IWPP with " << its
+                  << " iterations" << std::endl;
 
         // === preFill ========================================================
         {
@@ -434,6 +445,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             std::cout << "[pipeline1] compiled prefill in " << (ct8 - ct7)
                       << " ms" << std::endl;
 
+            if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
             preFill.realize(hOut2);
 
             std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
@@ -442,10 +454,10 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
         // === dilate/erode 2 =================================================
         hSE3.set_host_dirty();
-        dilate(hOut2, hOut1, hSE3, target, tileId, noSched);
+        dilate(hOut2, hOut1, hSE3, target, tileId, noSched, gpuId);
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " dilate2 done" << std::endl;
-        erode(hOut1, hOut2, hSE3, target, tileId, noSched);
+        erode(hOut1, hOut2, hSE3, target, tileId, noSched, gpuId);
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " erode2 done" << std::endl;
     }
@@ -457,5 +469,11 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
     // cout << "[pipeline1_s] end " << Util::ClockGetTime() << endl;
 
+    // Release GPU id for multi-gpu execution
+    if (target == ExecEngineConstants::GPU) {
+        multi_gpu::releaseUniqueGpuId(gpuId);
+    }
+
     return false;
 }
+

@@ -4,13 +4,12 @@
 
 template <typename T>
 Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target) {
-
     // Performs parallel sum on the coordinate with the highest value
-    Halide::RDom r({{0,JJ.width()},{0,JJ.height()}}, "r");
+    Halide::RDom r({{0, JJ.width()}, {0, JJ.height()}}, "r");
     Halide::Var x("x");
     Halide::Func pSum("pSum");
-    pSum(x) = Halide::cast<long>(0);//Halide::undef<uint16_t>();
-    pSum(r.x) += Halide::cast<long>(JJ(r.x,r.y));
+    pSum(x) = Halide::cast<long>(0);  // Halide::undef<uint16_t>();
+    pSum(r.x) += Halide::cast<long>(JJ(r.x, r.y));
 
     // Schedule
     Halide::RVar rxo, rxi;
@@ -20,9 +19,9 @@ Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target) {
 
     // Compile
     Halide::Target hTarget = Halide::get_host_target();
-    #ifdef LARGEB
+#ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
-    #endif
+#endif
 
     if (target == ExecEngineConstants::GPU) {
         hTarget.set_feature(Halide::Target::CUDA);
@@ -37,9 +36,8 @@ Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target) {
 
 // It is assumed that the data is already on the proper device/host
 // Returns the number of iterations
-int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI, 
-    Halide::Buffer<uint8_t>& hJ, int noSched) {
-
+int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
+                    Halide::Buffer<uint8_t>& hJ, int noSched, int gpuId) {
     // Initial time
     long st0, st1, st2, st3, st4, st5;
     long sti0, sti1, sti2;
@@ -54,94 +52,97 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
 
     // Raster definition
     using Halide::clamp;
-    rasterx(x,y) = Halide::undef<unsigned char>();
-    Halide::Expr maxDr = max(rasterx(prop.x,clamp(prop.y-1,0,h-1)), 
-                         max(rasterx(prop.x,prop.y), 
-                             rasterx(clamp(prop.x-1, 0, w-1),prop.y)));
-    rasterx(prop.x,prop.y) = min(hI(prop.x,prop.y), maxDr);
+    rasterx(x, y) = Halide::undef<unsigned char>();
+    Halide::Expr maxDr = max(rasterx(prop.x, clamp(prop.y - 1, 0, h - 1)),
+                             max(rasterx(prop.x, prop.y),
+                                 rasterx(clamp(prop.x - 1, 0, w - 1), prop.y)));
+    rasterx(prop.x, prop.y) = min(hI(prop.x, prop.y), maxDr);
 
     // Anti-raster definition
-    arasterx(x,y) = Halide::undef<unsigned char>();
-    Halide::Expr maxDar = max(arasterx(w-prop.x-1,clamp(h-prop.y,0,h-1)), 
-                          max(arasterx(w-prop.x-1,h-prop.y-1), 
-                              arasterx(clamp(w-prop.x,0,w-1),h-prop.y-1)));
-    arasterx(w-prop.x-1,h-prop.y-1) = min(hI(w-prop.x-1,h-prop.y-1), maxDar);
+    arasterx(x, y) = Halide::undef<unsigned char>();
+    Halide::Expr maxDar =
+        max(arasterx(w - prop.x - 1, clamp(h - prop.y, 0, h - 1)),
+            max(arasterx(w - prop.x - 1, h - prop.y - 1),
+                arasterx(clamp(w - prop.x, 0, w - 1), h - prop.y - 1)));
+    arasterx(w - prop.x - 1, h - prop.y - 1) =
+        min(hI(w - prop.x - 1, h - prop.y - 1), maxDar);
 
     // std::cout << "size: " << h << "x" << w << std::endl;
 
     // Scheduling variables
     Halide::Target hTarget = Halide::get_host_target();
-    #ifdef LARGEB
+#ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
-    #endif
+#endif
     Halide::RVar rxi("rxi"), rxo("rxo"), ryi("ryi"), ryo("ryo");
-    
+
     string st;
-    if (target == ExecEngineConstants::CPU && noSched==0) {
+    if (target == ExecEngineConstants::CPU && noSched == 0) {
         st = "cpu";
-        int sFactor = h/56; // i.e., bridges 28 cores times 2 (for load imbalance)
+        int sFactor =
+            h / 56;  // i.e., bridges 28 cores times 2 (for load imbalance)
         // Schedules Raster
-        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        rasterx.update(0).split(prop.y, ryo, ryi, sFactor, 
-            Halide::TailStrategy::GuardWithIf);
+        rasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        rasterx.update(0).split(prop.y, ryo, ryi, sFactor,
+                                Halide::TailStrategy::GuardWithIf);
         rasterx.update(0).parallel(ryo);
 
         // Schedules Anti-Raster
-        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        arasterx.update(0).split(prop.y, ryo, ryi, sFactor, 
-            Halide::TailStrategy::GuardWithIf);
+        arasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        arasterx.update(0).split(prop.y, ryo, ryi, sFactor,
+                                 Halide::TailStrategy::GuardWithIf);
         arasterx.update(0).parallel(ryo);
     } else if (target == ExecEngineConstants::GPU) {
-        #ifdef WITH_CUDA
+#ifdef WITH_CUDA
         st = "gpu";
         hTarget.set_feature(Halide::Target::CUDA);
 
         // std::cout << "[" << st << "][IWPP] With CUDA" << std::endl;
 
-        float expected = 1664; // GTX 970
+        float expected = 1664;  // GTX 970
         // Performs long area multiplication, avoiding overflow
-        long area = (long)(h)*(long)(w);
+        long area = (long)(h) * (long)(w);
         // minYScanlines must be int for Halide::split()
         int minYScanlines = (float)(area) / expected;
         minYScanlines = sqrt(minYScanlines) * 0.85;
-        int minXsize = minYScanlines; // for reordering
-        int threadsSize = 32; // for no reordering
-        // std::cout << "[" << st << "][IWPP] Tile size: " 
+        int minXsize = minYScanlines;  // for reordering
+        int threadsSize = 32;          // for no reordering
+        // std::cout << "[" << st << "][IWPP] Tile size: "
         //     << minYScanlines << std::endl;
-        
+
         // Schedules Raster
         rasterx.gpu_blocks(y).gpu_threads(x);
         arasterx.gpu_blocks(y).gpu_threads(x);
-        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines, 
-            Halide::TailStrategy::GuardWithIf);
-        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
-        arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines, 
-            Halide::TailStrategy::GuardWithIf);
+        rasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines,
+                                Halide::TailStrategy::GuardWithIf);
+        arasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines,
+                                 Halide::TailStrategy::GuardWithIf);
 
-        rasterx.update(0).split(prop.x, rxo, rxi, minXsize, 
-            Halide::TailStrategy::GuardWithIf);
-        rasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+        rasterx.update(0).split(prop.x, rxo, rxi, minXsize,
+                                Halide::TailStrategy::GuardWithIf);
+        rasterx.update(0).reorder(rxi, ryi, rxo, ryo);
         rasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
-        arasterx.update(0).split(prop.x, rxo, rxi, minXsize, 
-            Halide::TailStrategy::GuardWithIf);
-        arasterx.update(0).reorder(rxi,ryi,rxo,ryo);
+        arasterx.update(0).split(prop.x, rxo, rxi, minXsize,
+                                 Halide::TailStrategy::GuardWithIf);
+        arasterx.update(0).reorder(rxi, ryi, rxo, ryo);
         arasterx.update(0).gpu_blocks(ryo).gpu_threads(rxo);
-        #else
+#else
         std::cout << "[HalideIwpp] Attempted to schedule for GPU without "
-            << "CUDA support." << std::endl;
+                  << "CUDA support." << std::endl;
         exit(-1);
-        #endif // if WITH_CUDA
+#endif  // if WITH_CUDA
     }
 
     hTarget.set_feature(Halide::Target::Debug);
 
-
     rasterx.compile_jit(hTarget);
     arasterx.compile_jit(hTarget);
 
-    //rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML, hTarget);
-    //arasterx.compile_to_lowered_stmt("arasterx.html", {}, Halide::HTML, hTarget);
+    // rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML,
+    // hTarget); arasterx.compile_to_lowered_stmt("arasterx.html", {},
+    // Halide::HTML, hTarget);
 
     // Halide compilation time
     st1 = Util::ClockGetTime();
@@ -151,46 +152,49 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     unsigned long newSum = 0;
     Halide::Func lsum = halSum(hJ, target);
     long* dLineSum = new long[w];
-    Halide::Buffer<long> hLineSum = Halide::Buffer<long>(dLineSum, w, "hLineSum");
+    Halide::Buffer<long> hLineSum =
+        Halide::Buffer<long>(dLineSum, w, "hLineSum");
     hLineSum.set_host_dirty();
 
     // Iterate Raster/Anti-Raster until stability
     unsigned long it = 0;
     do {
-        //cout << "[" << st << "][PROFILING] it: " << it << ", sum = " 
-          //  << newSum << std::endl;
+        // cout << "[" << st << "][PROFILING] it: " << it << ", sum = "
+        //  << newSum << std::endl;
 
         // Initial iteration time
         st2 = Util::ClockGetTime();
 
-        // Realize each raster separately for avoiding allocation of temporary 
-        // buffers between stages (courtesy of the required compute_root between 
-        // stages). This is better given that every stage can be updated in-place 
-        // (i.e., perfect data independence for the opposite coordinate of 
-        // each raster)
+        // Realize each raster separately for avoiding allocation of temporary
+        // buffers between stages (courtesy of the required compute_root between
+        // stages). This is better given that every stage can be updated
+        // in-place (i.e., perfect data independence for the opposite coordinate
+        // of each raster)
         sti0 = Util::ClockGetTime();
+        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
         rasterx.realize(hJ);
         sti1 = Util::ClockGetTime();
+        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
         arasterx.realize(hJ);
         sti2 = Util::ClockGetTime();
 
         // Raster/Anti-raster time
         st3 = Util::ClockGetTime();
 
-        //cout << "[" << st << "][PROFILING][IWPP_PROP_TIME] " 
-          //  << (st3-st2) << endl;
+        // cout << "[" << st << "][PROFILING][IWPP_PROP_TIME] "
+        //  << (st3-st2) << endl;
 
         it++;
         oldSum = newSum;
 
         // if (target == ExecEngineConstants::CPU) {
-            // Performs parallel sum of the matrix across x, then sequentially
-            // sums the result
-            lsum.realize(hLineSum);
-            st4 = Util::ClockGetTime();
-            newSum = 0;
-            for (int i=0; i<w; i++)
-                newSum += dLineSum[i];
+        // Performs parallel sum of the matrix across x, then sequentially
+        // sums the result
+        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+        lsum.realize(hLineSum);
+        st4 = Util::ClockGetTime();
+        newSum = 0;
+        for (int i = 0; i < w; i++) newSum += dLineSum[i];
         // } else if (target == ExecEngineConstants::GPU) {
         //     #ifdef WITH_CUDA
         //     newSum = cv::cuda::sum(*cvDevJ)[0];
@@ -199,28 +203,28 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
 
         // Full iteration time
         st5 = Util::ClockGetTime();
-        
-        #ifdef IT_DEBUG
-        cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " 
-            << (st5-st3) << endl;
-        cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " 
-            << (st5-st2) << std::endl;
-        #endif
 
-    } while(newSum != oldSum);
+#ifdef IT_DEBUG
+        cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " << (st5 - st3)
+             << endl;
+        cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " << (st5 - st2)
+             << std::endl;
+#endif
+
+    } while (newSum != oldSum);
 
     delete[] dLineSum;
 
     // // Final iwpp time
     // long st6 = Util::ClockGetTime();
 
-    // std::cout << "[IWPP][" << st << "][PROFILING] " << it 
+    // std::cout << "[IWPP][" << st << "][PROFILING] " << it
     //     << " iterations in " << (st6-st0) << " ms" << std::endl;
-    // // std::cout << "[" << st << "][PROFILING][IWPP_COMP] " 
+    // // std::cout << "[" << st << "][PROFILING][IWPP_COMP] "
     // //     << (st1-st0) << std::endl;
-    // // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] " 
+    // // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] "
     // //     << (st6-st1) << std::endl;
-    // // std::cout << "[" << st << "][PROFILING][IWPP_FULL] " 
+    // // std::cout << "[" << st << "][PROFILING][IWPP_FULL] "
     // //     << (st6-st0) << std::endl;
 
     return it;
@@ -276,14 +280,17 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
 //     // Final iwpp time
 //     long st6 = Util::ClockGetTime();
 
-//     std::cout << "[IWPP][" << st << "][PROFILING] " << it 
+//     std::cout << "[IWPP][" << st << "][PROFILING] " << it
 //         << " iterations in " << (st6-st0) << " ms" << std::endl;
-//     // std::cout << "[" << st << "][PROFILING][IWPP_COMP] " 
+//     // std::cout << "[" << st << "][PROFILING][IWPP_COMP] "
 //     //     << (st1-st0) << std::endl;
-//     // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] " 
+//     // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] "
 //     //     << (st6-st1) << std::endl;
-//     // std::cout << "[" << st << "][PROFILING][IWPP_FULL] " 
+//     // std::cout << "[" << st << "][PROFILING][IWPP_FULL] "
 //     //     << (st6-st0) << std::endl;
 
 //     return 0;
 // }
+
+
+

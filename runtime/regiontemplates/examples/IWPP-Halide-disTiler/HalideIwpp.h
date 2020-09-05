@@ -22,8 +22,8 @@ typedef int Target_t;
 template <typename T>
 Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target);
 
-extern int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ);
+//extern int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ, int gpuId);
 extern int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI, 
-    Halide::Buffer<uint8_t>& hJ, int noSched);
+    Halide::Buffer<uint8_t>& hJ, int noSched, int gpuId);
 
 #endif
