@@ -76,7 +76,9 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
          << "][STAGE_HAL_COMP][erode] " << (st2 - st1) << endl;
 #endif
 
-    if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+    if (target == ExecEngineConstants::GPU)
+        Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
+                                                                  gpuId);
     erode.realize(hOut);
 
     // #ifdef PROFILING_STAGES
@@ -152,7 +154,9 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
          << "][STAGE_HAL_COMP][dilate] " << (st2 - st0) << endl;
 #endif
 
-    if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+    if (target == ExecEngineConstants::GPU)
+        Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
+                                                                  gpuId);
     dilate.realize(hOut);
 
     // #ifdef PROFILING_STAGES
@@ -315,7 +319,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         // bgArea = cv::countNonZero(cvHostOut1); // returns int: can overflow
 
         // Performs countNonZero with long return
-        Halide::Func lcnz = halCountNonZero(hOut1, target);
+        Halide::Func lcnz = halCountNonZero(hOut1, ExecEngineConstants::CPU);
         long* dLineCount = new long[hOut1.width()];
         Halide::Buffer<long> hLineCount =
             Halide::Buffer<long>(dLineCount, hOut1.width(), "hLineCount");
@@ -349,13 +353,6 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
                   << Util::ClockGetTime() << " get_bg done" << std::endl;
     }
 
-    // Get GPU id for multi-gpu execution
-    int gpuId = -1;
-    if (target == ExecEngineConstants::GPU) {
-	multi_gpu::setGpuCount(2);
-        gpuId = multi_gpu::getUniqueGpuId();
-    }
-
     // === invert =============================================================
     {
         if (channel == -1)
@@ -373,25 +370,44 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             invert(x, y) =
                 std::numeric_limits<uint8_t>::max() - hIn(x, y, channel);
 
-        if (target == ExecEngineConstants::GPU) {
-            hTarget.set_feature(Halide::Target::CUDA);
-        }
+        // if (target == ExecEngineConstants::GPU) {
+        //     hTarget.set_feature(Halide::Target::CUDA);
+        // }
 
-        hRC.set_host_dirty();
+        // hIn.set_host_dirty();
+        // hRC.set_host_dirty();
         long ct5 = Util::ClockGetTime();
         invert.compile_jit(hTarget);
         long ct6 = Util::ClockGetTime();
         std::cout << "[pipeline1] compiled invert in " << (ct6 - ct5) << " ms"
                   << std::endl;
 
-        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+        // if (target == ExecEngineConstants::GPU)
+        //     Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
+        //     gpuId);
         invert.realize(hRC);
 
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " invert done" << std::endl;
     }
 
+    // Get GPU id for multi-gpu execution
+    int gpuId = -1;
+    if (target == ExecEngineConstants::GPU) {
+        hTarget.set_feature(Halide::Target::CUDA);
+        hTarget.set_feature(Halide::Target::Debug);
+        gpuId = Halide::Internal::JITSharedRuntime::multigpu_setup(hTarget, 1);
+        // std::cout << "[pipeline1][" << st << "][tile" << tileId
+        //           << "] GPUs available: "
+        //           << Halide::Internal::JITSharedRuntime::multigpu_get_count(
+        //                  hTarget)
+        //           << std::endl;
+        std::cout << "[pipeline1][" << st << "][tile" << tileId
+                  << "] using GPU " << gpuId << std::endl;
+    }
+
     // === erode/dilate 1 =====================================================
+    hRC.set_host_dirty();
     hOut1.set_host_dirty();
     hOut2.set_host_dirty();
     hSE19.set_host_dirty();
@@ -445,7 +461,9 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             std::cout << "[pipeline1] compiled prefill in " << (ct8 - ct7)
                       << " ms" << std::endl;
 
-            if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+            if (target == ExecEngineConstants::GPU)
+                Halide::Internal::JITSharedRuntime::multigpu_prep_realize(
+                    hTarget, gpuId);
             preFill.realize(hOut2);
 
             std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
@@ -462,18 +480,18 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
                   << Util::ClockGetTime() << " erode2 done" << std::endl;
     }
 
-    if (target == ExecEngineConstants::GPU) hOut1.copy_to_host();
+    if (target == ExecEngineConstants::GPU) {
+        int buffersToFree = 3;
+        Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
+            hTarget, gpuId, buffersToFree);
+        hOut1.copy_to_host();
+        // Halide::Internal::JITSharedRuntime::multigpu_done_finalize(hTarget);
+    }
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " Done" << std::endl;
 
     // cout << "[pipeline1_s] end " << Util::ClockGetTime() << endl;
 
-    // Release GPU id for multi-gpu execution
-    if (target == ExecEngineConstants::GPU) {
-        multi_gpu::releaseUniqueGpuId(gpuId);
-    }
-
     return false;
 }
-

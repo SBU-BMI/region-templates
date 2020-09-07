@@ -159,8 +159,8 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     // Iterate Raster/Anti-Raster until stability
     unsigned long it = 0;
     do {
-        // cout << "[" << st << "][PROFILING] it: " << it << ", sum = "
-        //  << newSum << std::endl;
+        cout << "[" << st << "][PROFILING] it: " << it << ", sum = " << newSum
+             << std::endl;
 
         // Initial iteration time
         st2 = Util::ClockGetTime();
@@ -171,10 +171,18 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         // in-place (i.e., perfect data independence for the opposite coordinate
         // of each raster)
         sti0 = Util::ClockGetTime();
-        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+        if (target == ExecEngineConstants::GPU) {
+            std::cout << "========1======" << std::endl;
+            Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
+                                                                      gpuId);
+        }
         rasterx.realize(hJ);
         sti1 = Util::ClockGetTime();
-        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+        if (target == ExecEngineConstants::GPU) {
+            std::cout << "=======2=======" << std::endl;
+            Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
+                                                                      gpuId);
+        }
         arasterx.realize(hJ);
         sti2 = Util::ClockGetTime();
 
@@ -187,19 +195,17 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         it++;
         oldSum = newSum;
 
-        // if (target == ExecEngineConstants::CPU) {
         // Performs parallel sum of the matrix across x, then sequentially
         // sums the result
-        if (target == ExecEngineConstants::GPU) multi_gpu::pushTask(gpuId);
+        if (target == ExecEngineConstants::GPU) {
+            std::cout << "============3==" << std::endl;
+            Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
+                                                                      gpuId);
+        }
         lsum.realize(hLineSum);
         st4 = Util::ClockGetTime();
         newSum = 0;
         for (int i = 0; i < w; i++) newSum += dLineSum[i];
-        // } else if (target == ExecEngineConstants::GPU) {
-        //     #ifdef WITH_CUDA
-        //     newSum = cv::cuda::sum(*cvDevJ)[0];
-        //     #endif // if WITH_CUDA
-        // }
 
         // Full iteration time
         st5 = Util::ClockGetTime();
@@ -291,6 +297,3 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
 
 //     return 0;
 // }
-
-
-
