@@ -3,7 +3,7 @@
 #define LARGEB
 
 template <typename T>
-Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target) {
+Halide::Func halSum(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
     // Performs parallel sum on the coordinate with the highest value
     Halide::RDom r({{0, JJ.width()}, {0, JJ.height()}}, "r");
     Halide::Var x("x");
@@ -17,15 +17,15 @@ Halide::Func halSum(Halide::Buffer<T>& JJ, Target_t target) {
     pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
     pSum.update(0).vectorize(rxi).parallel(rxo);
 
-    // Compile
-    Halide::Target hTarget = Halide::get_host_target();
-#ifdef LARGEB
-    hTarget.set_feature(Halide::Target::LargeBuffers);
-#endif
+    //     // Compile
+    //     Halide::Target hTarget = Halide::get_host_target();
+    // #ifdef LARGEB
+    //     hTarget.set_feature(Halide::Target::LargeBuffers);
+    // #endif
 
-    if (target == ExecEngineConstants::GPU) {
-        hTarget.set_feature(Halide::Target::CUDA);
-    }
+    //     if (target == ExecEngineConstants::GPU) {
+    //         hTarget.set_feature(Halide::Target::CUDA);
+    //     }
 
     pSum.compile_jit(hTarget);
 
@@ -150,7 +150,7 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     // Sum structures
     unsigned long oldSum = 0;
     unsigned long newSum = 0;
-    Halide::Func lsum = halSum(hJ, target);
+    Halide::Func lsum = halSum(hJ, hTarget);
     long* dLineSum = new long[w];
     Halide::Buffer<long> hLineSum =
         Halide::Buffer<long>(dLineSum, w, "hLineSum");
@@ -172,14 +172,12 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         // of each raster)
         sti0 = Util::ClockGetTime();
         if (target == ExecEngineConstants::GPU) {
-            std::cout << "========1======" << std::endl;
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                       gpuId);
         }
         rasterx.realize(hJ);
         sti1 = Util::ClockGetTime();
         if (target == ExecEngineConstants::GPU) {
-            std::cout << "=======2=======" << std::endl;
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                       gpuId);
         }
@@ -198,11 +196,13 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         // Performs parallel sum of the matrix across x, then sequentially
         // sums the result
         if (target == ExecEngineConstants::GPU) {
-            std::cout << "============3==" << std::endl;
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                       gpuId);
         }
         lsum.realize(hLineSum);
+        if (target == ExecEngineConstants::GPU) {
+            Halide::Internal::JITSharedRuntime::multigpu_realized(hTarget);
+        }
         st4 = Util::ClockGetTime();
         newSum = 0;
         for (int i = 0; i < w; i++) newSum += dLineSum[i];

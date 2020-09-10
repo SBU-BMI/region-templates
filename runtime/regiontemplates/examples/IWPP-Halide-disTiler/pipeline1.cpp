@@ -462,9 +462,12 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
                       << " ms" << std::endl;
 
             if (target == ExecEngineConstants::GPU)
-                Halide::Internal::JITSharedRuntime::multigpu_prep_realize(
-                    hTarget, gpuId);
+                Halide::Internal::JITSharedRuntime::
+                    multigpu_prep_locked_realize(hTarget, gpuId);
             preFill.realize(hOut2);
+            if (target == ExecEngineConstants::GPU) {
+                Halide::Internal::JITSharedRuntime::multigpu_realized(hTarget);
+            }
 
             std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                       << Util::ClockGetTime() << " prefill done" << std::endl;
@@ -473,7 +476,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         // === dilate/erode 2 =================================================
         hSE3.set_host_dirty();
         dilate(hOut2, hOut1, hSE3, target, tileId, noSched, gpuId);
-        std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
+        std::cout << "[tapeline][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " dilate2 done" << std::endl;
         erode(hOut1, hOut2, hSE3, target, tileId, noSched, gpuId);
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
@@ -481,10 +484,10 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     }
 
     if (target == ExecEngineConstants::GPU) {
-        int buffersToFree = 3;
+        int buffersToFree = 4;
         Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
             hTarget, gpuId, buffersToFree);
-        hOut1.copy_to_host();
+        hOut2.copy_to_host();
         // Halide::Internal::JITSharedRuntime::multigpu_done_finalize(hTarget);
     }
 
