@@ -1,4 +1,5 @@
 #include "pipeline1.h"
+#include <mpi.h>
 
 // #define PROFILING_STAGES
 
@@ -237,6 +238,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
 
     int noSched = ((ArgumentInt*)params[10])->getArgValue();  // halide no sched
     int noIWPP = ((ArgumentInt*)params[11])->getArgValue();   // no iwpp
+    int gpus = ((ArgumentInt*)params[12])->getArgValue();
 
     // === cv::Mat inputs/outputs =============================================
     // Wraps the input and output cv::mat's with halide buffers
@@ -396,12 +398,13 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     if (target == ExecEngineConstants::GPU) {
         hTarget.set_feature(Halide::Target::CUDA);
         hTarget.set_feature(Halide::Target::Debug);
-        gpuId = Halide::Internal::JITSharedRuntime::multigpu_setup(hTarget, 1);
-        // std::cout << "[pipeline1][" << st << "][tile" << tileId
-        //           << "] GPUs available: "
-        //           << Halide::Internal::JITSharedRuntime::multigpu_get_count(
-        //                  hTarget)
-        //           << std::endl;
+        gpuId = Halide::Internal::JITSharedRuntime::multigpu_setup(hTarget, gpus);
+#define MULTI_PROCESS_MULTI_GPU
+#ifdef MULTI_PROCESS_MULTI_GPU
+        int mpi_rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+        gpuId = mpi_rank % gpus;
+#endif
         std::cout << "[pipeline1][" << st << "][tile" << tileId
                   << "] using GPU " << gpuId << std::endl;
     }

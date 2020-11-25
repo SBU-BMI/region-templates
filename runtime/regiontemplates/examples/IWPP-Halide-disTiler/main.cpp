@@ -97,8 +97,7 @@ int main(int argc, char* argv[]) {
              << "any other tiling parameter)" << endl;
         cout << "\t--nhs (no halide scheduling: pipeline will execute "
              << " serially when selected)" << endl;
-        cout << "\t--nic (no halide scheduling: pipeline will execute "
-             << " serially when selected)" << endl;
+        cout << "\t--nic (no IWPP computing)" << endl;
 
         cout << "=== Hybrid execution options:" << endl;
         cout << "\t-a <execution option>" << endl;
@@ -110,6 +109,7 @@ int main(int argc, char* argv[]) {
         cout << "\t--gp <float value of PATS: gpu/cpu (default=1)>" << endl;
 
         cout << "\t--gn <gpu tiler multiplier (default=1)>" << endl;
+        cout << "\t--gc <multi-gpu count (default=1)>" << endl;
 
         cout << "=== Pre-tiler (PT) options:" << endl;
         cout << "\t-npt (without pre-tiler)" << endl;
@@ -224,9 +224,14 @@ int main(int argc, char* argv[]) {
     }
 
     // GPU tiles multiplier
-    float gn = 1;
+    int gn = 1;
     if (findArgPos("--gn", argc, argv) != -1) {
         gn = atoi(argv[findArgPos("--gn", argc, argv) + 1]);
+    }
+
+    int gpu_count = 1;
+    if (findArgPos("--gc", argc, argv) != -1) {
+        gpu_count = atoi(argv[findArgPos("--gc", argc, argv) + 1]);
     }
 
     // No pre-tiling execution
@@ -461,7 +466,7 @@ int main(int argc, char* argv[]) {
              new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(G1), new ArgumentInt(se3raw_width),
              new ArgumentIntArray(se3raw, se3raw_size),
-             new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp)},
+             new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp), new ArgumentInt(gpu_count)},
             {tiles[i].height, tiles[i].width}, {&pipeline1_s},
             // denseTiler->getTileTarget(i), i);
             tgt(hybridExec, denseTiler->getTileTarget(i)), i);

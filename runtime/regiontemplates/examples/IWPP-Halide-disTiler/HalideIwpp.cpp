@@ -14,22 +14,24 @@ Halide::Func halSum(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
     // Schedule
     Halide::RVar rxo, rxi;
     Halide::Var xo, xi;
-    pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
-    pSum.update(0).vectorize(rxi).parallel(rxo);
 
-    //     // Compile
-    //     Halide::Target hTarget = Halide::get_host_target();
-    // #ifdef LARGEB
-    //     hTarget.set_feature(Halide::Target::LargeBuffers);
-    // #endif
+    #ifdef LARGEB
+    hTarget.set_feature(Halide::Target::LargeBuffers);
+    #endif
 
-    //     if (target == ExecEngineConstants::GPU) {
-    //         hTarget.set_feature(Halide::Target::CUDA);
-    //     }
+//    if (hTarget.has_feature(Halide::Target::CUDA)) {
+//        pSum.update(0).split(r.x, rxo, rxi, 10);
+//        pSum.update(0).gpu_blocks(rxo).gpu_threads(rxi);
+//    } else {
+        pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
+        pSum.update(0).vectorize(rxi).parallel(rxo);
+//    }
 
     pSum.compile_jit(hTarget);
 
-    // pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML);
+    // pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML);i
+    
+    cout << "[halSum] compiled\n";
 
     return pSum;
 }
@@ -156,6 +158,8 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         Halide::Buffer<long>(dLineSum, w, "hLineSum");
     hLineSum.set_host_dirty();
 
+    //hJ.set_host_dirty();
+
     // Iterate Raster/Anti-Raster until stability
     unsigned long it = 0;
     do {
@@ -205,17 +209,19 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         }
         st4 = Util::ClockGetTime();
         newSum = 0;
+        cout << "[" << st << "][IWPP] cpu sum\n";
+        //hLineSum.copy_to_host();
         for (int i = 0; i < w; i++) newSum += dLineSum[i];
 
         // Full iteration time
         st5 = Util::ClockGetTime();
 
-#ifdef IT_DEBUG
+//#ifdef IT_DEBUG
         cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " << (st5 - st3)
              << endl;
         cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " << (st5 - st2)
              << std::endl;
-#endif
+//#endif
 
     } while (newSum != oldSum);
 
