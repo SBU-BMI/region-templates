@@ -58,6 +58,7 @@ inline Target_t tgt(HybridExec_t exec, Target_t target) {
         case HYBRID:
             return target;
     }
+    return target;
 }
 
 int findArgPos(std::string s, int argc, char** argv) {
@@ -71,6 +72,7 @@ static struct : RTF::HalGen {
     bool realize(std::vector<cv::Mat>& im_ios, Target_t target,
                  std::vector<ArgumentBase*>& params) {
         pipeline1(im_ios, target, params);
+        return false;
     }
 } pipeline1_s;
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
@@ -372,7 +374,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Verifies for hybrid execution
-    //int nnTiles = 64;  // USED FOR A SINGLE TEST - DELETE LATER
+    // int nnTiles = 64;  // USED FOR A SINGLE TEST - DELETE LATER
     if (hybridExec == HYBRID) {
         float cpuPATS = 1;
         float gpuPATS = gpc;
@@ -454,10 +456,10 @@ int main(int argc, char* argv[]) {
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
     RegionTemplate* rtOut = newRT("rtOut");
-    for (int i=0; i<denseTiler->getNumRTs(); i++) {
-    //int init = 0;
-    //int ii = 33;
-    //for (int i = init; i < init + nTiles; i++) {
+    for (int i = 0; i < denseTiler->getNumRTs(); i++) {
+        // int init = 0;
+        // int ii = 33;
+        // for (int i = init; i < init + nTiles; i++) {
         RTF::AutoStage stage0(
             {denseTiler->getRT(i).second, rtOut},
             {new ArgumentInt(i), new ArgumentInt(blue), new ArgumentInt(green),
@@ -466,7 +468,8 @@ int main(int argc, char* argv[]) {
              new ArgumentIntArray(disk19raw, disk19raw_size),
              new ArgumentInt(G1), new ArgumentInt(se3raw_width),
              new ArgumentIntArray(se3raw, se3raw_size),
-             new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp), new ArgumentInt(gpu_count)},
+             new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp),
+             new ArgumentInt(gpu_count)},
             {tiles[i].height, tiles[i].width}, {&pipeline1_s},
             // denseTiler->getTileTarget(i), i);
             tgt(hybridExec, denseTiler->getTileTarget(i)), i);

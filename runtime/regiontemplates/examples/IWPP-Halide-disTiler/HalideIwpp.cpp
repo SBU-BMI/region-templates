@@ -15,22 +15,18 @@ Halide::Func halSum(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
     Halide::RVar rxo, rxi;
     Halide::Var xo, xi;
 
-    #ifdef LARGEB
-    hTarget.set_feature(Halide::Target::LargeBuffers);
-    #endif
-
-//    if (hTarget.has_feature(Halide::Target::CUDA)) {
-//        pSum.update(0).split(r.x, rxo, rxi, 10);
-//        pSum.update(0).gpu_blocks(rxo).gpu_threads(rxi);
-//    } else {
-        pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
+    if (hTarget.has_feature(Halide::Target::CUDA)) {
+        pSum.update(0).split(r.x, rxo, rxi, 100).reorder(r.y, rxi, rxo);
+        pSum.update(0).gpu_blocks(rxo).gpu_threads(rxi);
+    } else {
+        pSum.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi, rxo);
         pSum.update(0).vectorize(rxi).parallel(rxo);
-//    }
+    }
 
     pSum.compile_jit(hTarget);
 
-    // pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML);i
-    
+    pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML, hTarget);
+
     cout << "[halSum] compiled\n";
 
     return pSum;
@@ -156,9 +152,14 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     long* dLineSum = new long[w];
     Halide::Buffer<long> hLineSum =
         Halide::Buffer<long>(dLineSum, w, "hLineSum");
-    hLineSum.set_host_dirty();
-
-    //hJ.set_host_dirty();
+    if (target == ExecEngineConstants::GPU) {
+        // cout << "[" << st << "][IWPP] hLineSum copying\n";
+        hLineSum.set_host_dirty();
+        Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(hTarget,
+                                                                   gpuId, 1);
+        hLineSum.copy_to_device(hTarget);
+        // cout << "[" << st << "][IWPP] hLineSum copied\n";
+    }
 
     // Iterate Raster/Anti-Raster until stability
     unsigned long it = 0;
@@ -169,11 +170,11 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         // Initial iteration time
         st2 = Util::ClockGetTime();
 
-        // Realize each raster separately for avoiding allocation of temporary
-        // buffers between stages (courtesy of the required compute_root between
-        // stages). This is better given that every stage can be updated
-        // in-place (i.e., perfect data independence for the opposite coordinate
-        // of each raster)
+        // Realize each raster separately for avoiding allocation of
+        // temporary buffers between stages (courtesy of the required
+        // compute_root between stages). This is better given that every
+        // stage can be updated in-place (i.e., perfect data independence
+        // for the opposite coordinate of each raster)
         sti0 = Util::ClockGetTime();
         if (target == ExecEngineConstants::GPU) {
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
@@ -203,29 +204,39 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                       gpuId);
         }
-        lsum.realize(hLineSum);
-        if (target == ExecEngineConstants::GPU) {
-            Halide::Internal::JITSharedRuntime::multigpu_realized(hTarget);
-        }
+        // hLineSum.set_device_dirty();  // Avoids copying host data to GPU
+        lsum.realize(hLineSum, hTarget);
+
         st4 = Util::ClockGetTime();
+
         newSum = 0;
-        cout << "[" << st << "][IWPP] cpu sum\n";
-        //hLineSum.copy_to_host();
+        // cout << "[" << st << "][IWPP] cpu sum\n";
+        if (target == ExecEngineConstants::GPU) {
+            Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
+                hTarget, gpuId, 1);
+            hLineSum.copy_to_host();
+        }
         for (int i = 0; i < w; i++) newSum += dLineSum[i];
 
         // Full iteration time
         st5 = Util::ClockGetTime();
 
-//#ifdef IT_DEBUG
+        // #ifdef IT_DEBUG
         cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " << (st5 - st3)
              << endl;
         cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " << (st5 - st2)
              << std::endl;
-//#endif
+        //#endif
 
     } while (newSum != oldSum);
 
     delete[] dLineSum;
+
+    // Clears hLineSum GPU buffer
+    if (target == ExecEngineConstants::GPU) {
+        Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(hTarget,
+                                                                   gpuId, 1);
+    }
 
     // // Final iwpp time
     // long st6 = Util::ClockGetTime();
@@ -242,7 +253,8 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     return it;
 }
 
-// int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ) {
+// int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ)
+// {
 
 //     Halide::Buffer<uint8_t> hI;
 //     Halide::Buffer<uint8_t> hJ;

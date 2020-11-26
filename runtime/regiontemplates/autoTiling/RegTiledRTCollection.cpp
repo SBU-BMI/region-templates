@@ -1,13 +1,14 @@
 #include "RegTiledRTCollection.h"
 
-RegTiledRTCollection::RegTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int64_t tw, int64_t th, 
-    int64_t borders, CostFunction* cfunc) 
-        : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
-
+RegTiledRTCollection::RegTiledRTCollection(std::string name,
+                                           std::string refDDRName,
+                                           std::string tilesPath, int64_t tw,
+                                           int64_t th, int64_t borders,
+                                           CostFunction* cfunc)
+    : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
     if (this->borders > tw || this->borders > th) {
-        std::cout << "Border cannot be greater than a tile's width" 
-            << std::endl;
+        std::cout << "Border cannot be greater than a tile's width"
+                  << std::endl;
         exit(-2);
     }
 
@@ -16,17 +17,17 @@ RegTiledRTCollection::RegTiledRTCollection(std::string name,
     this->nTiles = 0;
 }
 
-RegTiledRTCollection::RegTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int64_t nTiles, 
-    int64_t borders, CostFunction* cfunc) 
-        : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
-
+RegTiledRTCollection::RegTiledRTCollection(std::string name,
+                                           std::string refDDRName,
+                                           std::string tilesPath,
+                                           int64_t nTiles, int64_t borders,
+                                           CostFunction* cfunc)
+    : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
     this->nTiles = nTiles;
 }
 
-std::list<cv::Rect_<int64_t>> tileImg (int nTiles, 
-    int64_t x, int64_t width, int64_t y, int64_t height) {
-
+std::list<cv::Rect_<int64_t>> tileImg(int nTiles, int64_t x, int64_t width,
+                                      int64_t y, int64_t height) {
     // Calculates the tiles sizes given the nTiles
     std::list<cv::Rect_<int64_t>> curTiles;
     if (nTiles <= 1) {
@@ -35,7 +36,7 @@ std::list<cv::Rect_<int64_t>> tileImg (int nTiles,
         r.width = width;
         r.y = y;
         r.height = height;
-        
+
         // Adds single tile
         curTiles.push_back(r);
     } else {
@@ -59,7 +60,7 @@ void RegTiledRTCollection::customTiling() {
         osr = openslide_open(img.c_str());
 
         // Opens smallest image as a cv mat
-        osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+        osrMinLevel = openslide_get_level_count(osr) - 1;  // last level
         openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
         cv::Rect_<int64_t> roi(0, 0, w, h);
         osrRegionToCVMat(osr, roi, osrMinLevel, mat);
@@ -71,7 +72,8 @@ void RegTiledRTCollection::customTiling() {
     }
 }
 
-void RegTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) {
+void RegTiledRTCollection::tileMat(cv::Mat& mat,
+                                   std::list<cv::Rect_<int64_t>>& tiles) {
     if (this->preTiled) {
         // Update the number of tiles to tiles per dense region
         this->nTiles = ceil((float)this->nTiles / (float)tiles.size());
@@ -88,4 +90,3 @@ void RegTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& 
         tiles = tileImg(this->nTiles, 0, mat.cols, 0, mat.rows);
     }
 }
-

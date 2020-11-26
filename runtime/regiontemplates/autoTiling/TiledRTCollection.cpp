@@ -229,17 +229,17 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 this->tiles[img].begin();
 
             // REMOVE AFTER SINGLE TILE TEST ---------
-            //std::advance(tileIt, 33);
-            //tileIt->x *= ratiow;
-            //tileIt->width *= ratiow;
-            //tileIt->y *= ratioh;
-            //tileIt->height *= ratioh;
-            //if (ceil(tileIt->x + tileIt->width) >= (int64_t)w0)
+            // std::advance(tileIt, 33);
+            // tileIt->x *= ratiow;
+            // tileIt->width *= ratiow;
+            // tileIt->y *= ratioh;
+            // tileIt->height *= ratioh;
+            // if (ceil(tileIt->x + tileIt->width) >= (int64_t)w0)
             //    tileIt->width = (int64_t)(w0 - tileIt->x);
-            //if (ceil(tileIt->y + tileIt->height) >= (int64_t)h0)
+            // if (ceil(tileIt->y + tileIt->height) >= (int64_t)h0)
             //    tileIt->height = (int64_t)(h0 - tileIt->y);
-            //for (int i = 0; i < this->tiles[img].size(); i++) {
-                // ---------
+            // for (int i = 0; i < this->tiles[img].size(); i++) {
+            // ---------
             for (; tileIt != this->tiles[img].end(); tileIt++) {
                 // Converts the tile roi for the large image size
                 tileIt->x *= ratiow;
@@ -249,7 +249,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 if (ceil(tileIt->x + tileIt->width) >= (int64_t)w0)
                     tileIt->width = (int64_t)(w0 - tileIt->x);
                 if (ceil(tileIt->y + tileIt->height) >= (int64_t)h0)
-                     tileIt->height = (int64_t)(h0 - tileIt->y);
+                    tileIt->height = (int64_t)(h0 - tileIt->y);
 
                 // Adds borders
                 tileIt->x -= this->borders;

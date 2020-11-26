@@ -202,7 +202,8 @@ Halide::Func halCountNonZero(Halide::Buffer<T>& JJ, Target_t target) {
 
 bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
                std::vector<ArgumentBase*>& params) {
-    // === parameters =========================================================
+    // === parameters
+    // =========================================================
     int tileId = ((ArgumentInt*)params[0])->getArgValue();
 
     uint8_t blue = ((ArgumentInt*)params[1])->getArgValue();   // getbg
@@ -398,7 +399,8 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     if (target == ExecEngineConstants::GPU) {
         hTarget.set_feature(Halide::Target::CUDA);
         hTarget.set_feature(Halide::Target::Debug);
-        gpuId = Halide::Internal::JITSharedRuntime::multigpu_setup(hTarget, gpus);
+        gpuId =
+            Halide::Internal::JITSharedRuntime::multigpu_setup(hTarget, gpus);
 #define MULTI_PROCESS_MULTI_GPU
 #ifdef MULTI_PROCESS_MULTI_GPU
         int mpi_rank;
@@ -487,7 +489,7 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
     }
 
     if (target == ExecEngineConstants::GPU) {
-        int buffersToFree = 4;
+        int buffersToFree = 6;  // 4 frees and 2 copy
         Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
             hTarget, gpuId, buffersToFree);
         hOut2.copy_to_host();

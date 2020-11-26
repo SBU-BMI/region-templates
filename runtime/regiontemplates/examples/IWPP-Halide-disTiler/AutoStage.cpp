@@ -174,6 +174,7 @@ void RTF::Internal::AutoStage::localTileDRs(
     //     << cvInitial.cols << " " << (stageTime9-stageTime1) << std::endl;
 }
 
+#define DEBUG
 int RTF::Internal::AutoStage::run() {
 // Assemble input/output cv::Mat list for execution
 // Starts with the inputs
@@ -291,6 +292,8 @@ int RTF::Internal::AutoStage::run() {
                 //     << this->dr_ios[0]->getData().rows << "x"
                 //     << this->dr_ios[0]->getData().cols << " "
                 //     << (taskTime1-taskTime0) << std::endl;
+
+                return aborted;
             }
         }* currentTask =
             new _Task(local_schedules, tilesDRs[i], this->getArguments());
@@ -346,6 +349,8 @@ int RTF::Internal::AutoStage::run() {
             // std::cout << "[PROFILING_SINGLE][MERGE] " << cvOut.rows
             //     << "x" << cvOut.cols << " " << (taskTime1-taskTime0)
             //     << std::endl;
+
+            return false;
         }
     }* currentTask = new _TaskMerge(drOut, outTileDRs, tiles);
 
@@ -365,6 +370,8 @@ int RTF::Internal::AutoStage::run() {
 
     // std::cout << "[PROFILING_SINGLE][STAGE] " << this->out_shape[0] << "x"
     //     << this->out_shape[1] << " " << (stageTime9-stageTime0) << std::endl;
+
+    return 0;
 }
 
 RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
