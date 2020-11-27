@@ -2,55 +2,52 @@
 
 #define LARGEB
 
-// Set all values as zero
-Halide::Func halSumZero(Halide::Target hTarget) {
-    Halide::Func pSumZero("pSumZero");
-    Halide::Var x("x");
-    Halide::Var xo("xo"), xi("xi");
-
-    pSumZero(x) = Halide::cast<long>(0);
-
-    if (hTarget.has_feature(Halide::Target::CUDA)) {
-        pSumZero.gpu_tile(x, xo, xi, 10, Halide::TailStrategy::GuardWithIf);
-    }
-
-    pSumZero.compile_jit(hTarget);
-
-    return pSumZero;
-}
-
-// NEED TO RESET THE INITIAL BUFFER VALUES
-// Sum a 2D Halide::Buffer array to a 1D array
 template <typename T>
 Halide::Func halSum2(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
     // Performs parallel sum on the coordinate with the highest value
-    Halide::RDom r({{0, JJ.width()}, {0, JJ.height()}}, "r");
-    Halide::Var x("x");
-    Halide::Func pSum("pSum2");
-    pSum(x) = Halide::undef<long>();
-    pSum(r.x) += Halide::cast<long>(JJ(r.x, r.y));
+    // Halide::RDom r({{0, JJ.width()}, {0, JJ.height()}}, "r");
+    Halide::Var x("x"), y("y");
+    Halide::RDom rx(0, JJ.width(), "rx");
+    Halide::RDom ry(0, JJ.height(), "ry");
+    Halide::Func pSum2("pSum2");
+    Halide::Func pSum1("pSum1");
+
+    // Zero the first intermediary result array: sum of cols
+    pSum2(x) = Halide::cast<long>(0);
+    // Perform sum of cols
+    pSum2(x) += Halide::cast<long>(JJ(x, ry));
+
+    // // Zero the second intermediary result array: sum of (sum of cols)
+    // pSum1() = Halide::cast<long>(0);
+    // // Perform sum of sum of cols
+    // pSum1() += pSum2(rx);
 
     // Schedule
-    Halide::RVar rxo("rxo"), rxi("rxi");
+    // Halide::RVar rxo("rxo"), rxi("rxi");
     Halide::Var xo("xo"), xi("xi");
 
     if (hTarget.has_feature(Halide::Target::CUDA)) {
-        pSum.update()
-            .split(r.x, rxo, rxi, 100, Halide::TailStrategy::GuardWithIf)
-            .reorder(r.y, rxi, rxo);
-        pSum.update().gpu(rxo, rxi);
+        pSum2.in().compute_root().gpu_tile(x, xo, xi, 100);
+        // pSum2.in(pSum1).compute_root().gpu_tile(x, xo, xi, 100);
+        // pSum1.in()
+        //     .compute_root()
+        //     .gpu_single_thread();  // Later rfactor optimize
+
     } else {
-        pSum.update().split(r.x, rxo, rxi, 4).reorder(r.y, rxi, rxo);
-        pSum.update().vectorize(rxi).parallel(rxo);
+        pSum2.in().split(x, xo, xi, 4).vectorize(xi).parallel(xo);
     }
+    // cout << "[halSum] scheduled\n";
 
-    pSum.compile_jit(hTarget);
+    // Halide::Func retFunc(pSum1.in());
+    Halide::Func retFunc(pSum2.in());
 
-    // pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML, hTarget);
+    retFunc.compile_jit(hTarget);
 
-    // cout << "[halSum2] compiled\n";
+    // retFunc.compile_to_lowered_stmt("pSum2.html", {}, Halide::HTML, hTarget);
 
-    return pSum;
+    // cout << "[halSum] compiled\n";
+
+    return retFunc;
 }
 
 // Sums a 1D array to a Halide::Buffer scalar
@@ -60,22 +57,22 @@ Halide::Func halSum1(Halide::Buffer<T>& sum2, Halide::Target hTarget) {
     // Performs parallel sum on the coordinate with the highest value
     Halide::RDom r(0, sum2.width(), "r");
     Halide::Func pSum("pSum1");
-    // pSum() = Halide::cast<long>(0);
-    pSum() = sum(Halide::cast<long>(sum2(r)));
+    pSum() = Halide::cast<long>(0);
+    pSum() += Halide::cast<long>(sum2(r));
 
     // Schedule
     if (hTarget.has_feature(Halide::Target::CUDA)) {
-        pSum.gpu_single_thread();
-        // pSum.update().gpu_single_thread();
+        pSum.in().compute_root().gpu_single_thread();
     }
 
-    pSum.compile_jit(hTarget);
+    pSum.in().compile_jit(hTarget);
 
     // cout << "compiled halSum1\n";
 
-    // pSum.compile_to_lowered_stmt("pSum1.html", {}, Halide::HTML, hTarget);
+    // pSum.in().compile_to_lowered_stmt("pSum1.html", {}, Halide::HTML,
+    // hTarget);
 
-    return pSum;
+    return pSum.in();
 }
 
 // It is assumed that the data is already on the proper device/host
@@ -195,7 +192,6 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     Halide::Buffer<long> hFullSum =
         Halide::Buffer<long>::make_scalar(&dFullSum, "hFullSum");
 
-    Halide::Func lsumzero = halSumZero(hTarget);
     Halide::Func lsum2 = halSum2(hJ, hTarget);
     Halide::Func lsum1 = halSum1(hLineSum, hTarget);
 
@@ -243,11 +239,6 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                       gpuId);
         }
-        lsumzero.realize(hLineSum, hTarget);
-        if (target == ExecEngineConstants::GPU) {
-            Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
-                                                                      gpuId);
-        }
         lsum2.realize(hLineSum, hTarget);
         if (target == ExecEngineConstants::GPU) {
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
@@ -274,7 +265,7 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         //      << endl;
         cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME][" << it << "] "
              << (st5 - st2) << std::endl;  // << std::endl;
-        //#endif
+                                           //#endif
 
     } while (newSum != oldSum);
 
