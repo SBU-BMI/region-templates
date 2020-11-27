@@ -435,33 +435,51 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
         {
             // Define halide stage
             Halide::Var x, y;
-            Halide::Func preFill;
+            Halide::Func preFill1("preFill1");
+            Halide::Func preFill2("preFill2");
 
-            preFill(x, y) =
+            preFill1(x, y) =
                 255 * Halide::cast<uint8_t>((hRC(x, y) - hOut2(x, y)) > G1);
             // preFill(x,y) = select((hRC(x,y) - hOut2(x,y)) > G1,
             // Halide::cast<uint8_t>(255), Halide::cast<uint8_t>(0));
 
             // Set the borders as -inf (i.e., 0);
-            preFill(x, 0) = Halide::cast<uint8_t>(0);
-            preFill(x, hOut2.height() - 1) = Halide::cast<uint8_t>(0);
-            preFill(0, y) = Halide::cast<uint8_t>(0);
-            preFill(hOut2.width() - 1, y) = Halide::cast<uint8_t>(0);
+            preFill2(x, y) = Halide::undef<uint8_t>();
+            preFill2(x, 0) = Halide::cast<uint8_t>(0);
+            preFill2(x, hOut2.height() - 1) = Halide::cast<uint8_t>(0);
+            preFill2(0, y) = Halide::cast<uint8_t>(0);
+            preFill2(hOut2.width() - 1, y) = Halide::cast<uint8_t>(0);
 
             // Schedules
-            preFill.compute_root();
             if (target == ExecEngineConstants::CPU && noSched == 0) {
-                preFill.tile(x, y, xo, yo, xi, yi, 16, 16);
-                // preFill.fuse(xo,yo,t).parallel(t);
-                preFill.parallel(yo);
+                preFill1.parallel(y);
+                preFill2.compute_root();
+                preFill2.update(0).parallel(x);
+                preFill2.update(1).parallel(x);
+                preFill2.update(2).parallel(y);
+                preFill2.update(3).parallel(y);
             } else if (target == ExecEngineConstants::GPU) {
                 hTarget.set_feature(Halide::Target::CUDA);
                 hTarget.set_feature(Halide::Target::Debug);
-                preFill.gpu_tile(x, y, xo, yo, xi, yi, 16, 16);
+                preFill1.gpu_tile(x, y, xo, yo, xi, yi, 16, 16,
+                                  Halide::TailStrategy::GuardWithIf);
+                preFill2.update(0).gpu_tile(x, xo, xi, 16,
+                                            Halide::TailStrategy::GuardWithIf);
+                preFill2.update(1).gpu_tile(x, xo, xi, 16,
+                                            Halide::TailStrategy::GuardWithIf);
+                preFill2.update(2).gpu_tile(y, yo, yi, 16,
+                                            Halide::TailStrategy::GuardWithIf);
+                preFill2.update(3).gpu_tile(y, yo, yi, 16,
+                                            Halide::TailStrategy::GuardWithIf);
             }
 
             long ct7 = Util::ClockGetTime();
-            preFill.compile_jit(hTarget);
+            preFill1.compile_jit(hTarget);
+            preFill2.compile_jit(hTarget);
+            // preFill1.compile_to_lowered_stmt("preFill1.html", {},
+            // Halide::HTML, hTarget);
+            // preFill2.compile_to_lowered_stmt("preFill2.html", {},
+            // Halide::HTML, hTarget);
             long ct8 = Util::ClockGetTime();
             std::cout << "[pipeline1] compiled prefill in " << (ct8 - ct7)
                       << " ms" << std::endl;
@@ -469,7 +487,9 @@ bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target,
             if (target == ExecEngineConstants::GPU)
                 Halide::Internal::JITSharedRuntime::
                     multigpu_prep_locked_realize(hTarget, gpuId);
-            preFill.realize(hOut2);
+            preFill1.realize(hOut2, hTarget);
+            // std::cout << "[pipeline1] finished prefill1\n";
+            preFill2.realize(hOut2, hTarget);
             if (target == ExecEngineConstants::GPU) {
                 Halide::Internal::JITSharedRuntime::multigpu_realized(hTarget);
             }
