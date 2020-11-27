@@ -2,6 +2,7 @@
 
 #define LARGEB
 
+// Set all values as zero
 Halide::Func halSumZero(Halide::Target hTarget) {
     Halide::Func pSumZero("pSumZero");
     Halide::Var x("x");
@@ -19,12 +20,13 @@ Halide::Func halSumZero(Halide::Target hTarget) {
 }
 
 // NEED TO RESET THE INITIAL BUFFER VALUES
+// Sum a 2D Halide::Buffer array to a 1D array
 template <typename T>
-Halide::Func halSum(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
+Halide::Func halSum2(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
     // Performs parallel sum on the coordinate with the highest value
     Halide::RDom r({{0, JJ.width()}, {0, JJ.height()}}, "r");
     Halide::Var x("x");
-    Halide::Func pSum("pSum");
+    Halide::Func pSum("pSum2");
     pSum(x) = Halide::undef<long>();
     pSum(r.x) += Halide::cast<long>(JJ(r.x, r.y));
 
@@ -46,7 +48,32 @@ Halide::Func halSum(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
 
     // pSum.compile_to_lowered_stmt("pSum.html", {}, Halide::HTML, hTarget);
 
-    cout << "[halSum] compiled\n";
+    // cout << "[halSum2] compiled\n";
+
+    return pSum;
+}
+
+// Sums a 1D array to a Halide::Buffer scalar
+// Maybe use rfactor for associative reduction?
+template <typename T>
+Halide::Func halSum1(Halide::Buffer<T>& sum2, Halide::Target hTarget) {
+    // Performs parallel sum on the coordinate with the highest value
+    Halide::RDom r(0, sum2.width(), "r");
+    Halide::Func pSum("pSum1");
+    // pSum() = Halide::cast<long>(0);
+    pSum() = sum(Halide::cast<long>(sum2(r)));
+
+    // Schedule
+    if (hTarget.has_feature(Halide::Target::CUDA)) {
+        pSum.gpu_single_thread();
+        // pSum.update().gpu_single_thread();
+    }
+
+    pSum.compile_jit(hTarget);
+
+    // cout << "compiled halSum1\n";
+
+    // pSum.compile_to_lowered_stmt("pSum1.html", {}, Halide::HTML, hTarget);
 
     return pSum;
 }
@@ -157,35 +184,28 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     rasterx.compile_jit(hTarget);
     arasterx.compile_jit(hTarget);
 
-    // rasterx.compile_to_lowered_stmt("rasterx.html", {}, Halide::HTML,
-    // hTarget); arasterx.compile_to_lowered_stmt("arasterx.html", {},
-    // Halide::HTML, hTarget);
-
     // Halide compilation time
     st1 = Util::ClockGetTime();
 
     // Sum structures
-    unsigned long oldSum = 0;
-    unsigned long newSum = 0;
-    Halide::Func lsum = halSum(hJ, hTarget);
     long* dLineSum = new long[w];
+    long dFullSum;
     Halide::Buffer<long> hLineSum =
         Halide::Buffer<long>(dLineSum, w, "hLineSum");
+    Halide::Buffer<long> hFullSum =
+        Halide::Buffer<long>::make_scalar(&dFullSum, "hFullSum");
+
     Halide::Func lsumzero = halSumZero(hTarget);
-    if (target == ExecEngineConstants::GPU) {
-        // cout << "[" << st << "][IWPP] hLineSum copying\n";
-        hLineSum.set_host_dirty();
-        Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(hTarget,
-                                                                   gpuId, 1);
-        hLineSum.copy_to_device(hTarget);
-        // cout << "[" << st << "][IWPP] hLineSum copied\n";
-    }
+    Halide::Func lsum2 = halSum2(hJ, hTarget);
+    Halide::Func lsum1 = halSum1(hLineSum, hTarget);
 
     // Iterate Raster/Anti-Raster until stability
+    unsigned long oldSum = 0;
+    unsigned long newSum = 0;
     unsigned long it = 0;
     do {
-        cout << "[" << st << "][PROFILING] it: " << it << ", sum = " << newSum
-             << std::endl;
+        // cout << "[" << st << "][PROFILING] it: " << it << ", sum = " <<
+        // newSum << std::endl;
 
         // Initial iteration time
         st2 = Util::ClockGetTime();
@@ -228,39 +248,42 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
             Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                       gpuId);
         }
-        lsum.realize(hLineSum, hTarget);
+        lsum2.realize(hLineSum, hTarget);
+        if (target == ExecEngineConstants::GPU) {
+            Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
+                                                                      gpuId);
+        }
+        lsum1.realize(hFullSum, hTarget);
 
         st4 = Util::ClockGetTime();
 
-        // Performs the host sum after copying from device
-        newSum = 0;
+        // Gets the final sum result (from device if the case)
         // cout << "[" << st << "][IWPP] cpu sum\n";
         if (target == ExecEngineConstants::GPU) {
             Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
                 hTarget, gpuId, 1);
-            hLineSum.copy_to_host();
+            hFullSum.copy_to_host();
         }
-        for (int i = 0; i < w; i++) newSum += dLineSum[i];
+        newSum = dFullSum;
 
         // Full iteration time
         st5 = Util::ClockGetTime();
 
         // #ifdef IT_DEBUG
-        cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " << (st5 - st3)
-             << endl;
-        cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME] " << (st5 - st2)
-             << std::endl
-             << std::endl;
+        // cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " << (st5 - st3)
+        //      << endl;
+        cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME][" << it << "] "
+             << (st5 - st2) << std::endl;  // << std::endl;
         //#endif
 
     } while (newSum != oldSum);
 
     delete[] dLineSum;
 
-    // Clears hLineSum GPU buffer
+    // Clears hLineSum and hFullSum GPU buffer
     if (target == ExecEngineConstants::GPU) {
         Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(hTarget,
-                                                                   gpuId, 1);
+                                                                   gpuId, 2);
     }
 
     // // Final iwpp time
@@ -277,66 +300,3 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
 
     return it;
 }
-
-// int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat& cvHostJ)
-// {
-
-//     Halide::Buffer<uint8_t> hI;
-//     Halide::Buffer<uint8_t> hJ;
-//     #ifdef WITH_CUDA
-//     cv::cuda::GpuMat cvDevI;
-//     cv::cuda::GpuMat* cvDevJ=NULL;
-//     #endif // if WITH_CUDA
-
-//     // Initial time
-//     long st0, st1, st2, st3, st4, st5;
-//     long sti0, sti1, sti2;
-//     st0 = Util::ClockGetTime();
-
-//     string st;
-//     if (target == ExecEngineConstants::CPU) {
-//         st = "cpu";
-//         hI = mat2buf<uint8_t>(&cvHostI, "hI");
-//         hJ = mat2buf<uint8_t>(&cvHostJ, "hJ");
-//     } else if (target == ExecEngineConstants::GPU) {
-//         st = "gpu";
-//         #ifdef WITH_CUDA
-//         Halide::Target hTtarget = Halide::get_host_target();
-//         hTtarget.set_feature(Halide::Target::CUDA);
-
-//         // Upload inputs to gpu memory
-//         cvDevI.upload(cvHostI);
-//         cvDevJ = new cv::cuda::GpuMat();
-//         cvDevJ->upload(cvHostJ);
-
-//         // Create halide wrappers for the gpu mat's
-//         hI = gpuMat2buf<uint8_t>(cvDevI, hTtarget, "hI");
-//         hJ = gpuMat2buf<uint8_t>(*cvDevJ, hTtarget, "hJ1");
-//         #else // if not WITH_CUDA
-//         std::cout << "No cuda support" << std::endl;
-//         exit(-1);
-//         #endif // if WITH_CUDA
-//     }
-
-//     int it = loopedIwppRecon(target, hI, hJ, cvDevJ);
-
-//     #ifdef WITH_CUDA
-//     // Copy result to output
-//     if (target == ExecEngineConstants::GPU)
-//         cvDevJ->download(cvHostJ);
-//     #endif // if WITH_CUDA
-
-//     // Final iwpp time
-//     long st6 = Util::ClockGetTime();
-
-//     std::cout << "[IWPP][" << st << "][PROFILING] " << it
-//         << " iterations in " << (st6-st0) << " ms" << std::endl;
-//     // std::cout << "[" << st << "][PROFILING][IWPP_COMP] "
-//     //     << (st1-st0) << std::endl;
-//     // std::cout << "[" << st << "][PROFILING][IWPP_EXEC] "
-//     //     << (st6-st1) << std::endl;
-//     // std::cout << "[" << st << "][PROFILING][IWPP_FULL] "
-//     //     << (st6-st0) << std::endl;
-
-//     return 0;
-// }
