@@ -113,6 +113,8 @@ int main(int argc, char* argv[]) {
         cout << "\t--gn <gpu tiler multiplier (default=1)>" << endl;
         cout << "\t--gc <multi-gpu count (default=1)>" << endl;
 
+        cout << "\t--mp <CPU thread count (default=0 i.e., all)>" << endl;
+
         cout << "=== Pre-tiler (PT) options:" << endl;
         cout << "\t-npt (without pre-tiler)" << endl;
 
@@ -148,6 +150,11 @@ int main(int argc, char* argv[]) {
         // endl;
 
         exit(0);
+    }
+
+    // Configure max CPU thread count for Halide
+    if (findArgPos("--mp", argc, argv) != -1) {
+        setenv("HL_NUM_THREADS", argv[findArgPos("--mp", argc, argv) + 1], 1);
     }
 
     // Input images
