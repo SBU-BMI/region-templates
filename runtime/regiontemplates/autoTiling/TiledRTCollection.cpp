@@ -98,7 +98,6 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
     std::list<int64_t> costs;
     // Creates a list of perimeters for each tile for each image
     std::list<int64_t> perims;
-#define DEBUG
     // create tiles image
     if (tilingOnly) {
         for (std::string img : this->initialPaths) {
@@ -230,7 +229,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             std::list<cv::Rect_<int64_t>>::iterator tileIt =
                 this->tiles[img].begin();
 
-            // REMOVE AFTER SINGLE TILE TEST ---------
+            // REMOVE AFTER SINGLE TILE TEST {@
             // std::advance(tileIt, 33);
             // tileIt->x *= ratiow;
             // tileIt->width *= ratiow;
@@ -241,7 +240,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             // if (ceil(tileIt->y + tileIt->height) >= (int64_t)h0)
             //    tileIt->height = (int64_t)(h0 - tileIt->y);
             // for (int i = 0; i < this->tiles[img].size(); i++) {
-            // ---------
+            // @}
             for (; tileIt != this->tiles[img].end(); tileIt++) {
                 // Converts the tile roi for the large image size
                 tileIt->x *= ratiow;
