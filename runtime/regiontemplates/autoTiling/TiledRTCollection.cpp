@@ -82,6 +82,8 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     this->tiled = true;
 }
 
+#define DEBUG
+
 void TiledRTCollection::generateDRs(bool tilingOnly) {
     if (!this->tiled) this->tileImages(tilingOnly);
 

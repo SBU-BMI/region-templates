@@ -93,9 +93,9 @@ int main(int argc, char* argv[]) {
         cout << "\t-t <Number of tiles to be generated (default=1)>" << endl;
         cout << "\t-b <tiling border (default=0)>" << endl;
         cout << "\t-p <bgThr>/<erode>/<dilate> (default=150/4/2)" << endl;
-        cout << "\t-to (tiling only: generate tile images "
+        cout << "\t--to (tiling only: generate tile images "
              << "without executing)" << endl;
-        cout << "\t-nt (execute full image without tiling, overriding "
+        cout << "\t--nt (execute full image without tiling, overriding "
              << "any other tiling parameter)" << endl;
         cout << "\t--nhs (no halide scheduling: pipeline will execute "
              << " serially when selected)" << endl;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
         cout << "\t--mp <CPU thread count (default=0 i.e., all)>" << endl;
 
         cout << "=== Pre-tiler (PT) options:" << endl;
-        cout << "\t-npt (without pre-tiler)" << endl;
+        cout << "\t--npt (without pre-tiler)" << endl;
 
         cout << "=== Dense tiling options:" << endl;
         cout << "\t-d <dense tiling algorithm>" << endl;
@@ -199,13 +199,13 @@ int main(int argc, char* argv[]) {
 
     // Tiling only
     bool tilingOnly = false;
-    if (findArgPos("-to", argc, argv) != -1) {
+    if (findArgPos("--to", argc, argv) != -1) {
         tilingOnly = true;
     }
 
     // No tiling execution
     bool noTiling = false;
-    if (findArgPos("-nt", argc, argv) != -1) {
+    if (findArgPos("--nt", argc, argv) != -1) {
         noTiling = true;
     }
 
@@ -245,7 +245,7 @@ int main(int argc, char* argv[]) {
 
     // No pre-tiling execution
     bool preTiling = true;
-    if (findArgPos("-npt", argc, argv) != -1) {
+    if (findArgPos("--npt", argc, argv) != -1) {
         preTiling = false;
     }
 
