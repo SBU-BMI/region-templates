@@ -120,8 +120,9 @@ void HybridDenseTiledRTCollection::tileMat(
                             this->cpuPATS, this->gpuPATS, this->cfunc);
 
             // Correct gpuTiles count if there are many dense regions
-            this->nGpuTiles =
-                floor(this->gpuPATS / (this->gpuPATS + this->cpuPATS) * dense);
+            if (dense > 0)
+                this->nGpuTiles = floor(
+                    this->gpuPATS / (this->gpuPATS + this->cpuPATS) * dense);
 
             tiles.clear();
 
