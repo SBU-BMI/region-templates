@@ -18,6 +18,7 @@ ExecutionEngine::ExecutionEngine(int cpuThreads, int gpuThreads, int wid,
     // }else{
     // 	tasksQueue = new TasksQueuePriority(cpuThreads, gpuThreads);
     // }
+
     tasksQueue = new TasksQueueHalide(cpuThreads, gpuThreads);
     threadPool = new ThreadPool(tasksQueue, this);
     threadPool->createThreadPool(cpuThreads, NULL, gpuThreads, NULL,
