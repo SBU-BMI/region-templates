@@ -149,16 +149,16 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
         // Removes the first tile and insert the remaining large tile
         sDense.erase(dIt);
-        if (c2 > c1) {
-            sDense.insert(newt1);
-            dense.push_back(newt2);
+        if (c1 > c2) {
+            sDense.insert(newt1);    // adding c1 to more tiling
+            dense.push_back(newt2);  // adding c2 to final
             sprintf(ccost, "%'2f", c2);
             std::cout << "[listCutting] adding tile: " << ccost << std::endl;
             std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," << newt2.xi
                       << ":" << newt2.xo << std::endl;
         } else {
             sDense.insert(newt2);
-            dense.push_back(newt1);
+            dense.push_back(newt1);  // adding c1 to final
             sprintf(ccost, "%'2f", c1);
             std::cout << "[listCutting] adding tile: " << ccost << std::endl;
             std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," << newt1.xi
