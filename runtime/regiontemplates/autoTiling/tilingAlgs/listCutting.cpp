@@ -115,14 +115,14 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
     }
     dense.clear();
 
-    // setlocale(LC_NUMERIC, "pt_BR.utf-8");
-    // char ccost[50];
-    // sprintf(ccost, "%'2f", cfunc->cost(img));
-    // std::cout << "[listCutting] Image full cost: " << ccost << std::endl;
-    // sprintf(ccost, "%'2f", gpuCost);
-    // std::cout << "[listCutting] GPU tile expected cost: " << ccost <<
-    // std::endl; sprintf(ccost, "%'2f", cpuCost); std::cout << "[listCutting]
-    // CPU tile expected cost: " << ccost << std::endl;
+    setlocale(LC_NUMERIC, "pt_BR.utf-8");
+    char ccost[50];
+    sprintf(ccost, "%'2f", cfunc->cost(img));
+    std::cout << "[listCutting] Image full cost: " << ccost << std::endl;
+    sprintf(ccost, "%'2f", gpuCost);
+    std::cout << "[listCutting] GPU tile expected cost: " << ccost << std::endl;
+    sprintf(ccost, "%'2f", cpuCost);
+    std::cout << "[listCutting]CPU tile expected cost: " << ccost << std::endl;
 
     // Get gpu tiles
     for (int i = 0; i < (gpuCount + cpuCount - initialTiles); i++) {
