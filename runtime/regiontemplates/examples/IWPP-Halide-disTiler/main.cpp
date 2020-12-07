@@ -423,12 +423,12 @@ int main(int argc, char* argv[]) {
         int bgTilesExpected =
             (std::floor(preTiler.getBgSize() / nTiles) + 1) * nTiles;
         if (hybridExec == HYBRID) {
-            bgTiler = new HybridDenseTiledRTCollection(
-                "input", "input", Ipath, border, bgCostFunc, bgm, bgTilingAlg,
-                bgTilesExpected, 0, 1, 1);
             // bgTiler = new HybridDenseTiledRTCollection(
             //     "input", "input", Ipath, border, bgCostFunc, bgm,
-            //     bgTilingAlg, bgTilesExpected/2, bgTilesExpected/2, 1, 1);
+            //     bgTilingAlg, bgTilesExpected, 0, 1, 1);
+            bgTiler = new HybridDenseTiledRTCollection(
+                "input", "input", Ipath, border, bgCostFunc, bgm, bgTilingAlg,
+                nTiles, nTiles * gn, 1, 1);
         } else {
             bgTiler = new IrregTiledRTCollection("input", "input", Ipath,
                                                  border, bgCostFunc, bgm,
