@@ -1,10 +1,10 @@
 #include "IrregTiledRTCollection.h"
 
-IrregTiledRTCollection::IrregTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int64_t borders, 
-    CostFunction* cfunc, BGMasker* bgm, TilerAlg_t tilingAlg, int nTiles) 
-        : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
-            
+IrregTiledRTCollection::IrregTiledRTCollection(
+    std::string name, std::string refDDRName, std::string tilesPath,
+    int64_t borders, CostFunction* cfunc, BGMasker* bgm, TilerAlg_t tilingAlg,
+    int nTiles)
+    : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
     this->bgm = bgm;
     this->nTiles = nTiles;
     this->tilingAlg = tilingAlg;
@@ -27,7 +27,7 @@ void IrregTiledRTCollection::customTiling() {
         osr = openslide_open(img.c_str());
 
         // Opens smallest image as a cv mat
-        osrMinLevel = openslide_get_level_count(osr) - 1; // last level
+        osrMinLevel = openslide_get_level_count(osr) - 1;  // last level
         openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
         cv::Rect_<int64_t> roi(0, 0, w, h);
         osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
@@ -39,46 +39,46 @@ void IrregTiledRTCollection::customTiling() {
     }
 }
 
-void IrregTiledRTCollection::tileMat(cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) {
+void IrregTiledRTCollection::tileMat(cv::Mat& mat,
+                                     std::list<cv::Rect_<int64_t>>& tiles) {
     // Converts the initial tiles list to rect_t
     std::list<rect_t> curTiles;
     for (cv::Rect_<int64_t> r : tiles) {
-        rect_t rt = {r.x, r.y, r.x+r.width-1, r.y+r.height-1};
+        rect_t rt = {r.x, r.y, r.x + r.width - 1, r.y + r.height - 1};
         curTiles.push_back(rt);
     }
-    
+
     // Performs actual dense tiling
     switch (this->tilingAlg) {
         case LIST_ALG_HALF:
         case LIST_ALG_EXPECT: {
-            listCutting(mat, curTiles, this->nTiles, 
-                this->tilingAlg, this->cfunc);
+            listCutting(mat, curTiles, this->nTiles, this->tilingAlg,
+                        this->cfunc);
             break;
         }
         case KD_TREE_ALG_AREA:
         case KD_TREE_ALG_COST: {
-            kdTreeCutting(mat, curTiles, this->nTiles, 
-                this->tilingAlg, this->cfunc);
+            kdTreeCutting(mat, curTiles, this->nTiles, this->tilingAlg,
+                          this->cfunc);
             break;
         }
         case HBAL_TRIE_QUAD_TREE_ALG: {
-            heightBalancedTrieQuadTreeCutting(mat, 
-                curTiles, this->nTiles);
+            heightBalancedTrieQuadTreeCutting(mat, curTiles, this->nTiles);
             break;
         }
         case CBAL_TRIE_QUAD_TREE_ALG:
         case CBAL_POINT_QUAD_TREE_ALG: {
-            costBalancedQuadTreeCutting(mat, curTiles, 
-                this->nTiles, this->tilingAlg, this->cfunc);
+            costBalancedQuadTreeCutting(mat, curTiles, this->nTiles,
+                                        this->tilingAlg, this->cfunc);
             break;
         }
     }
 
     // Convert rect_t to cv::Rect_ and add borders
     tiles.clear();
-    for (std::list<rect_t>::iterator r=curTiles.begin(); 
-            r!=curTiles.end(); r++) {
-        tiles.push_back(cv::Rect_<int64_t>(
-            r->xi, r->yi, r->xo-r->xi+1, r->yo-r->yi+1));
+    for (std::list<rect_t>::iterator r = curTiles.begin(); r != curTiles.end();
+         r++) {
+        tiles.push_back(cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi + 1,
+                                           r->yo - r->yi + 1));
     }
 }

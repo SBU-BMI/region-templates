@@ -370,9 +370,9 @@ int main(int argc, char* argv[]) {
     if (denseCostf == THRS)
         denseCostFunc =
             new ThresholdBGCostFunction(static_cast<ThresholdBGMasker*>(bgm));
-    else
-        denseCostFunc = new MultiObjCostFunction(
-            static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
+    // else
+    // denseCostFunc = new MultiObjCostFunction(
+    //     static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
     CostFunction* bgCostFunc = new AreaCostFunction();
 
     // Create extra tiles for gpu
@@ -381,7 +381,6 @@ int main(int argc, char* argv[]) {
     }
 
     // Verifies for hybrid execution
-    // int nnTiles = 64;  // USED FOR A SINGLE TEST - DELETE LATER
     if (hybridExec == HYBRID) {
         float cpuPATS = 1;
         float gpuPATS = gpc;

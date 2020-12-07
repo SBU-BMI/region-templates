@@ -9,6 +9,10 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles,
     }
     avgCost /= nTiles;
 
+    setlocale(LC_NUMERIC, "pt_BR.utf-8");
+    char ccost[50];
+    sprintf(ccost, "%'2f", cfunc->cost(img));
+
     // Create a multiset of tiles ordered by the cost function. This is to
     // avoid re-sorting of the dense list whilst enabling O(1) access
     std::multiset<rect_t, rect_tCostFunct> sDense(
@@ -51,8 +55,10 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles,
     // Moves regions to the output list
     dense.clear();
     for (rect_t r : sDense) {
-        // std::cout << r.xi << "-" << r.xo << ","
-        //     << r.yi << "-" << r.yo << std::endl;
+        // std::cout << "[listCutting] adding tile " << r.xi << "-" << r.xo <<
+        // ","
+        //           << r.yi << "-" << r.yo << " = "
+        //           << cfunc->cost(img, r.yi, r.yo, r.xi, r.xo) << std::endl;
         dense.push_back(r);
     }
 }
@@ -72,14 +78,31 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
     }
 
     // Calculates the target average cost of a dense tile
-    long imgCost = 0;
+    long long imgCost = 0;
     for (rect_t r : dense) {
         imgCost += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
     }
 
+    if (gpuCount == 0) gpuPats = 0;
+    if (cpuCount == 0) cpuPats = 0;
+
     double totCost = cpuCount * cpuPats + gpuCount * gpuPats;
-    double cpuCost = imgCost * cpuPats / totCost;
     double gpuCost = imgCost * gpuPats / totCost;
+    double cpuCost = imgCost * cpuPats / totCost;
+
+    // std::cout << "totCost(" << totCost << ") = cpuCount(" << cpuCount
+    //           << ") * cpuPats(" << cpuPats << ") + GpuCount(" << gpuCount
+    //           << ") * GpuPats(" << gpuPats << ")" << std::endl;
+
+    // std::cout << "GpuCost(" << gpuCost << ") = imgCost(" << imgCost
+    //           << ") * GpuPats(" << gpuPats << ") / totCost(" << totCost <<
+    //           ")"
+    //           << std::endl;
+
+    // std::cout << "cpuCost(" << cpuCost << ") = imgCost(" << imgCost
+    //           << ") * cpuPats(" << cpuPats << ") / totCost(" << totCost <<
+    //           ")"
+    //           << std::endl;
 
     int initialTiles = dense.size();
 
@@ -92,8 +115,8 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
     }
     dense.clear();
 
-    setlocale(LC_NUMERIC, "pt_BR.utf-8");
-    char ccost[50];
+    // setlocale(LC_NUMERIC, "pt_BR.utf-8");
+    // char ccost[50];
     // sprintf(ccost, "%'2f", cfunc->cost(img));
     // std::cout << "[listCutting] Image full cost: " << ccost << std::endl;
     // sprintf(ccost, "%'2f", gpuCost);
@@ -126,7 +149,7 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
         // Removes the first tile and insert the remaining large tile
         sDense.erase(dIt);
-        if (c1 < c2) {
+        if (c2 > c1) {
             sDense.insert(newt1);
             dense.push_back(newt2);
             sprintf(ccost, "%'2f", c2);
@@ -145,10 +168,11 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
     // Moves regions to the output list
     for (rect_t r : sDense) {
-        // sprintf(cost, "%'2f", cfunc->cost(img, r.yi, r.yo, r.xi, r.xo));
-        // std::cout << "[listCutting] adding tile to cpu: " << cost
-        // <<std::endl; std::cout << "\t" << r.yi << ":" << r.yo << ","
-        //         << r.xi << ":" << r.xo << std::endl;
+        char cost[90];
+        sprintf(cost, "%'2f", cfunc->cost(img, r.yi, r.yo, r.xi, r.xo));
+        std::cout << "[listCutting] adding tile to cpu: " << cost << std::endl;
+        std::cout << "\t" << r.yi << ":" << r.yo << "," << r.xi << ":" << r.xo
+                  << std::endl;
         dense.push_back(r);
     }
 

@@ -1,8 +1,10 @@
 #include "ThresholdBGCostFunction.h"
 
 // template <typename T>
-// ThresholdBGCostFunction<T>::ThresholdBGCostFunction(int bgThr, int dilate, int erode) {
-ThresholdBGCostFunction::ThresholdBGCostFunction(int bgThr, int dilate, int erode) {
+// ThresholdBGCostFunction<T>::ThresholdBGCostFunction(int bgThr, int dilate,
+// int erode) {
+ThresholdBGCostFunction::ThresholdBGCostFunction(int bgThr, int dilate,
+                                                 int erode) {
     this->bgm = new ThresholdBGMasker(bgThr, dilate, erode);
 }
 

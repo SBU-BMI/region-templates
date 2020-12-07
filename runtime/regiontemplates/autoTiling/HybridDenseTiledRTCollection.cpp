@@ -52,11 +52,6 @@ void HybridDenseTiledRTCollection::customTiling() {
 
 void HybridDenseTiledRTCollection::tileMat(
     cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) {
-    // Generates Threshold mask
-    cv::Mat thMask = bgm->bgMask(mat);
-    thMask.convertTo(thMask, CV_8U);
-    cv::threshold(thMask, thMask, 0, 255, cv::THRESH_BINARY);
-
     int w = mat.cols;
     int h = mat.rows;
 
@@ -116,7 +111,7 @@ void HybridDenseTiledRTCollection::tileMat(
 
             // Performs tiling
             int dense =
-                listCutting(thMask, tmpTtiles, this->nCpuTiles, this->nGpuTiles,
+                listCutting(mat, tmpTtiles, this->nCpuTiles, this->nGpuTiles,
                             this->cpuPATS, this->gpuPATS, this->cfunc);
 
             // Correct gpuTiles count if there are many dense regions
