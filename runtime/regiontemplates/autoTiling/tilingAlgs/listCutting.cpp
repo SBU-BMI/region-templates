@@ -117,12 +117,12 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
     setlocale(LC_NUMERIC, "pt_BR.utf-8");
     char ccost[50];
-    sprintf(ccost, "%'2f", cfunc->cost(img));
-    std::cout << "[listCutting] Image full cost: " << ccost << std::endl;
-    sprintf(ccost, "%'2f", gpuCost);
-    std::cout << "[listCutting] GPU tile expected cost: " << ccost << std::endl;
-    sprintf(ccost, "%'2f", cpuCost);
-    std::cout << "[listCutting]CPU tile expected cost: " << ccost << std::endl;
+    // sprintf(ccost, "%'2f", cfunc->cost(img));
+    // std::cout << "[listCutting] Image full cost: " << ccost << std::endl;
+    // sprintf(ccost, "%'2f", gpuCost);
+    // std::cout << "[listCutting] GPU tile expected cost: " << ccost <<
+    // std::endl; sprintf(ccost, "%'2f", cpuCost); std::cout <<
+    // "[listCutting]CPU tile expected cost: " << ccost << std::endl;
 
     // Get gpu tiles
     for (int i = 0; i < (gpuCount + cpuCount - initialTiles); i++) {
@@ -149,18 +149,22 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
 
         // Removes the first tile and insert the remaining large tile
         sDense.erase(dIt);
-        if (c1 > c2) {
+        // std::cout << "[listCutting] =============== dist c1: " << abs(cost -
+        // c1) << std::endl;
+        // std::cout << "[listCutting] =============== dist c2: " << abs(cost -
+        // c2) << std::endl;
+        if (abs(cost - c1) > abs(cost - c2)) {
             sDense.insert(newt1);    // adding c1 to more tiling
             dense.push_back(newt2);  // adding c2 to final
             sprintf(ccost, "%'2f", c2);
-            std::cout << "[listCutting] adding tile: " << ccost << std::endl;
+            std::cout << "[listCutting] adding tile2: " << ccost << std::endl;
             std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," << newt2.xi
                       << ":" << newt2.xo << std::endl;
         } else {
             sDense.insert(newt2);
             dense.push_back(newt1);  // adding c1 to final
             sprintf(ccost, "%'2f", c1);
-            std::cout << "[listCutting] adding tile: " << ccost << std::endl;
+            std::cout << "[listCutting] adding tile1: " << ccost << std::endl;
             std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," << newt1.xi
                       << ":" << newt1.xo << std::endl;
         }

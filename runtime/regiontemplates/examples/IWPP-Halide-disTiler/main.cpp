@@ -6,7 +6,6 @@
 
 #include "AutoStage.h"
 #include "ExecEngineConstants.h"
-#include "IwppRecon.h"
 #include "RegionTemplate.h"
 #include "Util.h"
 
