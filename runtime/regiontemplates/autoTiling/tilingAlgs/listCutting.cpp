@@ -153,7 +153,7 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
         // c1) << std::endl;
         // std::cout << "[listCutting] =============== dist c2: " << abs(cost -
         // c2) << std::endl;
-        if (abs(cost - c1) > abs(cost - c2)) {
+        if (std::abs(cost - c1) > std::abs(cost - c2)) {
             sDense.insert(newt1);    // adding c1 to more tiling
             dense.push_back(newt2);  // adding c2 to final
             sprintf(ccost, "%'2f", c2);

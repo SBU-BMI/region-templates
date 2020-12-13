@@ -21,20 +21,20 @@ Worker::Worker(const int manager_rank, const int rank,
     this->setActiveComponentInstances(0);
     // Create a local Resource Manager
 
-#define MULTIWORKER_WORKARROUND
-#ifdef MULTIWORKER_WORKARROUND
-    if (rank == 0) {
-        std::cout << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
-                     "NEW CPU WORKER"
-                  << std::endl;
-        GPUs = 0;
-    } else {
-        std::cout << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
-                     "NEW GPU WORKER"
-                  << std::endl;
-        CPUCores = 0;
+    // DELETE THIS LATER
+    if (schedType == ExecEngineConstants::HALIDE_TARGET_QUEUE) {
+        if (rank == 0) {
+            std::cout << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
+                         "NEW CPU WORKER"
+                      << std::endl;
+            GPUs = 0;
+        } else {
+            std::cout << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
+                         "NEW GPU WORKER"
+                      << std::endl;
+            CPUCores = 0;
+        }
     }
-#endif
 
     this->setResourceManager(new ExecutionEngine(
         CPUCores, GPUs, rank, schedType, dataLocalityAware, prefetching));
