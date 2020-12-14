@@ -9,19 +9,18 @@
 #define SYSENV_H_
 
 #include <mpi.h>
+#include <stdint.h>
 #include <string.h>
 #include <string>
-#include <stdint.h>
-#include "Types.hpp"
-#include "Manager.h"
 #include "Argument.h"
-
+#include "Manager.h"
+#include "Types.hpp"
 
 class SysEnv {
-private:
-	Manager* manager;
+  private:
+    Manager *manager;
 
-	Manager *getManager() const;
+    Manager *getManager() const;
     void setManager(Manager *manager);
 
     // System parameters
@@ -31,28 +30,25 @@ private:
     bool prefetching;
     bool cacheOnRead;
     bool componentDataAwareSchedule;
+    bool withHybridWorkarround;
 
-public:
-	SysEnv();
-	virtual ~SysEnv();
+  public:
+    SysEnv();
+    virtual ~SysEnv();
 
-	void parseInputArguments(int argc, char**argv);
+    void parseInputArguments(int argc, char **argv);
 
-	int startupSystem(int argc, char **argv, std::string componentsLibName);
-	int executeComponent(PipelineComponentBase *compInstance);
+    int startupSystem(int argc, char **argv, std::string componentsLibName);
+    int executeComponent(PipelineComponentBase *compInstance);
 
-	int startupExecution();
-    	int finalizeSystem();
+    int startupExecution();
+    int finalizeSystem();
 
-	int getWorkerSize(){
-		return manager->getWorkerSize();
-	}
-	char *getComponentResultData(int id){
-		return manager->getComponentResultData(id);
-	}
-	bool eraseResultData(int id){
-		return manager->eraseResultData(id);
-	}
+    int getWorkerSize() { return manager->getWorkerSize(); }
+    char *getComponentResultData(int id) {
+        return manager->getComponentResultData(id);
+    }
+    bool eraseResultData(int id) { return manager->eraseResultData(id); }
 };
 
 #endif /* SYSENV_H_ */

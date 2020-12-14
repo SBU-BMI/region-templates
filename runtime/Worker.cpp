@@ -13,8 +13,9 @@ Worker *Worker::singleWorker = NULL;
 
 Worker::Worker(const int manager_rank, const int rank,
                const int max_active_components, int CPUCores, int GPUs,
-               const int schedType, const bool dataLocalityAware,
-               const bool prefetching, const bool cacheOnRead) {
+               const bool withHybridWorkarround, const int schedType,
+               const bool dataLocalityAware, const bool prefetching,
+               const bool cacheOnRead) {
     this->manager_rank = manager_rank;
     this->rank = rank;
     this->setMaxActiveComponentInstances(max_active_components);
@@ -22,16 +23,18 @@ Worker::Worker(const int manager_rank, const int rank,
     // Create a local Resource Manager
 
     // DELETE THIS LATER
-    if (schedType == ExecEngineConstants::HALIDE_TARGET_QUEUE) {
+    if (withHybridWorkarround) {
         if (rank == 0) {
-            std::cout << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
-                         "NEW CPU WORKER"
-                      << std::endl;
+            std::cout
+                << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
+                   "NEW CPU WORKER"
+                << std::endl;
             GPUs = 0;
         } else {
-            std::cout << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
-                         "NEW GPU WORKER"
-                      << std::endl;
+            std::cout
+                << "====== Doing the n workers 1 CPU, n-1 GPU thread pools: "
+                   "NEW GPU WORKER"
+                << std::endl;
             CPUCores = 0;
         }
     }
@@ -65,8 +68,8 @@ Worker::Worker(const int manager_rank, const int rank,
 
 Worker *Worker::getInstance(const int manager_rank, const int rank,
                             const int max_active_components, const int CPUCores,
-                            const int GPUs, const int schedType,
-                            const bool dataLocalityAware,
+                            const int GPUs, const bool withHybridWorkarround,
+                            const int schedType, const bool dataLocalityAware,
                             const bool prefetching, const bool cacheOnRead) {
     if (!instanceFlag) {
         singleWorker = new Worker(manager_rank, rank, max_active_components,
