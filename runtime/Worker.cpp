@@ -72,9 +72,10 @@ Worker *Worker::getInstance(const int manager_rank, const int rank,
                             const int schedType, const bool dataLocalityAware,
                             const bool prefetching, const bool cacheOnRead) {
     if (!instanceFlag) {
-        singleWorker = new Worker(manager_rank, rank, max_active_components,
-                                  CPUCores, GPUs, schedType, dataLocalityAware,
-                                  prefetching, cacheOnRead);
+        singleWorker =
+            new Worker(manager_rank, rank, max_active_components, CPUCores,
+                       GPUs, withHybridWorkarround, schedType,
+                       dataLocalityAware, prefetching, cacheOnRead);
         instanceFlag = true;
         return singleWorker;
     } else {

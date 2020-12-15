@@ -112,8 +112,10 @@ void SysEnv::parseInputArguments(int argc, char **argv) {
                     componentDataAwareSchedule = true;
                     break;
                 case 'h':
+                    std::cout << "===++++++++++++++++ -h\n";
                     managerQueueType = ExecEngineConstants::HALIDE_TARGET_QUEUE;
                     withHybridWorkarround = true;
+                    break;
                 default:
                     break;
             }
