@@ -3,19 +3,22 @@
 
 #include "misc.h"
 
-#include "cv.hpp"
 #include "Halide.h"
+#include "cv.hpp"
 
-#include "RegionTemplate.h"
 #include "ExecEngineConstants.h"
+#include "RegionTemplate.h"
 #include "Util.h"
 
 #include "HalideIwpp.h"
 
-// Should use ExecEngineConstants::GPU ... 
+// Should use ExecEngineConstants::GPU ...
 typedef int Target_t;
 
-bool pipeline1(std::vector<cv::Mat>& im_ios, Target_t target, 
-             std::vector<ArgumentBase*>& params);
+bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
+               std::vector<ArgumentBase *> &params);
+
+bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
+                      std::vector<ArgumentBase *> &params);
 
 #endif

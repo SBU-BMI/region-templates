@@ -8,18 +8,18 @@
 #ifndef TASK_H_
 #define TASK_H_
 
+#include <iostream>
 #include <stddef.h>
 #include <unistd.h>
-#include <iostream>
 #include <vector>
 
 #include "ExecEngineConstants.h"
 #include "ExecutionEngine.h"
 #include "TaskArgument.h"
 
-// #ifdef WITH_CUDA
-#include "opencv2/cudaarithm.hpp"  // new opencv 3.4.1
-// #endif
+#ifdef WITH_CUDA
+#include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
+#endif
 
 class ExecutionEngine;
 class Task;
@@ -42,7 +42,7 @@ class Task {
     // Lock used to guarantee atomicity in the task creation/id generation
     static pthread_mutex_t taskCreationLock;
 
-    vector<TaskArgument*> taskArguments;
+    vector<TaskArgument *> taskArguments;
 
     // Contains the tasks that this current is dependent. In other words, the
     // set of tasks that should execute before the current task is dispatch for
@@ -50,8 +50,7 @@ class Task {
     vector<int> dependencies;
 
     // Number of dependencies solved: number of tasks that this task depends,
-    // and have 								  already finished the
-    // execution.
+    // and have already finished the execution.
     int numberDependenciesSolved;
 
     // Is this a processing tasks, the default, or a transaction task -  only
@@ -74,7 +73,7 @@ class Task {
 
   protected:
     // Pointer to the Execution Engine that is responsible for this task.
-    ExecutionEngine* curExecEngine;
+    ExecutionEngine *curExecEngine;
 
     // This represents on which target this task can be executed. Currently
     // used only for Halide pipelines. Uses ExecEngineConstants (CPU, GPU, ...).
@@ -84,21 +83,24 @@ class Task {
     Task();
     virtual ~Task();
 
-    void addArgument(TaskArgument* argument);
-    TaskArgument* getArgument(int index);
+    void addArgument(TaskArgument *argument);
+    TaskArgument *getArgument(int index);
     int getNumberArguments();
     int getArgumentId(int index);
-    int uploadArgument(int index, cv::cuda::Stream& stream);
-    int downloadArgument(int index, cv::cuda::Stream& stream);
 
-    Task* tryPreassignment();
+#ifdef WITH_CUDA
+    int uploadArgument(int index, cv::cuda::Stream &stream);
+    int downloadArgument(int index, cv::cuda::Stream &stream);
+#endif
+
+    Task *tryPreassignment();
 
     // Adds a single dependency.
     void addDependency(int dependencyId);
 
     // Add a dependency to current task. The input is the task that the current
     // depends on
-    void addDependency(Task* dependency);
+    void addDependency(Task *dependency);
 
     // Adds a number of dependencies at once.
     void addDependencies(vector<int> dependenciesIds);
@@ -128,7 +130,7 @@ class Task {
 
     // Inserts a new task to the current Execution Engine. The one executing
     // this task.
-    int insertTask(Task* task);
+    int insertTask(Task *task);
     //	void *getGPUTempData(int tid);
 
     // Interface implemented by the end user

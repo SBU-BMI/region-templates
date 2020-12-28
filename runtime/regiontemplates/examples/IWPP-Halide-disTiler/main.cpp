@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <iostream>
+#include <stdio.h>
 
 #include "Halide.h"
 #include "cv.hpp"
@@ -50,33 +50,35 @@ typedef int Target_t;
 
 inline Target_t tgt(HybridExec_t exec, Target_t target) {
     switch (exec) {
-        case CPU_ONLY:
-            return ExecEngineConstants::CPU;
-        case GPU_ONLY:
-            return ExecEngineConstants::GPU;
-        case HYBRID:
-            return target;
+    case CPU_ONLY:
+        return ExecEngineConstants::CPU;
+    case GPU_ONLY:
+        return ExecEngineConstants::GPU;
+    case HYBRID:
+        return target;
     }
     return target;
 }
 
-int findArgPos(std::string s, int argc, char** argv) {
+int findArgPos(std::string s, int argc, char **argv) {
     for (int i = 1; i < argc; i++)
-        if (std::string(argv[i]).compare(s) == 0) return i;
+        if (std::string(argv[i]).compare(s) == 0)
+            return i;
     return -1;
 }
 
 static struct : RTF::HalGen {
     std::string getName() { return "pipeline1"; }
-    bool realize(std::vector<cv::Mat>& im_ios, Target_t target,
-                 std::vector<ArgumentBase*>& params) {
+    bool realize(std::vector<cv::Mat> &im_ios, Target_t target,
+                 std::vector<ArgumentBase *> &params) {
         pipeline1(im_ios, target, params);
+        pipeline1_nscale(im_ios, target, params);
         return false;
     }
 } pipeline1_s;
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     // Manages inputs
     if (argc < 2) {
         cout << "Usage: ./iwpp <I image> [ARGS]" << endl;
@@ -291,23 +293,23 @@ int main(int argc, char* argv[]) {
     // 3. GPU_ONLY execution cannot have cpu threads
 
     switch (hybridExec) {
-        case CPU_ONLY:
-            argv[findArgPos("-g", argc, argv) + 1][0] = '0';
-            cout << "[main] WARNING: GPU threads not created "
-                 << "due to CPU_ONLY execution." << endl;
-            break;
-        case GPU_ONLY:
-            argv[findArgPos("-c", argc, argv) + 1][0] = '0';
-            cout << "[main] WARNING: CPU threads not created "
-                 << "due to GPU_ONLY execution." << endl;
-            break;
-        case HYBRID:
-            if (findArgPos("-h", argc, argv) == -1) {
-                cout << "[main] Hybrid execution must be with halide queue. "
-                     << "Please run with -h." << endl;
-                exit(0);
-            }
-            break;
+    case CPU_ONLY:
+        argv[findArgPos("-g", argc, argv) + 1][0] = '0';
+        cout << "[main] WARNING: GPU threads not created "
+             << "due to CPU_ONLY execution." << endl;
+        break;
+    case GPU_ONLY:
+        argv[findArgPos("-c", argc, argv) + 1][0] = '0';
+        cout << "[main] WARNING: CPU threads not created "
+             << "due to GPU_ONLY execution." << endl;
+        break;
+    case HYBRID:
+        if (findArgPos("-h", argc, argv) == -1) {
+            cout << "[main] Hybrid execution must be with halide queue. "
+                 << "Please run with -h." << endl;
+            exit(0);
+        }
+        break;
     }
 
     SysEnv sysEnv;
@@ -360,19 +362,19 @@ int main(int argc, char* argv[]) {
 #endif
 
     // Tilers
-    TiledRTCollection* denseTiler;
-    TiledRTCollection* bgTiler;
+    TiledRTCollection *denseTiler;
+    TiledRTCollection *bgTiler;
 
     // Tiling cost functions
-    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    CostFunction* denseCostFunc;
+    BGMasker *bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    CostFunction *denseCostFunc;
     if (denseCostf == THRS)
         denseCostFunc =
-            new ThresholdBGCostFunction(static_cast<ThresholdBGMasker*>(bgm));
+            new ThresholdBGCostFunction(static_cast<ThresholdBGMasker *>(bgm));
     // else
     // denseCostFunc = new MultiObjCostFunction(
     //     static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
-    CostFunction* bgCostFunc = new AreaCostFunction();
+    CostFunction *bgCostFunc = new AreaCostFunction();
 
     // Create extra tiles for gpu
     if (hybridExec == GPU_ONLY) {
@@ -460,7 +462,7 @@ int main(int argc, char* argv[]) {
 
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
-    RegionTemplate* rtOut = newRT("rtOut");
+    RegionTemplate *rtOut = newRT("rtOut");
     for (int i = 0; i < denseTiler->getNumRTs(); i++) {
         // int init = 0;
         // int ii = 33;
