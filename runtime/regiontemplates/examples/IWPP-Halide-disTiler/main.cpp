@@ -72,7 +72,7 @@ static struct : RTF::HalGen {
     bool realize(std::vector<cv::Mat> &im_ios, Target_t target,
                  std::vector<ArgumentBase *> &params) {
         pipeline1(im_ios, target, params);
-        pipeline1_nscale(im_ios, target, params);
+        // pipeline1_nscale(im_ios, target, params);
         return false;
     }
 } pipeline1_s;
@@ -371,9 +371,9 @@ int main(int argc, char *argv[]) {
     if (denseCostf == THRS)
         denseCostFunc =
             new ThresholdBGCostFunction(static_cast<ThresholdBGMasker *>(bgm));
-    // else
-    // denseCostFunc = new MultiObjCostFunction(
-    //     static_cast<ThresholdBGMasker*>(bgm), execBias, loadBias);
+    else
+        denseCostFunc = new MultiObjCostFunction(
+            static_cast<ThresholdBGMasker *>(bgm), execBias, loadBias);
     CostFunction *bgCostFunc = new AreaCostFunction();
 
     // Create extra tiles for gpu
