@@ -60,83 +60,194 @@ void HybridDenseTiledRTCollection::tileMat(
     int h = mat.rows;
 
     // Performs actual dense tiling
-    switch (this->tilingAlg) {
-        case FIXED_GRID_TILING: {
-            std::cout << "[HDT][FIXED_GRID_TILING] Expected tiles: cpu "
-                      << this->nCpuTiles << ", gpu " << this->nGpuTiles
-                      << std::endl;
-            std::cout << "[HDT][FIXED_GRID_TILING] Img size " << h << "x" << w
-                      << std::endl;
+    if (this->tilingAlg == LIST_ALG_EXPECT) {
+        std::cout << "[HDT][LIST_ALG_EXPECT] Tiling ECL for cpu="
+                  << this->nCpuTiles << ":" << this->cpuPATS
+                  << ", gpu=" << this->nGpuTiles << ":" << this->gpuPATS
+                  << std::endl;
 
-            // Checks if no pre-tiling happened (i.e., only one dense tile)
-            if (tiles.size() > 1) {
-                std::cout << "[HDT][FIXED_GRID_TILING] Hybrid fixed grid "
-                          << " cannot be used with pre-tiling." << std::endl;
-                exit(0);
-            }
-            tiles.clear();
-
-            // Percentage of gpu tile
-            float f = this->gpuPATS / (this->gpuPATS + this->cpuPATS);
-            // f=0.5;
-
-            // Tile gpu subimage (top half)
-            long gw = h > w ? w : w * f;
-            long gmw = 0;
-            long gh = h > w ? h * f : h;
-            long gmh = 0;
-            // std::cout << "[HDT][FIXED_GRID_TILING] gpu tiles:"
-            //     << std::endl;
-            fixedGrid(this->nGpuTiles, gw, gh, gmw, gmh, tiles);
-
-            // Tile cpu subimage (second half)
-            long cw = h > w ? w : w - w * f;
-            long cmw = h > w ? 0 : w * f;
-            long ch = h > w ? h - h * f : h;
-            long cmh = h > w ? h * f : 0;
-            // std::cout << "[HDT][FIXED_GRID_TILING] cpu tiles:"
-            //     << std::endl;
-            fixedGrid(this->nCpuTiles, cw, ch, cmw, cmh, tiles);
-
-            break;
+        // Converts the initial tiles list to rect_t
+        std::list<rect_t> tmpTtiles;
+        for (cv::Rect_<int64_t> r : tiles) {
+            rect_t rt = {r.x, r.y, r.x + r.width, r.y + r.height};
+            tmpTtiles.push_back(rt);
         }
-        case LIST_ALG_EXPECT: {
-            std::cout << "[HDT][LIST_ALG_EXPECT] Tiling for cpu="
-                      << this->nCpuTiles << ":" << this->cpuPATS
-                      << ", gpu=" << this->nGpuTiles << ":" << this->gpuPATS
-                      << std::endl;
 
-            // Converts the initial tiles list to rect_t
-            std::list<rect_t> tmpTtiles;
-            for (cv::Rect_<int64_t> r : tiles) {
-                rect_t rt = {r.x, r.y, r.x + r.width, r.y + r.height};
-                tmpTtiles.push_back(rt);
-            }
+        // Performs tiling
+        int dense =
+            listCutting(mat, tmpTtiles, this->nCpuTiles, this->nGpuTiles,
+                        this->cpuPATS, this->gpuPATS, this->cfunc);
 
-            // Performs tiling
-            int dense =
-                listCutting(mat, tmpTtiles, this->nCpuTiles, this->nGpuTiles,
-                            this->cpuPATS, this->gpuPATS, this->cfunc);
+        // Correct gpuTiles count if there are many dense regions
+        if (dense > 0)
+            this->nGpuTiles =
+                floor(this->gpuPATS / (this->gpuPATS + this->cpuPATS) * dense);
 
-            // Correct gpuTiles count if there are many dense regions
-            if (dense > 0)
-                this->nGpuTiles = floor(
-                    this->gpuPATS / (this->gpuPATS + this->cpuPATS) * dense);
+        tiles.clear();
 
-            tiles.clear();
-
-            // Convert rect_t to cv::Rect_
-            for (std::list<rect_t>::iterator r = tmpTtiles.begin();
-                 r != tmpTtiles.end(); r++) {
-                tiles.push_back(cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi,
-                                                   r->yo - r->yi));
-            }
-            break;
+        // Convert rect_t to cv::Rect_
+        for (std::list<rect_t>::iterator r = tmpTtiles.begin();
+             r != tmpTtiles.end(); r++) {
+            tiles.push_back(
+                cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
         }
-        default:
-            std::cout << "[HDT] Invalid dense "
-                      << "tiling algorithm." << std::endl;
-            exit(-1);
+    } else {
+        // Checks if no pre-tiling happened (i.e., only one dense tile)
+        if (tiles.size() > 1) {
+            std::cout << "[HDT][FIXED_GRID_TILING] Only Hybrid ECL "
+                      << " can be used with pre-tiling." << std::endl;
+            exit(0);
+        }
+        tiles.clear();
+
+        // Percentage of gpu tile
+        float f = this->gpuPATS / (this->gpuPATS + this->cpuPATS);
+        // f=0.5;
+
+        // Create gpu tile (top half)
+        long gw = h > w ? w : w * f;
+        long gmw = 0;
+        long gh = h > w ? h * f : h;
+        long gmh = 0;
+
+        // Create cpu tile (bottom half)
+        long cw = h > w ? w : w - w * f;
+        long cmw = h > w ? 0 : w * f;
+        long ch = h > w ? h - h * f : h;
+        long cmh = h > w ? h * f : 0;
+
+        std::list<rect_t> curTiles;
+
+        switch (this->tilingAlg) {
+            case FIXED_GRID_TILING: {
+                std::cout << "[HDT][FIXED_GRID_TILING] FG Expected tiles: cpu "
+                          << this->nCpuTiles << ", gpu " << this->nGpuTiles
+                          << std::endl;
+                std::cout << "[HDT][FIXED_GRID_TILING] Img size " << h << "x"
+                          << w << std::endl;
+
+                // Tile gpu subimage (top half)
+                // std::cout << "[HDT][FIXED_GRID_TILING] gpu tiles:" <<
+                //              std::endl;
+                fixedGrid(this->nGpuTiles, gw, gh, gmw, gmh, tiles);
+
+                // Tile cpu subimage (second half)
+                // std::cout << "[HDT][FIXED_GRID_TILING] cpu tiles:" <<
+                //              std::endl;
+                fixedGrid(this->nCpuTiles, cw, ch, cmw, cmh, tiles);
+
+                break;
+            }
+            case KD_TREE_ALG_AREA:
+            case KD_TREE_ALG_COST:
+                std::cout
+                    << "[HDT][FIXED_GRID_TILING] KD-Tree Expected tiles: cpu "
+                    << this->nCpuTiles << ", gpu " << this->nGpuTiles
+                    << std::endl;
+                std::cout << "[HDT][FIXED_GRID_TILING] Img size " << h << "x"
+                          << w << std::endl;
+
+                // Tile gpu subimage (top half)
+                curTiles.push_back({gmw, gmh, gmw + gw - 1, gmh + gh - 1});
+                kdTreeCutting(mat, curTiles, this->nGpuTiles, this->tilingAlg,
+                              this->cfunc);
+
+                // Add gpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                curTiles.clear();
+
+                // Tile cpu subimage (second half)
+                curTiles.push_back({cmw, cmh, cmw + cw - 1, cmh + ch - 1});
+                kdTreeCutting(mat, curTiles, this->nCpuTiles, this->tilingAlg,
+                              this->cfunc);
+
+                // Add cpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                break;
+
+            case HBAL_TRIE_QUAD_TREE_ALG:
+                std::cout
+                    << "[HDT][FIXED_GRID_TILING] Quad-Tree Expected tiles: cpu "
+                    << this->nCpuTiles << ", gpu " << this->nGpuTiles
+                    << std::endl;
+                std::cout << "[HDT][FIXED_GRID_TILING] Img size " << h << "x"
+                          << w << std::endl;
+
+                // Tile gpu subimage (top half)
+                curTiles.push_back({gmw, gmh, gmw + gw - 1, gmh + gh - 1});
+                heightBalancedTrieQuadTreeCutting(mat, curTiles,
+                                                  this->nGpuTiles);
+
+                // Add gpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                curTiles.clear();
+
+                // Tile cpu subimage (second half)
+                curTiles.push_back({cmw, cmh, cmw + cw - 1, cmh + ch - 1});
+                heightBalancedTrieQuadTreeCutting(mat, curTiles,
+                                                  this->nCpuTiles);
+
+                // Add cpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                break;
+
+            case CBAL_TRIE_QUAD_TREE_ALG:
+            case CBAL_POINT_QUAD_TREE_ALG:
+                std::cout
+                    << "[HDT][FIXED_GRID_TILING] Quad-Tree Expected tiles: cpu "
+                    << this->nCpuTiles << ", gpu " << this->nGpuTiles
+                    << std::endl;
+                std::cout << "[HDT][FIXED_GRID_TILING] Img size " << h << "x"
+                          << w << std::endl;
+
+                // Tile gpu subimage (top half)
+                curTiles.push_back({gmw, gmh, gmw + gw - 1, gmh + gh - 1});
+                costBalancedQuadTreeCutting(mat, curTiles, this->nGpuTiles,
+                                            this->tilingAlg, this->cfunc);
+
+                // Add gpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                curTiles.clear();
+
+                // Tile cpu subimage (second half)
+                curTiles.push_back({cmw, cmh, cmw + cw - 1, cmh + ch - 1});
+                costBalancedQuadTreeCutting(mat, curTiles, this->nCpuTiles,
+                                            this->tilingAlg, this->cfunc);
+
+                // Add cpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                break;
+
+            default:
+                std::cout << "[HDT] Invalid dense "
+                          << "tiling algorithm." << std::endl;
+                exit(-1);
+        }
+
+        std::cout << "[HDT] Tiles: " << tiles.size() << std::endl;
     }
-    std::cout << "[HDT] Tiles: " << tiles.size() << std::endl;
 }

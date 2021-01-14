@@ -47,7 +47,6 @@ int64_t perim(int xt, int yt, int64_t w, int64_t h) {
     return 2 * xt * h + 2 * yt * w;
 }
 
-#define DEBUG
 int fixedGrid(int64_t nTiles, int64_t w, int64_t h, int64_t mw, int64_t mh,
               std::list<cv::Rect_<int64_t>>& rois) {
     // Gets full factorization of nTiles
@@ -68,7 +67,7 @@ int fixedGrid(int64_t nTiles, int64_t w, int64_t h, int64_t mw, int64_t mh,
     for (int i = 1; i < out.size(); i++) {
         while (out[i] == out[i - 1] && i < out.size()) i++;
         if (i == out.size()) i--;
-        std::cout << "out[" << i << "]=" << out[i] << std::endl;
+        // std::cout << "out[" << i << "]=" << out[i] << std::endl;
 
         newPerim = perim(out[i], nTiles / out[i], w, h);
         if (newPerim < bestPerim) {

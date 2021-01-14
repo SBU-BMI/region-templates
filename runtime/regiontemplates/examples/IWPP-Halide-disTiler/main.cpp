@@ -1,5 +1,5 @@
-#include <iostream>
 #include <stdio.h>
+#include <iostream>
 
 #include "Halide.h"
 #include "cv.hpp"
@@ -50,20 +50,19 @@ typedef int Target_t;
 
 inline Target_t tgt(HybridExec_t exec, Target_t target) {
     switch (exec) {
-    case CPU_ONLY:
-        return ExecEngineConstants::CPU;
-    case GPU_ONLY:
-        return ExecEngineConstants::GPU;
-    case HYBRID:
-        return target;
+        case CPU_ONLY:
+            return ExecEngineConstants::CPU;
+        case GPU_ONLY:
+            return ExecEngineConstants::GPU;
+        case HYBRID:
+            return target;
     }
     return target;
 }
 
 int findArgPos(std::string s, int argc, char **argv) {
     for (int i = 1; i < argc; i++)
-        if (std::string(argv[i]).compare(s) == 0)
-            return i;
+        if (std::string(argv[i]).compare(s) == 0) return i;
     return -1;
 }
 
@@ -293,23 +292,23 @@ int main(int argc, char *argv[]) {
     // 3. GPU_ONLY execution cannot have cpu threads
 
     switch (hybridExec) {
-    case CPU_ONLY:
-        argv[findArgPos("-g", argc, argv) + 1][0] = '0';
-        cout << "[main] WARNING: GPU threads not created "
-             << "due to CPU_ONLY execution." << endl;
-        break;
-    case GPU_ONLY:
-        argv[findArgPos("-c", argc, argv) + 1][0] = '0';
-        cout << "[main] WARNING: CPU threads not created "
-             << "due to GPU_ONLY execution." << endl;
-        break;
-    case HYBRID:
-        if (findArgPos("-h", argc, argv) == -1) {
-            cout << "[main] Hybrid execution must be with halide queue. "
-                 << "Please run with -h." << endl;
-            exit(0);
-        }
-        break;
+        case CPU_ONLY:
+            argv[findArgPos("-g", argc, argv) + 1][0] = '0';
+            cout << "[main] WARNING: GPU threads not created "
+                 << "due to CPU_ONLY execution." << endl;
+            break;
+        case GPU_ONLY:
+            argv[findArgPos("-c", argc, argv) + 1][0] = '0';
+            cout << "[main] WARNING: CPU threads not created "
+                 << "due to GPU_ONLY execution." << endl;
+            break;
+        case HYBRID:
+            if (findArgPos("-h", argc, argv) == -1) {
+                cout << "[main] Hybrid execution must be with halide queue. "
+                     << "Please run with -h." << endl;
+                exit(0);
+            }
+            break;
     }
 
     SysEnv sysEnv;

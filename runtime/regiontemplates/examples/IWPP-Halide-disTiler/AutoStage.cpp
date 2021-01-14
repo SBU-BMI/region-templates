@@ -1,5 +1,7 @@
 #include "AutoStage.h"
 
+#define DEBUG
+
 RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
                                     std::vector<int64_t> out_shape,
                                     std::map<Target_t, HalGen*> schedules,

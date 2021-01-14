@@ -1,7 +1,7 @@
 #ifndef MISC_H_
 #define MISC_H_
 
-// #define WITH_CUDA
+#define WITH_CUDA
 
 #include "Halide.h"
 #include "cv.hpp"
@@ -23,7 +23,6 @@ Halide::Buffer<T> mat2buf(cv::Mat *m, std::string name = "unnamed");
 template <typename T>
 inline Halide::Buffer<T> gpuMat2buf(cv::cuda::GpuMat &m, Halide::Target &t,
                                     std::string name = "unnamed") {
-
     // buffer_t devB = {0, NULL, {m.cols, m.rows},
     //                  {1, ((int)m.step)/((int)sizeof(T))},
     //                  {0, 0}, sizeof(T)};
@@ -39,6 +38,6 @@ inline Halide::Buffer<T> gpuMat2buf(cv::cuda::GpuMat &m, Halide::Target &t,
 
     return hDev;
 }
-#endif // if WITH_CUDA
+#endif  // if WITH_CUDA
 
 #endif

@@ -134,6 +134,9 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : this->tiles[img]) {
+                // ignore zero area tiles
+                if (tile.height * tile.width == 0) continue;
+
                 // Gets basic info from tile
                 int64_t tileCost = this->cfunc->cost(baseImg, tile);
                 costs.emplace_back(tileCost);
@@ -143,9 +146,10 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 setlocale(LC_NUMERIC, "pt_BR.utf-8");
                 char c_cost[50];
                 sprintf(c_cost, "%'2ld", tileCost);
-                // std::cout << "\ttile " << tile.y << ":" << tile.height
-                //     << "\t" << tile.x << ":" << tile.width << "\tcost: "
-                //     << c_cost << std::endl;
+                // std::cout << "\ttile " << tile.y << ":"
+                //           << tile.height << "\t"
+                //           << tile.x << ":" << tile.width << "\tcost: "
+                //           << c_cost << std::endl;
                 std::cout << "\ttile a" << (tile.height * tile.width) << "\tc"
                           << c_cost << std::endl;
 

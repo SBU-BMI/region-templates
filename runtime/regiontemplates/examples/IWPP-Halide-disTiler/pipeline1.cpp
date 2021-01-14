@@ -209,17 +209,17 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     // === parameters =========================================================
     int tileId = ((ArgumentInt *)params[0])->getArgValue();
 
-    uint8_t blue = ((ArgumentInt *)params[1])->getArgValue();  // getbg
-    uint8_t green = ((ArgumentInt *)params[2])->getArgValue(); // getbg
-    uint8_t red = ((ArgumentInt *)params[3])->getArgValue();   // getbg
+    uint8_t blue = ((ArgumentInt *)params[1])->getArgValue();   // getbg
+    uint8_t green = ((ArgumentInt *)params[2])->getArgValue();  // getbg
+    uint8_t red = ((ArgumentInt *)params[3])->getArgValue();    // getbg
 
     // channel to be inverted (if -1, then input is grayscale)
-    int channel = ((ArgumentInt *)params[4])->getArgValue(); // invert
+    int channel = ((ArgumentInt *)params[4])->getArgValue();  // invert
 
     int disk19raw_width =
-        ((ArgumentInt *)params[5])->getArgValue(); // erode/dilate 1
+        ((ArgumentInt *)params[5])->getArgValue();  // erode/dilate 1
     int *disk19raw =
-        ((ArgumentIntArray *)params[6])->getArgValue(); // erode/dilate 1
+        ((ArgumentIntArray *)params[6])->getArgValue();  // erode/dilate 1
     cv::Mat cvHostSE19(disk19raw_width, disk19raw_width, CV_8U);
     for (int i = 0; i < cvHostSE19.cols; i++) {
         for (int j = 0; j < cvHostSE19.rows; j++) {
@@ -227,12 +227,12 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
         }
     }
 
-    int G1 = ((ArgumentInt *)params[7])->getArgValue(); // preFill
+    int G1 = ((ArgumentInt *)params[7])->getArgValue();  // preFill
 
     int disk3raw_width =
-        ((ArgumentInt *)params[8])->getArgValue(); // dilate/erode 2
+        ((ArgumentInt *)params[8])->getArgValue();  // dilate/erode 2
     int *disk3raw =
-        ((ArgumentIntArray *)params[9])->getArgValue(); // dilate/erode 2
+        ((ArgumentIntArray *)params[9])->getArgValue();  // dilate/erode 2
     cv::Mat cvHostSE3(disk3raw_width, disk3raw_width, CV_8U);
     for (int i = 0; i < cvHostSE3.cols; i++) {
         for (int j = 0; j < cvHostSE3.rows; j++) {
@@ -240,7 +240,8 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
         }
     }
 
-    int noSched = ((ArgumentInt *)params[10])->getArgValue(); // halide no sched
+    int noSched =
+        ((ArgumentInt *)params[10])->getArgValue();           // halide no sched
     int noIWPP = ((ArgumentInt *)params[11])->getArgValue();  // no iwpp
     int gpus = ((ArgumentInt *)params[12])->getArgValue();
 
@@ -340,8 +341,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
 
         long rt3 = Util::ClockGetTime();
         lcnz.realize(hLineCount);
-        for (int i = 0; i < hOut1.width(); i++)
-            bgArea += dLineCount[i];
+        for (int i = 0; i < hOut1.width(); i++) bgArea += dLineCount[i];
         long rt4 = Util::ClockGetTime();
 
         float ratio = ((long)cvHostOut1.rows) * ((long)cvHostOut1.cols);
@@ -358,7 +358,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
         if (ratio >= 0.9) {
             std::cout << "[pipeline1][" << st << "][tile" << tileId
                       << "] aborted!" << std::endl;
-            return true; // abort if more than 90% background
+            return true;  // abort if more than 90% background
         }
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " get_bg done" << std::endl;
@@ -528,7 +528,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     }
 
     if (target == ExecEngineConstants::GPU) {
-        int buffersToFree = 6; // 4 frees and 2 copy
+        int buffersToFree = 6;  // 4 frees and 2 copy
         Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
             hTarget, gpuId, buffersToFree);
         hOut2.copy_to_host();
@@ -548,17 +548,17 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     // === parameters =========================================================
     int tileId = ((ArgumentInt *)params[0])->getArgValue();
 
-    uint8_t blue = ((ArgumentInt *)params[1])->getArgValue();  // getbg
-    uint8_t green = ((ArgumentInt *)params[2])->getArgValue(); // getbg
-    uint8_t red = ((ArgumentInt *)params[3])->getArgValue();   // getbg
+    uint8_t blue = ((ArgumentInt *)params[1])->getArgValue();   // getbg
+    uint8_t green = ((ArgumentInt *)params[2])->getArgValue();  // getbg
+    uint8_t red = ((ArgumentInt *)params[3])->getArgValue();    // getbg
 
     // channel to be inverted (if -1, then input is grayscale)
-    int channel = ((ArgumentInt *)params[4])->getArgValue(); // invert
+    int channel = ((ArgumentInt *)params[4])->getArgValue();  // invert
 
     int disk19raw_width =
-        ((ArgumentInt *)params[5])->getArgValue(); // erode/dilate 1
+        ((ArgumentInt *)params[5])->getArgValue();  // erode/dilate 1
     int *disk19raw =
-        ((ArgumentIntArray *)params[6])->getArgValue(); // erode/dilate 1
+        ((ArgumentIntArray *)params[6])->getArgValue();  // erode/dilate 1
     cv::Mat cvHostSE19(disk19raw_width, disk19raw_width, CV_8U);
     for (int i = 0; i < cvHostSE19.cols; i++) {
         for (int j = 0; j < cvHostSE19.rows; j++) {
@@ -566,12 +566,12 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
         }
     }
 
-    int G1 = ((ArgumentInt *)params[7])->getArgValue(); // preFill
+    int G1 = ((ArgumentInt *)params[7])->getArgValue();  // preFill
 
     int disk3raw_width =
-        ((ArgumentInt *)params[8])->getArgValue(); // dilate/erode 2
+        ((ArgumentInt *)params[8])->getArgValue();  // dilate/erode 2
     int *disk3raw =
-        ((ArgumentIntArray *)params[9])->getArgValue(); // dilate/erode 2
+        ((ArgumentIntArray *)params[9])->getArgValue();  // dilate/erode 2
     cv::Mat cvHostSE3(disk3raw_width, disk3raw_width, CV_8U);
     for (int i = 0; i < cvHostSE3.cols; i++) {
         for (int j = 0; j < cvHostSE3.rows; j++) {
@@ -608,7 +608,7 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     if (ratio >= 0.9) {
         std::cout << "[pipeline1_nscale][" << st << "][tile" << tileId
                   << "] aborted!" << std::endl;
-        return true; // abort if more than 90% background
+        return true;  // abort if more than 90% background
     }
     std::cout << "[pipeline1_nscale][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " get_bg done" << std::endl;
@@ -622,7 +622,6 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     CV_Assert(bgr[2].channels() == 1);
 
     if (std::numeric_limits<unsigned char>::is_integer) {
-
         if (std::numeric_limits<unsigned char>::is_signed) {
             cv::Mat output;
             bitwise_not(bgr[2], output);

@@ -157,16 +157,18 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
             sDense.insert(newt1);    // adding c1 to more tiling
             dense.push_back(newt2);  // adding c2 to final
             sprintf(ccost, "%'2f", c2);
-            std::cout << "[listCutting] adding tile2: " << ccost << std::endl;
-            std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," << newt2.xi
-                      << ":" << newt2.xo << std::endl;
+            // std::cout << "[listCutting] adding tile2: " << ccost <<
+            // std::endl; std::cout << "\t" << newt2.yi << ":" << newt2.yo <<
+            // "," << newt2.xi
+            //           << ":" << newt2.xo << std::endl;
         } else {
             sDense.insert(newt2);
             dense.push_back(newt1);  // adding c1 to final
             sprintf(ccost, "%'2f", c1);
-            std::cout << "[listCutting] adding tile1: " << ccost << std::endl;
-            std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," << newt1.xi
-                      << ":" << newt1.xo << std::endl;
+            // std::cout << "[listCutting] adding tile1: " << ccost <<
+            // std::endl; std::cout << "\t" << newt1.yi << ":" << newt1.yo <<
+            // "," << newt1.xi
+            //           << ":" << newt1.xo << std::endl;
         }
     }
 
@@ -174,9 +176,10 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
     for (rect_t r : sDense) {
         char cost[90];
         sprintf(cost, "%'2f", cfunc->cost(img, r.yi, r.yo, r.xi, r.xo));
-        std::cout << "[listCutting] adding tile to cpu: " << cost << std::endl;
-        std::cout << "\t" << r.yi << ":" << r.yo << "," << r.xi << ":" << r.xo
-                  << std::endl;
+        // std::cout << "[listCutting] adding tile to cpu: " << cost <<
+        // std::endl; std::cout << "\t" << r.yi << ":" << r.yo << "," << r.xi <<
+        // ":" << r.xo
+        //           << std::endl;
         dense.push_back(r);
     }
 
