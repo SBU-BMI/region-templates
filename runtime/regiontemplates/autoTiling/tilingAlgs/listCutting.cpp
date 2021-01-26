@@ -29,21 +29,34 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles,
         // Splits tile with highest cost, generating a two new tiles, being
         // one of them with close to avgCost cost.
         rect_t newt1, newt2;
+
+        // Commented code should work for 1 pixel lines which
+        // can be divided in half
         if ((dIt->xo - dIt->xi) == 1 || (dIt->yo - dIt->yi) == 1) {
+            // if ((dIt->xo - dIt->xi) == 1 && (dIt->yo - dIt->yi) == 1) {
             std::cout << "[listCutting] Tile too small to split." << std::endl;
             exit(-1);
-        }
-        if (type == LIST_ALG_HALF)
-            splitTileLog(
-                *dIt, img, cfunc,
-                cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo) / 2, newt1,
-                newt2);
-        else if (type == LIST_ALG_EXPECT)
-            splitTileLog(*dIt, img, cfunc, avgCost, newt1, newt2);
-        else {
-            std::cout << "[listCutting] Bad listCutting alg type: " << type
-                      << std::endl;
-            exit(-1);
+            // } else if ((dIt->xo - dIt->xi) == 1) {
+            //     int64_t pivot = (dIt->yo - dIt->yi) / 2 + dIt->yi;
+            //     newt1 = {dIt->xi, dIt->yi, dIt->xo, pivot};
+            //     newt2 = {dIt->xi, pivot + 1, dIt->xo, dIt->yo};
+            // } else if ((dIt->yo - dIt->yi) == 1) {
+            //     int64_t pivot = (dIt->xo - dIt->xi) / 2 + dIt->xi;
+            //     newt1 = {dIt->xi, dIt->yi, pivot, dIt->yo};
+            //     newt2 = {pivot + 1, dIt->yi, dIt->xo, dIt->yo};
+        } else {
+            if (type == LIST_ALG_HALF)
+                splitTileLog(
+                    *dIt, img, cfunc,
+                    cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo) / 2,
+                    newt1, newt2);
+            else if (type == LIST_ALG_EXPECT)
+                splitTileLog(*dIt, img, cfunc, avgCost, newt1, newt2);
+            else {
+                std::cout << "[listCutting] Bad listCutting alg type: " << type
+                          << std::endl;
+                exit(-1);
+            }
         }
 
         // Removes the first tile and insert the two sub-tiles created from it
@@ -136,12 +149,22 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
         // Splits tile with highest cost, generating a two new tiles, being
         // one of them with close to avgCost cost.
         rect_t newt1, newt2;
-        if ((dIt->xo - dIt->xi) == 1 || (dIt->yo - dIt->yi) == 1) {
+
+        double cost = i < gpuCount ? gpuCost : cpuCost;
+        if ((dIt->xo - dIt->xi) == 1 && (dIt->yo - dIt->yi) == 1) {
             std::cout << "[listCutting] Tile too small to split." << std::endl;
             exit(-1);
+        } else if ((dIt->xo - dIt->xi) == 1) {
+            int64_t pivot = (dIt->yo - dIt->yi) / 2 + dIt->yi;
+            newt1 = {dIt->xi, dIt->yi, dIt->xo, pivot};
+            newt2 = {dIt->xi, pivot + 1, dIt->xo, dIt->yo};
+        } else if ((dIt->yo - dIt->yi) == 1) {
+            int64_t pivot = (dIt->xo - dIt->xi) / 2 + dIt->xi;
+            newt1 = {dIt->xi, dIt->yi, pivot, dIt->yo};
+            newt2 = {pivot + 1, dIt->yi, dIt->xo, dIt->yo};
+        } else {
+            splitTileLog(*dIt, img, cfunc, cost, newt1, newt2);
         }
-        double cost = i < gpuCount ? gpuCost : cpuCost;
-        splitTileLog(*dIt, img, cfunc, cost, newt1, newt2);
 
         // Find which tile is the most expensive
         double c1 = cfunc->cost(img, newt1.yi, newt1.yo, newt1.xi, newt1.xo);
@@ -157,18 +180,16 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
             sDense.insert(newt1);    // adding c1 to more tiling
             dense.push_back(newt2);  // adding c2 to final
             sprintf(ccost, "%'2f", c2);
-            // std::cout << "[listCutting] adding tile2: " << ccost <<
-            // std::endl; std::cout << "\t" << newt2.yi << ":" << newt2.yo <<
-            // "," << newt2.xi
-            //           << ":" << newt2.xo << std::endl;
+            std::cout << "[listCutting] adding tile2: " << ccost << std::endl;
+            std::cout << "\t" << newt2.yi << ":" << newt2.yo << "," << newt2.xi
+                      << ":" << newt2.xo << std::endl;
         } else {
             sDense.insert(newt2);
             dense.push_back(newt1);  // adding c1 to final
             sprintf(ccost, "%'2f", c1);
-            // std::cout << "[listCutting] adding tile1: " << ccost <<
-            // std::endl; std::cout << "\t" << newt1.yi << ":" << newt1.yo <<
-            // "," << newt1.xi
-            //           << ":" << newt1.xo << std::endl;
+            std::cout << "[listCutting] adding tile1: " << ccost << std::endl;
+            std::cout << "\t" << newt1.yi << ":" << newt1.yo << "," << newt1.xi
+                      << ":" << newt1.xo << std::endl;
         }
     }
 
@@ -176,10 +197,9 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
     for (rect_t r : sDense) {
         char cost[90];
         sprintf(cost, "%'2f", cfunc->cost(img, r.yi, r.yo, r.xi, r.xo));
-        // std::cout << "[listCutting] adding tile to cpu: " << cost <<
-        // std::endl; std::cout << "\t" << r.yi << ":" << r.yo << "," << r.xi <<
-        // ":" << r.xo
-        //           << std::endl;
+        std::cout << "[listCutting] adding tile to cpu: " << cost << std::endl;
+        std::cout << "\t" << r.yi << ":" << r.yo << "," << r.xi << ":" << r.xo
+                  << std::endl;
         dense.push_back(r);
     }
 
