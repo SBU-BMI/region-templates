@@ -8,7 +8,7 @@
 
 TiledRTCollection::TiledRTCollection(std::string name, std::string refDDRName,
                                      std::string tilesPath, int64_t borders,
-                                     CostFunction* cfunc) {
+                                     CostFunction* cfunc, int64_t nTiles) {
     this->tiled = false;
     this->preTiled = false;
     this->drGen = false;
@@ -16,6 +16,7 @@ TiledRTCollection::TiledRTCollection(std::string name, std::string refDDRName,
     this->refDDRName = refDDRName;
     this->tilesPath = tilesPath;
     this->borders = borders;
+    this->nTiles = nTiles;
     this->cfunc = cfunc;
 }
 
@@ -37,9 +38,55 @@ Target_t TiledRTCollection::getTileTarget(int id) {
 }
 
 // Template method hook for a custom tiling method.
-// Defaults to returning the input images with a single
-//   tile containing the full image.
-void TiledRTCollection::customTiling() {}
+// Defaults to 1D horizontal tiling
+void TiledRTCollection::customTiling() {
+    if (this->preTiled) {
+        std::cout << "[TiledRTCollection] 1D tiling cannot have pre-tiling."
+                  << std::endl;
+        exit(0);
+    }
+
+    // Iterate through all images
+    for (std::map<std::string, std::list<cv::Rect_<int64_t>>>::iterator
+             curTiles = this->tiles.begin();
+         curTiles != this->tiles.end(); curTiles++) {
+        int64_t w = curTiles->second.begin()->width;
+        int64_t h = curTiles->second.begin()->height;
+        curTiles->second.clear();
+        int64_t step;
+
+        if (w > h) {
+            // vertical tiling
+            step = std::floor(w / this->nTiles);
+            int64_t wi = -1;
+            int64_t wo = -1;
+            for (int i = 1; i < this->nTiles; i++) {
+                wi = wo + 1;
+                wo = wi + step - 1;
+                curTiles->second.push_back(
+                    cv::Rect_<int64_t>(wi, 0, wo - wi, h));
+            }
+            // Adds last tile
+            curTiles->second.push_back(cv::Rect_<int64_t>(
+                wo + 1, 0, w - step * (this->nTiles - 1), h));
+
+        } else {
+            // horizontal tiling
+            step = std::floor(h / this->nTiles);
+            int64_t hi = -1;
+            int64_t ho = -1;
+            for (int i = 1; i < this->nTiles; i++) {
+                hi = ho + 1;
+                ho = hi + step - 1;
+                curTiles->second.push_back(
+                    cv::Rect_<int64_t>(0, hi, w, ho - hi));
+            }
+            // Adds last tile
+            curTiles->second.push_back(cv::Rect_<int64_t>(
+                0, ho + 1, w, h - step * (this->nTiles - 1)));
+        }
+    }
+}
 
 // Performs the autoTiler algorithm while updating the internal tiles
 //   representation std::map<int, std::vector<cv::Rect_<int64_t>>>
@@ -76,8 +123,7 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     }
 
     // Template method hook for a custom tiling method.
-    // Defaults to returning the input images with a single
-    // tile containing the full image.
+    // Defaults to horizontal tiling
     customTiling();
     this->tiled = true;
 }
@@ -146,10 +192,9 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 setlocale(LC_NUMERIC, "pt_BR.utf-8");
                 char c_cost[50];
                 sprintf(c_cost, "%'2ld", tileCost);
-                // std::cout << "\ttile " << tile.y << ":"
-                //           << tile.height << "\t"
-                //           << tile.x << ":" << tile.width << "\tcost: "
-                //           << c_cost << std::endl;
+                std::cout << "\ttile " << tile.y << ":" << tile.height << "\t"
+                          << tile.x << ":" << tile.width << "\tcost: " << c_cost
+                          << std::endl;
                 std::cout << "\ttile a" << (tile.height * tile.width) << "\tc"
                           << c_cost << std::endl;
 

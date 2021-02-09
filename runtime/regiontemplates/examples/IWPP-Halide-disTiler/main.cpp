@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
         cout << "\t\t5: HBAL_TRIE_QUAD_TREE_ALG" << endl;
         cout << "\t\t6: CBAL_TRIE_QUAD_TREE_ALG" << endl;
         cout << "\t\t7: CBAL_POINT_QUAD_TREE_ALG" << endl;
+        cout << "\t\t8: TILING1D" << endl;
 
         cout << "\t-f <dense cost function>" << endl;
         cout << "\t\tValues (default=0):" << endl;
@@ -219,7 +220,7 @@ int main(int argc, char *argv[]) {
         noIrregularComp = 1;
     }
 
-    // Dense tiling algorithm
+    // Hybrid tiling algorithm
     HybridExec_t hybridExec = CPU_ONLY;
     if (findArgPos("-a", argc, argv) != -1) {
         hybridExec = static_cast<HybridExec_t>(
@@ -256,7 +257,7 @@ int main(int argc, char *argv[]) {
             atoi(argv[findArgPos("-d", argc, argv) + 1]));
     }
 
-    // Dense tiling algorithm
+    // Dense cost function used
     CostFunction_t denseCostf = THRS;
     if (findArgPos("-f", argc, argv) != -1) {
         denseCostf = static_cast<CostFunction_t>(
@@ -395,6 +396,9 @@ int main(int argc, char *argv[]) {
         else if (denseTilingAlg == FIXED_GRID_TILING)
             denseTiler = new RegTiledRTCollection(
                 "input", "input", Ipath, nTiles, border, denseCostFunc);
+        else if (denseTilingAlg == TILING1D)
+            denseTiler = new TiledRTCollection("input", "input", Ipath, border,
+                                               denseCostFunc, nTiles);
         else
             denseTiler = new IrregTiledRTCollection("input", "input", Ipath,
                                                     border, denseCostFunc, bgm,

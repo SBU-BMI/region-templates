@@ -1,39 +1,40 @@
 #ifndef TILED_RT_COLLECTION_H_
 #define TILED_RT_COLLECTION_H_
 
-#include <string>
-#include <list>
-#include <vector>
-#include <map>
 #include <algorithm>
+#include <list>
+#include <map>
+#include <string>
+#include <vector>
 
 #include <opencv/cv.hpp>
 
 #include "openslide.h"
 
+#include "CostFunction.h"
 #include "RegionTemplate.h"
 #include "svs/svsUtils.h"
 #include "tilingAlgs/tilingUtil.h"
-#include "CostFunction.h"
 
 static const std::string TILE_EXT = ".tiff";
 
-// Should use ExecEngineConstants::GPU ... 
+// Should use ExecEngineConstants::GPU ...
 typedef int Target_t;
 
 class TiledRTCollection {
-private:
+  private:
     bool tiled;
     bool drGen;
 
-protected:
+  protected:
     int64_t borders;
+    int64_t nTiles;
 
     std::string name;
     std::string refDDRName;
     std::string tilesPath;
     std::vector<std::string> initialPaths;
-    
+
     // vector<pair<DR name, actual RT object with a single DR>
     std::vector<std::pair<std::string, RegionTemplate*>> rts;
 
@@ -56,26 +57,26 @@ protected:
     //   tile containing the full image.
     virtual void customTiling();
 
-public:
-    TiledRTCollection(std::string name, std::string refDDRName, 
-        std::string tilesPath, int64_t borders, CostFunction* cfunc);
+  public:
+    TiledRTCollection(std::string name, std::string refDDRName,
+                      std::string tilesPath, int64_t borders,
+                      CostFunction* cfunc, int64_t nTiles = -1);
     ~TiledRTCollection();
 
     void addImage(std::string path);
     std::pair<std::string, RegionTemplate*> getRT(int id);
     Target_t getTileTarget(int id);
-    int getNumRTs() {
-        return rts.size();
-    }
+    int getNumRTs() { return rts.size(); }
 
     // Can only be called once
-    void tileImages(bool tilingOnly=false);
+    void tileImages(bool tilingOnly = false);
 
     // Must be called only on the last level of the tiling pipeline
-    void generateDRs(bool tilingOnly=false);
+    void generateDRs(bool tilingOnly = false);
 
     // Can only be called once
-    void setPreTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
+    void setPreTiles(
+        std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
     void addTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
     void addTargets(std::vector<Target_t> targets);
 
@@ -84,10 +85,7 @@ public:
         return tiles;
     };
 
-    std::vector<Target_t> getTargetsBase() {
-        return tileTarget;
-    };
-
+    std::vector<Target_t> getTargetsBase() { return tileTarget; };
 };
 
 #endif
