@@ -427,6 +427,8 @@ void Worker::workerProcess() {
 
 #ifdef PROFILING
                 long workerPrepareT2 = Util::ClockGetTime();
+                std::cout << "[preptime] "
+                          << (workerPrepareT2 - workerPrepareT1) << std::endl;
                 this->workerPrepareTime += workerPrepareT2 - workerPrepareT1;
 #endif
 

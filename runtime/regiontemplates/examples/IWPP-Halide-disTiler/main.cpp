@@ -1,31 +1,28 @@
-#include <stdio.h>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 
-#include "Halide.h"
-#include "cv.hpp"
-
 #include "AutoStage.h"
-#include "ExecEngineConstants.h"
-#include "RegionTemplate.h"
-#include "Util.h"
-
 #include "BGPreTiledRTCollection.h"
+#include "CostFunction.h"
+#include "ExecEngineConstants.h"
+#include "Halide.h"
+#include "HalideIwpp.h"
 #include "HybridDenseTiledRTCollection.h"
 #include "IrregTiledRTCollection.h"
 #include "RegTiledRTCollection.h"
+#include "RegionTemplate.h"
 #include "TiledRTCollection.h"
-#include "costFuncs/BGMasker.h"
-
-#include "CostFunction.h"
+#include "Util.h"
 #include "costFuncs/AreaCostFunction.h"
+#include "costFuncs/BGMasker.h"
 #include "costFuncs/ColorThresholdBGMasker.h"
 #include "costFuncs/MultiObjCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PropagateDistCostFunction.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
-
-#include "HalideIwpp.h"
+#include "cv.hpp"
 #include "pipeline1.h"
 
 using std::cout;
@@ -70,14 +67,16 @@ static struct : RTF::HalGen {
     std::string getName() { return "pipeline1"; }
     bool realize(std::vector<cv::Mat> &im_ios, Target_t target,
                  std::vector<ArgumentBase *> &params) {
-        pipeline1(im_ios, target, params);
+        return pipeline1(im_ios, target, params);
         // pipeline1_nscale(im_ios, target, params);
-        return false;
     }
 } pipeline1_s;
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
 
 int main(int argc, char *argv[]) {
+    srand(123);
+    std::cout << "srand: 123\n";
+
     // Manages inputs
     if (argc < 2) {
         cout << "Usage: ./iwpp <I image> [ARGS]" << endl;
