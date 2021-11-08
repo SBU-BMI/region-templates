@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-#include "cv.hpp"
+#include "opencv/cv.hpp"
 #include "opencv2/core/cuda.hpp"
 #ifdef WITH_CUDA
 #include "opencv2/cudaarithm.hpp"

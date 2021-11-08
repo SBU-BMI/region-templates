@@ -2,7 +2,7 @@
 #define RTCINTERFACE_H_
 
 #include "Worker.h"
-#include <cv.h>
+// #include <cv.h>
 
 void printComponentHello();
 

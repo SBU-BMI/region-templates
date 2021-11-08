@@ -4,7 +4,7 @@
 #define WITH_CUDA
 
 #include "Halide.h"
-#include "cv.hpp"
+#include "opencv/cv.hpp"
 
 #include "ExecEngineConstants.h"
 #include "RegionTemplate.h"

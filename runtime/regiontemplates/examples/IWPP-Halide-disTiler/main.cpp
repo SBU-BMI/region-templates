@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "Halide.h"
-#include "cv.hpp"
+#include "opencv/cv.hpp"
 
 #include "AutoStage.h"
 #include "ExecEngineConstants.h"

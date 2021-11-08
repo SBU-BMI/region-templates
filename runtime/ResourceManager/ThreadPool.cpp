@@ -549,8 +549,8 @@ void ThreadPool::processTasks(int procType, int wid, int tid) {
                 }
             }
 #endif
-        } catch (...) {
-            printf("ERROR in tasks execution. EXCEPTION\n");
+        } catch (std::exception &e) {
+            printf("ERROR in tasks execution. EXCEPTION: %s\n", e.what());
             curTask->setStatus(ExecEngineConstants::CANCELED);
 
 #ifdef WITH_CUDA

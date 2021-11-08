@@ -6,6 +6,7 @@
  */
 
 #include "DenseDataRegion2D.h"
+#include <opencv/cv.hpp>
 
 DenseDataRegion2D::DenseDataRegion2D() {
 	this->setType(DataRegionType::DENSE_REGION_2D);

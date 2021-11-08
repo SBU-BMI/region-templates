@@ -15,7 +15,7 @@
 #include <map>
 
 // OpenCV library includes
-#include "cv.hpp"
+//#include "cv.hpp"
 // #include "opencv2/gpu/gpu.hpp" // old opencv 2.4
 #ifdef WITH_CUDA
 #include "opencv2/cudaarithm.hpp" // new opencv 3.4.1
@@ -23,7 +23,7 @@
 //using namespace cv;
 
 //#include <cv.h>
-#include <highgui.h>
+//#include <highgui.h>
 #include <vector>
 
 //class DataRegionFactory;
