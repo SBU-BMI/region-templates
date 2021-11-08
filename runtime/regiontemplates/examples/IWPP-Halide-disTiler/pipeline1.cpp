@@ -1,4 +1,5 @@
 #include "pipeline1.h"
+
 #include <mpi.h>
 
 #define PROFILING_STAGES
@@ -684,4 +685,6 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     t_erode2.release();
     erode_roi.release();
     t_erode.release();
+
+    return false;
 }

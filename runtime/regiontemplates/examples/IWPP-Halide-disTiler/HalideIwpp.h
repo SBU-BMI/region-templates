@@ -1,8 +1,6 @@
 #ifndef HALIDE_IWPP_H_
 #define HALIDE_IWPP_H_
 
-#include "misc.h"
-
 #include <iostream>
 
 #include "opencv/cv.hpp"
@@ -11,9 +9,8 @@
 #include "opencv2/cudaarithm.hpp"
 #endif  // WITH_CUDA
 
-#include "Halide.h"
-
 #include "ExecEngineConstants.h"
+#include "Halide.h"
 #include "Util.h"
 
 // Should use ExecEngineConstants::GPU ...
