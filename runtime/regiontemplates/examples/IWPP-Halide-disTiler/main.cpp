@@ -455,8 +455,8 @@ int main(int argc, char *argv[]) {
     std::list<cv::Rect_<int64_t>> l = denseTiler->getTiles()[0];
     cout << "[main] Tiles generated: " << l.size() << endl;
     for (cv::Rect_<int64_t> tile : l) {
-        // std::cout << tile.x << ":" << tile.width << "," << tile.y << ":"
-        //           << tile.height << std::endl;
+        std::cout << tile.x << ":" << tile.width << "," << tile.y << ":"
+                  << tile.height << std::endl;
         tiles.emplace_back(tile);
     }
 

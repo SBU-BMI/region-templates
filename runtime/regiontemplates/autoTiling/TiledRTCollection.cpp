@@ -8,7 +8,7 @@
 
 TiledRTCollection::TiledRTCollection(std::string name, std::string refDDRName,
                                      std::string tilesPath, int64_t borders,
-                                     CostFunction* cfunc, int64_t nTiles) {
+                                     CostFunction *cfunc, int64_t nTiles) {
     this->tiled = false;
     this->preTiled = false;
     this->drGen = false;
@@ -26,7 +26,7 @@ void TiledRTCollection::addImage(std::string path) {
     initialPaths.push_back(path);
 }
 
-std::pair<std::string, RegionTemplate*> TiledRTCollection::getRT(int id) {
+std::pair<std::string, RegionTemplate *> TiledRTCollection::getRT(int id) {
     return rts[id];
 }
 
@@ -103,11 +103,11 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     if (!this->preTiled) {
         for (std::string img : this->initialPaths) {
             // Open image
-            openslide_t* osr;
+            openslide_t *osr;
             osr = openslide_open(img.c_str());
 
             // Gets dimensions of smallest slide image
-            int osrMinLevel = openslide_get_level_count(osr) - 1;  // last lvl
+            int osrMinLevel = openslide_get_level_count(osr) - 1; // last lvl
             int64_t w, h;
             openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
             cv::Rect_<int64_t> roi(0, 0, w, h);
@@ -131,7 +131,8 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
 #define DEBUG
 
 void TiledRTCollection::generateDRs(bool tilingOnly) {
-    if (!this->tiled) this->tileImages(tilingOnly);
+    if (!this->tiled)
+        this->tileImages(tilingOnly);
 
     // Tiles' DRs generation can only occur once
     if (this->drGen) {
@@ -149,9 +150,9 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
         for (std::string img : this->initialPaths) {
             cv::Mat baseImg;
             if (isSVS(img)) {
-                openslide_t* osr = openslide_open(img.c_str());
+                openslide_t *osr = openslide_open(img.c_str());
                 int osrMinLevel =
-                    openslide_get_level_count(osr) - 1;  // last level
+                    openslide_get_level_count(osr) - 1; // last level
                 int64_t w = -1;
                 int64_t h = -1;
                 openslide_get_level0_dimensions(osr, &w, &h);
@@ -181,7 +182,8 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : this->tiles[img]) {
                 // ignore zero area tiles
-                if (tile.height * tile.width == 0) continue;
+                if (tile.height * tile.width == 0)
+                    continue;
 
                 // Gets basic info from tile
                 int64_t tileCost = this->cfunc->cost(baseImg, tile);
@@ -225,10 +227,12 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
     // Calculates stddev of tiles cost
     double mean = 0;
-    for (double c : costs) mean += c;
+    for (double c : costs)
+        mean += c;
     mean /= costs.size();
     double var = 0;
-    for (int64_t c : costs) var += pow(c - mean, 2);
+    for (int64_t c : costs)
+        var += pow(c - mean, 2);
     double stddev = sqrt(var / (costs.size() - 1));
 
     // Make the results readable for humans...
@@ -242,7 +246,8 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
     // Calculates the sum of perimeters
     int64_t sumPerim = 0;
-    for (int64_t p : perims) sumPerim += p;
+    for (int64_t p : perims)
+        sumPerim += p;
     std::cout << "[PROFILING][SUMOFPERIMS] " << sumPerim << std::endl;
 
     // Converts tiles sizes to the large image, adds borders and
@@ -250,7 +255,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
     if (!tilingOnly)
         for (std::string img : this->initialPaths) {
             // Open image
-            openslide_t* osr;
+            openslide_t *osr;
             osr = openslide_open(img.c_str());
 
             // Gets info of largest image
@@ -264,7 +269,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             float ratioh = h;
 
             // Gets dimensions of smallest slide image
-            int osrMinLevel = openslide_get_level_count(osr) - 1;  // last lvl
+            int osrMinLevel = openslide_get_level_count(osr) - 1; // last lvl
             openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
             cv::Rect_<int64_t> roi(0, 0, w, h);
 
@@ -290,6 +295,90 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             //    tileIt->height = (int64_t)(h0 - tileIt->y);
             // for (int i = 0; i < this->tiles[img].size(); i++) {
             // @}
+
+            // REMOVE AFTER MANUAL TILING TEST{@
+            // int initialDenseTiles = 2; // tile 22
+            int initialDenseTiles = 4; // tile 77
+
+            // Remove dense tiles
+            for (int i = 0; i < initialDenseTiles; i++) {
+                tiles[img].pop_front();
+            }
+
+            // // tile 22
+            // tiles[img].push_front(cv::Rect_<int64_t>(3276, 6645, 17093,
+            // 4464)); tiles[img].push_front(cv::Rect_<int64_t>(3276, 11302,
+            // 10547, 7442)); tiles[img].push_front(
+            //     cv::Rect_<int64_t>(3276, 37503, 10922, 23822));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(14310, 45974, 14644, 15127));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(28918, 54578, 14639, 6336));
+            // tiles[img].push_front(cv::Rect_<int64_t>(54409, 6645, 10375,
+            // 5930)); tiles[img].push_front(cv::Rect_<int64_t>(84118, 2232,
+            // 16003, 8081)); tiles[img].push_front(cv::Rect_<int64_t>(84118,
+            // 10308, 8924, 8598)); tiles[img].push_front(
+            //     cv::Rect_<int64_t>(84118, 35616, 11759, 20595));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(96004, 43342, 14938, 12885));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(110993, 50601, 15456, 5966));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(134156, 2232, 12915, 5945));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(3296, 19139, 10725, 18541));
+
+            // tiles[img].push_front(cv::Rect_<int64_t>(20638, 6894, 8204,
+            // 5012)); tiles[img].push_front(
+            //     cv::Rect_<int64_t>(13960, 11525, 14933, 34429));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(28979, 6706, 25648, 48080));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(54490, 12550, 10375, 42180));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(43679, 54349, 21267, 6463));
+            // tiles[img].push_front(cv::Rect_<int64_t>(93291, 10506, 7038,
+            // 8507)); tiles[img].push_front(
+            //     cv::Rect_<int64_t>(84083, 18612, 11942, 17034));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(95842, 18612, 4295, 24760));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(99878, 2181, 26165, 41231));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(110653, 43712, 15187, 7137));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(126656, 2181, 8073, 54106));
+            // tiles[img].push_front(
+            //     cv::Rect_<int64_t>(134004, 8284, 12900, 48338));
+
+            // tile 77
+            tiles[img].push_front(cv::Rect_<int64_t>(6680, 0, 33633, 13554));
+            tiles[img].push_front(cv::Rect_<int64_t>(105946, 0, 6176, 28736));
+            tiles[img].push_front(
+                cv::Rect_<int64_t>(105281, 76360, 6846, 10559));
+
+            tiles[img].push_front(cv::Rect_<int64_t>(40313, 0, 9877, 13554));
+            tiles[img].push_front(
+                cv::Rect_<int64_t>(6680, 13554, 33633, 15182));
+            tiles[img].push_front(
+                cv::Rect_<int64_t>(40313, 13554, 9877, 15182));
+            tiles[img].push_front(cv::Rect_<int64_t>(50189, 0, 55757, 28736));
+            tiles[img].push_front(cv::Rect_<int64_t>(0, 28736, 50465, 86920));
+            tiles[img].push_front(
+                cv::Rect_<int64_t>(50465, 28736, 55086, 47624));
+            tiles[img].push_front(
+                cv::Rect_<int64_t>(105281, 28736, 6846, 47624));
+            tiles[img].push_front(
+                cv::Rect_<int64_t>(50465, 76360, 55086, 10559));
+
+            // @}
+
+            for (cv::Rect_<int64_t> tile : this->tiles[img]) {
+                std::cout << "=================tile " << tile.y << ":"
+                          << tile.height << "\t" << tile.x << ":" << tile.width
+                          << std::endl;
+            }
+
             for (; tileIt != this->tiles[img].end(); tileIt++) {
                 // Converts the tile roi for the large image size
                 tileIt->x *= ratiow;
@@ -313,7 +402,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
                 // Creates the dr as a svs data region for
                 // lazy read/write of input file
-                DataRegion* dr = new DenseDataRegion2D();
+                DataRegion *dr = new DenseDataRegion2D();
                 dr->setRoi(*tileIt);
                 dr->setSvs();
 
@@ -325,13 +414,13 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 dr->setIsAppInput(true);
                 dr->setOutputType(DataSourceType::FILE_SYSTEM);
                 dr->setInputFileName(this->tilesPath);
-                RegionTemplate* newRT = new RegionTemplate();
+                RegionTemplate *newRT = new RegionTemplate();
                 newRT->insertDataRegion(dr);
                 newRT->setName(this->name);
 
                 // Add the tile and the RT to the internal containers
                 this->rts.push_back(
-                    std::pair<std::string, RegionTemplate*>(drName, newRT));
+                    std::pair<std::string, RegionTemplate *>(drName, newRT));
                 drId++;
             }
         }
