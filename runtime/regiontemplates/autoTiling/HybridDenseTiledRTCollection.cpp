@@ -1,15 +1,16 @@
 #include "HybridDenseTiledRTCollection.h"
+#include "fineBgRemoval.h"
 
 HybridDenseTiledRTCollection::HybridDenseTiledRTCollection(
     std::string name, std::string refDDRName, std::string tilesPath,
-    int64_t borders, CostFunction* cfunc, BGMasker* bgm, TilerAlg_t tilingAlg,
+    int64_t borders, CostFunction *cfunc, BGMasker *bgm, TilerAlg_t tilingAlg,
     int nCpuTiles, int nGpuTiles, float cpuPATS, float gpuPATS)
     : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
-    this->bgm = bgm;
+    this->bgm       = bgm;
     this->nCpuTiles = nCpuTiles;
     this->nGpuTiles = nGpuTiles;
-    this->cpuPATS = cpuPATS;
-    this->gpuPATS = gpuPATS;
+    this->cpuPATS   = cpuPATS;
+    this->gpuPATS   = gpuPATS;
     this->tilingAlg = tilingAlg;
 }
 
@@ -20,17 +21,17 @@ void HybridDenseTiledRTCollection::customTiling() {
     // Go through all images
     for (std::string img : this->initialPaths) {
         // Open image for tiling
-        int64_t w = -1;
-        int64_t h = -1;
-        openslide_t* osr;
-        int32_t osrMinLevel = -1;
-        cv::Mat maskMat;
+        int64_t      w = -1;
+        int64_t      h = -1;
+        openslide_t *osr;
+        int32_t      osrMinLevel = -1;
+        cv::Mat      maskMat;
 
         // Opens svs input file
         osr = openslide_open(img.c_str());
 
         // Opens smallest image as a cv mat
-        osrMinLevel = openslide_get_level_count(osr) - 1;  // last level
+        osrMinLevel = openslide_get_level_count(osr) - 1; // last level
         openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
         cv::Rect_<int64_t> roi(0, 0, w, h);
         osrRegionToCVMat(osr, roi, osrMinLevel, maskMat);
@@ -46,16 +47,16 @@ void HybridDenseTiledRTCollection::customTiling() {
             //     std::cout << "[HDT]\tadding GPU tile.\n";
             // if (drId >= this->nGpuTiles)
             //     std::cout << "[HDT]\tadding CPU tile.\n";
-            this->tileTarget.push_back(drId < this->nGpuTiles
-                                           ? ExecEngineConstants::GPU
-                                           : ExecEngineConstants::CPU);
+            this->tileTarget.push_back(drId < this->nCpuTiles
+                                           ? ExecEngineConstants::CPU
+                                           : ExecEngineConstants::GPU);
             drId++;
         }
     }
 }
 
 void HybridDenseTiledRTCollection::tileMat(
-    cv::Mat& mat, std::list<cv::Rect_<int64_t>>& tiles) {
+    cv::Mat &mat, std::list<cv::Rect_<int64_t>> &tiles) {
     int w = mat.cols;
     int h = mat.rows;
 
@@ -73,9 +74,12 @@ void HybridDenseTiledRTCollection::tileMat(
             tmpTtiles.push_back(rt);
         }
 
+        // Performs fine-grain background removal
+        auto tmpTtiles2 = fineBgRemoval(bgm->bgMask(mat), tmpTtiles);
+
         // Performs tiling
         int dense =
-            listCutting(mat, tmpTtiles, this->nCpuTiles, this->nGpuTiles,
+            listCutting(mat, tmpTtiles2, this->nCpuTiles, this->nGpuTiles,
                         this->cpuPATS, this->gpuPATS, this->cfunc);
 
         // Correct gpuTiles count if there are many dense regions
@@ -105,15 +109,15 @@ void HybridDenseTiledRTCollection::tileMat(
         // f=0.5;
 
         // Create gpu tile (top half)
-        long gw = h > w ? w : w * f;
+        long gw  = h > w ? w : w * f;
         long gmw = 0;
-        long gh = h > w ? h * f : h;
+        long gh  = h > w ? h * f : h;
         long gmh = 0;
 
         // Create cpu tile (bottom half)
-        long cw = h > w ? w : w - w * f;
+        long cw  = h > w ? w : w - w * f;
         long cmw = h > w ? 0 : w * f;
-        long ch = h > w ? h - h * f : h;
+        long ch  = h > w ? h - h * f : h;
         long cmh = h > w ? h * f : 0;
 
         std::list<rect_t> curTiles;

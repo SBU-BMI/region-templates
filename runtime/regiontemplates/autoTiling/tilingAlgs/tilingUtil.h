@@ -55,8 +55,10 @@ typedef struct rect_t {
 
     int64_t xi, yi;
     int64_t xo, yo;
-    bool isBg;
+    bool    isBg;
 } rect_t;
+
+std::list<rect_t> toMyRectT(std::list<cv::Rect_<uint64_t>> from);
 
 /*****************************************************************************/
 /**                            Cost Calculations                            **/
@@ -94,11 +96,11 @@ inline int64_t area(rect_t r) { return (r.xo - r.xi) * (r.yo - r.yi); }
 // // Cont<t1, rect_tCostFunct> obj((rect_tCostFunct(img)))
 
 struct rect_tCostFunct {
-    const cv::Mat& img;
-    const CostFunction* cfunc;
-    rect_tCostFunct(const cv::Mat& img, CostFunction* cfunc)
+    const cv::Mat      &img;
+    const CostFunction *cfunc;
+    rect_tCostFunct(const cv::Mat &img, CostFunction *cfunc)
         : img(img), cfunc(cfunc) {}
-    bool operator()(const rect_t& a, const rect_t& b) {
+    bool operator()(const rect_t &a, const rect_t &b) {
         return this->cfunc->cost(this->img, a.yi, a.yo, a.xi, a.xo) >
                this->cfunc->cost(this->img, b.yi, b.yo, b.xi, b.xo);
     }
@@ -109,7 +111,7 @@ struct rect_tCostFunct {
 /*****************************************************************************/
 
 // prints the std dev of a tile inside an image. Used for profiling
-void stddev(std::list<rect_t> rs, const cv::Mat& img, std::string name);
+void stddev(std::list<rect_t> rs, const cv::Mat &img, std::string name);
 
 // Prints a rect_t without the carriage return
 void printRect(rect_t r);
@@ -124,8 +126,8 @@ void printRect(rect_t r);
 // and a horizontal sweep are performed, being returned the pair of regions
 // with the smallest difference between areas.
 // Orient: 0 = both, -1 = horizontal only, +1 = vetical only
-void splitTileLog(const rect_t& r, const cv::Mat& img, CostFunction* cfunc,
-                  double expCost, rect_t& newt1, rect_t& newt2,
+void splitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
+                  double expCost, rect_t &newt1, rect_t &newt2,
                   float acc = 0.02, int orient = 0);
 
-#endif  // UTIL_H_
+#endif // UTIL_H_

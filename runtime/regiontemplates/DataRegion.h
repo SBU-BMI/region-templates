@@ -13,6 +13,8 @@
 #include "Constants.h"
 #include "BoundingBox.h"
 
+#include "cv.hpp"
+
 //#include "BasicDataSource.h"
 //#include "FileSystemImageDataSource.h"
 

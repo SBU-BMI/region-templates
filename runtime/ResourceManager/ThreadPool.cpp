@@ -18,7 +18,7 @@
 // void cudaFreeMemWrapper(void *data_ptr);
 
 #ifdef PROFILING
-int thread_id = 0;
+int       thread_id = 0;
 long long ClockGetTime() {
     struct timeval ts;
     gettimeofday(&ts, NULL);
@@ -27,10 +27,10 @@ long long ClockGetTime() {
 #endif
 
 void *callThread(void *arg) {
-    ThreadPool *tp = (ThreadPool *)((threadData *)arg)->threadPoolPtr;
-    int procType = (int)((threadData *)arg)->procType;
-    int tid = (int)((threadData *)arg)->tid;
-    int wid = (int)((threadData *)arg)->wid;
+    ThreadPool *tp       = (ThreadPool *)((threadData *)arg)->threadPoolPtr;
+    int         procType = (int)((threadData *)arg)->procType;
+    int         tid      = (int)((threadData *)arg)->tid;
+    int         wid      = (int)((threadData *)arg)->wid;
 
     // If threads is managing GPU, than init adequate device
     if (procType == 2) {
@@ -105,7 +105,7 @@ ThreadPool::ThreadPool(TasksQueue *tasksQueue, ExecutionEngine *execEngine) {
     numGPUThreads = 0;
     numCPUThreads = 0;
     firstToFinish = true;
-    execDone = false;
+    execDone      = false;
 }
 
 ThreadPool::~ThreadPool() {
@@ -143,19 +143,20 @@ bool ThreadPool::createThreadPool(int cpuThreads, int *cpuThreadsCoreMapping,
                                   int wid) {
     //	this->gpuTempDataSize = gpuTempDataSize;
     this->dataLocalityAware = dataLocalityAware;
-    this->prefetching = prefetching;
-    if (prefetching) std::cout << "Prefetching is on!" << std::endl;
+    this->prefetching       = prefetching;
+    if (prefetching)
+        std::cout << "Prefetching is on!" << std::endl;
 
     // Create CPU threads.
     if (cpuThreads > 0) {
-        numCPUThreads = cpuThreads;
+        numCPUThreads    = cpuThreads;
         CPUWorkerThreads = (pthread_t *)malloc(sizeof(pthread_t) * cpuThreads);
 
         for (int i = 0; i < cpuThreads; i++) {
-            threadData *arg = (threadData *)malloc(sizeof(threadData));
-            arg->tid = i;
-            arg->wid = wid;
-            arg->procType = ExecEngineConstants::CPU;
+            threadData *arg    = (threadData *)malloc(sizeof(threadData));
+            arg->tid           = i;
+            arg->wid           = wid;
+            arg->procType      = ExecEngineConstants::CPU;
             arg->threadPoolPtr = this;
             int ret = pthread_create(&(CPUWorkerThreads[arg->tid]), NULL,
                                      callThread, (void *)arg);
@@ -170,14 +171,14 @@ bool ThreadPool::createThreadPool(int cpuThreads, int *cpuThreadsCoreMapping,
     }
     // Create CPU threads.
     if (gpuThreads > 0) {
-        numGPUThreads = gpuThreads;
+        numGPUThreads    = gpuThreads;
         GPUWorkerThreads = (pthread_t *)malloc(sizeof(pthread_t) * gpuThreads);
 
         for (int i = 0; i < gpuThreads; i++) {
-            threadData *arg = (threadData *)malloc(sizeof(threadData));
-            arg->tid = i;
-            arg->wid = wid;
-            arg->procType = ExecEngineConstants::GPU;
+            threadData *arg    = (threadData *)malloc(sizeof(threadData));
+            arg->tid           = i;
+            arg->wid           = wid;
+            arg->procType      = ExecEngineConstants::GPU;
             arg->threadPoolPtr = this;
             int ret = pthread_create(&(GPUWorkerThreads[arg->tid]), NULL,
                                      callThread, (void *)arg);
@@ -197,14 +198,14 @@ bool ThreadPool::createThreadPool(int cpuThreads, int *cpuThreadsCoreMapping,
 void ThreadPool::initExecution() { pthread_mutex_unlock(&initExecutionMutex); }
 
 #ifdef WITH_CUDA
-void ThreadPool::enqueueUploadTaskParameters(Task *task,
+void ThreadPool::enqueueUploadTaskParameters(Task             *task,
                                              cv::cuda::Stream &stream) {
     for (int i = 0; i < task->getNumberArguments(); i++) {
         task->getArgument(i)->upload(stream);
     }
 }
 
-void ThreadPool::downloadTaskOutputParameters(Task *task,
+void ThreadPool::downloadTaskOutputParameters(Task             *task,
                                               cv::cuda::Stream &stream) {
     for (int i = 0; i < task->getNumberArguments(); i++) {
         // Download only those parameters that are of type: output, or
@@ -220,7 +221,7 @@ void ThreadPool::downloadTaskOutputParameters(Task *task,
     }
 }
 
-void ThreadPool::enqueueDownloadTaskParameters(Task *task,
+void ThreadPool::enqueueDownloadTaskParameters(Task             *task,
                                                cv::cuda::Stream &stream) {
     for (int i = 0; i < task->getNumberArguments(); i++) {
         task->getArgument(i)->download(stream);
@@ -293,7 +294,7 @@ void ThreadPool::processTasks(int procType, int wid, int tid) {
 
     if (procType == ExecEngineConstants::GPU) {
         try {
-            stream = new cv::cuda::Stream();
+            stream  = new cv::cuda::Stream();
             pStream = new cv::cuda::Stream();
             dStream = new cv::cuda::Stream();
         } catch (...) {
@@ -311,10 +312,10 @@ void ThreadPool::processTasks(int procType, int wid, int tid) {
     pthread_mutex_lock(&initExecutionMutex);
     pthread_mutex_unlock(&initExecutionMutex);
 
-    Task *curTask = NULL;
-    Task *preAssigned = NULL;
-    Task *prefetchTask = NULL;
-    Task *downloadingTask = NULL;
+    Task       *curTask         = NULL;
+    Task       *preAssigned     = NULL;
+    Task       *prefetchTask    = NULL;
+    Task       *downloadingTask = NULL;
     vector<int> downloadArgIds;
 
     // #ifdef PROFILING
@@ -354,7 +355,7 @@ void ThreadPool::processTasks(int procType, int wid, int tid) {
                 if (prefetchTask != NULL) {
                     // update current task with pointer to prefetched task, and
                     // set prefetch to NULL
-                    curTask = prefetchTask;
+                    curTask      = prefetchTask;
                     prefetchTask = NULL;
 
                     // make sure that prefetched upload is completed.
@@ -425,8 +426,8 @@ void ThreadPool::processTasks(int procType, int wid, int tid) {
                     // it is already in place
                     pStream->waitForCompletion();
 
-                    Task *temp = curTask;
-                    curTask = prefetchTask;
+                    Task *temp   = curTask;
+                    curTask      = prefetchTask;
                     prefetchTask = temp;
                     enqueueUploadTaskParameters(prefetchTask, *pStream);
                     //					std::cout << "Proc
@@ -527,27 +528,28 @@ void ThreadPool::processTasks(int procType, int wid, int tid) {
                         delete curTask;
                         curTask = NULL;
                     } else {
-                        //						downloadTaskOutputParameters(curTask,
-                        // stream); delete curTask; std::cout<< "preAssigned
-                        // Failed... start asyncDownload"<<std::endl; do the
-                        // asynchronous one.
+                        // downloadTaskOutputParameters(curTask,
+                        //  stream); delete curTask; std::cout<< "preAssigned
+                        //  Failed... start asyncDownload"<<std::endl; do the
+                        //  asynchronous one.
                         enqueueDownloadTaskParameters(curTask, *dStream);
                         downloadingTask = curTask;
-                        curTask = NULL;
+                        curTask         = NULL;
                     }
                 }
             } else {
                 if (procType == ExecEngineConstants::GPU) {
                     preassignmentSelectiveDownload(
                         curTask, preAssigned,
-                        *stream);  // download only what is not reused by
-                                   // preassigned task
+                        *stream); // download only what is not reused by
+                                  // preassigned task
                     delete curTask;
-                    curTask = preAssigned;
+                    curTask     = preAssigned;
                     preAssigned = NULL;
                     goto afterGetTask;
                 }
             }
+
 #endif
         } catch (std::exception &e) {
             printf("ERROR in tasks execution. EXCEPTION: %s\n", e.what());

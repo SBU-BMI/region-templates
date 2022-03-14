@@ -26,23 +26,23 @@ int Segmentation::run() {
               << " instance id: " << this->getId() << std::endl;
     RegionTemplate *inputRt = this->getRegionTemplateInstance("tile");
 
-    std::string inputImage_name;
-    std::string outMask_name;
+    std::string   inputImage_name;
+    std::string   outMask_name;
     unsigned char blue;
     unsigned char green;
     unsigned char red;
-    double T1;
-    double T2;
+    double        T1;
+    double        T2;
     unsigned char G1;
-    int minSize;
-    int maxSize;
+    int           minSize;
+    int           maxSize;
     unsigned char G2;
-    int minSizePl;
-    int minSizeSeg;
-    int maxSizeSeg;
-    int fillHolesConnectivity;
-    int reconConnectivity;
-    int watershedConnectivity;
+    int           minSizePl;
+    int           minSizeSeg;
+    int           maxSizeSeg;
+    int           fillHolesConnectivity;
+    int           reconConnectivity;
+    int           watershedConnectivity;
 
     int set_cout = 0;
     for (int i = 0; i < this->getArgumentsSize(); i++) {
@@ -214,22 +214,22 @@ TaskSegmentation::TaskSegmentation(
     int minSizePl, int minSizeSeg, int maxSizeSeg, int fillHolesConnectivity,
     int reconConnectivity, int watershedConnectivity) {
 
-    this->inputImage_temp = inputImage_temp;
-    this->outMask_temp = outMask_temp;
-    this->blue = blue;
-    this->green = green;
-    this->red = red;
-    this->T1 = T1;
-    this->T2 = T2;
-    this->G1 = G1;
-    this->minSize = minSize;
-    this->maxSize = maxSize;
-    this->G2 = G2;
-    this->minSizePl = minSizePl;
-    this->minSizeSeg = minSizeSeg;
-    this->maxSizeSeg = maxSizeSeg;
+    this->inputImage_temp       = inputImage_temp;
+    this->outMask_temp          = outMask_temp;
+    this->blue                  = blue;
+    this->green                 = green;
+    this->red                   = red;
+    this->T1                    = T1;
+    this->T2                    = T2;
+    this->G1                    = G1;
+    this->minSize               = minSize;
+    this->maxSize               = maxSize;
+    this->G2                    = G2;
+    this->minSizePl             = minSizePl;
+    this->minSizeSeg            = minSizeSeg;
+    this->maxSizeSeg            = maxSizeSeg;
     this->fillHolesConnectivity = fillHolesConnectivity;
-    this->reconConnectivity = reconConnectivity;
+    this->reconConnectivity     = reconConnectivity;
     this->watershedConnectivity = watershedConnectivity;
 }
 

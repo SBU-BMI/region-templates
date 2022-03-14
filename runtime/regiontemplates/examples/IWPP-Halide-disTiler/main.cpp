@@ -25,6 +25,7 @@
 #include "costFuncs/PropagateDistCostFunction.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
+#include "mergeStage.h"
 #include "pipeline1.h"
 
 using std::cout;
@@ -59,21 +60,42 @@ inline Target_t tgt(HybridExec_t exec, Target_t target) {
     return target;
 }
 
+inline Target_t tgt_merge(HybridExec_t exec) {
+    switch (exec) {
+        case CPU_ONLY:
+            return ExecEngineConstants::CPU;
+        case GPU_ONLY:
+            return ExecEngineConstants::GPU;
+        case HYBRID:
+            return ExecEngineConstants::CPU;
+    }
+}
+
 int findArgPos(std::string s, int argc, char **argv) {
     for (int i = 1; i < argc; i++)
-        if (std::string(argv[i]).compare(s) == 0) return i;
+        if (std::string(argv[i]).compare(s) == 0)
+            return i;
     return -1;
 }
 
 static struct : RTF::HalGen {
     std::string getName() { return "pipeline1"; }
-    bool realize(std::vector<cv::Mat> &im_ios, Target_t target,
-                 std::vector<ArgumentBase *> &params) {
+    bool        realize(std::vector<cv::Mat> &im_ios, Target_t target,
+                        std::vector<ArgumentBase *> &params) {
         return pipeline1(im_ios, target, params);
         // pipeline1_nscale(im_ios, target, params);
     }
 } pipeline1_s;
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
+
+static struct : RTF::HalGen {
+    std::string getName() { return "mergeStage"; }
+    bool        realize(std::vector<cv::Mat> &im_ios, Target_t target,
+                        std::vector<ArgumentBase *> &params) {
+        return mergeStage(im_ios, target, params);
+    }
+} merge_s;
+bool r2 = RTF::AutoStage::registerStage(&merge_s);
 
 int main(int argc, char *argv[]) {
     srand(123);
@@ -106,8 +128,8 @@ int main(int argc, char *argv[]) {
         cout << "\t-a <execution option>" << endl;
         cout << "\t\tValues (default=0):" << endl;
         cout << "\t\t0: CPU-only execution" << endl;
-        cout << "\t\t1: GPU-only execution" << endl;
-        cout << "\t\t2: Hybrid execution" << endl;
+        cout << "\t\t1: GPU-only execution (must run with -c 0)" << endl;
+        cout << "\t\t2: Hybrid execution (must run with -h)" << endl;
 
         cout << "\t--gp <float value of PATS: gpu/cpu (default=1)>" << endl;
 
@@ -186,17 +208,17 @@ int main(int argc, char *argv[]) {
     }
 
     // Threshold cost function parameters
-    int bgThr = 150;
-    int erode_param = 4;
+    int bgThr        = 150;
+    int erode_param  = 4;
     int dilate_param = 2;
     if (findArgPos("-p", argc, argv) != -1) {
         std::string params = argv[findArgPos("-p", argc, argv) + 1];
-        std::size_t l = params.find_last_of("/");
-        dilate_param = atoi(params.substr(l + 1).c_str());
-        params = params.substr(0, l);
-        l = params.find_last_of("/");
-        erode_param = atoi(params.substr(l + 1).c_str());
-        bgThr = atoi(params.substr(0, l).c_str());
+        std::size_t l      = params.find_last_of("/");
+        dilate_param       = atoi(params.substr(l + 1).c_str());
+        params             = params.substr(0, l);
+        l                  = params.find_last_of("/");
+        erode_param        = atoi(params.substr(l + 1).c_str());
+        bgThr              = atoi(params.substr(0, l).c_str());
     }
 
     // Tiling only
@@ -270,9 +292,9 @@ int main(int argc, char *argv[]) {
     int loadBias = 100;
     if (findArgPos("-m", argc, argv) != -1) {
         std::string params = argv[findArgPos("-m", argc, argv) + 1];
-        std::size_t l = params.find_last_of("/");
-        execBias = atoi(params.substr(0, l).c_str());
-        loadBias = atoi(params.substr(l + 1).c_str());
+        std::size_t l      = params.find_last_of("/");
+        execBias           = atoi(params.substr(0, l).c_str());
+        loadBias           = atoi(params.substr(l + 1).c_str());
     }
 
     // BG tiling algorithm
@@ -321,20 +343,20 @@ int main(int argc, char *argv[]) {
 #endif
 
     // Input parameters
-    unsigned char blue = 200;
-    unsigned char green = 200;
-    unsigned char red = 200;
-    double T1 = 1.0;
-    double T2 = 2.0;
-    unsigned char G1 = 50;
-    unsigned char G2 = 100;
-    int minSize = 10;
-    int maxSize = 100;
-    int fillHolesConnectivity = 4;
-    int reconConnectivity = 4;
+    unsigned char blue                  = 200;
+    unsigned char green                 = 200;
+    unsigned char red                   = 200;
+    double        T1                    = 1.0;
+    double        T2                    = 2.0;
+    unsigned char G1                    = 50;
+    unsigned char G2                    = 100;
+    int           minSize               = 10;
+    int           maxSize               = 100;
+    int           fillHolesConnectivity = 4;
+    int           reconConnectivity     = 4;
     // 19x19
-    int disk19raw_width = 19;
-    int disk19raw_size = disk19raw_width * disk19raw_width;
+    int disk19raw_width           = 19;
+    int disk19raw_size            = disk19raw_width * disk19raw_width;
     int disk19raw[disk19raw_size] = {
         0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
@@ -354,8 +376,8 @@ int main(int argc, char *argv[]) {
         0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
 
     // 3x3
-    int se3raw_width = 3;
-    int se3raw_size = se3raw_width * se3raw_width;
+    int se3raw_width        = 3;
+    int se3raw_size         = se3raw_width * se3raw_width;
     int se3raw[se3raw_size] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 #ifdef PROFILING
@@ -367,7 +389,7 @@ int main(int argc, char *argv[]) {
     TiledRTCollection *bgTiler;
 
     // Tiling cost functions
-    BGMasker *bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    BGMasker     *bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     CostFunction *denseCostFunc;
     if (denseCostf == THRS)
         denseCostFunc =
@@ -386,9 +408,9 @@ int main(int argc, char *argv[]) {
     if (hybridExec == HYBRID) {
         float cpuPATS = 1;
         float gpuPATS = gpc;
-        denseTiler = new HybridDenseTiledRTCollection(
-            "input", "input", Ipath, border, denseCostFunc, bgm, denseTilingAlg,
-            nTiles, nTiles * gn, cpuPATS, gpuPATS);
+        denseTiler    = new HybridDenseTiledRTCollection(
+               "input", "input", Ipath, border, denseCostFunc, bgm, denseTilingAlg,
+               nTiles, nTiles * gn, cpuPATS, gpuPATS);
     } else {
         // Creates dense tiling collection
         if (noTiling)
@@ -451,12 +473,12 @@ int main(int argc, char *argv[]) {
 
     // Generates tiles and converts it to vector
     denseTiler->generateDRs(tilingOnly);
-    std::vector<cv::Rect_<int>> tiles;
+    std::vector<cv::Rect_<int>>   tiles;
     std::list<cv::Rect_<int64_t>> l = denseTiler->getTiles()[0];
     cout << "[main] Tiles generated: " << l.size() << endl;
     for (cv::Rect_<int64_t> tile : l) {
-        // std::cout << tile.x << ":" << tile.width << "," << tile.y << ":"
-        //           << tile.height << std::endl;
+        std::cout << tile.x << ":" << tile.width << "," << tile.y << ":"
+                  << tile.height << std::endl;
         tiles.emplace_back(tile);
     }
 
@@ -467,11 +489,29 @@ int main(int argc, char *argv[]) {
     // Create an instance of the two stages for each image tile pair
     // and also send them for execution
     RegionTemplate *rtOut = newRT("rtOut");
+    // rtOut->setMergeLater();
+    // rtOut->setMergeOutputSize(denseTiler->getImageSize().height,
+    //                           denseTiler->getImageSize().width);
+
+    // Params are 4 coordinates (rect) of tile, and height/width of full image
+    std::vector<ArgumentBase *> mergeParams(tiles.size() * 4 + 2);
+    mergeParams[mergeParams.size() - 2] =
+        new ArgumentInt(denseTiler->getImageSize().height);
+    mergeParams[mergeParams.size() - 1] =
+        new ArgumentInt(denseTiler->getImageSize().width);
+    for (int i = 0; i < tiles.size(); i++) {
+        mergeParams[i * 4 + 0] = new ArgumentInt(tiles[i].x);
+        mergeParams[i * 4 + 1] = new ArgumentInt(tiles[i].y);
+        mergeParams[i * 4 + 2] = new ArgumentInt(tiles[i].width);
+        mergeParams[i * 4 + 3] = new ArgumentInt(tiles[i].height);
+    }
+
+    RTF::AutoStage stageMerge({rtOut, rtOut}, mergeParams, {1, 1}, {&merge_s},
+                              tgt_merge(hybridExec), denseTiler->getNumRTs());
+
+    std::list<RTF::AutoStage *> stages;
     for (int i = 0; i < denseTiler->getNumRTs(); i++) {
-        // int init = 0;
-        // int ii = 33;
-        // for (int i = init; i < init + nTiles; i++) {
-        RTF::AutoStage stage0(
+        auto stage0 = new RTF::AutoStage(
             {denseTiler->getRT(i).second, rtOut},
             {new ArgumentInt(i), new ArgumentInt(blue), new ArgumentInt(green),
              new ArgumentInt(red), new ArgumentInt(0),
@@ -482,20 +522,23 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp),
              new ArgumentInt(gpu_count)},
             {tiles[i].height, tiles[i].width}, {&pipeline1_s},
-            // denseTiler->getTileTarget(i), i);
             tgt(hybridExec, denseTiler->getTileTarget(i)), i);
-        stage0.genStage(sysEnv);
+        // stage0->genStage(sysEnv);
 
-        // RTF::AutoStage stage5({rtRC, rtRcOpen, rtRecon},
-        //     {new ArgumentInt(0), new ArgumentInt(0),
-        //      new ArgumentInt(i), new ArgumentInt(iwppOp)},
-        //     {tiles[i].height, tiles[i].width}, {&imreconstruct},
-        //     tgt(tilingAlg, denseTiler->getTileTarget(i)), i);
-        // stage5.after(&stage4);
-        // stage5.genStage(sysEnv);
+        // Add dependency for merge stage
+        stageMerge.after(stage0);
+        stages.push_back(stage0);
     }
 
+    // All stages are generated recursively from this last stage
+    stageMerge.genStage(sysEnv);
+
     sysEnv.startupExecution();
+    for (int i = 0; i < rtOut->getNumDataRegions(); i++) {
+        cout << "===== dr: " << rtOut->getDataRegion(i)->getName() << "\n";
+        rtOut->getDataRegion(i)->printRoi();
+    }
+    // delete rtOut;
     sysEnv.finalizeSystem();
 
 #ifdef PROFILING

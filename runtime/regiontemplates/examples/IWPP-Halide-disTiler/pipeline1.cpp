@@ -25,11 +25,11 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     assert(hSE.width() % 2 != 0);
     assert(hSE.height() % 2 != 0);
 
-    int seWidth = (hSE.width() - 1) / 2;
+    int seWidth  = (hSE.width() - 1) / 2;
     int seHeight = (hSE.height() - 1) / 2;
 
     // Define halide stage
-    Halide::Var x, y, xi, yi, xo, yo;
+    Halide::Var  x, y, xi, yi, xo, yo;
     Halide::Func mask;
     Halide::Func erode;
 
@@ -45,7 +45,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     erode(x, y) = minimum(mask(xc, yc, se.x, se.y));
 
     // Schedules
-    Halide::Var t;
+    Halide::Var    t;
     Halide::Target hTarget = Halide::get_host_target();
 #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
@@ -107,11 +107,11 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     assert(hSE.width() % 2 != 0);
     assert(hSE.height() % 2 != 0);
 
-    int seWidth = (hSE.width() - 1) / 2;
+    int seWidth  = (hSE.width() - 1) / 2;
     int seHeight = (hSE.height() - 1) / 2;
 
     // Define halide stage
-    Halide::Var x, y, xi, yi, xo, yo;
+    Halide::Var  x, y, xi, yi, xo, yo;
     Halide::Func mask;
     Halide::Func dilate;
 
@@ -125,7 +125,7 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     dilate(x, y) = maximum(mask(xc, yc, se.x, se.y));
 
     // Schedules
-    Halide::Var t;
+    Halide::Var    t;
     Halide::Target hTarget = Halide::get_host_target();
 #ifdef LARGEB
     hTarget.set_feature(Halide::Target::LargeBuffers);
@@ -177,14 +177,14 @@ template <typename T>
 Halide::Func halCountNonZero(Halide::Buffer<T> &JJ, Target_t target) {
     // Performs parallel sum on the coordinate with the highest value
     Halide::RDom r({{0, JJ.width()}, {0, JJ.height()}}, "r");
-    Halide::Var x("x");
+    Halide::Var  x("x");
     Halide::Func cnz("cnz");
     cnz(x) = Halide::cast<long>(0);
     cnz(r.x) += Halide::cast<long>(Halide::select(JJ(r.x, r.y) > 0, 1, 0));
 
     // Schedule
     Halide::RVar rxo, rxi;
-    Halide::Var xo, xi;
+    Halide::Var  xo, xi;
     cnz.update(0).split(r.x, rxo, rxi, 4).reorder(r.y, rxi);
     cnz.update(0).vectorize(rxi).parallel(rxo);
 
@@ -210,17 +210,17 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     // === parameters =========================================================
     int tileId = ((ArgumentInt *)params[0])->getArgValue();
 
-    uint8_t blue = ((ArgumentInt *)params[1])->getArgValue();   // getbg
-    uint8_t green = ((ArgumentInt *)params[2])->getArgValue();  // getbg
-    uint8_t red = ((ArgumentInt *)params[3])->getArgValue();    // getbg
+    uint8_t blue  = ((ArgumentInt *)params[1])->getArgValue(); // getbg
+    uint8_t green = ((ArgumentInt *)params[2])->getArgValue(); // getbg
+    uint8_t red   = ((ArgumentInt *)params[3])->getArgValue(); // getbg
 
     // channel to be inverted (if -1, then input is grayscale)
-    int channel = ((ArgumentInt *)params[4])->getArgValue();  // invert
+    int channel = ((ArgumentInt *)params[4])->getArgValue(); // invert
 
     int disk19raw_width =
-        ((ArgumentInt *)params[5])->getArgValue();  // erode/dilate 1
+        ((ArgumentInt *)params[5])->getArgValue(); // erode/dilate 1
     int *disk19raw =
-        ((ArgumentIntArray *)params[6])->getArgValue();  // erode/dilate 1
+        ((ArgumentIntArray *)params[6])->getArgValue(); // erode/dilate 1
     cv::Mat cvHostSE19(disk19raw_width, disk19raw_width, CV_8U);
     for (int i = 0; i < cvHostSE19.cols; i++) {
         for (int j = 0; j < cvHostSE19.rows; j++) {
@@ -228,12 +228,12 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
         }
     }
 
-    int G1 = ((ArgumentInt *)params[7])->getArgValue();  // preFill
+    int G1 = ((ArgumentInt *)params[7])->getArgValue(); // preFill
 
     int disk3raw_width =
-        ((ArgumentInt *)params[8])->getArgValue();  // dilate/erode 2
+        ((ArgumentInt *)params[8])->getArgValue(); // dilate/erode 2
     int *disk3raw =
-        ((ArgumentIntArray *)params[9])->getArgValue();  // dilate/erode 2
+        ((ArgumentIntArray *)params[9])->getArgValue(); // dilate/erode 2
     cv::Mat cvHostSE3(disk3raw_width, disk3raw_width, CV_8U);
     for (int i = 0; i < cvHostSE3.cols; i++) {
         for (int j = 0; j < cvHostSE3.rows; j++) {
@@ -241,18 +241,17 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
         }
     }
 
-    int noSched =
-        ((ArgumentInt *)params[10])->getArgValue();           // halide no sched
-    int noIWPP = ((ArgumentInt *)params[11])->getArgValue();  // no iwpp
-    int gpus = ((ArgumentInt *)params[12])->getArgValue();
+    int noSched = ((ArgumentInt *)params[10])->getArgValue(); // halide no sched
+    int noIWPP  = ((ArgumentInt *)params[11])->getArgValue(); // no iwpp
+    int gpus    = ((ArgumentInt *)params[12])->getArgValue();
 
     // === cv::Mat inputs/outputs =============================================
     // Wraps the input and output cv::mat's with halide buffers
-    cv::Mat &cvHostIn = im_ios[0];
+    cv::Mat &cvHostIn   = im_ios[0];
     cv::Mat &cvHostOut2 = im_ios[1];
-    cv::Mat cvHostRC(cvHostOut2.size(), cvHostOut2.type(), cv::Scalar::all(0));
-    cv::Mat cvHostOut1(cvHostOut2.size(), cvHostOut2.type(),
-                       cv::Scalar::all(0));
+    cv::Mat  cvHostRC(cvHostOut2.size(), cvHostOut2.type(), cv::Scalar::all(0));
+    cv::Mat  cvHostOut1(cvHostOut2.size(), cvHostOut2.type(),
+                        cv::Scalar::all(0));
 
     // === Halide::Target setup ===============================================
     Halide::Target hTarget = Halide::get_host_target();
@@ -284,7 +283,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
 
     // Disk mats for erosion/dilation
     Halide::Buffer<uint8_t> hSE19 = mat2buf<uint8_t>(&cvHostSE19, "hSE19");
-    Halide::Buffer<uint8_t> hSE3 = mat2buf<uint8_t>(&cvHostSE3, "hSE3");
+    Halide::Buffer<uint8_t> hSE3  = mat2buf<uint8_t>(&cvHostSE3, "hSE3");
 
     // We swap these two outputs on functions which cannot be realized inplace
     Halide::Buffer<uint8_t> hOut1 = mat2buf<uint8_t>(&cvHostOut1, "hOut1");
@@ -311,12 +310,12 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
 
     // === get-background =====================================================
     {
-        Halide::Var x, y, c;
+        Halide::Var  x, y, c;
         Halide::Func get_bg;
         get_bg(x, y) = 255 * Halide::cast<uint8_t>((hIn(x, y, 0) > blue) &
                                                    (hIn(x, y, 1) > green) &
                                                    (hIn(x, y, 2) > red));
-        long ct1 = Util::ClockGetTime();
+        long ct1     = Util::ClockGetTime();
         get_bg.compile_jit(hTarget);
         long ct2 = Util::ClockGetTime();
         std::cout << "[pipeline1] compiled getbg in " << (ct2 - ct1) << " ms"
@@ -330,7 +329,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
 
         // Performs countNonZero with long return
         Halide::Func lcnz = halCountNonZero(hOut1, ExecEngineConstants::CPU);
-        long *dLineCount = new long[hOut1.width()];
+        long        *dLineCount = new long[hOut1.width()];
         Halide::Buffer<long> hLineCount =
             Halide::Buffer<long>(dLineCount, hOut1.width(), "hLineCount");
         hLineCount.set_host_dirty();
@@ -342,7 +341,8 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
 
         long rt3 = Util::ClockGetTime();
         lcnz.realize(hLineCount);
-        for (int i = 0; i < hOut1.width(); i++) bgArea += dLineCount[i];
+        for (int i = 0; i < hOut1.width(); i++)
+            bgArea += dLineCount[i];
         long rt4 = Util::ClockGetTime();
 
         float ratio = ((long)cvHostOut1.rows) * ((long)cvHostOut1.cols);
@@ -359,7 +359,8 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
         if (ratio >= 0.9) {
             std::cout << "[pipeline1][" << st << "][tile" << tileId
                       << "] aborted!" << std::endl;
-            return true;  // abort if more than 90% background
+            // std::cout << "====NOT ABORTING!!!====\n";
+            return true; // abort if more than 90% background
         }
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " get_bg done" << std::endl;
@@ -377,7 +378,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
             assert(cvHostIn.channels() == 3);
 
         // Define halide stage
-        Halide::Var x, y;
+        Halide::Var  x, y;
         Halide::Func invert;
 
         if (channel == -1)
@@ -454,7 +455,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
         // === preFill ========================================================
         {
             // Define halide stage
-            Halide::Var x, y;
+            Halide::Var  x, y;
             Halide::Func preFill1("preFill1");
             Halide::Func preFill2("preFill2");
 
@@ -464,11 +465,11 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
             // Halide::cast<uint8_t>(255), Halide::cast<uint8_t>(0));
 
             // Set the borders as -inf (i.e., 0);
-            preFill2(x, y) = Halide::undef<uint8_t>();
-            preFill2(x, 0) = Halide::cast<uint8_t>(0);
+            preFill2(x, y)                  = Halide::undef<uint8_t>();
+            preFill2(x, 0)                  = Halide::cast<uint8_t>(0);
             preFill2(x, hOut2.height() - 1) = Halide::cast<uint8_t>(0);
-            preFill2(0, y) = Halide::cast<uint8_t>(0);
-            preFill2(hOut2.width() - 1, y) = Halide::cast<uint8_t>(0);
+            preFill2(0, y)                  = Halide::cast<uint8_t>(0);
+            preFill2(hOut2.width() - 1, y)  = Halide::cast<uint8_t>(0);
 
             // Schedules
             if (target == ExecEngineConstants::CPU && noSched == 0) {
@@ -529,7 +530,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     }
 
     if (target == ExecEngineConstants::GPU) {
-        int buffersToFree = 6;  // 4 frees and 2 copy
+        int buffersToFree = 6; // 4 frees and 2 copy
         Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
             hTarget, gpuId, buffersToFree);
         hOut2.copy_to_host();
@@ -549,17 +550,17 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     // === parameters =========================================================
     int tileId = ((ArgumentInt *)params[0])->getArgValue();
 
-    uint8_t blue = ((ArgumentInt *)params[1])->getArgValue();   // getbg
-    uint8_t green = ((ArgumentInt *)params[2])->getArgValue();  // getbg
-    uint8_t red = ((ArgumentInt *)params[3])->getArgValue();    // getbg
+    uint8_t blue  = ((ArgumentInt *)params[1])->getArgValue(); // getbg
+    uint8_t green = ((ArgumentInt *)params[2])->getArgValue(); // getbg
+    uint8_t red   = ((ArgumentInt *)params[3])->getArgValue(); // getbg
 
     // channel to be inverted (if -1, then input is grayscale)
-    int channel = ((ArgumentInt *)params[4])->getArgValue();  // invert
+    int channel = ((ArgumentInt *)params[4])->getArgValue(); // invert
 
     int disk19raw_width =
-        ((ArgumentInt *)params[5])->getArgValue();  // erode/dilate 1
+        ((ArgumentInt *)params[5])->getArgValue(); // erode/dilate 1
     int *disk19raw =
-        ((ArgumentIntArray *)params[6])->getArgValue();  // erode/dilate 1
+        ((ArgumentIntArray *)params[6])->getArgValue(); // erode/dilate 1
     cv::Mat cvHostSE19(disk19raw_width, disk19raw_width, CV_8U);
     for (int i = 0; i < cvHostSE19.cols; i++) {
         for (int j = 0; j < cvHostSE19.rows; j++) {
@@ -567,12 +568,12 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
         }
     }
 
-    int G1 = ((ArgumentInt *)params[7])->getArgValue();  // preFill
+    int G1 = ((ArgumentInt *)params[7])->getArgValue(); // preFill
 
     int disk3raw_width =
-        ((ArgumentInt *)params[8])->getArgValue();  // dilate/erode 2
+        ((ArgumentInt *)params[8])->getArgValue(); // dilate/erode 2
     int *disk3raw =
-        ((ArgumentIntArray *)params[9])->getArgValue();  // dilate/erode 2
+        ((ArgumentIntArray *)params[9])->getArgValue(); // dilate/erode 2
     cv::Mat cvHostSE3(disk3raw_width, disk3raw_width, CV_8U);
     for (int i = 0; i < cvHostSE3.cols; i++) {
         for (int j = 0; j < cvHostSE3.rows; j++) {
@@ -590,12 +591,12 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     split(im_ios[0], bgr);
 
     // === get-background =====================================================
-    long rt1 = Util::ClockGetTime();
+    long    rt1        = Util::ClockGetTime();
     cv::Mat background = (bgr[0] > blue) & (bgr[1] > green) & (bgr[2] > red);
-    long rt2 = Util::ClockGetTime();
+    long    rt2        = Util::ClockGetTime();
 
-    int bgArea = countNonZero(background);
-    float ratio = ((long)im_ios[0].rows) * ((long)im_ios[0].cols);
+    int   bgArea = countNonZero(background);
+    float ratio  = ((long)im_ios[0].rows) * ((long)im_ios[0].cols);
     std::cout << "[pipeline1_nscale] ratio1: " << ratio << std::endl;
     ratio = bgArea / ratio;
     std::cout << "[pipeline1_nscale] ratio2: " << ratio << std::endl;
@@ -609,7 +610,7 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     if (ratio >= 0.9) {
         std::cout << "[pipeline1_nscale][" << st << "][tile" << tileId
                   << "] aborted!" << std::endl;
-        return true;  // abort if more than 90% background
+        return true; // abort if more than 90% background
     }
     std::cout << "[pipeline1_nscale][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " get_bg done" << std::endl;
@@ -618,7 +619,7 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
               << "] get_bg exec: " << (rt2 - rt1) << std::endl;
 
     // === invert =============================================================
-    long rt3 = Util::ClockGetTime();
+    long    rt3 = Util::ClockGetTime();
     cv::Mat rc;
     CV_Assert(bgr[2].channels() == 1);
 
@@ -642,7 +643,7 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
               << "] invert exec: " << (rt4 - rt3) << std::endl;
 
     // === erode/dilate 1 =====================================================
-    long rt5 = Util::ClockGetTime();
+    long    rt5 = Util::ClockGetTime();
     cv::Mat rc_open(rc.size(), rc.type());
 
     CV_Assert(cvHostSE19.rows == cvHostSE19.cols);
@@ -668,7 +669,7 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     std::cout << "[pipeline1_nscale][ptime][tile" << tileId
               << "] erode exec: " << (rt6 - rt5) << std::endl;
 
-    long rt7 = Util::ClockGetTime();
+    long    rt7       = Util::ClockGetTime();
     cv::Mat erode_roi = t_erode(cv::Rect(bw, bw, rc.cols, rc.rows));
     cv::Mat t_erode2;
     copyMakeBorder(erode_roi, t_erode2, bw, bw, bw, bw, cv::BORDER_CONSTANT,
@@ -676,7 +677,7 @@ bool pipeline1_nscale(std::vector<cv::Mat> &im_ios, Target_t target,
     cv::Mat t_open = cv::Mat::zeros(t_erode2.size(), t_erode2.type());
     dilate(t_erode2, t_open, cvHostSE19);
     cv::Mat open = t_open(cv::Rect(bw, bw, rc.cols, rc.rows));
-    long rt8 = Util::ClockGetTime();
+    long    rt8  = Util::ClockGetTime();
 
     std::cout << "[pipeline1_nscale][ptime][tile" << tileId
               << "] dilate exec: " << (rt8 - rt7) << std::endl;

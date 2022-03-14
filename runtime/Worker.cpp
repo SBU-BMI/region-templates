@@ -8,7 +8,7 @@
 #include "Worker.h"
 
 // initialize singleton related control variables
-bool Worker::instanceFlag = false;
+bool    Worker::instanceFlag = false;
 Worker *Worker::singleWorker = NULL;
 
 Worker::Worker(const int manager_rank, const int rank,
@@ -17,7 +17,7 @@ Worker::Worker(const int manager_rank, const int rank,
                const bool dataLocalityAware, const bool prefetching,
                const bool cacheOnRead) {
     this->manager_rank = manager_rank;
-    this->rank = rank;
+    this->rank         = rank;
     this->setMaxActiveComponentInstances(max_active_components);
     this->setActiveComponentInstances(0);
     // Create a local Resource Manager
@@ -109,8 +109,8 @@ void Worker::setComponentLibName(std::string componentLibName) {
 }
 
 bool Worker::loadComponentsLibrary() {
-    bool retValue = true;
-    char *error = NULL;
+    bool  retValue = true;
+    char *error    = NULL;
 #ifdef DEBUG
     std::cout << "Load ComponentsLibrary(). Libname: "
               << this->getComponentLibName() << std::endl;
@@ -164,8 +164,8 @@ void Worker::configureExecutionEnvironment() {
 
 PipelineComponentBase *Worker::receiveComponentInfoFromManager() {
     PipelineComponentBase *pc = NULL;
-    MPI_Status status;
-    int message_size;
+    MPI_Status             status;
+    int                    message_size;
 
     // Probe for incoming message from Manager
     MPI_Probe(this->getManagerRank(), (int)MessageTag::TAG_METADATA,
@@ -184,8 +184,8 @@ PipelineComponentBase *Worker::receiveComponentInfoFromManager() {
 
     // Unpack the name of the component to instantiate it and deserialize
     // message
-    int comp_name_size = ((int *)msg)[1];
-    char *comp_name = new char[comp_name_size + 1];
+    int   comp_name_size      = ((int *)msg)[1];
+    char *comp_name           = new char[comp_name_size + 1];
     comp_name[comp_name_size] = '\0';
     memcpy(comp_name, msg + (2 * sizeof(int)), comp_name_size * sizeof(char));
     //	std::cout << "CompName="<< comp_name <<std::endl;
@@ -205,7 +205,7 @@ PipelineComponentBase *Worker::receiveComponentInfoFromManager() {
 
 void Worker::receiveCacheInfoFromManager() {
     MPI_Status status;
-    int message_size;
+    int        message_size;
 
     // Probe for incoming message from Manager
     MPI_Probe(this->getManagerRank(), (int)MessageTag::TAG_CACHE_INFO,
@@ -220,9 +220,9 @@ void Worker::receiveCacheInfoFromManager() {
     MPI_Recv(msg, message_size, MPI_CHAR, this->getManagerRank(),
              MessageTag::TAG_CACHE_INFO, this->comm_world, MPI_STATUS_IGNORE);
 
-    int deserialized_bytes = 0;
+    int         deserialized_bytes = 0;
     std::string rtName, rtId, drName, drId, inputFileName;
-    int timestamp, version;
+    int         timestamp, version;
 
     // unpack information about the DR that should be moved to global storage
     DataPack::unpack(msg, deserialized_bytes, rtName);
@@ -285,11 +285,11 @@ void Worker::allocateThreadType(std::list<int> targets) {
             return;
         }
     }
-#ifdef WORKER_VERBOSE
+    // #ifdef WORKER_VERBOSE
     std::cout << "[Worker] Didn't allocate anything: avCPU="
               << this->availableCpuThreads
               << ", avGPU=" << this->availableGpuThreads << std::endl;
-#endif
+    // #endif
     exit(-1);
 }
 
@@ -543,11 +543,10 @@ void Worker::notifyComponentsCompleted() {
         for (; itListCompCore != this->computedComponents.end();
              itListCompCore++) {
             // space to store id + resultSize + result
-            message_size +=
-                sizeof(int) + sizeof(int) +
-                ((int *)(*itListCompCore))[1] *
-                    sizeof(char);  // result size is stored after the component
-                                   // id in the buffer.
+            message_size += sizeof(int) + sizeof(int) +
+                            ((int *)(*itListCompCore))[1] *
+                                sizeof(char); // result size is stored after the
+                                              // component id in the buffer.
 #ifdef DEBUG
             std::cout << "Worker: calculating result data size. ::: "
                       << ((int *)(*itListCompCore))[1]
@@ -583,8 +582,8 @@ void Worker::notifyComponentsCompleted() {
                    number_components);
         }
         // Allocate Message
-        char *msg = new char[message_size];
-        int packed_data_size = 0;
+        char *msg              = new char[message_size];
+        int   packed_data_size = 0;
 
         // Pack type of message
         msg[0] = MessageTag::WORKER_TASKS_COMPLETED;
@@ -603,7 +602,7 @@ void Worker::notifyComponentsCompleted() {
         // Pack ids, result, resultData of all components
         for (int i = 0; i < number_components; i++) {
             char *data = this->computedComponents.front();
-            int bufferSize =
+            int   bufferSize =
                 sizeof(int) + sizeof(int) + ((int *)data)[1] * sizeof(char);
 #ifdef DEBUG
             std::cout << "Worker: resultDataSize: " << ((int *)data)[1]
@@ -633,8 +632,8 @@ void Worker::notifyComponentsCompleted() {
 
         int numComponentDataElements = computedComponentsDataSize.size();
         for (int i = 0; i < numComponentDataElements; i++) {
-            int sizeCompData = this->computedComponentsDataSize.front();
-            char *compData = this->computedComponentsData.front();
+            int   sizeCompData = this->computedComponentsDataSize.front();
+            char *compData     = this->computedComponentsData.front();
 
 #ifdef DEBUG
             std::cout << "\t Worker: sizeCompData: " << sizeCompData
@@ -738,7 +737,7 @@ void Worker::setCache(Cache *cache) { this->cache = cache; }
 #endif
 
 PipelineComponentBase *Worker::retrieveActiveComponentRef(int id) {
-    PipelineComponentBase *ret = NULL;
+    PipelineComponentBase                           *ret = NULL;
     std::map<int, PipelineComponentBase *>::iterator it;
     pthread_mutex_lock(&this->activeComponentsRefLoc);
 

@@ -8,16 +8,16 @@
 
 TiledRTCollection::TiledRTCollection(std::string name, std::string refDDRName,
                                      std::string tilesPath, int64_t borders,
-                                     CostFunction* cfunc, int64_t nTiles) {
-    this->tiled = false;
-    this->preTiled = false;
-    this->drGen = false;
-    this->name = name;
+                                     CostFunction *cfunc, int64_t nTiles) {
+    this->tiled      = false;
+    this->preTiled   = false;
+    this->drGen      = false;
+    this->name       = name;
     this->refDDRName = refDDRName;
-    this->tilesPath = tilesPath;
-    this->borders = borders;
-    this->nTiles = nTiles;
-    this->cfunc = cfunc;
+    this->tilesPath  = tilesPath;
+    this->borders    = borders;
+    this->nTiles     = nTiles;
+    this->cfunc      = cfunc;
 }
 
 TiledRTCollection::~TiledRTCollection() {}
@@ -26,7 +26,7 @@ void TiledRTCollection::addImage(std::string path) {
     initialPaths.push_back(path);
 }
 
-std::pair<std::string, RegionTemplate*> TiledRTCollection::getRT(int id) {
+std::pair<std::string, RegionTemplate *> TiledRTCollection::getRT(int id) {
     return rts[id];
 }
 
@@ -57,7 +57,7 @@ void TiledRTCollection::customTiling() {
 
         if (w > h) {
             // vertical tiling
-            step = std::floor(w / this->nTiles);
+            step       = std::floor(w / this->nTiles);
             int64_t wi = -1;
             int64_t wo = -1;
             for (int i = 1; i < this->nTiles; i++) {
@@ -72,7 +72,7 @@ void TiledRTCollection::customTiling() {
 
         } else {
             // horizontal tiling
-            step = std::floor(h / this->nTiles);
+            step       = std::floor(h / this->nTiles);
             int64_t hi = -1;
             int64_t ho = -1;
             for (int i = 1; i < this->nTiles; i++) {
@@ -103,14 +103,18 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
     if (!this->preTiled) {
         for (std::string img : this->initialPaths) {
             // Open image
-            openslide_t* osr;
+            openslide_t *osr;
             osr = openslide_open(img.c_str());
 
             // Gets dimensions of smallest slide image
-            int osrMinLevel = openslide_get_level_count(osr) - 1;  // last lvl
+            int osrMinLevel = openslide_get_level_count(osr) - 1; // last lvl
             int64_t w, h;
             openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
             cv::Rect_<int64_t> roi(0, 0, w, h);
+
+            // Get the dimensions of the full res images
+            openslide_get_level_dimensions(osr, 0, &w, &h);
+            this->imageSize = cv::Rect_<int64_t>(0, 0, w, h);
 
             // Close .svs file
             openslide_close(osr);
@@ -131,7 +135,8 @@ void TiledRTCollection::tileImages(bool tilingOnly) {
 #define DEBUG
 
 void TiledRTCollection::generateDRs(bool tilingOnly) {
-    if (!this->tiled) this->tileImages(tilingOnly);
+    if (!this->tiled)
+        this->tileImages(tilingOnly);
 
     // Tiles' DRs generation can only occur once
     if (this->drGen) {
@@ -149,9 +154,9 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
         for (std::string img : this->initialPaths) {
             cv::Mat baseImg;
             if (isSVS(img)) {
-                openslide_t* osr = openslide_open(img.c_str());
-                int osrMinLevel =
-                    openslide_get_level_count(osr) - 1;  // last level
+                openslide_t *osr = openslide_open(img.c_str());
+                int          osrMinLevel =
+                    openslide_get_level_count(osr) - 1; // last level
                 int64_t w = -1;
                 int64_t h = -1;
                 openslide_get_level0_dimensions(osr, &w, &h);
@@ -181,7 +186,8 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             // For each tile of the current image
             for (cv::Rect_<int64_t> tile : this->tiles[img]) {
                 // ignore zero area tiles
-                if (tile.height * tile.width == 0) continue;
+                if (tile.height * tile.width == 0)
+                    continue;
 
                 // Gets basic info from tile
                 int64_t tileCost = this->cfunc->cost(baseImg, tile);
@@ -212,7 +218,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
 #ifdef DEBUG
             // remove "/"
-            int slLoc;
+            int         slLoc;
             std::string outname = img;
             while ((slLoc = outname.find("/")) != std::string::npos) {
                 outname.replace(slLoc, 1, "");
@@ -225,10 +231,12 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
     // Calculates stddev of tiles cost
     double mean = 0;
-    for (double c : costs) mean += c;
+    for (double c : costs)
+        mean += c;
     mean /= costs.size();
     double var = 0;
-    for (int64_t c : costs) var += pow(c - mean, 2);
+    for (int64_t c : costs)
+        var += pow(c - mean, 2);
     double stddev = sqrt(var / (costs.size() - 1));
 
     // Make the results readable for humans...
@@ -242,7 +250,8 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
     // Calculates the sum of perimeters
     int64_t sumPerim = 0;
-    for (int64_t p : perims) sumPerim += p;
+    for (int64_t p : perims)
+        sumPerim += p;
     std::cout << "[PROFILING][SUMOFPERIMS] " << sumPerim << std::endl;
 
     // Converts tiles sizes to the large image, adds borders and
@@ -250,7 +259,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
     if (!tilingOnly)
         for (std::string img : this->initialPaths) {
             // Open image
-            openslide_t* osr;
+            openslide_t *osr;
             osr = openslide_open(img.c_str());
 
             // Gets info of largest image
@@ -258,13 +267,13 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             openslide_get_level0_dimensions(osr, &w, &h);
             std::cout << "[TiledRTCollection] Full image size: " << h << "x"
                       << w << std::endl;
-            int64_t w0 = w;
-            int64_t h0 = h;
-            float ratiow = w;
-            float ratioh = h;
+            int64_t w0     = w;
+            int64_t h0     = h;
+            float   ratiow = w;
+            float   ratioh = h;
 
             // Gets dimensions of smallest slide image
-            int osrMinLevel = openslide_get_level_count(osr) - 1;  // last lvl
+            int osrMinLevel = openslide_get_level_count(osr) - 1; // last lvl
             openslide_get_level_dimensions(osr, osrMinLevel, &w, &h);
             cv::Rect_<int64_t> roi(0, 0, w, h);
 
@@ -274,7 +283,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             ratioh /= h;
 
             // Adds borders and creates DRs
-            int drId = 0;
+            int                                     drId = 0;
             std::list<cv::Rect_<int64_t>>::iterator tileIt =
                 this->tiles[img].begin();
 
@@ -313,7 +322,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
 
                 // Creates the dr as a svs data region for
                 // lazy read/write of input file
-                DataRegion* dr = new DenseDataRegion2D();
+                DataRegion *dr = new DenseDataRegion2D();
                 dr->setRoi(*tileIt);
                 dr->setSvs();
 
@@ -325,13 +334,13 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 dr->setIsAppInput(true);
                 dr->setOutputType(DataSourceType::FILE_SYSTEM);
                 dr->setInputFileName(this->tilesPath);
-                RegionTemplate* newRT = new RegionTemplate();
+                RegionTemplate *newRT = new RegionTemplate();
                 newRT->insertDataRegion(dr);
                 newRT->setName(this->name);
 
                 // Add the tile and the RT to the internal containers
                 this->rts.push_back(
-                    std::pair<std::string, RegionTemplate*>(drName, newRT));
+                    std::pair<std::string, RegionTemplate *>(drName, newRT));
                 drId++;
             }
         }
@@ -348,7 +357,7 @@ void TiledRTCollection::setPreTiles(
         exit(-1);
     }
     this->preTiled = true;
-    this->tiles = tiles;
+    this->tiles    = tiles;
 }
 
 void TiledRTCollection::addTiles(

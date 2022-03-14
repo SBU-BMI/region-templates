@@ -1,22 +1,23 @@
 #include "AutoStage.h"
 
-#define DEBUG
+// #define DEBUG
 
-RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
-                                    std::vector<int64_t> out_shape,
-                                    std::map<Target_t, HalGen*> schedules,
-                                    std::vector<ArgumentBase*> params,
-                                    int tileId) {
+RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate *> rts,
+                                    std::vector<int64_t>          out_shape,
+                                    std::map<Target_t, HalGen *>  schedules,
+                                    std::vector<ArgumentBase *>   params,
+                                    int                           tileId) {
     this->setComponentName("AutoStage");
 
     this->out_shape = out_shape;
-    this->tileId = tileId;
+    this->tileId    = tileId;
 
     // Add parameters
-    for (ArgumentBase* arg : params) this->addArgument(arg);
+    for (ArgumentBase *arg : params)
+        this->addArgument(arg);
 
     // Gets the names of the registered stages
-    for (std::pair<Target_t, HalGen*> s : schedules) {
+    for (std::pair<Target_t, HalGen *> s : schedules) {
         this->schedules[s.first] = s.second->getName();
         this->addTaskTarget(s.first);
     }
@@ -35,7 +36,7 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
     }
 
     // Add the output RT
-    RegionTemplate* last_rt = rts[rts.size() - 1];
+    RegionTemplate *last_rt = rts[rts.size() - 1];
     dr_name =
         (tileId == -1 ? last_rt->getName() : "t" + std::to_string(tileId));
     rts_names.emplace_back(last_rt->getName());
@@ -44,7 +45,7 @@ RTF::Internal::AutoStage::AutoStage(std::vector<RegionTemplate*> rts,
                                    RTPipelineComponentBase::OUTPUT);
 };
 
-void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>>& tiles,
+void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>> &tiles,
                 std::string name) {
     // For each tile of the current image
     cv::Mat img = tiledImg.clone();
@@ -58,38 +59,39 @@ void printTiled(cv::Mat tiledImg, std::list<cv::Rect_<int64_t>>& tiles,
 }
 //#define DEBUG
 void RTF::Internal::AutoStage::localTileDRs(
-    std::list<cv::Rect_<int64_t>>& tiles,
-    std::vector<std::vector<DenseDataRegion2D*>>& allTiles) {
+    std::list<cv::Rect_<int64_t>>                 &tiles,
+    std::vector<std::vector<DenseDataRegion2D *>> &allTiles) {
     std::string drName = "t" + std::to_string(this->tileId);
 
-    std::string rtId;
-    RegionTemplate* rtCur;
-    DenseDataRegion2D* drCur;
+    std::string        rtId;
+    RegionTemplate    *rtCur;
+    DenseDataRegion2D *drCur;
 
-    int border = 0;
+    int        border         = 0;
     TilerAlg_t denseTilingAlg = LIST_ALG_EXPECT;
-    int nTiles = 1;
+    int        nTiles         = 1;
 
     // Gets RT for initial image
-    rtId = this->rts_names[0];
+    rtId  = this->rts_names[0];
     rtCur = this->getRegionTemplateInstance(rtId);
 
     // Sets cost functions
-    int bgThr = 200;
-    int erode_param = 12;
-    int dilate_param = 4;
-    BGMasker* bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
-    CostFunction* cfunc =
+    int           bgThr        = 200;
+    int           erode_param  = 12;
+    int           dilate_param = 4;
+    BGMasker     *bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
+    CostFunction *cfunc =
         new ThresholdBGCostFunction(bgThr, dilate_param, erode_param);
 
     // Gets first DR for irregular tiling
     long stageTime0 = Util::ClockGetTime();
-    drCur = dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
-    cv::Mat cvInitial = drCur->getData();
-    TiledMatCollection* preTiler = new BGPreTiledRTCollection(
-        "local" + std::to_string(this->tileId),
-        "local" + std::to_string(this->tileId), "", border, cfunc, bgm);
-    TiledMatCollection* tCollImg =
+    drCur = dynamic_cast<DenseDataRegion2D *>(rtCur->getDataRegion(drName));
+
+    cv::Mat             cvInitial = drCur->getData();
+    TiledMatCollection *preTiler  = new BGPreTiledRTCollection(
+         "local" + std::to_string(this->tileId),
+         "local" + std::to_string(this->tileId), "", border, cfunc, bgm);
+    TiledMatCollection *tCollImg =
         new IrregTiledRTCollection("local" + std::to_string(this->tileId),
                                    "local" + std::to_string(this->tileId), "",
                                    border, cfunc, bgm, denseTilingAlg, nTiles);
@@ -122,9 +124,9 @@ void RTF::Internal::AutoStage::localTileDRs(
     // delete tCollImg;
 
     // allTiles[i][j] => i: internal tile id, j: RT id (i.e., each input image)
-    std::vector<DenseDataRegion2D*> _init(this->rts_names.size());
+    std::vector<DenseDataRegion2D *> _init(this->rts_names.size());
     allTiles =
-        std::vector<std::vector<DenseDataRegion2D*>>(tiles.size(), _init);
+        std::vector<std::vector<DenseDataRegion2D *>>(tiles.size(), _init);
 
     // Performs tiling of all RTs for DRs into the same RT
     for (int i = 0; i < this->rts_names.size(); i++) {
@@ -133,14 +135,14 @@ void RTF::Internal::AutoStage::localTileDRs(
                   << std::endl;
 #endif
         // Gets current RT
-        rtId = this->rts_names[i];
+        rtId  = this->rts_names[i];
         rtCur = this->getRegionTemplateInstance(rtId);
 
         // Gets current DR. Uses initial DR for i=0 to avoid opening it twice
         drName = this->tileId == -1 ? rtCur->getName() : drName;
         if (i > 0) {
             drCur =
-                dynamic_cast<DenseDataRegion2D*>(rtCur->getDataRegion(drName));
+                dynamic_cast<DenseDataRegion2D *>(rtCur->getDataRegion(drName));
         }
 #ifdef DEBUG
         std::cout << "=========[AutoStage] tiling DR: " << drName << std::endl;
@@ -154,11 +156,12 @@ void RTF::Internal::AutoStage::localTileDRs(
 #endif
 
             // Wraps cv tile inside a DR and adds it to the current RT
-            DenseDataRegion2D* drNew = new DenseDataRegion2D();
-            std::string drNewName = drName + "st" + to_string(drNewId);
+            DenseDataRegion2D *drNew     = new DenseDataRegion2D();
+            std::string        drNewName = drName + "st" + to_string(drNewId);
             drNew->setName(drNewName);
             drNew->setId(rtCur->getName());
             drNew->setData(drCur->getData()(tile));
+            drNew->setRoi(drCur->getRoi());
             rtCur->insertDataRegion(drNew);
 
             // Adds new DR to output container
@@ -188,13 +191,20 @@ int RTF::Internal::AutoStage::run() {
     long stageTime0 = Util::ClockGetTime();
 
     // Assign output mat to the correct output RT
-    RegionTemplate* rtOut = this->getRegionTemplateInstance(
+    RegionTemplate *rtOut = this->getRegionTemplateInstance(
         this->rts_names[this->rts_names.size() - 1]);
-    DenseDataRegion2D* drOut = new DenseDataRegion2D();
+    DenseDataRegion2D *drOut = new DenseDataRegion2D();
 
+    // Get roi for current tile
     drName = tileId == -1 ? rtOut->getName() : "t" + std::to_string(tileId);
+    auto            rtId    = this->rts_names[0];
+    RegionTemplate *firstRt = this->getRegionTemplateInstance(rtId);
+    auto            firstDr =
+        dynamic_cast<DenseDataRegion2D *>(firstRt->getDataRegion(drName));
+
     drOut->setName(drName);
     drOut->setId(rtOut->getName());
+    // drOut->setRoi(firstDr->getRoi());
     drOut->setData(cv::Mat(this->out_shape[0], this->out_shape[1], CV_8U));
     rtOut->insertDataRegion(drOut);
 
@@ -209,8 +219,8 @@ int RTF::Internal::AutoStage::run() {
 
     // Perform local-worker tiling
     // tilesDRs[i][j] => i: internal tile id, j: RT id (i.e., each input image)
-    std::vector<std::vector<DenseDataRegion2D*>> tilesDRs;
-    std::list<cv::Rect_<int64_t>> tiles;
+    std::vector<std::vector<DenseDataRegion2D *>> tilesDRs;
+    std::list<cv::Rect_<int64_t>>                 tiles;
     localTileDRs(tiles, tilesDRs);
 
     long stageTime2 = Util::ClockGetTime();
@@ -219,7 +229,7 @@ int RTF::Internal::AutoStage::run() {
     //     << this->out_shape[1] << " " << (stageTime2-stageTime1) << std::endl;
 
     // Assemble a schedule map with the local pointers for the halide functions
-    std::map<Target_t, HalGen*> local_schedules;
+    std::map<Target_t, HalGen *> local_schedules;
     for (std::pair<Target_t, std::string> s : this->schedules) {
         local_schedules[s.first] = RTF::AutoStage::retrieveStage(s.second);
     }
@@ -233,13 +243,13 @@ int RTF::Internal::AutoStage::run() {
     for (int i = 0; i < tilesDRs.size(); i++) {
         // Anonymous class for implementing the current stage's task
         struct _Task : public Task {
-            std::map<Target_t, HalGen*> schedules;
-            std::vector<DenseDataRegion2D*> dr_ios;
-            std::vector<ArgumentBase*> params;
+            std::map<Target_t, HalGen *>     schedules;
+            std::vector<DenseDataRegion2D *> dr_ios;
+            std::vector<ArgumentBase *>      params;
 
-            _Task(std::map<Target_t, HalGen*> schedules,
-                  std::vector<DenseDataRegion2D*>& dr_ios,
-                  std::vector<ArgumentBase*> params)
+            _Task(std::map<Target_t, HalGen *>      schedules,
+                  std::vector<DenseDataRegion2D *> &dr_ios,
+                  std::vector<ArgumentBase *>       params)
                 : schedules(schedules), dr_ios(dr_ios), params(params){};
 
             bool run(int procType, int tid = 0) {
@@ -253,7 +263,7 @@ int RTF::Internal::AutoStage::run() {
                           << this->dr_ios[0]->getData().cols << std::endl;
 #endif
                 std::vector<cv::Mat> im_ios;
-                bool aborted = false;
+                bool                 aborted = false;
                 for (int i = 0; i < this->dr_ios.size(); i++) {
                     im_ios.emplace_back(cv::Mat(this->dr_ios[i]->getData()));
                     if (this->dr_ios[i]->aborted()) {
@@ -263,9 +273,11 @@ int RTF::Internal::AutoStage::run() {
                 }
 
                 // Executes the halide stage if not aborted
-                if (!aborted)
+                if (!aborted) {
+
                     aborted =
                         schedules[procType]->realize(im_ios, procType, params);
+                }
                 if (aborted) {
                     std::string abortStr = "[Internal::AutoStage::_Task]";
                     abortStr += " Aborted exec of tiles with size ";
@@ -297,7 +309,7 @@ int RTF::Internal::AutoStage::run() {
 
                 return aborted;
             }
-        }* currentTask =
+        } *currentTask =
             new _Task(local_schedules, tilesDRs[i], this->getArguments());
 
         // Set targets for this task
@@ -314,20 +326,20 @@ int RTF::Internal::AutoStage::run() {
     }
 
     // Gets tiles for output DR
-    int drOutIndex = tilesDRs[0].size() - 1;
-    std::vector<DenseDataRegion2D*> outTileDRs(tiles.size());
+    int                              drOutIndex = tilesDRs[0].size() - 1;
+    std::vector<DenseDataRegion2D *> outTileDRs(tiles.size());
     for (int i = 0; i < tiles.size(); i++)
         outTileDRs[i] = tilesDRs[i][drOutIndex];
 
     // Create a final task for merging the results
     struct _TaskMerge : public Task {
-        DenseDataRegion2D* drOut;
-        std::vector<DenseDataRegion2D*> tileDRs;
-        std::list<cv::Rect_<int64_t>> tiles;
+        DenseDataRegion2D               *drOut;
+        std::vector<DenseDataRegion2D *> tileDRs;
+        std::list<cv::Rect_<int64_t>>    tiles;
 
-        _TaskMerge(DenseDataRegion2D* drOut,
-                   std::vector<DenseDataRegion2D*> tileDRs,
-                   std::list<cv::Rect_<int64_t>> tiles)
+        _TaskMerge(DenseDataRegion2D               *drOut,
+                   std::vector<DenseDataRegion2D *> tileDRs,
+                   std::list<cv::Rect_<int64_t>>    tiles)
             : drOut(drOut), tileDRs(tileDRs), tiles(tiles){};
 
         bool run(int procType, int tid = 0) {
@@ -343,7 +355,8 @@ int RTF::Internal::AutoStage::run() {
             int i = 0;
             for (cv::Rect_<int64_t> tile : this->tiles) {
                 cv::Mat cvCur = this->tileDRs[i]->getData();
-                if (!this->tileDRs[i]->aborted()) cvCur.copyTo(cvOut(tile));
+                if (!this->tileDRs[i]->aborted())
+                    cvCur.copyTo(cvOut(tile));
                 i++;
             }
             long taskTime1 = Util::ClockGetTime();
@@ -354,7 +367,7 @@ int RTF::Internal::AutoStage::run() {
 
             return false;
         }
-    }* currentTask = new _TaskMerge(drOut, outTileDRs, tiles);
+    } *currentTask = new _TaskMerge(drOut, outTileDRs, tiles);
 
     // Adds dependencies for merging task
     for (int tId : tasksIds) {
@@ -370,33 +383,43 @@ int RTF::Internal::AutoStage::run() {
 
     long stageTime9 = Util::ClockGetTime();
 
-    // std::cout << "[PROFILING_SINGLE][STAGE] " << this->out_shape[0] << "x"
-    //     << this->out_shape[1] << " " << (stageTime9-stageTime0) << std::endl;
+    std::cout << "[PROFILING_SINGLE][STAGE] " << this->out_shape[0] << "x"
+              << this->out_shape[1] << " " << (stageTime9 - stageTime0)
+              << std::endl;
 
     return 0;
 }
 
-RTF::Internal::AutoStage* RTF::AutoStage::genStage(SysEnv& sysEnv) {
+RTF::Internal::AutoStage *RTF::AutoStage::genStage(SysEnv &sysEnv) {
+    std::cout << "[AutoStage] genStage begin\n";
     // Generate current stage if it was not already generated
     if (this->generatedStage == NULL) {
         this->generatedStage = new Internal::AutoStage(
             rts, out_shape, schedules, params, this->tileId);
     } else {
+        std::cout << "[AutoStage] returning stage "
+                  << this->generatedStage->getId() << "\n";
         return this->generatedStage;
     }
 
+    std::cout << "[AutoStage] genStage from stage "
+              << this->generatedStage->getId() << "\n";
+
     // Generate dependent stages
-    for (AutoStage* dep : deps) {
+    for (AutoStage *dep : deps) {
         // Generate the dependent stage while also adding it as a
         // dependency for the current stage
-        RTF::Internal::AutoStage* internalDep = dep->genStage(sysEnv);
+        RTF::Internal::AutoStage *internalDep = dep->genStage(sysEnv);
         this->generatedStage->addDependency(internalDep->getId());
+        std::cout << "[AutoStage] adding addDependency from "
+                  << this->generatedStage->getId() << " to "
+                  << internalDep->getId() << "\n";
     }
     sysEnv.executeComponent(this->generatedStage);
     return this->generatedStage;
 }
 
-void RTF::AutoStage::execute(int argc, char** argv) {
+void RTF::AutoStage::execute(int argc, char **argv) {
     // Verifies if this stage was the last stage of a pipeline
     if (!this->last_stage) {
         std::cout << "[RTF::AutoStage::execute] this is not the last stage."
@@ -424,7 +447,7 @@ void RTF::AutoStage::execute(int argc, char** argv) {
 }
 
 // Create the component factory
-PipelineComponentBase* componentFactoryAutoStage() {
+PipelineComponentBase *componentFactoryAutoStage() {
     return new RTF::Internal::AutoStage();
 }
 
@@ -433,9 +456,9 @@ bool registered = PipelineComponentBase::ComponentFactory::componentRegister(
     "AutoStage", &componentFactoryAutoStage);
 
 // Local register of halide stages (static into AutoStage)
-std::map<std::string, RTF::HalGen*> RTF::AutoStage::stagesReg;
+std::map<std::string, RTF::HalGen *> RTF::AutoStage::stagesReg;
 
-bool RTF::AutoStage::registerStage(HalGen* stage) {
+bool RTF::AutoStage::registerStage(HalGen *stage) {
     // If the parameter stage is already registered, it will be ignored
     if (RTF::AutoStage::stagesReg.find(stage->getName()) ==
         RTF::AutoStage::stagesReg.end()) {
@@ -445,6 +468,6 @@ bool RTF::AutoStage::registerStage(HalGen* stage) {
     return false;
 }
 
-RTF::HalGen* RTF::AutoStage::retrieveStage(std::string name) {
+RTF::HalGen *RTF::AutoStage::retrieveStage(std::string name) {
     return RTF::AutoStage::stagesReg.find(name)->second;
 }

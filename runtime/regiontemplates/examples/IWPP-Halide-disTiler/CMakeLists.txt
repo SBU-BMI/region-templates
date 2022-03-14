@@ -29,7 +29,7 @@ target_link_libraries(autostage Halide)
 
 
 # Creates executable to be built from the files listed
-add_executable(iwpp main.cpp pipeline1.cpp misc.cpp HalideIwpp.cpp)
+add_executable(iwpp main.cpp pipeline1.cpp misc.cpp HalideIwpp.cpp mergeStage.cpp)
 target_link_libraries(iwpp Halide)
 target_link_libraries(iwpp ${OpenCV_LIBS})
 target_link_libraries(iwpp -ljpeg)
