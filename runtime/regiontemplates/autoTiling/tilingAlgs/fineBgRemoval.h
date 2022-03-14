@@ -5,6 +5,7 @@
 #include <list>
 #include <opencv/cv.hpp>
 
-std::list<rect_t> fineBgRemoval(cv::Mat img, std::list<rect_t> tiles);
+void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
+                   std::list<rect_t> &dense, std::list<rect_t> &bg);
 
 #endif // FINE_BG_REM_H_
