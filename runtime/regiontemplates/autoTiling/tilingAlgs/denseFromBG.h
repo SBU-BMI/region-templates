@@ -34,7 +34,7 @@ struct rect_tCompY {
 void tileDenseFromBG(cv::Mat &mask, std::list<rect_t> &dense,
                      std::list<rect_t> &output, const cv::Mat *input = NULL);
 
-void generateBackground(std::list<rect_t> &dense, std::list<rect_t> &output,
-                        int64_t maxCols, int64_t maxRows);
+std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
+                                     int64_t maxRows);
 
 #endif // DENSE_FROM_BG_H_

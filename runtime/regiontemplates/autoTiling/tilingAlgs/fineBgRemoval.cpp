@@ -156,8 +156,6 @@ std::list<rect_t> fineBgRemoval(cv::Mat img, std::list<rect_t> tiles) {
 
         cv::Mat out = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
         for (auto bestRect : bestRects) {
-            // std::cout << "best point " << bestPoint.x << ", " << bestPoint.y
-            //           << "\n";
             std::cout << "best rect " << bestRect.x << "-" << bestRect.width
                       << ", " << bestRect.y << "-" << bestRect.height << "\n";
 
@@ -172,7 +170,7 @@ std::list<rect_t> fineBgRemoval(cv::Mat img, std::list<rect_t> tiles) {
         // Generation of Dense partitions
         std::list<rect_t> denseRects;
         auto              bgRects = toMyRectT(bestRects);
-        generateBackground(bgRects, denseRects, out.cols, out.rows);
+        denseRects = generateBackground(bgRects, out.cols, out.rows);
 
         for (auto r : denseRects) {
             cv::rectangle(out, cv::Point(r.xi, r.yi), cv::Point(r.xo, r.yo),

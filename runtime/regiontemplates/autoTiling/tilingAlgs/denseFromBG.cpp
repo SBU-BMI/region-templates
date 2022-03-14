@@ -245,41 +245,45 @@ void newBlocks(std::list<rect_t> &out, std::multiset<rect_t, rect_tCompX> cur,
         out.push_back(newR);
 }
 
-void generateBackground(std::list<rect_t> &dense, std::list<rect_t> &output,
-                        int64_t maxCols, int64_t maxRows) {
+std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
+                                     int64_t maxRows) {
+
+    std::list<rect_t> output1;
 
     int64_t                            oldY = 0;
+    int64_t                            oldX = 0;
     std::multiset<rect_t, rect_tCompX> curX;
     std::multiset<rect_t, rect_tCompY> curY;
 
     // sort dense by the top of each area
-    dense.sort([](const rect_t &a, const rect_t &b) { return a.yi < b.yi; });
+    std::list<rect_t> denseTmp = dense.copy();
+    denseTmp.sort([](const rect_t &a, const rect_t &b) { return a.yi < b.yi; });
 
-    while (!curY.empty() || !dense.empty()) {
-        // get the heads of dense, if there is one
+    while (!curY.empty() || !denseTmp.empty()) {
+        // get the heads of denseTmp, if there is one
         rect_t r;
-        if (!dense.empty())
-            r = *(dense.begin());
+        if (!denseTmp.empty())
+            r = *(denseTmp.begin());
 
         // check if the current y is from the beginning of the end of a rect
         // two comparisons are necessary since there may be a beginning with
         // an end on the same coordinate
-        if (curY.empty() || (!dense.empty() && r.yi <= curY.begin()->yo)) {
+        if (curY.empty() || (!denseTmp.empty() && r.yi <= curY.begin()->yo)) {
             // make the new rect blocks
-            newBlocks(output, curX, oldY, r.yi, maxCols);
+            newBlocks(output1, curX, oldY, r.yi, maxCols);
 
             // update cur structure
             oldY = r.yi;
             curX.emplace(r);
             curY.emplace(r);
 
-            // remove the new node from dense
-            dense.erase(dense.begin());
-        } else if (dense.empty() ||
-                   (!dense.empty() && r.yi > curY.begin()->yo)) {
+            // remove the new node from denseTmp
+            denseTmp.erase(denseTmp.begin());
+        } else if (denseTmp.empty() ||
+                   (!denseTmp.empty() && r.yi > curY.begin()->yo)) {
 
             // make the new rect blocks
-            newBlocks(output, curX, oldY, curY.begin()->yo, maxCols);
+            newBlocks(output1, curX, oldY, curY.begin()->yo, maxCols);
 
             // update cur structure and remove top cur
             oldY = curY.begin()->yo;
@@ -289,7 +293,58 @@ void generateBackground(std::list<rect_t> &dense, std::list<rect_t> &output,
     }
 
     // Creates the last tile
-    output.push_back({0, oldY, maxCols, maxRows, true});
+    output1.push_back({0, oldY, maxCols, maxRows, true});
+
+    // === Test with horizontal scanline ==================
+    curX.clear();
+    curY.clear();
+    denseTmp = dense.copy();
+    std::list<rect_t> output2;
+
+    // sort dense by the top of each area
+    denseTmp.sort([](const rect_t &a, const rect_t &b) { return a.xi < b.xi; });
+
+    while (!curX.empty() || !denseTmp.empty()) {
+        // get the heads of denseTmp, if there is one
+        rect_t r;
+        if (!denseTmp.empty())
+            r = *(denseTmp.begin());
+
+        // check if the current x is from the beginning of the end of a rect
+        // two comparisons are necessary since there may be a beginning with
+        // an end on the same coordinate
+        if (curX.empty() || (!denseTmp.empty() && r.xi <= curX.begin()->xo)) {
+            // make the new rect blocks
+            newBlocks(output2, curY, oldX, r.xi, maxRows);
+
+            // update cur structure
+            oldX = r.xi;
+            curY.emplace(r);
+            curX.emplace(r);
+
+            // remove the new node from denseTmp
+            denseTmp.erase(denseTmp.begin());
+        } else if (denseTmp.empty() ||
+                   (!denseTmp.empty() && r.xi > curY.begin()->xo)) {
+
+            // make the new rect blocks
+            newBlocks(output2, curY, oldX, curX.begin()->xo, maxRows);
+
+            // update cur structure and remove top cur
+            oldX = curX.begin()->xo;
+            curY.erase(*curX.begin());
+            curX.erase(curX.begin());
+        }
+    }
+
+    // Creates the last tile
+    output2.push_back({0, oldX, maxCols, maxRows, true});
+
+    // Returns the one with the fewest partitions
+    // if (output1.size() < output2.size())
+    return output1;
+    // else
+    //     return output2;
 }
 
 void bgMerging(std::list<rect_t> &output) {
@@ -391,7 +446,7 @@ void tileDenseFromBG(cv::Mat &mask, std::list<rect_t> &dense,
     std::list<rect_t> denseTmp(dense);
 
     // generate the background regions
-    generateBackground(denseTmp, output, mask.cols, mask.rows);
+    output = generateBackground(denseTmp, mask.cols, mask.rows);
 
     // Perform merging of background areas
     bgMerging(output);
