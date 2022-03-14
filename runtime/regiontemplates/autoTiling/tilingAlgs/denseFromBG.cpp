@@ -245,8 +245,29 @@ void newBlocks(std::list<rect_t> &out, std::multiset<rect_t, rect_tCompX> cur,
         out.push_back(newR);
 }
 
+void newBlocks(std::list<rect_t> &out, std::multiset<rect_t, rect_tCompY2> cur,
+               int64_t xi, int64_t xo, int64_t yo) {
+
+    if (xo - xi == 1)
+        return;
+
+    int64_t yi = 0;
+    for (rect_t r : cur) {
+        rect_t newR = {xi, yi, xo, r.yi, true};
+        // don't add lines i.e. zero area rect
+        if (newR.yi != newR.yo && newR.xi != newR.xo)
+            out.push_back(newR);
+        yi = r.yo;
+    }
+
+    // add last
+    rect_t newR = {xi, yi, xo, yo, true};
+    if (newR.xi != newR.xo && newR.yi != newR.yo)
+        out.push_back(newR);
+}
+
 std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
-                                     int64_t maxRows) {
+                                     int64_t maxRows, bool addLast = true) {
 
     std::list<rect_t> output1;
 
@@ -256,7 +277,7 @@ std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
     std::multiset<rect_t, rect_tCompY> curY;
 
     // sort dense by the top of each area
-    std::list<rect_t> denseTmp = dense.copy();
+    std::list<rect_t> denseTmp = std::list<rect_t>(dense);
     denseTmp.sort([](const rect_t &a, const rect_t &b) { return a.yi < b.yi; });
 
     while (!curY.empty() || !denseTmp.empty()) {
@@ -293,18 +314,19 @@ std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
     }
 
     // Creates the last tile
-    output1.push_back({0, oldY, maxCols, maxRows, true});
+    if (addLast)
+        output1.push_back({0, oldY, maxCols, maxRows, true});
 
     // === Test with horizontal scanline ==================
-    curX.clear();
-    curY.clear();
-    denseTmp = dense.copy();
+    std::multiset<rect_t, rect_tCompX2> curX2;
+    std::multiset<rect_t, rect_tCompY2> curY2;
+    denseTmp = std::list<rect_t>(dense);
     std::list<rect_t> output2;
 
     // sort dense by the top of each area
     denseTmp.sort([](const rect_t &a, const rect_t &b) { return a.xi < b.xi; });
 
-    while (!curX.empty() || !denseTmp.empty()) {
+    while (!curX2.empty() || !denseTmp.empty()) {
         // get the heads of denseTmp, if there is one
         rect_t r;
         if (!denseTmp.empty())
@@ -313,38 +335,39 @@ std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
         // check if the current x is from the beginning of the end of a rect
         // two comparisons are necessary since there may be a beginning with
         // an end on the same coordinate
-        if (curX.empty() || (!denseTmp.empty() && r.xi <= curX.begin()->xo)) {
+        if (curX2.empty() || (!denseTmp.empty() && r.xi <= curX2.begin()->xo)) {
             // make the new rect blocks
-            newBlocks(output2, curY, oldX, r.xi, maxRows);
+            newBlocks(output2, curY2, oldX, r.xi, maxRows);
 
             // update cur structure
             oldX = r.xi;
-            curY.emplace(r);
-            curX.emplace(r);
+            curY2.emplace(r);
+            curX2.emplace(r);
 
             // remove the new node from denseTmp
             denseTmp.erase(denseTmp.begin());
         } else if (denseTmp.empty() ||
-                   (!denseTmp.empty() && r.xi > curY.begin()->xo)) {
+                   (!denseTmp.empty() && r.xi > curX2.begin()->xo)) {
 
             // make the new rect blocks
-            newBlocks(output2, curY, oldX, curX.begin()->xo, maxRows);
+            newBlocks(output2, curY2, oldX, curX2.begin()->xo, maxRows);
 
             // update cur structure and remove top cur
-            oldX = curX.begin()->xo;
-            curY.erase(*curX.begin());
-            curX.erase(curX.begin());
+            oldX = curX2.begin()->xo;
+            curY2.erase(*curX2.begin());
+            curX2.erase(curX2.begin());
         }
     }
 
     // Creates the last tile
-    output2.push_back({0, oldX, maxCols, maxRows, true});
+    if (addLast)
+        output2.push_back({oldY, 0, maxCols, maxRows, true});
 
     // Returns the one with the fewest partitions
-    // if (output1.size() < output2.size())
-    return output1;
-    // else
-    //     return output2;
+    if (output1.size() < output2.size())
+        return output1;
+    else
+        return output2;
 }
 
 void bgMerging(std::list<rect_t> &output) {

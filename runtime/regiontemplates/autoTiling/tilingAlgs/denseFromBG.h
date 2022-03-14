@@ -27,6 +27,20 @@ struct rect_tCompY {
     }
 };
 
+struct rect_tCompX2 {
+    bool operator()(const rect_t &a, const rect_t &b) {
+        return a.xo < b.xo ||
+               (a.xo == b.xo && (a.xo != b.xo || a.yi != b.yi || a.yi != b.yi));
+    }
+};
+
+struct rect_tCompY2 {
+    bool operator()(const rect_t &a, const rect_t &b) {
+        return a.yi < b.yi ||
+               (a.yi == b.yi && (a.xo != b.xo || a.yi != b.yi || a.xo != b.xo));
+    }
+};
+
 /*****************************************************************************/
 /**                               Main Tiler                                **/
 /*****************************************************************************/
@@ -35,6 +49,6 @@ void tileDenseFromBG(cv::Mat &mask, std::list<rect_t> &dense,
                      std::list<rect_t> &output, const cv::Mat *input = NULL);
 
 std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
-                                     int64_t maxRows);
+                                     int64_t maxRows, bool addLast);
 
 #endif // DENSE_FROM_BG_H_

@@ -98,7 +98,7 @@ std::list<rect_t> fineBgRemoval(cv::Mat img, std::list<rect_t> tiles) {
 
                 // Generate background partitions if there were no other
                 // partitions in the way (may overlap)
-                int xi = 0, xo = curImg.cols, yi = 0, yo = curImg.rows;
+                int xi, xo, yi, yo;
                 if (left) {
                     xi = 0;
                     xo = p.x;
@@ -154,32 +154,36 @@ std::list<rect_t> fineBgRemoval(cv::Mat img, std::list<rect_t> tiles) {
             bestRects.emplace_back(bestRect);
         }
 
-        cv::Mat out = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
+        cv::Mat outb = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
+        cv::drawContours(outb, contours, contours.size() - 1, cv::Scalar(255));
+        cv::Mat outd = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
+        cv::drawContours(outd, contours, contours.size() - 1, cv::Scalar(255));
         for (auto bestRect : bestRects) {
-            std::cout << "best rect " << bestRect.x << "-" << bestRect.width
-                      << ", " << bestRect.y << "-" << bestRect.height << "\n";
+            std::cout << "BG: " << bestRect.x << "-"
+                      << (bestRect.x + bestRect.width - 1) << ", " << bestRect.y
+                      << "-" << (bestRect.y + bestRect.height - 1) << "\n";
 
-            cv::rectangle(out, cv::Point(bestRect.x, bestRect.y),
-                          cv::Point(bestRect.x + bestRect.width,
-                                    bestRect.y + bestRect.height),
+            cv::rectangle(outb, cv::Point(bestRect.x, bestRect.y),
+                          cv::Point(bestRect.x + bestRect.width + 1,
+                                    bestRect.y + bestRect.height + 1),
                           cv::Scalar(255), 3);
-            cv::drawContours(out, contours, contours.size() - 1,
-                             cv::Scalar(255));
         }
 
         // Generation of Dense partitions
         std::list<rect_t> denseRects;
         auto              bgRects = toMyRectT(bestRects);
-        denseRects = generateBackground(bgRects, out.cols, out.rows);
+        denseRects =
+            generateBackground(bgRects, outd.cols - 1, outd.rows - 1, false);
 
         for (auto r : denseRects) {
-            cv::rectangle(out, cv::Point(r.xi, r.yi), cv::Point(r.xo, r.yo),
+            std::cout << "dense: " << r.xi << ":" << r.xo << ", " << r.yi << ":"
+                      << r.yo << "\n";
+            cv::rectangle(outd, cv::Point(r.xi, r.yi), cv::Point(r.xo, r.yo),
                           cv::Scalar(255), 3);
-            cv::drawContours(out, contours, contours.size() - 1,
-                             cv::Scalar(255));
         }
 
-        cv::imwrite("initialdense.png", out);
+        cv::imwrite("bg.png", outb);
+        cv::imwrite("dense.png", outd);
     }
 
     exit(88);
