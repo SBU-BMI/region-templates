@@ -58,7 +58,7 @@ typedef struct rect_t {
     bool    isBg;
 } rect_t;
 
-std::list<rect_t> toMyRectT(std::list<cv::Rect_<uint64_t>> from);
+std::list<rect_t> toMyRectT(std::list<cv::Rect_<int64_t>> from);
 
 /*****************************************************************************/
 /**                            Cost Calculations                            **/

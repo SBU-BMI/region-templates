@@ -52,6 +52,7 @@ class TiledRTCollection {
 
     // Map of <InputImageStr,TilesList>
     std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles;
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> bgTiles;
 
     // Template method hook for a custom tiling method.
     // Defaults to returning the input images with a single
@@ -81,10 +82,16 @@ class TiledRTCollection {
     void addTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> tiles);
     void addTargets(std::vector<Target_t> targets);
 
-    std::vector<std::list<cv::Rect_<int64_t>>>           getTiles();
-    std::map<std::string, std::list<cv::Rect_<int64_t>>> getTilesBase() {
+    std::vector<std::list<cv::Rect_<int64_t>>>            getTiles();
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> &getTilesBase() {
         return tiles;
     };
+
+    std::map<std::string, std::list<cv::Rect_<int64_t>>> &getBgTilesBase() {
+        return bgTiles;
+    };
+
+    void addBgTiles();
 
     cv::Rect_<int64_t> getImageSize() { return imageSize; };
 

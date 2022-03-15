@@ -368,6 +368,15 @@ void TiledRTCollection::addTiles(
     }
 }
 
+// void TiledRTCollection::addBgTiles() {
+
+//     for (std::string img : this->initialPaths) {
+//         this->bgTiles[img].insert(this->tiles[img].end(),
+//                                   this->bgTiles[img].begin(),
+//                                   this->bgTiles[img].end());
+//     }
+// }
+
 void TiledRTCollection::addTargets(std::vector<Target_t> ts) {
     this->tileTarget.insert(this->tileTarget.end(), ts.begin(), ts.end());
 }

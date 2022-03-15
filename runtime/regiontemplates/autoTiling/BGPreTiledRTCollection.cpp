@@ -1,11 +1,11 @@
 #include "BGPreTiledRTCollection.h"
 
-BGPreTiledRTCollection::BGPreTiledRTCollection(std::string name, 
-    std::string refDDRName, std::string tilesPath, int64_t borders, 
-    CostFunction* cfunc, BGMasker* bgm) 
-        : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
+BGPreTiledRTCollection::BGPreTiledRTCollection(
+    std::string name, std::string refDDRName, std::string tilesPath,
+    int64_t borders, CostFunction *cfunc, BGMasker *bgm)
+    : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
 
-    this->bgm = bgm;
+    this->bgm    = bgm;
     this->curImg = "single";
 }
 
@@ -16,11 +16,11 @@ void BGPreTiledRTCollection::customTiling() {
     // Go through all images
     for (std::string img : this->initialPaths) {
         // Open image for tiling
-        int64_t w = -1;
-        int64_t h = -1;
-        openslide_t* osr;
-        int32_t osrMinLevel = -1;
-        cv::Mat maskMat;
+        int64_t      w = -1;
+        int64_t      h = -1;
+        openslide_t *osr;
+        int32_t      osrMinLevel = -1;
+        cv::Mat      maskMat;
 
         // Opens svs input file
         osr = openslide_open(img.c_str());
@@ -35,16 +35,17 @@ void BGPreTiledRTCollection::customTiling() {
         openslide_close(osr);
 
         this->curImg = img;
-        this->tileMat(maskMat, this->tiles[img]);
+        this->tileMat(maskMat, this->tiles[img], this->bgTiles[img]);
     }
 }
 
-void BGPreTiledRTCollection::tileMat(cv::Mat& mat, 
-    std::list<cv::Rect_<int64_t>>& tiles) {
+void BGPreTiledRTCollection::tileMat(cv::Mat                       &mat,
+                                     std::list<cv::Rect_<int64_t>> &tiles,
+                                     std::list<cv::Rect_<int64_t>> &bgTiles2) {
 
     // Gets threshold mask
     cv::Mat thMask = bgm->bgMask(mat);
-    
+
     // Performs tiling
     std::list<rect_t> denseTiles;
     std::list<rect_t> bgTiles;
@@ -52,32 +53,33 @@ void BGPreTiledRTCollection::tileMat(cv::Mat& mat,
 
     // Convert rect_t to cv::Rect_ and add to output lists
     std::list<cv::Rect_<int64_t>> cvDenseTiles;
-    for (std::list<rect_t>::iterator r=denseTiles.begin(); 
-            r!=denseTiles.end(); r++) {
+    for (std::list<rect_t>::iterator r = denseTiles.begin();
+         r != denseTiles.end(); r++) {
 
-        if (r->xo-r->xi > 0 && r->yo-r->yi)
-            cvDenseTiles.push_back(cv::Rect_<int64_t>(
-                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+        if (r->xo - r->xi > 0 && r->yo - r->yi)
+            cvDenseTiles.push_back(
+                cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
     }
     this->denseTiles[this->curImg] = cvDenseTiles;
 
     // Convert rect_t to cv::Rect_ and add to output lists
     std::list<cv::Rect_<int64_t>> cvBgTiles;
-    for (std::list<rect_t>::iterator r=bgTiles.begin(); 
-            r!=bgTiles.end(); r++) {
+    for (std::list<rect_t>::iterator r = bgTiles.begin(); r != bgTiles.end();
+         r++) {
 
-        if (r->xo-r->xi > 0 && r->yo-r->yi)
-            cvBgTiles.push_back(cv::Rect_<int64_t>(
-                r->xi, r->yi, r->xo-r->xi, r->yo-r->yi));
+        if (r->xo - r->xi > 0 && r->yo - r->yi)
+            cvBgTiles.push_back(
+                cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
     }
     // Sort bg tiles by size, i.e., load cost
-    cvBgTiles.sort([](const cv::Rect_<int64_t>& l, const cv::Rect_<int64_t>& r) {
-        return l.width*l.height > r.width*r.height;});
+    cvBgTiles.sort(
+        [](const cv::Rect_<int64_t> &l, const cv::Rect_<int64_t> &r) {
+            return l.width * l.height > r.width * r.height;
+        });
     this->bgTiles[this->curImg] = cvBgTiles;
 
-    std::cout << "[BGPreTiledRTCollection] Dense tiles: " 
-        << cvDenseTiles.size() << ", bg tiles: " 
-        << cvBgTiles.size() << std::endl;
+    std::cout << "[BGPreTiledRTCollection] Dense tiles: " << cvDenseTiles.size()
+              << ", bg tiles: " << cvBgTiles.size() << std::endl;
 
     // Add all tiles to final compiled list
     tiles.clear();

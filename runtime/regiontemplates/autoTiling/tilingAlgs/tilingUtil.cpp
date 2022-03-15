@@ -1,6 +1,6 @@
 #include "tilingUtil.h"
 
-std::list<rect_t> toMyRectT(std::list<cv::Rect_<uint64_t>> from) {
+std::list<rect_t> toMyRectT(std::list<cv::Rect_<int64_t>> from) {
     std::list<rect_t> to;
     for (auto r : from) {
         to.emplace_back(r.x, r.y, r.x + r.width - 1, r.y + r.height - 1);

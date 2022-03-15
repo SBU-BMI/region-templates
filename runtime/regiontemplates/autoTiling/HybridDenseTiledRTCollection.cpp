@@ -4,7 +4,7 @@
 HybridDenseTiledRTCollection::HybridDenseTiledRTCollection(
     std::string name, std::string refDDRName, std::string tilesPath,
     int64_t borders, CostFunction *cfunc, BGMasker *bgm, TilerAlg_t tilingAlg,
-    int nCpuTiles, int nGpuTiles, float cpuPATS, float gpuPATS)
+    int nCpuTiles, int nGpuTiles, float cpuPATS, float gpuPATS, bool fgBgRem)
     : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
     this->bgm       = bgm;
     this->nCpuTiles = nCpuTiles;
@@ -12,6 +12,7 @@ HybridDenseTiledRTCollection::HybridDenseTiledRTCollection(
     this->cpuPATS   = cpuPATS;
     this->gpuPATS   = gpuPATS;
     this->tilingAlg = tilingAlg;
+    this->fgBgRem   = fgBgRem;
 }
 
 // May break when using more than one input image since DR id is unique
@@ -39,7 +40,7 @@ void HybridDenseTiledRTCollection::customTiling() {
         // Close .svs file
         openslide_close(osr);
 
-        this->tileMat(maskMat, this->tiles[img]);
+        this->tileMat(maskMat, this->tiles[img], this->bgTiles[img]);
 
         int drId = 0;
         for (cv::Rect_<int64_t> tile : this->tiles[img]) {
@@ -56,7 +57,8 @@ void HybridDenseTiledRTCollection::customTiling() {
 }
 
 void HybridDenseTiledRTCollection::tileMat(
-    cv::Mat &mat, std::list<cv::Rect_<int64_t>> &tiles) {
+    cv::Mat &mat, std::list<cv::Rect_<int64_t>> &tiles,
+    std::list<cv::Rect_<int64_t>> &bgTiles) {
     int w = mat.cols;
     int h = mat.rows;
 
@@ -75,11 +77,23 @@ void HybridDenseTiledRTCollection::tileMat(
         }
 
         // Performs fine-grain background removal
-        auto tmpTtiles2 = fineBgRemoval(bgm->bgMask(mat), tmpTtiles);
+        std::list<rect_t> newDense;
+
+        if (fgBgRem) {
+            std::list<rect_t> newBg;
+            fineBgRemoval(bgm->bgMask(mat), tmpTtiles, newDense, newBg);
+            // Convert BG partitions to Rect_ and set them
+            bgTiles.clear();
+            for (auto r = newBg.begin(); r != newBg.end(); r++) {
+                bgTiles.push_back(cv::Rect_<int64_t>(
+                    r->xi, r->yi, r->xo - r->xi + 1, r->yo - r->yi + 1));
+            }
+            tmpTtiles = newDense;
+        }
 
         // Performs tiling
         int dense =
-            listCutting(mat, tmpTtiles2, this->nCpuTiles, this->nGpuTiles,
+            listCutting(mat, tmpTtiles, this->nCpuTiles, this->nGpuTiles,
                         this->cpuPATS, this->gpuPATS, this->cfunc);
 
         // Correct gpuTiles count if there are many dense regions

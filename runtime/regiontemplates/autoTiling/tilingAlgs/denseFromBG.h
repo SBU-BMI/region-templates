@@ -51,4 +51,6 @@ void tileDenseFromBG(cv::Mat &mask, std::list<rect_t> &dense,
 std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
                                      int64_t maxRows, bool addLast);
 
+void bgMerging(std::list<rect_t> &output);
+
 #endif // DENSE_FROM_BG_H_

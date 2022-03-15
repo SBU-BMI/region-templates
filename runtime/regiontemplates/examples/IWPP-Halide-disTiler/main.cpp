@@ -410,7 +410,7 @@ int main(int argc, char *argv[]) {
         float gpuPATS = gpc;
         denseTiler    = new HybridDenseTiledRTCollection(
                "input", "input", Ipath, border, denseCostFunc, bgm, denseTilingAlg,
-               nTiles, nTiles * gn, cpuPATS, gpuPATS);
+               nTiles, nTiles * gn, cpuPATS, gpuPATS, true);
     } else {
         // Creates dense tiling collection
         if (noTiling)
@@ -423,9 +423,9 @@ int main(int argc, char *argv[]) {
             denseTiler = new TiledRTCollection("input", "input", Ipath, border,
                                                denseCostFunc, nTiles);
         else
-            denseTiler = new IrregTiledRTCollection("input", "input", Ipath,
-                                                    border, denseCostFunc, bgm,
-                                                    denseTilingAlg, nTiles);
+            denseTiler = new IrregTiledRTCollection(
+                "input", "input", Ipath, border, denseCostFunc, bgm,
+                denseTilingAlg, nTiles, true);
     }
 
     // Performs pre-tiling, if required
@@ -462,12 +462,34 @@ int main(int argc, char *argv[]) {
                                                  bgTilingAlg, bgTilesExpected);
         }
 
-        bgTiler->setPreTiles(preTiler.getBg());
+        std::map<std::string, std::list<cv::Rect_<int64_t>>> bgTiles(
+            preTiler.getBg());
+        // denseTiler->getBgTilesBase();
+
+        for (string img : std::list<string>({Ipath})) {
+            bgTiles[img].insert(bgTiles[img].end(),
+                                denseTiler->getBgTilesBase()[img].begin(),
+                                denseTiler->getBgTilesBase()[img].end());
+            // std::cout << img << "\n";
+            // for (std::list<cv::Rect_<int64_t>>::iterator t =
+            //          preTiler.getBg()[Ipath].begin();
+            //      t != preTiler.getBg()[Ipath].end(); t++) {
+            //     std::cout << "pushing " << *t << std::endl;
+            //     bgTiles[Ipath].emplace_back(*t);
+            // }
+            // bgTiles[img].insert(bgTiles[img].end(),
+            //                     denseTiler->getBgTilesBase()[img].begin(),
+            //                     denseTiler->getBgTilesBase()[img].end());
+        }
+        bgTiler->setPreTiles(bgTiles);
 
         // Performs BG tiling and adds results to dense
         bgTiler->addImage(Ipath);
+        std::cout << "======= tilingbg\n";
         bgTiler->tileImages(tilingOnly);
-        denseTiler->addTiles(bgTiler->getTilesBase());
+
+        std::cout << "======= done\n";
+        denseTiler->addTiles(bgTiles);
         denseTiler->addTargets(bgTiler->getTargetsBase());
     }
 

@@ -4,7 +4,7 @@
 
 void insertSquareContour(std::vector<std::list<int>> &hCoords,
                          std::vector<std::list<int>> &vCoords,
-                         cv::Rect_<uint64_t>          rect) {
+                         cv::Rect_<int64_t>           rect) {
     int xi = rect.x;
     int xo = rect.x + rect.width - 1;
     int yi = rect.y;
@@ -55,12 +55,12 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
         }
 
         // Extract multiple BG rectangles
-        std::list<cv::Rect_<uint64_t>> bestRects;
+        std::list<cv::Rect_<int64_t>> bestRects;
         for (int i = 0; i < 8; i++) {
 
             // Find a rectangular BG region to remove
-            int                 bestArea = 0;
-            cv::Rect_<uint64_t> bestRect;
+            int                bestArea = 0;
+            cv::Rect_<int64_t> bestRect;
             for (cv::Point p : outterContour) {
                 // Check upper/lower partition
                 bool upper = true;
@@ -163,13 +163,12 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
 
         // Attempt to reduce dense partitions generated
         int                 minLen = 50;
+        bool                changed;
         std::vector<rect_t> denseRectsVect(denseRects.begin(),
                                            denseRects.end());
-
-        // Ignoring first and last elements for ease of iterations
-        bool changed;
         do {
             changed = false;
+            // Ignoring first and last elements for ease of iterations
             for (auto curRIt = std::next(denseRectsVect.begin());
                  curRIt != std::prev(denseRectsVect.end()); curRIt++) {
                 rect_t curR = *curRIt;
@@ -254,52 +253,24 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
         } while (changed);
 
         // Generate new BG partitions
-        std::list<rect_t> newBRRects = generateBackground(
-            std::list<rect_t>(denseRectsVect.begin(), denseRectsVect.end()),
-            curImg.cols - 1, curImg.rows - 1);
+        auto tmp =
+            std::list<rect_t>(denseRectsVect.begin(), denseRectsVect.end());
+        std::list<rect_t> newBgRects =
+            generateBackground(tmp, curImg.cols - 1, curImg.rows - 1, false);
+        bgMerging(newBgRects);
 
-        cv::Mat outb = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
-        cv::drawContours(outb, contours, contours.size() - 1, cv::Scalar(255));
-        cv::Mat outb2 = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
-        cv::drawContours(outb2, contours, contours.size() - 1, cv::Scalar(255));
-        cv::Mat outd = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
-        cv::drawContours(outd, contours, contours.size() - 1, cv::Scalar(255));
-        cv::Mat outd2 = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
-        cv::drawContours(outd2, contours, contours.size() - 1, cv::Scalar(255));
-        for (auto bestRect : bestRects) {
-            // std::cout << "BG: " << bestRect.x << "-"
-            //           << (bestRect.x + bestRect.width - 1) << ", " <<
-            //           bestRect.y
-            //           << "-" << (bestRect.y + bestRect.height - 1) << "\n";
-
-            cv::rectangle(outb, cv::Point(bestRect.x, bestRect.y),
-                          cv::Point(bestRect.x + bestRect.width + 1,
-                                    bestRect.y + bestRect.height + 1),
-                          cv::Scalar(255), 3);
+        // Set BG output
+        bg.clear();
+        for (auto r : newBgRects) {
+            bg.push_back({r.xi + tile->xi, r.yi + tile->yi, r.xo + tile->xi,
+                          r.yo + tile->yi});
         }
 
-        for (auto r : newBRRects) {
-            cv::rectangle(outb2, cv::Point(r.xi, r.yi), cv::Point(r.xo, r.yo),
-                          cv::Scalar(255), 3);
-        }
-
-        for (auto r : denseRects) {
-            std::cout << "dense: " << r.xi << ":" << r.xo << ", " << r.yi << ":"
-                      << r.yo << "\n";
-            cv::rectangle(outd, cv::Point(r.xi, r.yi), cv::Point(r.xo, r.yo),
-                          cv::Scalar(255), 3);
-        }
-
+        // Set dense output
+        dense.clear();
         for (auto r : denseRectsVect) {
-            cv::rectangle(outd2, cv::Point(r.xi, r.yi), cv::Point(r.xo, r.yo),
-                          cv::Scalar(255), 3);
+            dense.push_back({r.xi + tile->xi, r.yi + tile->yi, r.xo + tile->xi,
+                             r.yo + tile->yi});
         }
-
-        cv::imwrite("bgBefore.png", outb);
-        cv::imwrite("bgAfter.png", outb2);
-        cv::imwrite("denseBefore.png", outd);
-        cv::imwrite("denseAfter.png", outd2);
     }
-
-    exit(88);
 }

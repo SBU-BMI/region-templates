@@ -4,11 +4,12 @@
 IrregTiledRTCollection::IrregTiledRTCollection(
     std::string name, std::string refDDRName, std::string tilesPath,
     int64_t borders, CostFunction *cfunc, BGMasker *bgm, TilerAlg_t tilingAlg,
-    int nTiles)
+    int nTiles, bool fgBgRem)
     : TiledRTCollection(name, refDDRName, tilesPath, borders, cfunc) {
     this->bgm       = bgm;
     this->nTiles    = nTiles;
     this->tilingAlg = tilingAlg;
+    this->fgBgRem   = fgBgRem;
 }
 
 // May break when using more than one input image since DR id is unique
@@ -36,12 +37,13 @@ void IrregTiledRTCollection::customTiling() {
         // Close .svs file
         openslide_close(osr);
 
-        this->tileMat(maskMat, this->tiles[img]);
+        this->tileMat(maskMat, this->tiles[img], this->bgTiles[img]);
     }
 }
 
 void IrregTiledRTCollection::tileMat(cv::Mat                       &mat,
-                                     std::list<cv::Rect_<int64_t>> &tiles) {
+                                     std::list<cv::Rect_<int64_t>> &tiles,
+                                     std::list<cv::Rect_<int64_t>> &bgTiles) {
     // Converts the initial tiles list to rect_t
     std::list<rect_t> curTiles;
     for (cv::Rect_<int64_t> r : tiles) {
@@ -54,8 +56,25 @@ void IrregTiledRTCollection::tileMat(cv::Mat                       &mat,
         case LIST_ALG_HALF:
         case LIST_ALG_EXPECT: {
             // Performs fine-grain background removal
-            auto tmpTtiles2 = fineBgRemoval(bgm->bgMask(mat), curTiles);
-            listCutting(mat, tmpTtiles2, this->nTiles, this->tilingAlg,
+            std::list<rect_t> dense;
+
+            if (fgBgRem) {
+                std::list<rect_t> bg;
+                fineBgRemoval(bgm->bgMask(mat), curTiles, dense, bg);
+
+                std::cout << "bg generated: " << bg.size() << "\n";
+
+                // Convert BG partitions to Rect_ and set them
+                bgTiles.clear();
+                for (auto r = bg.begin(); r != bg.end(); r++) {
+                    bgTiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi + 1, r->yo - r->yi + 1));
+                }
+
+                curTiles = dense;
+            }
+
+            listCutting(mat, curTiles, this->nTiles, this->tilingAlg,
                         this->cfunc);
             break;
         }
@@ -77,7 +96,7 @@ void IrregTiledRTCollection::tileMat(cv::Mat                       &mat,
         }
     }
 
-    // Convert rect_t to cv::Rect_ and add borders
+    // Convert rect_t to cv::Rect_
     tiles.clear();
     for (std::list<rect_t>::iterator r = curTiles.begin(); r != curTiles.end();
          r++) {
