@@ -283,22 +283,16 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             ratioh /= h;
 
             // Adds borders and creates DRs
-            int                                     drId = 0;
             std::list<cv::Rect_<int64_t>>::iterator tileIt =
                 this->tiles[img].begin();
+            int drId = 0;
 
-            // REMOVE AFTER SINGLE TILE TEST {@
-            // std::advance(tileIt, 33);
-            // tileIt->x *= ratiow;
-            // tileIt->width *= ratiow;
-            // tileIt->y *= ratioh;
-            // tileIt->height *= ratioh;
-            // if (ceil(tileIt->x + tileIt->width) >= (int64_t)w0)
-            //    tileIt->width = (int64_t)(w0 - tileIt->x);
-            // if (ceil(tileIt->y + tileIt->height) >= (int64_t)h0)
-            //    tileIt->height = (int64_t)(h0 - tileIt->y);
-            // for (int i = 0; i < this->tiles[img].size(); i++) {
-            // @}
+            for (cv::Rect_<int64_t> tile : this->tiles[img]) {
+                std::cout << "=================tile " << tile.y << ":"
+                          << tile.height << "\t" << tile.x << ":" << tile.width
+                          << std::endl;
+            }
+
             for (; tileIt != this->tiles[img].end(); tileIt++) {
                 // Converts the tile roi for the large image size
                 tileIt->x *= ratiow;
