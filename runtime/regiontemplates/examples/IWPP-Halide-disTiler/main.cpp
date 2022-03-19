@@ -25,7 +25,6 @@
 #include "costFuncs/PropagateDistCostFunction.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
-#include "mergeStage.h"
 #include "pipeline1.h"
 
 using std::cout;
@@ -87,15 +86,6 @@ static struct : RTF::HalGen {
     }
 } pipeline1_s;
 bool r1 = RTF::AutoStage::registerStage(&pipeline1_s);
-
-static struct : RTF::HalGen {
-    std::string getName() { return "mergeStage"; }
-    bool        realize(std::vector<cv::Mat> &im_ios, Target_t target,
-                        std::vector<ArgumentBase *> &params) {
-        return mergeStage(im_ios, target, params);
-    }
-} merge_s;
-bool r2 = RTF::AutoStage::registerStage(&merge_s);
 
 int main(int argc, char *argv[]) {
     srand(123);
@@ -470,25 +460,13 @@ int main(int argc, char *argv[]) {
             bgTiles[img].insert(bgTiles[img].end(),
                                 denseTiler->getBgTilesBase()[img].begin(),
                                 denseTiler->getBgTilesBase()[img].end());
-            // std::cout << img << "\n";
-            // for (std::list<cv::Rect_<int64_t>>::iterator t =
-            //          preTiler.getBg()[Ipath].begin();
-            //      t != preTiler.getBg()[Ipath].end(); t++) {
-            //     std::cout << "pushing " << *t << std::endl;
-            //     bgTiles[Ipath].emplace_back(*t);
-            // }
-            // bgTiles[img].insert(bgTiles[img].end(),
-            //                     denseTiler->getBgTilesBase()[img].begin(),
-            //                     denseTiler->getBgTilesBase()[img].end());
         }
         bgTiler->setPreTiles(bgTiles);
 
         // Performs BG tiling and adds results to dense
         bgTiler->addImage(Ipath);
-        std::cout << "======= tilingbg\n";
         bgTiler->tileImages(tilingOnly);
 
-        std::cout << "======= done\n";
         denseTiler->addTiles(bgTiles);
         denseTiler->addTargets(bgTiler->getTargetsBase());
     }
@@ -528,9 +506,6 @@ int main(int argc, char *argv[]) {
         mergeParams[i * 4 + 3] = new ArgumentInt(tiles[i].height);
     }
 
-    RTF::AutoStage stageMerge({rtOut, rtOut}, mergeParams, {1, 1}, {&merge_s},
-                              tgt_merge(hybridExec), denseTiler->getNumRTs());
-
     std::list<RTF::AutoStage *> stages;
     for (int i = 0; i < denseTiler->getNumRTs(); i++) {
         auto stage0 = new RTF::AutoStage(
@@ -545,15 +520,8 @@ int main(int argc, char *argv[]) {
              new ArgumentInt(gpu_count)},
             {tiles[i].height, tiles[i].width}, {&pipeline1_s},
             tgt(hybridExec, denseTiler->getTileTarget(i)), i);
-        // stage0->genStage(sysEnv);
-
-        // Add dependency for merge stage
-        stageMerge.after(stage0);
-        stages.push_back(stage0);
+        stage0->genStage(sysEnv);
     }
-
-    // All stages are generated recursively from this last stage
-    stageMerge.genStage(sysEnv);
 
     sysEnv.startupExecution();
     for (int i = 0; i < rtOut->getNumDataRegions(); i++) {

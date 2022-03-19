@@ -39,6 +39,11 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
                          CV_CHAIN_APPROX_NONE);
         std::vector<cv::Point> outterContour = contours[contours.size() - 1];
 
+        // cv::Mat outb = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
+        // cv::drawContours(outb, contours, contours.size() - 1,
+        // cv::Scalar(255), 5);
+        // cv::imwrite("contour.png", outb);
+
         // Generate list of lined coordinates. Rects versions are for BG
         // rectangles added later.
         // horizontal lines
@@ -57,7 +62,6 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
         // Extract multiple BG rectangles
         std::list<cv::Rect_<int64_t>> bestRects;
         for (int i = 0; i < 8; i++) {
-
             // Find a rectangular BG region to remove
             int                bestArea = 0;
             cv::Rect_<int64_t> bestRect;
