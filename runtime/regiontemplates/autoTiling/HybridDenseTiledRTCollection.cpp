@@ -70,31 +70,34 @@ void HybridDenseTiledRTCollection::tileMat(
                   << std::endl;
 
         // Converts the initial tiles list to rect_t
-        std::list<rect_t> tmpTtiles;
+        std::list<rect_t> curTiles;
         for (cv::Rect_<int64_t> r : tiles) {
             rect_t rt = {r.x, r.y, r.x + r.width, r.y + r.height};
-            tmpTtiles.push_back(rt);
+            curTiles.push_back(rt);
         }
 
         // Performs fine-grain background removal
         std::list<rect_t> newDense;
 
         if (fgBgRem) {
-            std::list<rect_t> newBg;
-            fineBgRemoval(bgm->bgMask(mat), tmpTtiles, newDense, newBg);
+            std::list<rect_t> bg;
+            fineBgRemoval(bgm->bgMask(mat), curTiles, newDense, bg);
+
+            // std::cout << "bg generated: " << bg.size() << "\n";
+
             // Convert BG partitions to Rect_ and set them
             bgTiles.clear();
-            for (auto r = newBg.begin(); r != newBg.end(); r++) {
+            for (auto r = bg.begin(); r != bg.end(); r++) {
                 bgTiles.push_back(cv::Rect_<int64_t>(
                     r->xi, r->yi, r->xo - r->xi + 1, r->yo - r->yi + 1));
             }
-            tmpTtiles = newDense;
+
+            curTiles = newDense;
         }
 
         // Performs tiling
-        int dense =
-            listCutting(mat, tmpTtiles, this->nCpuTiles, this->nGpuTiles,
-                        this->cpuPATS, this->gpuPATS, this->cfunc);
+        int dense = listCutting(mat, curTiles, this->nCpuTiles, this->nGpuTiles,
+                                this->cpuPATS, this->gpuPATS, this->cfunc);
 
         // Correct gpuTiles count if there are many dense regions
         if (dense > 0)
@@ -104,8 +107,8 @@ void HybridDenseTiledRTCollection::tileMat(
         tiles.clear();
 
         // Convert rect_t to cv::Rect_
-        for (std::list<rect_t>::iterator r = tmpTtiles.begin();
-             r != tmpTtiles.end(); r++) {
+        for (std::list<rect_t>::iterator r = curTiles.begin();
+             r != curTiles.end(); r++) {
             tiles.push_back(
                 cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
         }

@@ -62,7 +62,7 @@ void IrregTiledRTCollection::tileMat(cv::Mat                       &mat,
                 std::list<rect_t> bg;
                 fineBgRemoval(bgm->bgMask(mat), curTiles, dense, bg);
 
-                std::cout << "bg generated: " << bg.size() << "\n";
+                // std::cout << "bg generated: " << bg.size() << "\n";
 
                 // Convert BG partitions to Rect_ and set them
                 bgTiles.clear();

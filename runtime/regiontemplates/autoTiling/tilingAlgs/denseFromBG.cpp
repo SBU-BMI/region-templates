@@ -361,7 +361,7 @@ std::list<rect_t> generateBackground(std::list<rect_t> &dense, int64_t maxCols,
 
     // Creates the last tile
     if (addLast)
-        output2.push_back({oldY, 0, maxCols, maxRows, true});
+        output2.push_back({oldX, 0, maxCols, maxRows, true});
 
     // Returns the one with the fewest partitions
     if (output1.size() < output2.size())

@@ -1,7 +1,7 @@
 #include "listCutting.h"
 
-void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles,
-                 TilerAlg_t type, CostFunction* cfunc) {
+void listCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
+                 TilerAlg_t type, CostFunction *cfunc) {
     // Calculates the target average cost of a dense tile
     long avgCost = 0;
     for (rect_t r : dense) {
@@ -78,9 +78,9 @@ void listCutting(const cv::Mat& img, std::list<rect_t>& dense, int nTiles,
 
 // GPU tiles come before cpu tiles
 // Returns the number of dense tiles, if no tiling was performed
-int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
+int listCutting(const cv::Mat &img, std::list<rect_t> &dense, int cpuCount,
                 int gpuCount, float cpuPats, float gpuPats,
-                CostFunction* cfunc) {
+                CostFunction *cfunc) {
     // Checks if "dense" already have enough tiles
     // If so there is nothing to be done
     if (dense.size() >= cpuCount + gpuCount) {
@@ -96,8 +96,10 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
         imgCost += cfunc->cost(img, r.yi, r.yo, r.xi, r.xo);
     }
 
-    if (gpuCount == 0) gpuPats = 0;
-    if (cpuCount == 0) cpuPats = 0;
+    if (gpuCount == 0)
+        gpuPats = 0;
+    if (cpuCount == 0)
+        cpuPats = 0;
 
     double totCost = cpuCount * cpuPats + gpuCount * gpuPats;
     double gpuCost = imgCost * gpuPats / totCost;
@@ -156,12 +158,12 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
             exit(-1);
         } else if ((dIt->xo - dIt->xi) == 1) {
             int64_t pivot = (dIt->yo - dIt->yi) / 2 + dIt->yi;
-            newt1 = {dIt->xi, dIt->yi, dIt->xo, pivot};
-            newt2 = {dIt->xi, pivot + 1, dIt->xo, dIt->yo};
+            newt1         = {dIt->xi, dIt->yi, dIt->xo, pivot};
+            newt2         = {dIt->xi, pivot + 1, dIt->xo, dIt->yo};
         } else if ((dIt->yo - dIt->yi) == 1) {
             int64_t pivot = (dIt->xo - dIt->xi) / 2 + dIt->xi;
-            newt1 = {dIt->xi, dIt->yi, pivot, dIt->yo};
-            newt2 = {pivot + 1, dIt->yi, dIt->xo, dIt->yo};
+            newt1         = {dIt->xi, dIt->yi, pivot, dIt->yo};
+            newt2         = {pivot + 1, dIt->yi, dIt->xo, dIt->yo};
         } else {
             splitTileLog(*dIt, img, cfunc, cost, newt1, newt2);
         }
@@ -177,8 +179,8 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
         // std::cout << "[listCutting] =============== dist c2: " << abs(cost -
         // c2) << std::endl;
         if (std::abs(cost - c1) > std::abs(cost - c2)) {
-            sDense.insert(newt1);    // adding c1 to more tiling
-            dense.push_back(newt2);  // adding c2 to final
+            sDense.insert(newt1);   // adding c1 to more tiling
+            dense.push_back(newt2); // adding c2 to final
             sprintf(ccost, "%'2f", c2);
             // std::cout << "[listCutting] adding tile2: " << ccost <<
             // std::endl; std::cout << "\t" << newt2.yi << ":" << newt2.yo <<
@@ -186,7 +188,7 @@ int listCutting(const cv::Mat& img, std::list<rect_t>& dense, int cpuCount,
             //           << ":" << newt2.xo << std::endl;
         } else {
             sDense.insert(newt2);
-            dense.push_back(newt1);  // adding c1 to final
+            dense.push_back(newt1); // adding c1 to final
             sprintf(ccost, "%'2f", c1);
             // std::cout << "[listCutting] adding tile1: " << ccost <<
             // std::endl; std::cout << "\t" << newt1.yi << ":" << newt1.yo <<

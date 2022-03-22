@@ -41,7 +41,8 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
 
         // cv::Mat outb = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
         // cv::drawContours(outb, contours, contours.size() - 1,
-        // cv::Scalar(255), 5);
+        // cv::Scalar(255),
+        //                  5);
         // cv::imwrite("contour.png", outb);
 
         // Generate list of lined coordinates. Rects versions are for BG
@@ -256,6 +257,8 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
             }
         } while (changed);
 
+        cv::Mat outFinal = cv::Mat(img);
+
         // Generate new BG partitions
         auto tmp =
             std::list<rect_t>(denseRectsVect.begin(), denseRectsVect.end());
@@ -268,6 +271,9 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
         for (auto r : newBgRects) {
             bg.push_back({r.xi + tile->xi, r.yi + tile->yi, r.xo + tile->xi,
                           r.yo + tile->yi});
+            cv::rectangle(outFinal, cv::Point(r.xi + tile->xi, r.yi + tile->yi),
+                          cv::Point(r.xo + tile->xi, r.yo + tile->yi),
+                          (255, 255, 255), 3);
         }
 
         // Set dense output
@@ -275,6 +281,11 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
         for (auto r : denseRectsVect) {
             dense.push_back({r.xi + tile->xi, r.yi + tile->yi, r.xo + tile->xi,
                              r.yo + tile->yi});
+            cv::rectangle(outFinal, cv::Point(r.xi + tile->xi, r.yi + tile->yi),
+                          cv::Point(r.xo + tile->xi, r.yo + tile->yi),
+                          (255, 0, 255), 3);
         }
+
+        cv::imwrite("fgbr.png", outFinal);
     }
 }
