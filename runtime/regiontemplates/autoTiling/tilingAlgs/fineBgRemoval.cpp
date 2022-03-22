@@ -26,24 +26,38 @@ void insertSquareContour(std::vector<std::list<int>> &hCoords,
 void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
                    std::list<rect_t> &dense, std::list<rect_t> &bg) {
 
+    bg.clear();
+    dense.clear();
+
     // Iterate through all given partitions
     for (auto tile = initialTiles.begin(); tile != initialTiles.end(); tile++) {
-        // Get outermost contour from dense image
-        cv::Mat curImg =
-            img(cv::Range(tile->yi, tile->yo), cv::Range(tile->xi, tile->xo));
+        // Expand image 1 pixel in each direction to solve the case on which the
+        // image touches the border
+        cv::Mat curImg(tile->yo - tile->yi + 3, tile->xo - tile->xi + 3, CV_8U,
+                       cv::Scalar(0));
+        cv::Mat roi(curImg(cv::Range(1, curImg.rows - 2),
+                           cv::Range(1, curImg.cols - 2)));
+        img(cv::Range(tile->yi, tile->yo), cv::Range(tile->xi, tile->xo))
+            .copyTo(roi);
+
+        // Get all contours from dense image
         auto M = cv::Mat::ones(7, 7, CV_8U);
         cv::morphologyEx(curImg, curImg, cv::MORPH_GRADIENT, M);
         std::vector<std::vector<cv::Point>> contours;
-        std::vector<cv::Vec4i>              hierarchy;
-        cv::findContours(curImg, contours, hierarchy, CV_RETR_EXTERNAL,
+        cv::findContours(curImg, contours, CV_RETR_EXTERNAL,
                          CV_CHAIN_APPROX_NONE);
-        std::vector<cv::Point> outterContour = contours[contours.size() - 1];
+
+        // Get largest contour
+        int largestContourId = 0;
+        for (int i = 0; i < contours.size(); i++) {
+            if (contours[largestContourId].size() < contours[i].size())
+                largestContourId = i;
+        }
+        std::vector<cv::Point> outterContour = contours[largestContourId];
 
         // cv::Mat outb = cv::Mat::zeros(curImg.rows, curImg.cols, CV_8U);
-        // cv::drawContours(outb, contours, contours.size() - 1,
-        // cv::Scalar(255),
-        //                  5);
-        // cv::imwrite("contour.png", outb);
+        // cv::drawContours(outb, contours, largestContourId, cv::Scalar(255),
+        // 1); cv::imwrite("contour.png", outb);
 
         // Generate list of lined coordinates. Rects versions are for BG
         // rectangles added later.
@@ -257,8 +271,6 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
             }
         } while (changed);
 
-        cv::Mat outFinal = cv::Mat(img);
-
         // Generate new BG partitions
         auto tmp =
             std::list<rect_t>(denseRectsVect.begin(), denseRectsVect.end());
@@ -267,25 +279,15 @@ void fineBgRemoval(cv::Mat img, std::list<rect_t> initialTiles,
         bgMerging(newBgRects);
 
         // Set BG output
-        bg.clear();
         for (auto r : newBgRects) {
             bg.push_back({r.xi + tile->xi, r.yi + tile->yi, r.xo + tile->xi,
                           r.yo + tile->yi});
-            cv::rectangle(outFinal, cv::Point(r.xi + tile->xi, r.yi + tile->yi),
-                          cv::Point(r.xo + tile->xi, r.yo + tile->yi),
-                          (255, 255, 255), 3);
         }
 
         // Set dense output
-        dense.clear();
         for (auto r : denseRectsVect) {
             dense.push_back({r.xi + tile->xi, r.yi + tile->yi, r.xo + tile->xi,
                              r.yo + tile->yi});
-            cv::rectangle(outFinal, cv::Point(r.xi + tile->xi, r.yi + tile->yi),
-                          cv::Point(r.xo + tile->xi, r.yo + tile->yi),
-                          (255, 0, 255), 3);
         }
-
-        cv::imwrite("fgbr.png", outFinal);
     }
 }
