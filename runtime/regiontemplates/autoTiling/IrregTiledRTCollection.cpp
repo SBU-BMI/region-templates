@@ -1,4 +1,5 @@
 #include "IrregTiledRTCollection.h"
+#include "bgRemListCutting.h"
 #include "fineBgRemoval.h"
 
 IrregTiledRTCollection::IrregTiledRTCollection(
@@ -94,6 +95,14 @@ void IrregTiledRTCollection::tileMat(cv::Mat                       &mat,
                                         this->tilingAlg, this->cfunc);
             break;
         }
+        case HIER_FG_BR:
+            bgTiles.clear();
+            std::list<rect_t> bg;
+            bgRemListCutting(mat, curTiles, this->nTiles, this->cfunc, bg);
+            for (auto r = bg.begin(); r != bg.end(); r++) {
+                bgTiles.push_back(cv::Rect_<int64_t>(
+                    r->xi, r->yi, r->xo - r->xi + 1, r->yo - r->yi + 1));
+            }
     }
 
     // Convert rect_t to cv::Rect_

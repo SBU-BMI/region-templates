@@ -150,6 +150,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
     // Creates a list of perimeters for each tile for each image
     std::list<int64_t> perims;
     // create tiles image
+    int total_cost = 0;
     if (tilingOnly) {
         for (std::string img : this->initialPaths) {
             cv::Mat baseImg;
@@ -198,6 +199,7 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 setlocale(LC_NUMERIC, "pt_BR.utf-8");
                 char c_cost[50];
                 sprintf(c_cost, "%'2ld", tileCost);
+                total_cost += tileCost;
                 std::cout << "\ttile " << tile.y << ":" << tile.height << "\t"
                           << tile.x << ":" << tile.width << "\tcost: " << c_cost
                           << std::endl;
@@ -227,6 +229,8 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             cv::imwrite(outname, tiledImg);
 #endif
         }
+
+        std::cout << "[TiledRTCollection] total cost: " << total_cost << "\n";
     }
 
     // Calculates stddev of tiles cost

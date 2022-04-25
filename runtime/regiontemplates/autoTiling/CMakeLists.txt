@@ -28,8 +28,9 @@ set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp
     costFuncs/ThresholdBGMasker.cpp costFuncs/ColorThresholdBGMasker.cpp 
     costFuncs/ThresholdBGCostFunction.cpp tilingAlgs/fineBgRemoval.cpp 
     svs/svsUtils.cpp tilingAlgs/tilingUtil.cpp tilingAlgs/denseFromBG.cpp 
-    tilingAlgs/listCutting.cpp tilingAlgs/kdTreeCutting.cpp 
-    tilingAlgs/quadTreeCutting.cpp tilingAlgs/fixedGrid.cpp)
+    tilingAlgs/listCutting.cpp tilingAlgs/bgRemListCutting.cpp 
+    tilingAlgs/kdTreeCutting.cpp tilingAlgs/quadTreeCutting.cpp 
+    tilingAlgs/fixedGrid.cpp)
 
 # Creates autotiling lib
 set(libname autotiling)

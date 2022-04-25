@@ -143,6 +143,7 @@ int main(int argc, char *argv[]) {
         cout << "\t\t6: CBAL_TRIE_QUAD_TREE_ALG" << endl;
         cout << "\t\t7: CBAL_POINT_QUAD_TREE_ALG" << endl;
         cout << "\t\t8: TILING1D" << endl;
+        cout << "\t\t9: HIER_FG_BR" << endl;
 
         cout << "\t-f <dense cost function>" << endl;
         cout << "\t\tValues (default=0):" << endl;

@@ -28,6 +28,7 @@ enum TilerAlg_t {
     CBAL_TRIE_QUAD_TREE_ALG,
     CBAL_POINT_QUAD_TREE_ALG,
     TILING1D,
+    HIER_FG_BR
 };
 
 /*****************************************************************************/
@@ -52,6 +53,10 @@ typedef struct rect_t {
     }
 
     bool operator!=(const rect_t r) const { return !(*this == r); }
+
+    int64_t size() const { return (xo - xi) * (yo - yi); }
+
+    std::string toStr();
 
     int64_t xi, yi;
     int64_t xo, yo;
@@ -129,5 +134,18 @@ void printRect(rect_t r);
 void splitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
                   double expCost, rect_t &newt1, rect_t &newt2,
                   float acc = 0.02, int orient = 0);
+
+void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
+                      double expCost, rect_t &newt1, rect_t &newt2,
+                      std::list<rect_t> &bgPartitions, float acc = 0.02,
+                      int orient = 0);
+
+/*****************************************************************************/
+/**                            Other Algorithms                             **/
+/*****************************************************************************/
+
+// Returns a list of all multiples of a given number
+// Does not add 1
+std::list<int> getMultiples(int n);
 
 #endif // UTIL_H_
