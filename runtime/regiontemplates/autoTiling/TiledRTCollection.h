@@ -96,6 +96,22 @@ class TiledRTCollection {
     cv::Rect_<int64_t> getImageSize() { return imageSize; };
 
     std::vector<Target_t> getTargetsBase() { return tileTarget; };
+
+    long getDenseSize() {
+        long size = 0;
+        for (std::pair<std::string, std::list<cv::Rect_<int64_t>>> p :
+             this->tiles)
+            size += p.second.size();
+        return size;
+    }
+
+    void setBgTiles(
+        std::map<std::string, std::list<cv::Rect_<int64_t>>> &newBgTiles) {
+        this->bgTiles.clear();
+        for (auto p : newBgTiles) {
+            this->bgTiles[p.first] = p.second;
+        }
+    }
 };
 
 #endif

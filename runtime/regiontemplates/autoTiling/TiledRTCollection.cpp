@@ -387,8 +387,13 @@ std::vector<std::list<cv::Rect_<int64_t>>> TiledRTCollection::getTiles() {
     }
 
     std::vector<std::list<cv::Rect_<int64_t>>> tiles;
+    int                                        i = 0;
     for (std::string img : this->initialPaths) {
-        tiles.push_back(this->tiles[img]);
+        std::list<cv::Rect_<int64_t>> tmp;
+        tmp = this->tiles[img];
+        tmp.insert(tmp.end(), this->bgTiles[img].begin(),
+                   this->bgTiles[img].end());
+        tiles.push_back(tmp);
     }
 
     return tiles;

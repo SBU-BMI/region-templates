@@ -439,7 +439,10 @@ int main(int argc, char *argv[]) {
     if (preTiling && !noTiling) {
         // Calculates the number of expected tiles as a multiple of nTiles
         int bgTilesExpected =
-            (std::floor(preTiler.getBgSize() / nTiles) + 1) * nTiles;
+            (std::floor((preTiler.getBgSize() + denseTiler->getDenseSize()) /
+                        nTiles) +
+             1) *
+            nTiles;
         if (hybridExec == HYBRID) {
             // bgTiler = new HybridDenseTiledRTCollection(
             //     "input", "input", Ipath, border, bgCostFunc, bgm,
@@ -455,7 +458,6 @@ int main(int argc, char *argv[]) {
 
         std::map<std::string, std::list<cv::Rect_<int64_t>>> bgTiles(
             preTiler.getBg());
-        // denseTiler->getBgTilesBase();
 
         for (string img : std::list<string>({Ipath})) {
             bgTiles[img].insert(bgTiles[img].end(),
@@ -468,7 +470,7 @@ int main(int argc, char *argv[]) {
         bgTiler->addImage(Ipath);
         bgTiler->tileImages(tilingOnly);
 
-        denseTiler->addTiles(bgTiles);
+        denseTiler->addTiles(bgTiler->getTilesBase());
         denseTiler->addTargets(bgTiler->getTargetsBase());
     }
 
