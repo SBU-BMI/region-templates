@@ -439,10 +439,8 @@ int main(int argc, char *argv[]) {
     if (preTiling && !noTiling) {
         // Calculates the number of expected tiles as a multiple of nTiles
         int bgTilesExpected =
-            (std::floor((preTiler.getBgSize() + denseTiler->getDenseSize()) /
-                        nTiles) +
-             1) *
-            nTiles;
+            (std::ceil((preTiler.getBgSize() + denseTiler->getDenseSize()) /
+                        nTiles)) * nTiles;
         if (hybridExec == HYBRID) {
             // bgTiler = new HybridDenseTiledRTCollection(
             //     "input", "input", Ipath, border, bgCostFunc, bgm,
