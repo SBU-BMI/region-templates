@@ -41,6 +41,9 @@ class IrregTiledRTCollection : public TiledRTCollection,
     void tileMat(cv::Mat &mat, std::list<cv::Rect_<int64_t>> &tiles,
                  std::list<cv::Rect_<int64_t>> &bgTiles);
 
+    void addTiles(std::map<std::string, std::list<cv::Rect_<int64_t>>> newTiles)
+        override {}
+
     IrregTiledRTCollection(std::string name, std::string refDDRName,
                            std::string tilesPath, int64_t borders,
                            CostFunction *cfunc, BGMasker *bgm,
