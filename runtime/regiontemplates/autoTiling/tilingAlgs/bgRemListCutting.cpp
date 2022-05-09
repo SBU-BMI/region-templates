@@ -41,8 +41,6 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
         sprintf(ccost, "%'2f", cfunc->cost(img));
 
         // Keeps breaking tiles until current expctParts goal is reached
-        // while (sDense.size() - initialTiles < expctParts &&
-        //        sDense.size() < nTiles) {
         while (expctParts > sDense.size()) {
             std::cout << "[bgRemListCutting] " << sDense.size() << " of "
                       << expctParts << " done\n";
@@ -74,8 +72,8 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
                 // Partitions the current top tile in two
                 bgRmSplitTileLog(
                     *dIt, img, cfunc,
-                    cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo) / 2,
-                    newt1, newt2, bgPartitions);
+                    // cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo) / 2,
+                    avgCost, newt1, newt2, bgPartitions);
             }
 
             // Removes the first tile and insert the two sub-tiles created from

@@ -133,11 +133,11 @@ void printRect(rect_t r);
 // Orient: 0 = both, -1 = horizontal only, +1 = vetical only
 void splitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
                   double expCost, rect_t &newt1, rect_t &newt2,
-                  float acc = 0.02, int orient = 0);
+                  float acc = 0.002, int orient = 0);
 
 void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
                       double expCost, rect_t &newt1, rect_t &newt2,
-                      std::list<rect_t> &bgPartitions, float acc = 0.02,
+                      std::list<rect_t> &bgPartitions, float acc = 0.002,
                       int orient = 0);
 
 /*****************************************************************************/
