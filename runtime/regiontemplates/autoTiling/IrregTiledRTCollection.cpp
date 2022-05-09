@@ -59,21 +59,23 @@ void IrregTiledRTCollection::tileMat(cv::Mat                       &mat,
             // Performs fine-grain background removal
             std::list<rect_t> dense;
 
-            if (fgBgRem) {
-                std::list<rect_t> bg;
-                fineBgRemoval(bgm->bgMask(mat), curTiles, dense, bg);
+            // if (fgBgRem) {
 
-                // std::cout << "bg generated: " << bg.size() << "\n";
+            //     std::list<rect_t> bg;
+            //     fineBgRemoval(bgm->bgMask(mat), curTiles, dense, bg);
 
-                // Convert BG partitions to Rect_ and set them
-                // bgTiles.clear();
-                // for (auto r = bg.begin(); r != bg.end(); r++) {
-                //     bgTiles.push_back(cv::Rect_<int64_t>(
-                //         r->xi, r->yi, r->xo - r->xi + 1, r->yo - r->yi + 1));
-                // }
+            //     // std::cout << "bg generated: " << bg.size() << "\n";
 
-                curTiles = dense;
-            }
+            //     // Convert BG partitions to Rect_ and set them
+            //     bgTiles.clear();
+            //     // for (auto r = bg.begin(); r != bg.end(); r++) {
+            //     //     bgTiles.push_back(cv::Rect_<int64_t>(
+            //     //         r->xi, r->yi, r->xo - r->xi + 1, r->yo - r->yi +
+            //     1));
+            //     // }
+
+            //     curTiles = dense;
+            // }
 
             listCutting(mat, curTiles, this->nTiles, this->tilingAlg,
                         this->cfunc);
