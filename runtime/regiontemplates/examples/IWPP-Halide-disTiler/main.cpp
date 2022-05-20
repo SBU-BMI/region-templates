@@ -22,6 +22,7 @@
 #include "costFuncs/ColorThresholdBGMasker.h"
 #include "costFuncs/MultiObjCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
+#include "costFuncs/PrePartThresBGCostFunction.h"
 #include "costFuncs/PropagateDistCostFunction.h"
 #include "costFuncs/ThresholdBGCostFunction.h"
 #include "costFuncs/ThresholdBGMasker.h"
@@ -42,6 +43,7 @@ enum HybridExec_t {
 enum CostFunction_t {
     THRS,
     MV_THRS_AREA,
+    TILED_THRS,
 };
 
 // Should use ExecEngineConstants::GPU ...
@@ -149,6 +151,7 @@ int main(int argc, char *argv[]) {
         cout << "\t\tValues (default=0):" << endl;
         cout << "\t\t0: THRS" << endl;
         cout << "\t\t1: MV_THRS_AREA" << endl;
+        cout << "\t\t2: TILED_THRS" << endl;
 
         cout << "\t-m <execBias>/<loadBias> (default=1/100)" << endl;
 
@@ -382,12 +385,18 @@ int main(int argc, char *argv[]) {
     // Tiling cost functions
     BGMasker     *bgm = new ThresholdBGMasker(bgThr, dilate_param, erode_param);
     CostFunction *denseCostFunc;
-    if (denseCostf == THRS)
+    if (denseCostf == THRS) {
         denseCostFunc =
             new ThresholdBGCostFunction(static_cast<ThresholdBGMasker *>(bgm));
-    else
+    } else if (denseCostf == MV_THRS_AREA) {
         denseCostFunc = new MultiObjCostFunction(
             static_cast<ThresholdBGMasker *>(bgm), execBias, loadBias);
+    } else if (denseCostf == TILED_THRS) {
+        int xRes      = 10;
+        int yRes      = 10;
+        denseCostFunc = new PrePartThresBGCostFunction(
+            bgThr, dilate_param, erode_param, Ipath, xRes, yRes);
+    }
     CostFunction *bgCostFunc = new AreaCostFunction();
 
     // Create extra tiles for gpu
@@ -422,6 +431,7 @@ int main(int argc, char *argv[]) {
     // Performs pre-tiling, if required
     BGPreTiledRTCollection preTiler("input", "input", Ipath, border,
                                     denseCostFunc, bgm);
+    long                   tilingT12 = Util::ClockGetTime();
     if (preTiling && !noTiling) {
         // Performs actual tiling
         preTiler.addImage(Ipath);
@@ -431,47 +441,52 @@ int main(int argc, char *argv[]) {
         denseTiler->setPreTiles(preTiler.getDense());
     }
 
+    long tilingT13 = Util::ClockGetTime();
     // Performs dense tiling
     denseTiler->addImage(Ipath);
     denseTiler->tileImages(tilingOnly);
 
-    // BG tiling
-    if (preTiling && !noTiling) {
-        // Calculates the number of expected tiles as a multiple of nTiles
-        int bgTilesExpected =
-            (std::ceil((preTiler.getBgSize() + denseTiler->getDenseSize()) /
-                        nTiles)) * nTiles;
-        if (hybridExec == HYBRID) {
-            // bgTiler = new HybridDenseTiledRTCollection(
-            //     "input", "input", Ipath, border, bgCostFunc, bgm,
-            //     bgTilingAlg, bgTilesExpected, 0, 1, 1);
-            bgTiler = new HybridDenseTiledRTCollection(
-                "input", "input", Ipath, border, bgCostFunc, bgm, bgTilingAlg,
-                nTiles, nTiles * gn, 1, 1);
-        } else {
-            bgTiler = new IrregTiledRTCollection("input", "input", Ipath,
-                                                 border, bgCostFunc, bgm,
-                                                 bgTilingAlg, bgTilesExpected);
-        }
+    long tilingT14 = Util::ClockGetTime();
+    // // BG tiling
+    // if (preTiling && !noTiling) {
+    //     // Calculates the number of expected tiles as a multiple of nTiles
+    //     int bgTilesExpected =
+    //         (std::ceil((preTiler.getBgSize() + denseTiler->getDenseSize()) /
+    //                    nTiles)) *
+    //         nTiles;
+    //     if (hybridExec == HYBRID) {
+    //         // bgTiler = new HybridDenseTiledRTCollection(
+    //         //     "input", "input", Ipath, border, bgCostFunc, bgm,
+    //         //     bgTilingAlg, bgTilesExpected, 0, 1, 1);
+    //         bgTiler = new HybridDenseTiledRTCollection(
+    //             "input", "input", Ipath, border, bgCostFunc, bgm,
+    //             bgTilingAlg, nTiles, nTiles * gn, 1, 1);
+    //     } else {
+    //         bgTiler = new IrregTiledRTCollection("input", "input", Ipath,
+    //                                              border, bgCostFunc, bgm,
+    //                                              bgTilingAlg,
+    //                                              bgTilesExpected);
+    //     }
 
-        std::map<std::string, std::list<cv::Rect_<int64_t>>> bgTiles(
-            preTiler.getBg());
+    //     std::map<std::string, std::list<cv::Rect_<int64_t>>> bgTiles(
+    //         preTiler.getBg());
 
-        for (string img : std::list<string>({Ipath})) {
-            bgTiles[img].insert(bgTiles[img].end(),
-                                denseTiler->getBgTilesBase()[img].begin(),
-                                denseTiler->getBgTilesBase()[img].end());
-        }
-        bgTiler->setPreTiles(bgTiles);
+    //     for (string img : std::list<string>({Ipath})) {
+    //         bgTiles[img].insert(bgTiles[img].end(),
+    //                             denseTiler->getBgTilesBase()[img].begin(),
+    //                             denseTiler->getBgTilesBase()[img].end());
+    //     }
+    //     bgTiler->setPreTiles(bgTiles);
 
-        // Performs BG tiling and adds results to dense
-        bgTiler->addImage(Ipath);
-        bgTiler->tileImages(tilingOnly);
+    //     // Performs BG tiling and adds results to dense
+    //     bgTiler->addImage(Ipath);
+    //     bgTiler->tileImages(tilingOnly);
 
-        denseTiler->addTiles(bgTiler->getTilesBase());
-        denseTiler->addTargets(bgTiler->getTargetsBase());
-    }
+    //     denseTiler->addTiles(bgTiler->getTilesBase());
+    //     denseTiler->addTargets(bgTiler->getTargetsBase());
+    // }
 
+    long tilingT15 = Util::ClockGetTime();
     // Generates tiles and converts it to vector
     denseTiler->generateDRs(tilingOnly);
     std::vector<cv::Rect_<int>>   tiles;
@@ -536,6 +551,15 @@ int main(int argc, char *argv[]) {
     long fullExecT2 = Util::ClockGetTime();
     cout << "[PROFILING][TILES] " << tiles.size() << endl;
     cout << "[PROFILING][TILING_TIME] " << (tilingT2 - tilingT1) << endl;
+    cout << "[PROFILING][TILING_PREP_CFNC_TIME] " << (tilingT12 - tilingT1)
+         << endl;
+    cout << "[PROFILING][TILING_PRE_TILING_TIME] " << (tilingT13 - tilingT12)
+         << endl;
+    cout << "[PROFILING][TILING_DENSE_TILING_TIME] " << (tilingT14 - tilingT13)
+         << endl;
+    cout << "[PROFILING][TILING_BG_TILING_TIME] " << (tilingT15 - tilingT14)
+         << endl;
+    cout << "[PROFILING][TILING_GEN_TIME] " << (tilingT2 - tilingT15) << endl;
     cout << "[PROFILING][FULL_TIME] " << (fullExecT2 - fullExecT1) << endl;
 #endif
 

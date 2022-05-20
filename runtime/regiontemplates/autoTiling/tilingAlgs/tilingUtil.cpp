@@ -1,5 +1,7 @@
 #include "tilingUtil.h"
 
+#include "Util.h"
+
 std::list<rect_t> toMyRectT(std::list<cv::Rect_<int64_t>> from) {
     std::list<rect_t> to;
     for (auto r : from) {
@@ -357,23 +359,34 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
     long lowerCost = expCost - expCost * acc;
 
     ///////////////////////////////////////////////////////////////////////////
-    // Horizontal sweeping
+    // Horizontal sweeping vars
     long              pivotxLen = (r.xo - r.xi) / 2;
     long              pivotx    = r.xi + pivotxLen;
     long              cost1h    = cfunc->cost(img, r.yi, r.yo, r.xi, pivotx);
     long              cost2h = cfunc->cost(img, r.yi, r.yo, pivotx + 1, r.xo);
+    long              areah;
     std::list<rect_t> bgTilesH;
-    std::list<rect_t> bgTilesV;
     rect_t tile1h = {.xi = r.xi, .yi = r.yi, .xo = pivotx, .yo = r.yo};
     rect_t tile2h = {.xi = pivotx + 1, .yi = r.yi, .xo = r.xo, .yo = r.yo};
 
-    long areah;
+    ///////////////////////////////////////////////////////////////////////////
+    // Vertical sweeping vars
+    long              pivotyLen = (r.yo - r.yi) / 2;
+    long              pivoty    = r.yi + pivotyLen;
+    long              cost1v    = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
+    long              cost2v = cfunc->cost(img, pivoty + 1, r.yo, r.xi, r.xo);
+    long              areav;
+    std::list<rect_t> bgTilesV;
+    rect_t tile1v = {.xi = r.xi, .yi = r.yi, .xo = r.xo, .yo = pivoty};
+    rect_t tile2v = {
+        .xi = r.xi + 1, .yi = std::max(0l, pivoty + 1), .xo = r.xo, .yo = r.yo};
 
     // std::cout << "lowerCost " << lowerCost << std::endl;
     // std::cout << "upperCost " << upperCost << std::endl;
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Horizontal sweeping vars
     if (orient <= 0) {
-
         std::cout << "[bgRmSplitTileLog] horz expected cost: " << expCost
                   << "\n";
 
@@ -381,10 +394,10 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         while (!between(cost1h, lowerCost, upperCost) &&
                !between(cost2h, lowerCost, upperCost) && pivotxLen > 0) {
 
-            // std::cout << "[bgRmSplitTileLog] Hcost1: " << cost1h << "\n";
-            // std::cout << "[bgRmSplitTileLog] Hcost2: " << cost2h << "\n";
-            // std::cout << "cost1h " << cost1h << std::endl;
-            // std::cout << "cost2h " << cost2h << std::endl;
+            // std::cout << "[bgRmSplitTileLog] Hcost1: " << cost1h <<
+            // "\n"; std::cout << "[bgRmSplitTileLog] Hcost2: " <<
+            // cost2h << "\n"; std::cout << "cost1h " << cost1h <<
+            // std::endl; std::cout << "cost2h " << cost2h << std::endl;
 
             // If the expected cost was not achieved, split the pivotLen
             // and try again, moving the pivot closer to the tile with
@@ -412,18 +425,8 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // Vertical sweeping
-    long   pivotyLen = (r.yo - r.yi) / 2;
-    long   pivoty    = r.yi + pivotyLen;
-    long   cost1v    = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
-    long   cost2v    = cfunc->cost(img, pivoty + 1, r.yo, r.xi, r.xo);
-    long   areav;
-    rect_t tile1v = {.xi = r.xi, .yi = r.yi, .xo = r.xo, .yo = pivoty};
-    rect_t tile2v = {
-        .xi = r.xi + 1, .yi = std::max(0l, pivoty + 1), .xo = r.xo, .yo = r.yo};
-
+    // Vertical sweeping vars
     if (orient >= 0) {
-
         std::cout << "[bgRmSplitTileLog] vert expected cost: " << expCost
                   << "\n";
 
@@ -431,8 +434,9 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         while (!between(cost1v, lowerCost, upperCost) &&
                !between(cost2v, lowerCost, upperCost) && pivotyLen > 0) {
 
-            // std::cout << "[bgRmSplitTileLog] Vcost1: " << cost1v << "\n";
-            // std::cout << "[bgRmSplitTileLog] Vcost2: " << cost2v << "\n";
+            // std::cout << "[bgRmSplitTileLog] Vcost1: " << cost1v <<
+            // "\n"; std::cout << "[bgRmSplitTileLog] Vcost2: " <<
+            // cost2v << "\n";
 
             // If the expected cost was not achieved, split the pivotLen
             // and try again, moving the pivot closer to the tile with
@@ -456,12 +460,13 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
             costWithBgRm(img, cfunc, tile1v, tile2v, bgTilesV, cost1v, cost2v);
             // cost1v = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
             // cost2v =
-            //     cfunc->cost(img, std::max(0l, pivoty + 1), r.yo, r.xi, r.xo);
+            //     cfunc->cost(img, std::max(0l, pivoty + 1), r.yo,
+            //     r.xi, r.xo);
         }
-
-        // Calculate difference between areas of new tiles 1 and 2
-        areav = abs((r.xo - r.xi) * (r.yo + r.yi + 2 * pivoty));
     }
+
+    // Calculate difference between areas of new tiles 1 and 2
+    areav = abs((r.xo - r.xi) * (r.yo + r.yi + 2 * pivoty));
 
     ///////////////////////////////////////////////////////////////////////////
     // Assigns the regions coordinates
@@ -493,7 +498,7 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
 }
 
 /*****************************************************************************/
-/**                            Other Algorithms                             **/
+/**                            Other Algorithms **/
 /*****************************************************************************/
 
 int primes[] = {2,   3,   5,   7,   11,  13,  17,  19,  23,  29,  31,  37,

@@ -10,7 +10,7 @@ ThresholdBGCostFunction::ThresholdBGCostFunction(int bgThr, int dilate,
 
 // template <typename T>
 // ThresholdBGCostFunction<T>::ThresholdBGCostFunction(ThresholdBGMasker bgm) {
-ThresholdBGCostFunction::ThresholdBGCostFunction(ThresholdBGMasker* bgm) {
+ThresholdBGCostFunction::ThresholdBGCostFunction(ThresholdBGMasker *bgm) {
     this->bgm = bgm;
 }
 

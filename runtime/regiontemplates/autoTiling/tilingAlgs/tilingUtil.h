@@ -137,7 +137,7 @@ void splitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
 
 void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
                       double expCost, rect_t &newt1, rect_t &newt2,
-                      std::list<rect_t> &bgPartitions, float acc = 0.002,
+                      std::list<rect_t> &bgPartitions, float acc = 0.02,
                       int orient = 0);
 
 /*****************************************************************************/

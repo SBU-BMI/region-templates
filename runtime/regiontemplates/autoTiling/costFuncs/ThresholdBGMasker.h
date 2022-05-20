@@ -11,16 +11,20 @@
 #define CV_THR_BIN 0
 #define CV_THR_BIN_INV 1
 
+class ThresholdBGCostFunction;
+
 class ThresholdBGMasker : public BGMasker {
-private:
+  private:
     int bgThr;
     int dilate;
     int erode;
-    
-public:
+
+  public:
     ThresholdBGMasker(int bgThr, int dilate, int erode);
 
     cv::Mat bgMask(cv::Mat img);
+
+    ThresholdBGCostFunction *getCostFunction();
 };
 
 #endif

@@ -12,18 +12,16 @@
 #define CV_THR_BIN 0
 #define CV_THR_BIN_INV 1
 
-// template <typename T>
-// class ThresholdBGCostFunction : public CostFunction<T> {
 class ThresholdBGCostFunction : public CostFunction {
-private:
-    ThresholdBGMasker* bgm;
-    
-public:
+  private:
+    ThresholdBGMasker *bgm;
+
+  public:
     ThresholdBGCostFunction(int bgThr, int dilate, int erode);
-    ThresholdBGCostFunction(ThresholdBGMasker* bgm);
+    ThresholdBGCostFunction(ThresholdBGMasker *bgm);
 
     // T cost(cv::Mat img);
-    double cost(cv::Mat img) const;
+    double  cost(cv::Mat img) const;
     cv::Mat costImg(cv::Mat img) const;
 };
 
