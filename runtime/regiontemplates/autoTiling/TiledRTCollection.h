@@ -116,6 +116,9 @@ class TiledRTCollection {
             this->bgTiles[p.first] = p.second;
         }
     }
+
+    // Used to calculate real costs later on with PrePartThresBGCostFunction
+    void setCostFunction(CostFunction *cfunc) { this->cfunc = cfunc; }
 };
 
 #endif

@@ -5,8 +5,8 @@
 
 #include <opencv/cv.hpp>
 
-#include "CostFunction.h"
 #include "BGMasker.h"
+#include "CostFunction.h"
 #include "ThresholdBGMasker.h"
 // #include "ColorThresholdBGMasker.h"
 
@@ -15,19 +15,18 @@
 #define CV_THR_BIN_INV 1
 
 class MultiObjCostFunction : public CostFunction {
-private:
+  private:
     float execBias;
     float readBias;
-    
-public:
-    BGMasker* bgm;
-    MultiObjCostFunction(int bgThr, int dilate, int erode, 
-    	float execBias, float readBias);
-    MultiObjCostFunction(BGMasker* bgm, 
-    	float execBias, float readBias);
 
-    double cost(cv::Mat img) const;
-    cv::Mat costImg(cv::Mat img) const;
+  public:
+    BGMasker *bgm;
+    MultiObjCostFunction(int bgThr, int dilate, int erode, float execBias,
+                         float readBias);
+    MultiObjCostFunction(BGMasker *bgm, float execBias, float readBias);
+
+    double  cost(const cv::Mat &img) const;
+    cv::Mat costImg(const cv::Mat &img) const;
 };
 
 #endif

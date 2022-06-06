@@ -310,7 +310,7 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
 
         if (bestArea > bgMinAreaThresh) {
             bgTiles.push_back(bestBg);
-            std::cout << curDenseTile.toStr() << "\n";
+            // std::cout << curDenseTile.toStr() << "\n";
             // std::cout << "[simpleRemoveBg] added BG tile " << bestBg.toStr()
             //           << "\n";
             // std::cout << "[simpleRemoveBg] bestArea " << bestArea << "\n";
@@ -335,18 +335,19 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
     return curDenseTile;
 }
 
-void costWithBgRm(const cv::Mat &img, CostFunction *cfunc, rect_t &tile1,
+// Returns true if partition wasn't smaller than min cost resolution
+bool costWithBgRm(const cv::Mat &img, CostFunction *cfunc, rect_t &tile1,
                   rect_t &tile2, std::list<rect_t> &remainingBg, long &cost1,
                   long &cost2) {
     // Remove background from both tiles
-    // std::cout << "=========r1\n";
     tile1 = simpleRemoveBg(img, tile1, cfunc, remainingBg);
-    // std::cout << "=========r2\n";
     tile2 = simpleRemoveBg(img, tile2, cfunc, remainingBg);
 
     // Calculate cost
     cost1 = cfunc->cost(img, tile1.yi, tile1.yo, tile1.xi, tile1.xo);
     cost2 = cfunc->cost(img, tile2.yi, tile2.yo, tile2.xi, tile2.xo);
+
+    return (cost1 > 0) && (cost2 > 0);
 }
 
 // Background removal version of split tile log
@@ -387,8 +388,8 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
     ///////////////////////////////////////////////////////////////////////////
     // Horizontal sweeping vars
     if (orient <= 0) {
-        std::cout << "[bgRmSplitTileLog] horz expected cost: " << expCost
-                  << "\n";
+        // std::cout << "[bgRmSplitTileLog] horz expected cost: " << expCost
+        //           << "\n";
 
         // Finds through binary search the best horizontal pivot
         while (!between(cost1h, lowerCost, upperCost) &&
@@ -415,7 +416,19 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
             tile1h = {.xi = r.xi, .yi = r.yi, .xo = pivotx, .yo = r.yo};
             tile2h = {.xi = pivotx + 1, .yi = r.yi, .xo = r.xo, .yo = r.yo};
             bgTilesH.clear();
-            costWithBgRm(img, cfunc, tile1h, tile2h, bgTilesH, cost1h, cost2h);
+            long   cost1hTmp;
+            long   cost2hTmp;
+            rect_t tile1hTmp = tile1h;
+            rect_t tile2hTmp = tile2h;
+            if (costWithBgRm(img, cfunc, tile1hTmp, tile2hTmp, bgTilesH,
+                             cost1hTmp, cost2hTmp)) {
+                tile1h = tile1hTmp;
+                tile2h = tile2hTmp;
+                cost1h = cost1hTmp;
+                cost2h = cost2hTmp;
+            } else
+                break;
+
             // cost1h = cfunc->cost(img, r.yi, r.yo, r.xi, pivotx);
             // cost2h = cfunc->cost(img, r.yi, r.yo, pivotx + 1, r.xo);
         }
@@ -427,8 +440,8 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
     ///////////////////////////////////////////////////////////////////////////
     // Vertical sweeping vars
     if (orient >= 0) {
-        std::cout << "[bgRmSplitTileLog] vert expected cost: " << expCost
-                  << "\n";
+        // std::cout << "[bgRmSplitTileLog] vert expected cost: " << expCost
+        //           << "\n";
 
         // Finds through binary search the best vertical pivot
         while (!between(cost1v, lowerCost, upperCost) &&
@@ -457,7 +470,19 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
                       .xo = r.xo,
                       .yo = r.yo};
             bgTilesV.clear();
-            costWithBgRm(img, cfunc, tile1v, tile2v, bgTilesV, cost1v, cost2v);
+            long   cost1vTmp;
+            long   cost2vTmp;
+            rect_t tile1vTmp = tile1v;
+            rect_t tile2vTmp = tile2v;
+            if (costWithBgRm(img, cfunc, tile1vTmp, tile2vTmp, bgTilesV,
+                             cost1vTmp, cost2vTmp)) {
+                tile1v = tile1vTmp;
+                tile2v = tile2vTmp;
+                cost1v = cost1vTmp;
+                cost2v = cost2vTmp;
+            } else
+                break;
+
             // cost1v = cfunc->cost(img, r.yi, pivoty, r.xi, r.xo);
             // cost2v =
             //     cfunc->cost(img, std::max(0l, pivoty + 1), r.yo,
@@ -483,8 +508,10 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         // newt2.yi = r.yi;
         newt1 = tile1h;
         newt2 = tile2h;
-        bgPartitions.insert(bgPartitions.begin(), bgTilesH.begin(),
-                            bgTilesH.end());
+        // bgPartitions.insert(bgPartitions.begin(), bgTilesH.begin(),
+        //                     bgTilesH.end());
+        // std::cout << "new1t cost:" << cost1h << "\n";
+        // std::cout << "new2t cost:" << cost2h << "\n";
     } else { // vertical
         // newt1.xo = r.xo;
         // newt2.xi = r.xi;
@@ -492,8 +519,10 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         // newt2.yi = pivoty + 1;
         newt1 = tile1v;
         newt2 = tile2v;
-        bgPartitions.insert(bgPartitions.begin(), bgTilesV.begin(),
-                            bgTilesV.end());
+        // bgPartitions.insert(bgPartitions.begin(), bgTilesV.begin(),
+        //                     bgTilesV.end());
+        // std::cout << "new1t cost:" << cost1v << "\n";
+        // std::cout << "new2t cost:" << cost2v << "\n";
     }
 }
 

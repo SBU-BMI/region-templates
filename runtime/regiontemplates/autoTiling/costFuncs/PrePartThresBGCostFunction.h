@@ -16,21 +16,26 @@ class PrePartThresBGCostFunction : public CostFunction {
   private:
     ThresholdBGMasker *bgm;
 
-    cv::Mat costArray;
-    int     xResolution; // in number of pixels
-    int     yResolution; // in number of pixels
+    cv::Mat         origImg;
+    mutable cv::Mat costArray;
+    int             xResolution; // in number of pixels
+    int             yResolution; // in number of pixels
+    CostFunction   *cFunc;
+
+    int oneByPct = 100;
 
   public:
     PrePartThresBGCostFunction(int bgThr, int dilate, int erode,
-                               std::string origImgPath, int xRes, int yRes);
+                               std::string origImgPath, int xRes = -1,
+                               int yRes = -1);
     PrePartThresBGCostFunction(ThresholdBGMasker *bgm, std::string origImgPath,
-                               int xRes, int yRes);
+                               int xRes = -1, int yRes = -1);
 
     // T cost(cv::Mat img);
-    double  cost(cv::Mat img) const;
-    cv::Mat costImg(cv::Mat img) const;
-    double  cost(cv::Mat img, cv::Rect_<int64_t> tile) const;
-    double  cost(cv::Mat img, int64_t yi, int64_t yo, int64_t xi,
+    double  cost(const cv::Mat &img) const;
+    cv::Mat costImg(const cv::Mat &img) const;
+    double  cost(const cv::Mat &img, cv::Rect_<int64_t> tile) const;
+    double  cost(const cv::Mat &img, int64_t yi, int64_t yo, int64_t xi,
                  int64_t xo) const;
 };
 

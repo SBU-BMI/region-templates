@@ -392,10 +392,12 @@ int main(int argc, char *argv[]) {
         denseCostFunc = new MultiObjCostFunction(
             static_cast<ThresholdBGMasker *>(bgm), execBias, loadBias);
     } else if (denseCostf == TILED_THRS) {
-        int xRes      = 10;
-        int yRes      = 10;
-        denseCostFunc = new PrePartThresBGCostFunction(
-            bgThr, dilate_param, erode_param, Ipath, xRes, yRes);
+        int xRes = 20;
+        int yRes = 20;
+        // denseCostFunc = new PrePartThresBGCostFunction(
+        //     bgThr, dilate_param, erode_param, Ipath, xRes, yRes);
+        denseCostFunc = new PrePartThresBGCostFunction(bgThr, dilate_param,
+                                                       erode_param, Ipath);
     }
     CostFunction *bgCostFunc = new AreaCostFunction();
 
@@ -488,6 +490,12 @@ int main(int argc, char *argv[]) {
 
     long tilingT15 = Util::ClockGetTime();
     // Generates tiles and converts it to vector
+
+    // Update cost function for getting real values
+    if (denseCostf == TILED_THRS) {
+        denseTiler->setCostFunction(
+            new ThresholdBGCostFunction(static_cast<ThresholdBGMasker *>(bgm)));
+    }
     denseTiler->generateDRs(tilingOnly);
     std::vector<cv::Rect_<int>>   tiles;
     std::list<cv::Rect_<int64_t>> l = denseTiler->getTiles()[0];

@@ -28,8 +28,8 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
     int expctParts = 1;
     for (int mult : multiples) {
         expctParts *= mult;
-        std::cout << "[bgRemListCutting] hierarchical for " << expctParts
-                  << "\n";
+        // std::cout << "[bgRemListCutting] hierarchical for " << expctParts
+        //           << "\n";
 
         // Calculates the target average expected cost of a dense tile
         // Cost function should not evaluate area
@@ -47,8 +47,8 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
 
         // Keeps breaking tiles until current expctParts goal is reached
         while (expctParts > sDense.size()) {
-            std::cout << "[bgRemListCutting] " << sDense.size() << " of "
-                      << expctParts << " done\n";
+            // std::cout << "[bgRemListCutting] " << sDense.size() << " of "
+            //           << expctParts << " done\n";
 
             // Gets the first region (highest cost)
             std::multiset<rect_t, rect_tCostFunct>::iterator dIt =
@@ -65,21 +65,11 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
                 std::cout << "[listCutting] Tile too small to split."
                           << std::endl;
                 exit(-1);
-                // } else if ((dIt->xo - dIt->xi) == 1) {
-                //     int64_t pivot = (dIt->yo - dIt->yi) / 2 + dIt->yi;
-                //     newt1 = {dIt->xi, dIt->yi, dIt->xo, pivot};
-                //     newt2 = {dIt->xi, pivot + 1, dIt->xo, dIt->yo};
-                // } else if ((dIt->yo - dIt->yi) == 1) {
-                //     int64_t pivot = (dIt->xo - dIt->xi) / 2 + dIt->xi;
-                //     newt1 = {dIt->xi, dIt->yi, pivot, dIt->yo};
-                //     newt2 = {pivot + 1, dIt->yi, dIt->xo, dIt->yo};
             } else {
                 // Partitions the current top tile in two
                 long t11 = Util::ClockGetTime();
-                bgRmSplitTileLog(
-                    *dIt, img, cfunc,
-                    // cfunc->cost(img, dIt->yi, dIt->yo, dIt->xi, dIt->xo) / 2,
-                    avgCost, newt1, newt2, bgPartitions);
+                bgRmSplitTileLog(*dIt, img, cfunc, avgCost, newt1, newt2,
+                                 bgPartitions);
                 long t12 = Util::ClockGetTime();
                 tBTS += t12 - t11;
             }

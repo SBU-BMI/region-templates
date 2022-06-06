@@ -21,8 +21,8 @@ class ThresholdBGCostFunction : public CostFunction {
     ThresholdBGCostFunction(ThresholdBGMasker *bgm);
 
     // T cost(cv::Mat img);
-    double  cost(cv::Mat img) const;
-    cv::Mat costImg(cv::Mat img) const;
+    double  cost(const cv::Mat &img) const;
+    cv::Mat costImg(const cv::Mat &img) const;
 };
 
 #endif

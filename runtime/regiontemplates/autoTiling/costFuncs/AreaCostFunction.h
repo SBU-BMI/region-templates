@@ -6,11 +6,11 @@
 #include "CostFunction.h"
 
 class AreaCostFunction : public CostFunction {
-public:
-    AreaCostFunction() {};
+  public:
+    AreaCostFunction(){};
 
-    double cost(cv::Mat img) const {return img.rows*img.cols;};
-    cv::Mat costImg(cv::Mat img) const {return img;};
+    double  cost(const cv::Mat &img) const { return img.rows * img.cols; };
+    cv::Mat costImg(const cv::Mat &img) const { return img; };
 };
 
 #endif
