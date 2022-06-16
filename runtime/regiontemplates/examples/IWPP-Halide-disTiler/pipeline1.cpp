@@ -82,6 +82,9 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
         Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                   gpuId);
     erode.realize(hOut);
+    erode.realize(hOut);
+    erode.realize(hOut);
+    erode.realize(hOut);
 
     // #ifdef PROFILING_STAGES
     long st3 = Util::ClockGetTime();
@@ -161,6 +164,9 @@ void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
     if (target == ExecEngineConstants::GPU)
         Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                   gpuId);
+    dilate.realize(hOut);
+    dilate.realize(hOut);
+    dilate.realize(hOut);
     dilate.realize(hOut);
 
     // #ifdef PROFILING_STAGES
@@ -252,6 +258,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     cv::Mat  cvHostRC(cvHostOut2.size(), cvHostOut2.type(), cv::Scalar::all(0));
     cv::Mat  cvHostOut1(cvHostOut2.size(), cvHostOut2.type(),
                         cv::Scalar::all(0));
+    cv::Mat  cvHostOut3 = cvHostOut2.clone();
 
     // === Halide::Target setup ===============================================
     Halide::Target hTarget = Halide::get_host_target();
@@ -288,6 +295,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     // We swap these two outputs on functions which cannot be realized inplace
     Halide::Buffer<uint8_t> hOut1 = mat2buf<uint8_t>(&cvHostOut1, "hOut1");
     Halide::Buffer<uint8_t> hOut2 = mat2buf<uint8_t>(&cvHostOut2, "hOut2");
+    Halide::Buffer<uint8_t> hOut3 = mat2buf<uint8_t>(&cvHostOut3, "hOut3");
 
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " size: " << cvHostOut1.size()
@@ -436,18 +444,21 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     hRC.set_host_dirty();
     hOut1.set_host_dirty();
     hOut2.set_host_dirty();
+    hOut3.set_host_dirty();
     hSE19.set_host_dirty();
 
     erode(hRC, hOut1, hSE19, target, tileId, noSched, gpuId);
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " erode done" << std::endl;
     dilate(hOut1, hOut2, hSE19, target, tileId, noSched, gpuId);
+    dilate(hOut1, hOut3, hSE19, target, tileId, noSched, gpuId);
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " dilate done" << std::endl;
 
     if (noIWPP == 0) {
         // === imrecon ========================================================
         int its = loopedIwppRecon(target, hRC, hOut2, noSched, gpuId);
+        loopedIwppRecon(target, hRC, hOut3, noSched, gpuId);
         std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
                   << Util::ClockGetTime() << " IWPP with " << its
                   << " iterations" << std::endl;
