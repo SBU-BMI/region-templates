@@ -31,6 +31,7 @@ include_directories(${PNG_INCLUDE_DIR})
 set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp 
     IrregTiledRTCollection.cpp BGPreTiledRTCollection.cpp 
     HybridDenseTiledRTCollection.cpp costFuncs/MultiObjCostFunction.cpp
+    SingleTileRTCollection.cpp
     CostFunction.cpp costFuncs/OracleCostFunction.cpp 
     costFuncs/PropagateDistCostFunction.cpp
     costFuncs/PrePartThresBGCostFunction.cpp

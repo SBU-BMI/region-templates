@@ -327,7 +327,7 @@ void Worker::workerProcess() {
 
     std::cout << "[Worker][W" << this->getRank()
               << "] ready. Hostname: " << hostname
-              << ", number of workers: " << comm_size << std::endl;
+              << ", number of processes: " << comm_size << std::endl;
 
     // Flag that control the execution loop, and is updated from messages sent
     // by the Manager

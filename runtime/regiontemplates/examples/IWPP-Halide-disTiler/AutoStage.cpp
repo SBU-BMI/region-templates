@@ -160,6 +160,8 @@ void RTF::Internal::AutoStage::localTileDRs(
             std::string        drNewName = drName + "st" + to_string(drNewId);
             drNew->setName(drNewName);
             drNew->setId(rtCur->getName());
+            tile.width  = min(tile.width, drCur->getData().cols - tile.x);
+            tile.height = min(tile.height, drCur->getData().rows - tile.y);
             drNew->setData(drCur->getData()(tile));
             drNew->setRoi(drCur->getRoi());
             rtCur->insertDataRegion(drNew);

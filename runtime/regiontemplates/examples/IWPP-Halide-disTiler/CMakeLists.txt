@@ -28,6 +28,13 @@ target_link_libraries(autostage Halide)
 # target_link_libraries(halideiwpp ${OpenCV_LIBS})
 
 
+# LightGBM
+add_executable(lgb_test lgb_test.cpp)
+add_library(lightgbm SHARED IMPORTED)
+set_target_properties(lightgbm PROPERTIES IMPORTED_LOCATION /home/willian/git/LightGBM/lib_lightgbm.so)
+target_link_libraries(lgb_test lightgbm)
+include_directories(/home/willian/git/LightGBM/include)
+
 # Creates executable to be built from the files listed
 add_executable(iwpp main.cpp pipeline1.cpp misc.cpp HalideIwpp.cpp)
 target_link_libraries(iwpp Halide)

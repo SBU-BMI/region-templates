@@ -451,7 +451,6 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " erode done" << std::endl;
     dilate(hOut1, hOut2, hSE19, target, tileId, noSched, gpuId);
-    dilate(hOut1, hOut3, hSE19, target, tileId, noSched, gpuId);
     std::cout << "[pipeline1][" << st << "][tile" << tileId << "] "
               << Util::ClockGetTime() << " dilate done" << std::endl;
 

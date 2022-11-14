@@ -153,10 +153,11 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
     int total_cost = 0;
     if (tilingOnly) {
         for (std::string img : this->initialPaths) {
-            cv::Mat baseImg;
+            cv::Mat      baseImg;
+            openslide_t *osr;
             if (isSVS(img)) {
-                openslide_t *osr = openslide_open(img.c_str());
-                int          osrMinLevel =
+                osr = openslide_open(img.c_str());
+                int osrMinLevel =
                     openslide_get_level_count(osr) - 1; // last level
                 int64_t w = -1;
                 int64_t h = -1;
@@ -181,6 +182,13 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
             tiledImg = this->cfunc->costImg(baseImg);
             cv::cvtColor(tiledImg, tiledImg, cv::COLOR_GRAY2RGB);
 
+            // Get ratio for converting coordinates to real size
+            int64_t w = -1;
+            int64_t h = -1;
+            openslide_get_level0_dimensions(osr, &w, &h);
+            float ratiow = w / baseImg.cols;
+            float ratioh = h / baseImg.rows;
+
             // tiles files ids
             int id = 0;
 
@@ -195,16 +203,37 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                 costs.emplace_back(tileCost);
                 perims.emplace_back(2 * tile.width + 2 * tile.height);
 
-                // Print tile with readable unber format
-                setlocale(LC_NUMERIC, "pt_BR.utf-8");
+                // Calculate real tile coordinates
+                long xi = floor(tile.x * ratiow);
+                long xw = floor(tile.width * ratiow);
+                long xo = xi + xw;
+                long yi = floor(tile.y * ratioh);
+                long yh = floor(tile.height * ratioh);
+                long yo = yi + yh;
+
+                // Get real partition cost
+                // cv::Mat            fullImg;
+                // cv::Rect_<int64_t> roi(xi, yi, xw, yh);
+                // osrRegionToCVMat(osr, roi, 0, fullImg);
+                // setlocale(LC_NUMERIC, "pt_BR.utf-8");
                 char c_cost[50];
-                sprintf(c_cost, "%'2ld", tileCost);
+                // long d_cost = this->cfunc->cost(
+                //     fullImg, cv::Rect_<int64_t>(0, 0, xw, yh));
+                // long d_cost = 0;
+                // sprintf(c_cost, "%'2ld", d_cost);
+                sprintf(c_cost, "%d %'2ld", id, tileCost);
+                id++;
+
+                // Print tile with readable number format
                 total_cost += tileCost;
-                std::cout << "\ttile " << tile.y << ":" << tile.height << "\t"
-                          << tile.x << ":" << tile.width << "\tcost: " << c_cost
+                std::cout << "\ttile-real " << xi << " " << xo << " " << yi
+                          << " " << yo << "\ttile-small " << tile.x << " "
+                          << (tile.x + tile.width) << " " << tile.y << " "
+                          << (tile.y + tile.height) << "\tcost: " << tileCost
                           << std::endl;
-                std::cout << "\ttile a" << (tile.height * tile.width) << "\tc"
-                          << c_cost << std::endl;
+                // std::cout << "\ttile a" << (tile.height * tile.width) <<
+                // "\tc"
+                //           << c_cost << std::endl;
 
                 // Adds tile rectangle region to tiled image
                 cv::rectangle(

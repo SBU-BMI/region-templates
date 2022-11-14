@@ -28,8 +28,8 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
     int expctParts = 1;
     for (int mult : multiples) {
         expctParts *= mult;
-        // std::cout << "[bgRemListCutting] hierarchical for " << expctParts
-        //           << "\n";
+        std::cout << "[bgRemListCutting] hierarchical for " << expctParts
+                  << " of multiple " << mult << "\n";
 
         // Calculates the target average expected cost of a dense tile
         // Cost function should not evaluate area

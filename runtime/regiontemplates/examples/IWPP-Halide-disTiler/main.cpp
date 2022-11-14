@@ -15,6 +15,7 @@
 #include "IrregTiledRTCollection.h"
 #include "RegTiledRTCollection.h"
 #include "RegionTemplate.h"
+#include "SingleTileRTCollection.h"
 #include "TiledRTCollection.h"
 #include "Util.h"
 #include "costFuncs/AreaCostFunction.h"
@@ -152,6 +153,7 @@ int main(int argc, char *argv[]) {
         cout << "\t\t0: THRS" << endl;
         cout << "\t\t1: MV_THRS_AREA" << endl;
         cout << "\t\t2: TILED_THRS" << endl;
+        cout << "\t\t3: LGB_MODEL" << endl;
 
         cout << "\t-m <execBias>/<loadBias> (default=1/100)" << endl;
 
@@ -160,6 +162,11 @@ int main(int argc, char *argv[]) {
         cout << "\t\tValues (default=2):" << endl;
         cout << "\t\t2: LIST_ALG_EXPECT" << endl;
         cout << "\t\t1: LIST_ALG_HALF" << endl;
+
+        cout << "=== Run-only partition options:" << endl;
+        cout << "\t--RO <xi> <xo> <yi> <yo>" << endl;
+        cout << "\t   This option overrides all others." << endl;
+        cout << "\t   The tile marked by its coordinates is executed." << endl;
 
         // cout << "\t-xb (sort background tiles with area cost function)" <<
         // endl;
@@ -378,6 +385,53 @@ int main(int argc, char *argv[]) {
     long tilingT1 = Util::ClockGetTime();
 #endif
 
+    // Uppercase coordinates are from real-sized image
+    // Lowercase coordinates are from small res image
+    long ro_xi, ro_xo, ro_yi, ro_yo, ro_Xi, ro_Xo, ro_Yi, ro_Yo;
+    if (findArgPos("--RO", argc, argv) != -1) {
+        ro_xi = atoi(argv[findArgPos("--RO", argc, argv) + 1]);
+        ro_xo = atoi(argv[findArgPos("--RO", argc, argv) + 2]);
+        ro_yi = atoi(argv[findArgPos("--RO", argc, argv) + 3]);
+        ro_yo = atoi(argv[findArgPos("--RO", argc, argv) + 4]);
+        ro_Xi = atoi(argv[findArgPos("--RO", argc, argv) + 5]);
+        ro_Xo = atoi(argv[findArgPos("--RO", argc, argv) + 6]);
+        ro_Yi = atoi(argv[findArgPos("--RO", argc, argv) + 7]);
+        ro_Yo = atoi(argv[findArgPos("--RO", argc, argv) + 8]);
+
+        RegionTemplate        *rtOut = newRT("rtOut");
+        SingleTileRTCollection singleTileTiler("input", "input", Ipath, ro_xi,
+                                               ro_xo, ro_yi, ro_yo);
+        singleTileTiler.addImage(Ipath);
+        singleTileTiler.tileImages();
+        singleTileTiler.generateDRs(tilingOnly);
+
+        for (int i = 0; i < singleTileTiler.getNumRTs(); i++) {
+            auto stage0 = new RTF::AutoStage(
+                {singleTileTiler.getRT(i).second, rtOut},
+                {new ArgumentInt(i), new ArgumentInt(blue),
+                 new ArgumentInt(green), new ArgumentInt(red),
+                 new ArgumentInt(0), new ArgumentInt(disk19raw_width),
+                 new ArgumentIntArray(disk19raw, disk19raw_size),
+                 new ArgumentInt(G1), new ArgumentInt(se3raw_width),
+                 new ArgumentIntArray(se3raw, se3raw_size),
+                 new ArgumentInt(halNoSched), new ArgumentInt(noIrregularComp),
+                 new ArgumentInt(gpu_count)},
+                {ro_Yo - ro_Yi, ro_Xo - ro_Xi}, {&pipeline1_s},
+                tgt_merge(hybridExec), i);
+            stage0->genStage(sysEnv);
+        }
+        sysEnv.startupExecution();
+        for (int i = 0; i < rtOut->getNumDataRegions(); i++) {
+            cout << "===== dr: " << rtOut->getDataRegion(i)->getName() << "\n";
+            rtOut->getDataRegion(i)->printRoi();
+        }
+        std::cout << "Done executing\n";
+
+        // delete rtOut;
+        sysEnv.finalizeSystem();
+        return 0;
+    }
+
     // Tilers
     TiledRTCollection *denseTiler;
     TiledRTCollection *bgTiler;
@@ -530,7 +584,7 @@ int main(int argc, char *argv[]) {
         mergeParams[i * 4 + 3] = new ArgumentInt(tiles[i].height);
     }
 
-    std::list<RTF::AutoStage *> stages;
+    // std::list<RTF::AutoStage *> stages;
     for (int i = 0; i < denseTiler->getNumRTs(); i++) {
         auto stage0 = new RTF::AutoStage(
             {denseTiler->getRT(i).second, rtOut},
