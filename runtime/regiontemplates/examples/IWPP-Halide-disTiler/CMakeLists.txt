@@ -29,11 +29,20 @@ target_link_libraries(autostage Halide)
 
 
 # LightGBM
-add_executable(lgb_test lgb_test.cpp)
+include_directories(/home/willian/git/LightGBM/include)
 add_library(lightgbm SHARED IMPORTED)
 set_target_properties(lightgbm PROPERTIES IMPORTED_LOCATION /home/willian/git/LightGBM/lib_lightgbm.so)
+
+# Find and generate an OpenSlide lib
+find_path(OPENSLIDE_SRC_DIR REQUIRED)
+include_directories(${OPENSLIDE_SRC_DIR})
+link_directories(${OPENSLIDE_SRC_DIR}/.libs/)
+set(openslide ${OPENSLIDE_SRC_DIR}/.libs/libopenslide.so)
+
+add_executable(lgb_test lgb_test.cpp)
 target_link_libraries(lgb_test lightgbm)
-include_directories(/home/willian/git/LightGBM/include)
+target_link_libraries(lgb_test openslide)
+target_link_libraries(lgb_test ${OpenCV_LIBS})
 
 # Creates executable to be built from the files listed
 add_executable(iwpp main.cpp pipeline1.cpp misc.cpp HalideIwpp.cpp)
