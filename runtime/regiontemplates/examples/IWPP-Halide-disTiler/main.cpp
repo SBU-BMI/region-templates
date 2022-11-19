@@ -21,6 +21,7 @@
 #include "costFuncs/AreaCostFunction.h"
 #include "costFuncs/BGMasker.h"
 #include "costFuncs/ColorThresholdBGMasker.h"
+#include "costFuncs/LGBCostFunction.h"
 #include "costFuncs/MultiObjCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PrePartThresBGCostFunction.h"
@@ -45,6 +46,7 @@ enum CostFunction_t {
     THRS,
     MV_THRS_AREA,
     TILED_THRS,
+    LGB_MODEL,
 };
 
 // Should use ExecEngineConstants::GPU ...
@@ -446,12 +448,12 @@ int main(int argc, char *argv[]) {
         denseCostFunc = new MultiObjCostFunction(
             static_cast<ThresholdBGMasker *>(bgm), execBias, loadBias);
     } else if (denseCostf == TILED_THRS) {
-        int xRes = 20;
-        int yRes = 20;
-        // denseCostFunc = new PrePartThresBGCostFunction(
-        //     bgThr, dilate_param, erode_param, Ipath, xRes, yRes);
+        int xRes      = 20;
+        int yRes      = 20;
         denseCostFunc = new PrePartThresBGCostFunction(bgThr, dilate_param,
                                                        erode_param, Ipath);
+    } else if (denseCostf == LGB_MODEL) {
+        denseCostFunc = new LGBCostFunction(bgThr, dilate_param, erode_param);
     }
     CostFunction *bgCostFunc = new AreaCostFunction();
 

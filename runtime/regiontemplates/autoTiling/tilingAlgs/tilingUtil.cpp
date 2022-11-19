@@ -178,13 +178,13 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
                       std::list<rect_t> &bgTiles) {
 
     // Find bounding box for dense area
-    cv::Mat stats, centroids;
+    cv::Mat labels, stats, centroids;
     cv::Mat mask = cfunc->costImg(img, tile.yi, tile.yo, tile.xi, tile.xo);
-    cv::connectedComponentsWithStats(mask, mask, stats, centroids);
+    cv::connectedComponentsWithStats(mask, labels, stats, centroids);
 
     // Get number of initial dense regions
     double maxLabel;
-    cv::minMaxLoc(mask, NULL, &maxLabel);
+    cv::minMaxLoc(labels, NULL, &maxLabel);
 
     // generate the list of dense areas
     std::list<rect_t> denseCand;
@@ -192,6 +192,7 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
     int               minArea = mask.cols * mask.rows * f;
     long              maxArea = 0;
     rect_t            curDenseTile;
+    bool              updatedCurDenseTile = false;
     for (int i = 1; i <= maxLabel; i++) { // i=1 ignores background
         // std::cout << "area: "
         //    << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
@@ -203,14 +204,25 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
             int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
             if (xw > 1 && yh > 1 && yh * xw > minArea) {
                 rect_t rr = {.xi = xi, .yi = yi, .xo = xi + xw, .yo = yi + yh};
+                // std::cout << "===========testing: " << rr.yi << "-" << rr.yo
+                //           << ", " << rr.xi << "-" << rr.xo << "\n";
                 denseCand.push_back(rr);
 
                 if (yh * xw > maxArea) {
-                    maxArea      = yh * xw;
-                    curDenseTile = rr;
+                    // std::cout << "new best\n";
+                    maxArea             = yh * xw;
+                    curDenseTile        = rr;
+                    updatedCurDenseTile = true;
                 }
             }
         }
+    }
+
+    // If no available tile is found, return the full tile
+    if (!updatedCurDenseTile) {
+        // std::cout << "returning: " << tile.yi << "-" << tile.yo << ", "
+        //           << tile.xi << "-" << tile.xo << "\n";
+        return tile;
     }
 
     // if (denseCand.size() > 1) {
@@ -238,6 +250,14 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
 
     // curDenseTile coordinates are offsets to tile
     // Convert them to absolute coordinates
+
+    // std::cout << "tile: " << tile.yi << "-" << tile.yo << ", " << tile.xi <<
+    // "-"
+    //           << tile.xo << "\n";
+
+    // std::cout << "--- " << curDenseTile.yi << "-" << curDenseTile.yo << ", "
+    //           << curDenseTile.xi << "-" << curDenseTile.xo << "\n";
+
     curDenseTile.xi += tile.xi;
     curDenseTile.xo += tile.xi;
     curDenseTile.yi += tile.yi;
@@ -251,7 +271,10 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
     // std::cout << curDenseTile.xo << "\n";
     // std::cout << curDenseTile.yi << "\n";
     // std::cout << curDenseTile.yo << "\n";
-    // exit(0);
+
+    // std::cout << "+++ " << curDenseTile.yi << "-" << curDenseTile.yo << ", "
+    //           << curDenseTile.xi << "-" << curDenseTile.xo << "\n";
+
     while (true) {
         bestArea = 0;
         rect_t bestBg;
@@ -332,6 +355,9 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
         }
     }
 
+    // std::cout << "+++ " << curDenseTile.yi << "-" << curDenseTile.yo << ", "
+    //           << curDenseTile.xi << "-" << curDenseTile.xo << "\n";
+
     return curDenseTile;
 }
 
@@ -342,6 +368,16 @@ bool costWithBgRm(const cv::Mat &img, CostFunction *cfunc, rect_t &tile1,
     // Remove background from both tiles
     tile1 = simpleRemoveBg(img, tile1, cfunc, remainingBg);
     tile2 = simpleRemoveBg(img, tile2, cfunc, remainingBg);
+
+    // Return cost 0 for empty tiles
+    if (tile1.yo - tile1.yi == 0 || tile1.xo - tile1.xi == 0 ||
+        tile2.yo - tile2.yi == 0 || tile2.xo - tile2.xi == 0)
+        return 0;
+
+    // std::cout << tile1.yi << "-" << tile1.yo << ", " << tile1.xi << "-"
+    //           << tile1.xo << "\n";
+    // std::cout << tile2.yi << "-" << tile2.yo << ", " << tile2.xi << "-"
+    //           << tile2.xo << "\n";
 
     // Calculate cost
     cost1 = cfunc->cost(img, tile1.yi, tile1.yo, tile1.xi, tile1.xo);
@@ -395,10 +431,8 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         while (!between(cost1h, lowerCost, upperCost) &&
                !between(cost2h, lowerCost, upperCost) && pivotxLen > 0) {
 
-            // std::cout << "[bgRmSplitTileLog] Hcost1: " << cost1h <<
-            // "\n"; std::cout << "[bgRmSplitTileLog] Hcost2: " <<
-            // cost2h << "\n"; std::cout << "cost1h " << cost1h <<
-            // std::endl; std::cout << "cost2h " << cost2h << std::endl;
+            // std::cout << "[bgRmSplitTileLog] Hcost1: " << cost1h << "\n";
+            // std::cout << "[bgRmSplitTileLog] Hcost2: " << cost2h << "\n";
 
             // If the expected cost was not achieved, split the pivotLen
             // and try again, moving the pivot closer to the tile with
@@ -426,6 +460,7 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
                 tile2h = tile2hTmp;
                 cost1h = cost1hTmp;
                 cost2h = cost2hTmp;
+
             } else
                 break;
 

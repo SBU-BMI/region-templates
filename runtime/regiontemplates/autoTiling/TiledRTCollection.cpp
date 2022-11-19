@@ -199,6 +199,9 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                     continue;
 
                 // Gets basic info from tile
+                std::cout << "calc cost\n";
+                std::cout << tile.y << "-" << tile.height << ", " << tile.x
+                          << "-" << tile.width << "\n";
                 int64_t tileCost = this->cfunc->cost(baseImg, tile);
                 costs.emplace_back(tileCost);
                 perims.emplace_back(2 * tile.width + 2 * tile.height);
