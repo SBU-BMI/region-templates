@@ -7,6 +7,8 @@
 
 #define PI 3.1415
 
+int im = 0;
+
 LGBCostFunction::LGBCostFunction(int bgThr, int dilate, int erode) {
     this->bgm = new ThresholdBGMasker(bgThr, dilate, erode);
 }
@@ -15,7 +17,13 @@ LGBCostFunction::LGBCostFunction(ThresholdBGMasker *bgm) { this->bgm = bgm; }
 
 double LGBCostFunction::cost(const cv::Mat &img) const {
 
+    // === Convert Img to binary ==============================================
     cv::Mat bgImg = this->bgm->bgMask(img);
+
+    cv::Mat bgThreshImg = img.clone();
+    cv::cvtColor(bgThreshImg, bgThreshImg, cv::COLOR_RGB2GRAY);
+    cv::threshold(bgThreshImg, bgThreshImg, 0, 255,
+                  CV_THR_BIN_INV | CV_THRESH_OTSU);
 
     // === Prepare stats from largest region ==================================
     cv::Mat labels, stats, centroids;
@@ -60,17 +68,21 @@ double LGBCostFunction::cost(const cv::Mat &img) const {
                         stats.at<int>(bigBBId, cv::CC_STAT_WIDTH) +
                             stats.at<int>(bigBBId, cv::CC_STAT_LEFT)));
 
-    double areaContour = cv::contourArea(contours[bigContId], false);
+    std::string s = "im" + std::to_string(im) + ".tiff";
+    im++;
+    cv::imwrite(s, bgThreshImg);
 
-    double solidity =
-        areaContour / (stats.at<int>(bigBBId, cv::CC_STAT_WIDTH) *
-                       stats.at<int>(bigBBId, cv::CC_STAT_HEIGHT));
+    // double areaContour = cv::contourArea(contours[bigContId], false);
 
-    double relCentrX = (centroids.at<float>(bigBBId, 0) -
+    double bbArea = stats.at<int>(bigBBId, cv::CC_STAT_WIDTH) *
+                    stats.at<int>(bigBBId, cv::CC_STAT_HEIGHT);
+    double solidity = stats.at<int>(bigBBId, cv::CC_STAT_AREA) / bbArea;
+
+    double relCentrX = (centroids.at<double>(bigBBId, 0) -
                         stats.at<int>(bigBBId, cv::CC_STAT_LEFT)) /
                        stats.at<int>(bigBBId, cv::CC_STAT_WIDTH);
     // This relative centroid is inverted, however it was trained as such
-    double relCentrY = (centroids.at<float>(bigBBId, 1) -
+    double relCentrY = (centroids.at<double>(bigBBId, 1) -
                         stats.at<int>(bigBBId, cv::CC_STAT_TOP)) /
                        stats.at<int>(bigBBId, cv::CC_STAT_HEIGHT);
 
@@ -79,20 +91,26 @@ double LGBCostFunction::cost(const cv::Mat &img) const {
     double circularity = 4 * PI / pow(perimeter, 2);
 
     int nObjects =
-        cv::connectedComponentsWithStats(bbImg, labels, stats, centroids);
-    int nHoles =
-        cv::connectedComponentsWithStats(255 - bbImg, labels, stats, centroids);
-    double euler = nObjects - nHoles;
+        cv::connectedComponentsWithStats(bgThreshImg, labels, stats, centroids);
+    int    nHoles = cv::connectedComponentsWithStats(255 - bgThreshImg, labels,
+                                                     stats, centroids);
+    double euler  = nObjects - nHoles;
 
     std::vector<cv::Point> hull;
     cv::convexHull(cv::Mat(contours[bigContId]), hull);
     double hullPerim = cv::arcLength(hull, true);
     double hullArea  = cv::contourArea(hull);
 
+    double cost = cv::sum(cv::sum(bgImg))[0];
+
     // === Calculate cost =====================================================
 
-    double features[] = {solidity,    relCentrX, relCentrY, perimeter,
-                         circularity, euler,     hullPerim, hullArea};
+    // double features[] = {solidity,    relCentrX, relCentrY, perimeter,
+    //                      circularity, euler,     hullPerim, hullArea};
+    double features[] = {bbArea, solidity, relCentrX, relCentrY, euler, cost};
+    for (int i = 0; i < 6; i++)
+        std::cout << features[i] << ", ";
+    std::cout << "\n";
     double output[1];
 
     std::string filename = "./model.txt";
@@ -102,6 +120,8 @@ double LGBCostFunction::cost(const cv::Mat &img) const {
         "none", LightGBM::PredictionEarlyStopConfig());
     booster->InitPredict(0, booster->NumberOfTotalModel(), false);
     booster->PredictRaw(features, output, &early_stop);
+
+    std::cout << output[0] << "\n";
 
     return output[0];
 }

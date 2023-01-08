@@ -44,6 +44,7 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
         setlocale(LC_NUMERIC, "pt_BR.utf-8");
         char ccost[50];
         sprintf(ccost, "%'2f", cfunc->cost(img));
+        std::cout << "=============== total img cost: " << ccost << "\n";
 
         // Keeps breaking tiles until current expctParts goal is reached
         while (expctParts > sDense.size()) {
