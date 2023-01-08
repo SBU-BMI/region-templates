@@ -3,11 +3,13 @@
 
 #include <iostream>
 
+#include "misc.h"
+
 #include "opencv/cv.hpp"
 #include "opencv2/core/cuda.hpp"
 #ifdef WITH_CUDA
 #include "opencv2/cudaarithm.hpp"
-#endif  // WITH_CUDA
+#endif // WITH_CUDA
 
 #include "ExecEngineConstants.h"
 #include "Halide.h"
@@ -22,7 +24,7 @@ typedef int Target_t;
 
 // extern int loopedIwppRecon(Target_t target, cv::Mat& cvHostI, cv::Mat&
 // cvHostJ, int gpuId);
-extern int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
-                           Halide::Buffer<uint8_t>& hJ, int noSched, int gpuId);
+extern int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t> &hI,
+                           Halide::Buffer<uint8_t> &hJ, int noSched, int gpuId);
 
 #endif
