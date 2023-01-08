@@ -3,10 +3,10 @@
 #define LARGEB
 
 template <typename T>
-Halide::Func halSum2(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
+Halide::Func halSum2(Halide::Buffer<T> &JJ, Halide::Target hTarget) {
     // Performs parallel sum on the coordinate with the highest value
     // Halide::RDom r({{0, JJ.width()}, {0, JJ.height()}}, "r");
-    Halide::Var x("x"), y("y");
+    Halide::Var  x("x"), y("y");
     Halide::RDom rx(0, JJ.width(), "rx");
     Halide::RDom ry(0, JJ.height(), "ry");
     Halide::Func pSum2("pSum2");
@@ -53,7 +53,7 @@ Halide::Func halSum2(Halide::Buffer<T>& JJ, Halide::Target hTarget) {
 // Sums a 1D array to a Halide::Buffer scalar
 // Maybe use rfactor for associative reduction?
 template <typename T>
-Halide::Func halSum1(Halide::Buffer<T>& sum2, Halide::Target hTarget) {
+Halide::Func halSum1(Halide::Buffer<T> &sum2, Halide::Target hTarget) {
     // Performs parallel sum on the coordinate with the highest value
     Halide::RDom r(0, sum2.width(), "r");
     Halide::Func pSum("pSum1");
@@ -77,26 +77,26 @@ Halide::Func halSum1(Halide::Buffer<T>& sum2, Halide::Target hTarget) {
 
 // It is assumed that the data is already on the proper device/host
 // Returns the number of iterations
-int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
-                    Halide::Buffer<uint8_t>& hJ, int noSched, int gpuId) {
+int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t> &hI,
+                    Halide::Buffer<uint8_t> &hJ, int noSched, int gpuId) {
     // Initial time
     long st0, st1, st2, st3, st4, st5;
     long sti0, sti1, sti2;
     st0 = Util::ClockGetTime();
 
     // Basic variables for the pipeline
-    int32_t w = hI.width();
-    int32_t h = hI.height();
+    int32_t      w = hI.width();
+    int32_t      h = hI.height();
     Halide::Func rasterx("rasterx"), arasterx("arasterx");
-    Halide::Var x("x"), y("y");
+    Halide::Var  x("x"), y("y");
     Halide::RDom prop({{0, w}, {0, h}}, "prop");
 
     // Raster definition
     using Halide::clamp;
-    rasterx(x, y) = Halide::undef<unsigned char>();
-    Halide::Expr maxDr = max(rasterx(prop.x, clamp(prop.y - 1, 0, h - 1)),
-                             max(rasterx(prop.x, prop.y),
-                                 rasterx(clamp(prop.x - 1, 0, w - 1), prop.y)));
+    rasterx(x, y)           = Halide::undef<unsigned char>();
+    Halide::Expr maxDr      = max(rasterx(prop.x, clamp(prop.y - 1, 0, h - 1)),
+                                  max(rasterx(prop.x, prop.y),
+                                      rasterx(clamp(prop.x - 1, 0, w - 1), prop.y)));
     rasterx(prop.x, prop.y) = min(hI(prop.x, prop.y), maxDr);
 
     // Anti-raster definition
@@ -121,15 +121,15 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     if (target == ExecEngineConstants::CPU && noSched == 0) {
         st = "cpu";
         int sFactor =
-            h / 56;  // i.e., bridges 28 cores times 2 (for load imbalance)
+            h / 56; // i.e., bridges 28 cores times 2 (for load imbalance)
         // Schedules Raster
-        rasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
         rasterx.update(0).split(prop.y, ryo, ryi, sFactor,
                                 Halide::TailStrategy::GuardWithIf);
         rasterx.update(0).parallel(ryo);
 
         // Schedules Anti-Raster
-        arasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
         arasterx.update(0).split(prop.y, ryo, ryi, sFactor,
                                  Halide::TailStrategy::GuardWithIf);
         arasterx.update(0).parallel(ryo);
@@ -140,24 +140,24 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
 
         // std::cout << "[" << st << "][IWPP] With CUDA" << std::endl;
 
-        float expected = 1664;  // GTX 970
+        float expected = 1664; // GTX 970
         // Performs long area multiplication, avoiding overflow
         long area = (long)(h) * (long)(w);
         // minYScanlines must be int for Halide::split()
         int minYScanlines = (float)(area) / expected;
-        minYScanlines = sqrt(minYScanlines) * 0.85;
-        int minXsize = minYScanlines;  // for reordering
-        int threadsSize = 32;          // for no reordering
+        minYScanlines     = sqrt(minYScanlines) * 0.85;
+        int minXsize      = minYScanlines; // for reordering
+        int threadsSize   = 32;            // for no reordering
         // std::cout << "[" << st << "][IWPP] Tile size: "
         //     << minYScanlines << std::endl;
 
         // Schedules Raster
         rasterx.gpu_blocks(y).gpu_threads(x);
         arasterx.gpu_blocks(y).gpu_threads(x);
-        rasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        rasterx.update(0).allow_race_conditions(); // for parallel (ryo)
         rasterx.update(0).split(prop.y, ryo, ryi, minYScanlines,
                                 Halide::TailStrategy::GuardWithIf);
-        arasterx.update(0).allow_race_conditions();  // for parallel (ryo)
+        arasterx.update(0).allow_race_conditions(); // for parallel (ryo)
         arasterx.update(0).split(prop.y, ryo, ryi, minYScanlines,
                                  Halide::TailStrategy::GuardWithIf);
 
@@ -173,7 +173,7 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         std::cout << "[HalideIwpp] Attempted to schedule for GPU without "
                   << "CUDA support." << std::endl;
         exit(-1);
-#endif  // if WITH_CUDA
+#endif // if WITH_CUDA
     }
 
     hTarget.set_feature(Halide::Target::Debug);
@@ -185,8 +185,8 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     st1 = Util::ClockGetTime();
 
     // Sum structures
-    long* dLineSum = new long[w];
-    long dFullSum;
+    long                *dLineSum = new long[w];
+    long                 dFullSum;
     Halide::Buffer<long> hLineSum =
         Halide::Buffer<long>(dLineSum, w, "hLineSum");
     Halide::Buffer<long> hFullSum =
@@ -198,7 +198,7 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
     // Iterate Raster/Anti-Raster until stability
     unsigned long oldSum = 0;
     unsigned long newSum = 0;
-    unsigned long it = 0;
+    unsigned long it     = 0;
     do {
         // cout << "[" << st << "][PROFILING] it: " << it << ", sum = " <<
         // newSum << std::endl;
@@ -264,8 +264,8 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t>& hI,
         // cout << "[" << st << "][PROFILING][IWPP_SUM_TIME] " << (st5 - st3)
         //      << endl;
         cout << "[" << st << "][PROFILING][IWPP_FULL_IT_TIME][" << it << "] "
-             << (st5 - st2) << std::endl;  // << std::endl;
-                                           //#endif
+             << (st5 - st2) << std::endl; // << std::endl;
+                                          //#endif
 
     } while (newSum != oldSum);
 

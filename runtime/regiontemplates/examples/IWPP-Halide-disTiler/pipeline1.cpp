@@ -540,7 +540,7 @@ bool pipeline1(std::vector<cv::Mat> &im_ios, Target_t target,
     }
 
     if (target == ExecEngineConstants::GPU) {
-        int buffersToFree = 6; // 4 frees and 2 copy
+        int buffersToFree = 7; // 4 frees and 2 copy
         Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
             hTarget, gpuId, buffersToFree);
         hOut2.copy_to_host();
