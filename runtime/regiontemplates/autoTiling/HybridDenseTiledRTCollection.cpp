@@ -1,4 +1,5 @@
 #include "HybridDenseTiledRTCollection.h"
+#include "bgRemListCutting.h"
 #include "fineBgRemoval.h"
 
 HybridDenseTiledRTCollection::HybridDenseTiledRTCollection(
@@ -115,11 +116,15 @@ void HybridDenseTiledRTCollection::tileMat(
     } else {
         // Checks if no pre-tiling happened (i.e., only one dense tile)
         if (tiles.size() > 1) {
-            std::cout << "[HDT][FIXED_GRID_TILING] Only Hybrid ECL "
+            std::cout << "[HDT][tileMat] Only Hybrid ECL "
                       << " can be used with pre-tiling." << std::endl;
             exit(0);
         }
         tiles.clear();
+
+        std::cout << "[HDT][tileMat] Tiling ECL for cpu=" << this->nCpuTiles
+                  << ":" << this->cpuPATS << ", gpu=" << this->nGpuTiles << ":"
+                  << this->gpuPATS << std::endl;
 
         // Percentage of gpu tile
         float f = this->gpuPATS / (this->gpuPATS + this->cpuPATS);
@@ -230,12 +235,12 @@ void HybridDenseTiledRTCollection::tileMat(
 
             case CBAL_TRIE_QUAD_TREE_ALG:
             case CBAL_POINT_QUAD_TREE_ALG:
-                std::cout
-                    << "[HDT][FIXED_GRID_TILING] Quad-Tree Expected tiles: cpu "
-                    << this->nCpuTiles << ", gpu " << this->nGpuTiles
-                    << std::endl;
-                std::cout << "[HDT][FIXED_GRID_TILING] Img size " << h << "x"
-                          << w << std::endl;
+                std::cout << "[HDT][CBAL_POINT_QUAD_TREE_ALG] Quad-Tree "
+                             "Expected tiles: cpu "
+                          << this->nCpuTiles << ", gpu " << this->nGpuTiles
+                          << std::endl;
+                std::cout << "[HDT][CBAL_POINT_QUAD_TREE_ALG] Img size " << h
+                          << "x" << w << std::endl;
 
                 // Tile gpu subimage (top half)
                 curTiles.push_back({gmw, gmh, gmw + gw - 1, gmh + gh - 1});
@@ -262,6 +267,41 @@ void HybridDenseTiledRTCollection::tileMat(
                         r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
                 }
                 break;
+
+            case HIER_FG_BR: {
+                std::cout << "[HDT][HIER_FG_BR] Expected tiles: cpu "
+                          << this->nCpuTiles << ", gpu " << this->nGpuTiles
+                          << std::endl;
+                std::cout << "[HDT][HIER_FG_BR] Img size " << h << "x" << w
+                          << std::endl;
+
+                // Tile gpu subimage (top half)
+                curTiles.push_back({gmw, gmh, gmw + gw - 1, gmh + gh - 1});
+                std::list<rect_t> bg;
+                bgRemListCutting(mat, curTiles, this->nGpuTiles, this->cfunc,
+                                 bg);
+
+                // Add gpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                curTiles.clear();
+
+                // Tile cpu subimage (second half)
+                curTiles.push_back({cmw, cmh, cmw + cw - 1, cmh + ch - 1});
+                bgRemListCutting(mat, curTiles, this->nCpuTiles, this->cfunc,
+                                 bg);
+
+                // Add cpu tiles to current result
+                for (std::list<rect_t>::iterator r = curTiles.begin();
+                     r != curTiles.end(); r++) {
+                    tiles.push_back(cv::Rect_<int64_t>(
+                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+                }
+                break;
+            }
 
             default:
                 std::cout << "[HDT] Invalid dense "

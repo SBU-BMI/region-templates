@@ -83,6 +83,14 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
         }
     }
 
+    // Resolve the 1 tile case
+    if (sDense.size() == 1) {
+        rect_t            oldTile = *sDense.begin();
+        std::list<rect_t> bg;
+        sDense.clear();
+        sDense.insert(simpleRemoveBg(img, oldTile, cfunc, bg));
+    }
+
     long t4 = Util::ClockGetTime();
     // Moves regions to the output list
     dense.clear();

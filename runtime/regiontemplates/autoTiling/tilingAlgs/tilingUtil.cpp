@@ -237,7 +237,7 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
     // }
 
     // Keep looking for new BG partitions
-    long bgMinAreaThresh = 0.1 * (tile.yo - tile.yi) * (tile.xo - tile.xi);
+    long bgMinAreaThresh = 0.01 * (tile.yo - tile.yi) * (tile.xo - tile.xi);
     long xiLim           = tile.xi;
     long xoLim           = tile.xo;
     long yiLim           = tile.yi;
@@ -374,10 +374,10 @@ bool costWithBgRm(const cv::Mat &img, CostFunction *cfunc, rect_t &tile1,
         tile2.yo - tile2.yi == 0 || tile2.xo - tile2.xi == 0)
         return 0;
 
-    std::cout << tile1.xi << "-" << tile1.xo << ", " << tile1.yi << "-"
-              << tile1.yo << "\n";
-    std::cout << tile2.xi << "-" << tile2.xo << ", " << tile2.yi << "-"
-              << tile2.yo << "\n";
+    // std::cout << tile1.xi << "-" << tile1.xo << ", " << tile1.yi << "-"
+    //           << tile1.yo << "\n";
+    // std::cout << tile2.xi << "-" << tile2.xo << ", " << tile2.yi << "-"
+    //           << tile2.yo << "\n";
 
     // Calculate cost
     cost1 = cfunc->cost(img, tile1.yi, tile1.yo, tile1.xi, tile1.xo);
@@ -431,9 +431,9 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         while (!between(cost1h, lowerCost, upperCost) &&
                !between(cost2h, lowerCost, upperCost) && pivotxLen > 0) {
 
-            std::cout << "+++++++++++++++pivot: " << pivotx << "\n";
-            std::cout << "[bgRmSplitTileLog] Hcost1: " << cost1h << "\n";
-            std::cout << "[bgRmSplitTileLog] Hcost2: " << cost2h << "\n";
+            // std::cout << "+++++++++++++++pivot: " << pivotx << "\n";
+            // std::cout << "[bgRmSplitTileLog] Hcost1: " << cost1h << "\n";
+            // std::cout << "[bgRmSplitTileLog] Hcost2: " << cost2h << "\n";
 
             // If the expected cost was not achieved, split the pivotLen
             // and try again, moving the pivot closer to the tile with
@@ -483,9 +483,9 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         while (!between(cost1v, lowerCost, upperCost) &&
                !between(cost2v, lowerCost, upperCost) && pivotyLen > 0) {
 
-            std::cout << "+++++++++++++++pivot: " << pivoty << "\n";
-            std::cout << "[bgRmSplitTileLog] Vcost1: " << cost1v << "\n";
-            std::cout << "[bgRmSplitTileLog] Vcost2: " << cost2v << "\n";
+            // std::cout << "+++++++++++++++pivot: " << pivoty << "\n";
+            // std::cout << "[bgRmSplitTileLog] Vcost1: " << cost1v << "\n";
+            // std::cout << "[bgRmSplitTileLog] Vcost2: " << cost2v << "\n";
 
             // If the expected cost was not achieved, split the pivotLen
             // and try again, moving the pivot closer to the tile with
@@ -546,8 +546,8 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         newt2 = tile2h;
         // bgPartitions.insert(bgPartitions.begin(), bgTilesH.begin(),
         //                     bgTilesH.end());
-        std::cout << "new1t cost:" << cost1h << "\n";
-        std::cout << "new2t cost:" << cost2h << "\n";
+        // std::cout << "new1t cost:" << cost1h << "\n";
+        // std::cout << "new2t cost:" << cost2h << "\n";
     } else { // vertical
         // newt1.xo = r.xo;
         // newt2.xi = r.xi;
@@ -557,8 +557,8 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
         newt2 = tile2v;
         // bgPartitions.insert(bgPartitions.begin(), bgTilesV.begin(),
         //                     bgTilesV.end());
-        std::cout << "new1t cost:" << cost1v << "\n";
-        std::cout << "new2t cost:" << cost2v << "\n";
+        // std::cout << "new1t cost:" << cost1v << "\n";
+        // std::cout << "new2t cost:" << cost2v << "\n";
     }
 }
 

@@ -148,4 +148,8 @@ void bgRmSplitTileLog(const rect_t &r, const cv::Mat &img, CostFunction *cfunc,
 // Does not add 1
 std::list<int> getMultiples(int n);
 
+// Returns the main dense partition by value and the list of BG tiles by ref
+rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
+                      std::list<rect_t> &bgTiles);
+
 #endif // UTIL_H_
