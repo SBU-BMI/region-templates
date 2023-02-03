@@ -186,6 +186,14 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
     double maxLabel;
     cv::minMaxLoc(labels, NULL, &maxLabel);
 
+    long xiBase = tile.xi;
+    long yiBase = tile.yi;
+
+    long xiLimBest = tile.xo;
+    long xoLimBest = tile.xi;
+    long yiLimBest = tile.yo;
+    long yoLimBest = tile.yi;
+
     // generate the list of dense areas
     std::list<rect_t> denseCand;
     float             f       = 0.01;
@@ -197,26 +205,42 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
         // std::cout << "area: "
         //    << stats.at<int>(i, cv::CC_STAT_AREA) << std::endl;
         // Ignores small areas
-        if (stats.at<int>(i, cv::CC_STAT_AREA) > 500) {
-            int xi = stats.at<int>(i, cv::CC_STAT_LEFT);
-            int yi = stats.at<int>(i, cv::CC_STAT_TOP);
-            int xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
-            int yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
-            if (xw > 1 && yh > 1 && yh * xw > minArea) {
-                rect_t rr = {.xi = xi, .yi = yi, .xo = xi + xw, .yo = yi + yh};
-                // std::cout << "===========testing: " << rr.yi << "-" << rr.yo
-                //           << ", " << rr.xi << "-" << rr.xo << "\n";
-                denseCand.push_back(rr);
+        if (stats.at<int>(i, cv::CC_STAT_AREA) > 5000) {
+            long xi = stats.at<int>(i, cv::CC_STAT_LEFT) + xiBase;
+            long yi = stats.at<int>(i, cv::CC_STAT_TOP) + yiBase;
+            long xw = stats.at<int>(i, cv::CC_STAT_WIDTH);
+            long yh = stats.at<int>(i, cv::CC_STAT_HEIGHT);
 
-                if (yh * xw > maxArea) {
-                    // std::cout << "new best\n";
-                    maxArea             = yh * xw;
-                    curDenseTile        = rr;
-                    updatedCurDenseTile = true;
-                }
-            }
+            xiLimBest = std::min(xiLimBest, xi);
+            xoLimBest = std::max(xoLimBest, xi + xw);
+            yiLimBest = std::min(yiLimBest, yi);
+            yoLimBest = std::max(yoLimBest, yi + yh);
+
+            updatedCurDenseTile = true;
+
+            // if (xw > 1 && yh > 1 && yh * xw > minArea) {
+            //     rect_t rr = {.xi = xi, .yi = yi, .xo = xi + xw, .yo = yi +
+            //     yh};
+            //     // std::cout << "===========testing: " << rr.yi << "-" <<
+            //     rr.yo
+            //     //           << ", " << rr.xi << "-" << rr.xo << "\n";
+            //     denseCand.push_back(rr);
+
+            //     if (yh * xw > maxArea) {
+            //         // std::cout << "new best\n";
+            //         maxArea             = yh * xw;
+            //         curDenseTile        = rr;
+            //         updatedCurDenseTile = true;
+            //     }
+            // }
         }
     }
+
+    // if (xiLimBest == tile.xo && xoLimBest == tile.xi && yiLimBest == tile.yo
+    // &&
+    //     yoLimBest == tile.yi) {
+    //     return tile;
+    // }
 
     // If no available tile is found, return the full tile
     if (!updatedCurDenseTile) {
@@ -236,32 +260,34 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
     //     exit(0);
     // }
 
-    // Keep looking for new BG partitions
-    long bgMinAreaThresh = 0.01 * (tile.yo - tile.yi) * (tile.xo - tile.xi);
-    long xiLim           = tile.xi;
-    long xoLim           = tile.xo;
-    long yiLim           = tile.yi;
-    long yoLim           = tile.yo;
-    long xiLimBest       = tile.xi;
-    long xoLimBest       = tile.xo;
-    long yiLimBest       = tile.yi;
-    long yoLimBest       = tile.yo;
-    long bestArea;
+    // // Keep looking for new BG partitions
+    // long bgMinAreaThresh = 0.01 * (tile.yo - tile.yi) * (tile.xo - tile.xi);
+    // long xiLim           = tile.xi;
+    // long xoLim           = tile.xo;
+    // long yiLim           = tile.yi;
+    // long yoLim           = tile.yo;
+    // long xiLimBest       = tile.xi;
+    // long xoLimBest       = tile.xo;
+    // long yiLimBest       = tile.yi;
+    // long yoLimBest       = tile.yo;
+    // long bestArea;
 
-    // curDenseTile coordinates are offsets to tile
-    // Convert them to absolute coordinates
+    // // curDenseTile coordinates are offsets to tile
+    // // Convert them to absolute coordinates
 
-    // std::cout << "tile: " << tile.yi << "-" << tile.yo << ", " << tile.xi <<
-    // "-"
-    //           << tile.xo << "\n";
+    // // std::cout << "tile: " << tile.yi << "-" << tile.yo << ", " << tile.xi
+    // <<
+    // // "-"
+    // //           << tile.xo << "\n";
 
-    // std::cout << "--- " << curDenseTile.yi << "-" << curDenseTile.yo << ", "
-    //           << curDenseTile.xi << "-" << curDenseTile.xo << "\n";
+    // // std::cout << "--- " << curDenseTile.yi << "-" << curDenseTile.yo << ",
+    // "
+    // //           << curDenseTile.xi << "-" << curDenseTile.xo << "\n";
 
-    curDenseTile.xi += tile.xi;
-    curDenseTile.xo += tile.xi;
-    curDenseTile.yi += tile.yi;
-    curDenseTile.yo += tile.yi;
+    // curDenseTile.xi += tile.xi;
+    // curDenseTile.xo += tile.xi;
+    // curDenseTile.yi += tile.yi;
+    // curDenseTile.yo += tile.yi;
 
     // std::cout << xiLim << "\n";
     // std::cout << xoLim << "\n";
@@ -275,88 +301,96 @@ rect_t simpleRemoveBg(const cv::Mat &img, rect_t tile, CostFunction *cfunc,
     // std::cout << "+++ " << curDenseTile.yi << "-" << curDenseTile.yo << ", "
     //           << curDenseTile.xi << "-" << curDenseTile.xo << "\n";
 
-    while (true) {
-        bestArea = 0;
-        rect_t bestBg;
+    // while (true) {
+    //     bestArea = 0;
+    //     rect_t bestBg;
 
-        // Test upper tile
-        rect_t upperBg = {
-            .xi = xiLim, .yi = yiLim, .xo = xoLim, .yo = curDenseTile.yi - 1};
-        if (upperBg.size() > bestArea && upperBg.size() > bgMinAreaThresh) {
-            bestArea  = upperBg.size();
-            bestBg    = upperBg;
-            xiLimBest = xiLim;
-            xoLimBest = xoLim;
-            yiLimBest = curDenseTile.yi;
-            yoLimBest = yoLim;
-            // std::cout << "up\n";
-        }
+    //     // Test upper tile
+    //     rect_t upperBg = {
+    //         .xi = xiLim, .yi = yiLim, .xo = xoLim, .yo = curDenseTile.yi -
+    //         1};
+    //     if (upperBg.size() > bestArea && upperBg.size() > bgMinAreaThresh) {
+    //         bestArea  = upperBg.size();
+    //         bestBg    = upperBg;
+    //         xiLimBest = xiLim;
+    //         xoLimBest = xoLim;
+    //         yiLimBest = curDenseTile.yi;
+    //         yoLimBest = yoLim;
+    //         // std::cout << "up\n";
+    //     }
 
-        // Test lower tile
-        rect_t lowerBg = {
-            .xi = xiLim, .yi = curDenseTile.yo + 1, .xo = xoLim, .yo = yoLim};
-        if (lowerBg.size() > bestArea && lowerBg.size() > bgMinAreaThresh) {
-            bestArea  = lowerBg.size();
-            bestBg    = lowerBg;
-            xiLimBest = xiLim;
-            xoLimBest = xoLim;
-            yiLimBest = yiLim;
-            yoLimBest = curDenseTile.yo;
-            // std::cout << "down\n";
-        }
+    //     // Test lower tile
+    //     rect_t lowerBg = {
+    //         .xi = xiLim, .yi = curDenseTile.yo + 1, .xo = xoLim, .yo =
+    //         yoLim};
+    //     if (lowerBg.size() > bestArea && lowerBg.size() > bgMinAreaThresh) {
+    //         bestArea  = lowerBg.size();
+    //         bestBg    = lowerBg;
+    //         xiLimBest = xiLim;
+    //         xoLimBest = xoLim;
+    //         yiLimBest = yiLim;
+    //         yoLimBest = curDenseTile.yo;
+    //         // std::cout << "down\n";
+    //     }
 
-        // Test left tile
-        rect_t leftBg = {
-            .xi = xiLim, .yi = yiLim, .xo = curDenseTile.xi - 1, .yo = yoLim};
-        if (leftBg.size() > bestArea && leftBg.size() > bgMinAreaThresh) {
-            bestArea  = leftBg.size();
-            bestBg    = leftBg;
-            xiLimBest = curDenseTile.xi;
-            xoLimBest = xoLim;
-            yiLimBest = yiLim;
-            yoLimBest = yoLim;
-            // std::cout << "left\n";
-        }
+    //     // Test left tile
+    //     rect_t leftBg = {
+    //         .xi = xiLim, .yi = yiLim, .xo = curDenseTile.xi - 1, .yo =
+    //         yoLim};
+    //     if (leftBg.size() > bestArea && leftBg.size() > bgMinAreaThresh) {
+    //         bestArea  = leftBg.size();
+    //         bestBg    = leftBg;
+    //         xiLimBest = curDenseTile.xi;
+    //         xoLimBest = xoLim;
+    //         yiLimBest = yiLim;
+    //         yoLimBest = yoLim;
+    //         // std::cout << "left\n";
+    //     }
 
-        // Test right tile
-        rect_t rightBg = {
-            .xi = curDenseTile.xo + 1, .yi = yiLim, .xo = xoLim, .yo = yoLim};
-        if (rightBg.size() > bestArea && rightBg.size() > bgMinAreaThresh) {
-            bestArea  = rightBg.size();
-            bestBg    = rightBg;
-            xiLimBest = xiLim;
-            xoLimBest = curDenseTile.xo;
-            yiLimBest = yiLim;
-            yoLimBest = yoLim;
-            // std::cout << "right\n";
-        }
+    //     // Test right tile
+    //     rect_t rightBg = {
+    //         .xi = curDenseTile.xo + 1, .yi = yiLim, .xo = xoLim, .yo =
+    //         yoLim};
+    //     if (rightBg.size() > bestArea && rightBg.size() > bgMinAreaThresh) {
+    //         bestArea  = rightBg.size();
+    //         bestBg    = rightBg;
+    //         xiLimBest = xiLim;
+    //         xoLimBest = curDenseTile.xo;
+    //         yiLimBest = yiLim;
+    //         yoLimBest = yoLim;
+    //         // std::cout << "right\n";
+    //     }
 
-        if (bestArea > bgMinAreaThresh) {
-            bgTiles.push_back(bestBg);
-            // std::cout << curDenseTile.toStr() << "\n";
-            // std::cout << "[simpleRemoveBg] added BG tile " << bestBg.toStr()
-            //           << "\n";
-            // std::cout << "[simpleRemoveBg] bestArea " << bestArea << "\n";
-            // std::cout << "[simpleRemoveBg] bgMinAreaThresh " <<
-            // bgMinAreaThresh
-            //           << "\n";
-            xiLim = xiLimBest;
-            xoLim = xoLimBest;
-            yiLim = yiLimBest;
-            yoLim = yoLimBest;
-            // exit(0);
-        } else {
-            // Reset dense tile to full tile if no BG is found
-            curDenseTile = {.xi = xiLimBest,
-                            .yi = yiLimBest,
-                            .xo = xoLimBest,
-                            .yo = yoLimBest};
-            break;
-        }
-    }
+    //     if (bestArea > bgMinAreaThresh) {
+    //         bgTiles.push_back(bestBg);
+    //         // std::cout << curDenseTile.toStr() << "\n";
+    //         // std::cout << "[simpleRemoveBg] added BG tile " <<
+    //         bestBg.toStr()
+    //         //           << "\n";
+    //         // std::cout << "[simpleRemoveBg] bestArea " << bestArea << "\n";
+    //         // std::cout << "[simpleRemoveBg] bgMinAreaThresh " <<
+    //         // bgMinAreaThresh
+    //         //           << "\n";
+    //         xiLim = xiLimBest;
+    //         xoLim = xoLimBest;
+    //         yiLim = yiLimBest;
+    //         yoLim = yoLimBest;
+    //         // exit(0);
+    //     } else {
+    //         // Reset dense tile to full tile if no BG is found
+    //         curDenseTile = {.xi = xiLimBest,
+    //                         .yi = yiLimBest,
+    //                         .xo = xoLimBest,
+    //                         .yo = yoLimBest};
+    //         break;
+    //     }
+    // }
 
     // std::cout << "+++ " << curDenseTile.yi << "-" << curDenseTile.yo << ", "
     //           << curDenseTile.xi << "-" << curDenseTile.xo << "\n";
+
+    curDenseTile = {
+        .xi = xiLimBest, .yi = yiLimBest, .xo = xoLimBest, .yo = yoLimBest};
 
     return curDenseTile;
 }

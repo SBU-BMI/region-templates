@@ -245,9 +245,9 @@ void TiledRTCollection::generateDRs(bool tilingOnly) {
                     (255, 255, 255), 5);
 
                 // Add cost to image as text
-                cv::putText(tiledImg, c_cost,
-                            cv::Point(tile.x + 10, tile.y + tile.height / 2),
-                            cv::FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 7);
+                // cv::putText(tiledImg, c_cost,
+                //             cv::Point(tile.x + 10, tile.y + tile.height / 2),
+                //             cv::FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 7);
             }
 
 #ifdef DEBUG
