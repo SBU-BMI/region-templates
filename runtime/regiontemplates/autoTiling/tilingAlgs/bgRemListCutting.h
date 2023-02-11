@@ -10,4 +10,8 @@
 void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
                       CostFunction *cfunc, std::list<rect_t> &bgPartitions);
 
+int bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int cpuCount,
+                     int gpuCount, float cpuPats, float gpuPats,
+                     CostFunction *cfunc, std::list<rect_t> &bgPartitions);
+
 #endif // LIST_CUTTING_H_

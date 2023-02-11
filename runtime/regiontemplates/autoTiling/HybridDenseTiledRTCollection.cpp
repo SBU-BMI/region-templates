@@ -113,6 +113,38 @@ void HybridDenseTiledRTCollection::tileMat(
             tiles.push_back(
                 cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
         }
+    } else if (this->tilingAlg == HIER_FG_BR) {
+        std::cout << "[HDT][HIER_FG_BR] Tiling ECL for cpu=" << this->nCpuTiles
+                  << ":" << this->cpuPATS << ", gpu=" << this->nGpuTiles << ":"
+                  << this->gpuPATS << std::endl;
+
+        // Converts the initial tiles list to rect_t
+        std::list<rect_t> curTiles;
+        for (cv::Rect_<int64_t> r : tiles) {
+            rect_t rt = {r.x, r.y, r.x + r.width, r.y + r.height};
+            curTiles.push_back(rt);
+        }
+
+        // Performs tiling
+        std::list<rect_t> bg;
+        int               dense =
+            bgRemListCutting(mat, curTiles, this->nCpuTiles, this->nGpuTiles,
+                             this->cpuPATS, this->gpuPATS, this->cfunc, bg);
+
+        // Correct gpuTiles count if there are many dense regions
+        if (dense > 0)
+            this->nGpuTiles =
+                floor(this->gpuPATS / (this->gpuPATS + this->cpuPATS) * dense);
+
+        tiles.clear();
+
+        // Convert rect_t to cv::Rect_
+        for (std::list<rect_t>::iterator r = curTiles.begin();
+             r != curTiles.end(); r++) {
+            tiles.push_back(
+                cv::Rect_<int64_t>(r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
+        }
+
     } else {
         // Checks if no pre-tiling happened (i.e., only one dense tile)
         if (tiles.size() > 1) {
@@ -267,41 +299,6 @@ void HybridDenseTiledRTCollection::tileMat(
                         r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
                 }
                 break;
-
-            case HIER_FG_BR: {
-                std::cout << "[HDT][HIER_FG_BR] Expected tiles: cpu "
-                          << this->nCpuTiles << ", gpu " << this->nGpuTiles
-                          << std::endl;
-                std::cout << "[HDT][HIER_FG_BR] Img size " << h << "x" << w
-                          << std::endl;
-
-                // Tile gpu subimage (top half)
-                curTiles.push_back({gmw, gmh, gmw + gw - 1, gmh + gh - 1});
-                std::list<rect_t> bg;
-                bgRemListCutting(mat, curTiles, this->nGpuTiles, this->cfunc,
-                                 bg);
-
-                // Add gpu tiles to current result
-                for (std::list<rect_t>::iterator r = curTiles.begin();
-                     r != curTiles.end(); r++) {
-                    tiles.push_back(cv::Rect_<int64_t>(
-                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
-                }
-                curTiles.clear();
-
-                // Tile cpu subimage (second half)
-                curTiles.push_back({cmw, cmh, cmw + cw - 1, cmh + ch - 1});
-                bgRemListCutting(mat, curTiles, this->nCpuTiles, this->cfunc,
-                                 bg);
-
-                // Add cpu tiles to current result
-                for (std::list<rect_t>::iterator r = curTiles.begin();
-                     r != curTiles.end(); r++) {
-                    tiles.push_back(cv::Rect_<int64_t>(
-                        r->xi, r->yi, r->xo - r->xi, r->yo - r->yi));
-                }
-                break;
-            }
 
             default:
                 std::cout << "[HDT] Invalid dense "

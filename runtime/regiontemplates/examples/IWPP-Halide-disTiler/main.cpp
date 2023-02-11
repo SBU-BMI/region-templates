@@ -468,7 +468,7 @@ int main(int argc, char *argv[]) {
         float gpuPATS = gpc;
         denseTiler    = new HybridDenseTiledRTCollection(
                "input", "input", Ipath, border, denseCostFunc, bgm, denseTilingAlg,
-               nTiles, nTiles * gn, cpuPATS, gpuPATS, true);
+               nTiles, nTiles * gn, cpuPATS, gpuPATS, false);
     } else {
         // Creates dense tiling collection
         if (noTiling)
