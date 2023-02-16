@@ -49,9 +49,9 @@ void HybridDenseTiledRTCollection::customTiling() {
             //     std::cout << "[HDT]\tadding GPU tile.\n";
             // if (drId >= this->nGpuTiles)
             //     std::cout << "[HDT]\tadding CPU tile.\n";
-            this->tileTarget.push_back(drId < this->nCpuTiles
-                                           ? ExecEngineConstants::CPU
-                                           : ExecEngineConstants::GPU);
+            this->tileTarget.push_back(drId < this->nGpuTiles
+                                           ? ExecEngineConstants::GPU
+                                           : ExecEngineConstants::CPU);
             drId++;
         }
     }

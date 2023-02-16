@@ -252,7 +252,7 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t> &hI,
         // cout << "[" << st << "][IWPP] cpu sum\n";
         if (target == ExecEngineConstants::GPU) {
             Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(
-                hTarget, gpuId, 1);
+                hTarget, gpuId, 0);
             hFullSum.copy_to_host();
         }
         newSum = dFullSum;
@@ -271,11 +271,18 @@ int loopedIwppRecon(Target_t target, Halide::Buffer<uint8_t> &hI,
 
     delete[] dLineSum;
 
-    // Clears hLineSum and hFullSum GPU buffer
-    if (target == ExecEngineConstants::GPU) {
-        Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(hTarget,
-                                                                   gpuId, 2);
-    }
+    // // Clears hLineSum and hFullSum GPU buffer
+    // if (target == ExecEngineConstants::GPU) {
+    //     cout << "here1\n";
+    //     Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(hTarget,
+    //                                                                gpuId, 0);
+    //     delete hLineSum;
+    //     cout << "here2\n";
+    //     Halide::Internal::JITSharedRuntime::multigpu_prep_finalize(hTarget,
+    //                                                                gpuId, 0);
+    //     delete hFullSum;
+    //     cout << "here3\n";
+    // }
 
     // // Final iwpp time
     // long st6 = Util::ClockGetTime();
