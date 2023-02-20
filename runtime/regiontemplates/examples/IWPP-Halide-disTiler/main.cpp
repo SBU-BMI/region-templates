@@ -482,7 +482,7 @@ int main(int argc, char *argv[]) {
         else
             denseTiler = new IrregTiledRTCollection(
                 "input", "input", Ipath, border, denseCostFunc, bgm,
-                denseTilingAlg, nTiles, true);
+                denseTilingAlg, nTiles, false);
     }
 
     // Performs pre-tiling, if required
