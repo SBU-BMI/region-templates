@@ -16,7 +16,7 @@
 // Structuring element must have odd width and height
 void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
            Halide::Buffer<uint8_t> hSE, Target_t target, int tileId,
-           int noSched, int gpuId = -1) {
+           int noSched, int gpuId) {
     // #ifdef PROFILING_STAGES
     long st1 = Util::ClockGetTime();
     // #endif
@@ -78,9 +78,11 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
          << "][STAGE_HAL_COMP][erode] " << (st2 - st1) << endl;
 #endif
 
-    if (target == ExecEngineConstants::GPU)
+    if (target == ExecEngineConstants::GPU) {
+        std::cout << "[pipeline1] prep gpu " << gpuId << std::endl;
         Halide::Internal::JITSharedRuntime::multigpu_prep_realize(hTarget,
                                                                   gpuId);
+    }
     erode.realize(hOut);
     erode.realize(hOut);
     erode.realize(hOut);
@@ -101,7 +103,7 @@ void erode(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
 // Structuring element must have odd width and height
 void dilate(Halide::Buffer<uint8_t> hIn, Halide::Buffer<uint8_t> hOut,
             Halide::Buffer<uint8_t> hSE, Target_t target, int tileId,
-            int noSched, int gpuId = -1) {
+            int noSched, int gpuId) {
     // #ifdef PROFILING_STAGES
     long st0 = Util::ClockGetTime();
     // #endif
