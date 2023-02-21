@@ -28,7 +28,7 @@ set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp
     costFuncs/PropagateDistCostFunction.cpp
     costFuncs/PrePartThresBGCostFunction.cpp
     costFuncs/ThresholdBGMasker.cpp costFuncs/ColorThresholdBGMasker.cpp 
-    costFuncs/ThresholdBGCostFunction.cpp costFuncs/LGBCostFunction.cpp
+    costFuncs/ThresholdBGCostFunction.cpp
     tilingAlgs/fineBgRemoval.cpp 
     svs/svsUtils.cpp tilingAlgs/tilingUtil.cpp tilingAlgs/denseFromBG.cpp 
     tilingAlgs/listCutting.cpp tilingAlgs/bgRemListCutting.cpp 
@@ -36,9 +36,9 @@ set(libautotilingsrc TiledRTCollection.cpp RegTiledRTCollection.cpp
     tilingAlgs/fixedGrid.cpp)
 
 # LightGBM
-include_directories(/home/willian/git/LightGBM/include)
-add_library(lightgbm SHARED IMPORTED)
-set_target_properties(lightgbm PROPERTIES IMPORTED_LOCATION /home/willian/git/LightGBM/lib_lightgbm.so)
+#include_directories(/home/willian/git/LightGBM/include)
+#add_library(lightgbm SHARED IMPORTED)
+#set_target_properties(lightgbm PROPERTIES IMPORTED_LOCATION /home/willian/git/LightGBM/lib_lightgbm.so)
 
 # Creates autotiling lib
 set(libname autotiling)
@@ -49,7 +49,7 @@ include_directories("./tilingAlgs")
 
 target_link_libraries("${libname}" ${OpenCV_LIBS})
 target_link_libraries("${libname}" openslide)
-target_link_libraries("${libname}" lightgbm)
+#target_link_libraries("${libname}" lightgbm)
 
 
 if(PROFILING)

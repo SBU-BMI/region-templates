@@ -1,6 +1,5 @@
 #include "PrePartThresBGCostFunction.h"
 
-#include <boost/stacktrace.hpp>
 #include <omp.h>
 
 #include "openslide.h"

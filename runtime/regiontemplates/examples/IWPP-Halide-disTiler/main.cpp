@@ -21,7 +21,6 @@
 #include "costFuncs/AreaCostFunction.h"
 #include "costFuncs/BGMasker.h"
 #include "costFuncs/ColorThresholdBGMasker.h"
-#include "costFuncs/LGBCostFunction.h"
 #include "costFuncs/MultiObjCostFunction.h"
 #include "costFuncs/OracleCostFunction.h"
 #include "costFuncs/PrePartThresBGCostFunction.h"
@@ -453,7 +452,7 @@ int main(int argc, char *argv[]) {
         denseCostFunc = new PrePartThresBGCostFunction(bgThr, dilate_param,
                                                        erode_param, Ipath);
     } else if (denseCostf == LGB_MODEL) {
-        denseCostFunc = new LGBCostFunction(bgThr, dilate_param, erode_param);
+        //denseCostFunc = new LGBCostFunction(bgThr, dilate_param, erode_param);
     }
     CostFunction *bgCostFunc = new AreaCostFunction();
 
@@ -483,7 +482,7 @@ int main(int argc, char *argv[]) {
         else
             denseTiler = new IrregTiledRTCollection(
                 "input", "input", Ipath, border, denseCostFunc, bgm,
-                denseTilingAlg, nTiles, true);
+                denseTilingAlg, nTiles, false);
     }
 
     // Performs pre-tiling, if required
