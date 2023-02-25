@@ -159,7 +159,9 @@ void HybridDenseTiledRTCollection::tileMat(
                   << this->gpuPATS << std::endl;
 
         // Percentage of gpu tile
-        float f = this->gpuPATS / (this->gpuPATS + this->cpuPATS);
+        float f = (this->nGpuTiles * this->gpuPATS) /
+                  ((this->nGpuTiles * this->gpuPATS) +
+                   (this->nCpuTiles * this->cpuPATS));
         // f=0.5;
 
         // Create gpu tile (top half)
