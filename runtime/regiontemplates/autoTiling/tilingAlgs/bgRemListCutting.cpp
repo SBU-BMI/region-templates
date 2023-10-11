@@ -21,9 +21,15 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
     long t2 = Util::ClockGetTime();
     // Get all multiples of the number of partitions
     std::list<int> multiples = getMultiples(nTiles);
+    // multiples = {2, 3, 5, 7};
+    multiples = {7, 5, 3, 2};
+    std::cout << "SUM ";
+    for (int m : multiples)
+        std::cout << m << ", ";
+    std::cout << "\n";
 
     long tBTS = 0;
-    long t3   = Util::ClockGetTime();
+    long t3 = Util::ClockGetTime();
     // Perform hierarchical partitioning for each multiple of nTiles
     int expctParts = 1;
     for (int mult : multiples) {
@@ -85,7 +91,7 @@ void bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int nTiles,
 
     // Resolve the 1 tile case
     if (sDense.size() == 1) {
-        rect_t            oldTile = *sDense.begin();
+        rect_t oldTile = *sDense.begin();
         std::list<rect_t> bg;
         sDense.clear();
         sDense.insert(simpleRemoveBg(img, oldTile, cfunc, bg));
@@ -189,12 +195,12 @@ int bgRemListCutting(const cv::Mat &img, std::list<rect_t> &dense, int cpuCount,
             exit(-1);
         } else if ((dIt->xo - dIt->xi) == 1) {
             int64_t pivot = (dIt->yo - dIt->yi) / 2 + dIt->yi;
-            newt1         = {dIt->xi, dIt->yi, dIt->xo, pivot};
-            newt2         = {dIt->xi, pivot + 1, dIt->xo, dIt->yo};
+            newt1 = {dIt->xi, dIt->yi, dIt->xo, pivot};
+            newt2 = {dIt->xi, pivot + 1, dIt->xo, dIt->yo};
         } else if ((dIt->yo - dIt->yi) == 1) {
             int64_t pivot = (dIt->xo - dIt->xi) / 2 + dIt->xi;
-            newt1         = {dIt->xi, dIt->yi, pivot, dIt->yo};
-            newt2         = {pivot + 1, dIt->yi, dIt->xo, dIt->yo};
+            newt1 = {dIt->xi, dIt->yi, pivot, dIt->yo};
+            newt2 = {pivot + 1, dIt->yi, dIt->xo, dIt->yo};
         } else {
             // splitTileLog(*dIt, img, cfunc, cost, newt1, newt2);
             bgRmSplitTileLog(*dIt, img, cfunc, cost, newt1, newt2,
